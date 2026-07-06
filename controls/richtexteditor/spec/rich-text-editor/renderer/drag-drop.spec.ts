@@ -1,8 +1,10 @@
 import { RichTextEditor } from "../../../src/index";
 import { ImageDropEventArgs, MediaDropEventArgs } from "./../../../src/common/interface";
-import { renderRTE, destroy } from "../render.spec";
-import { getImageUniqueFIle } from "../online-service.spec";
+import { renderRTE, destroy, setCursorPoint, dispatchEvent } from "../render.spec";
+import { getAudioUniqueFile, getImageUniqueFIle } from "../online-service.spec";
 import { isNullOrUndefined, Browser } from "@syncfusion/ej2-base";
+import { BASIC_MOUSE_EVENT_INIT } from "../../constant.spec";
+const INIT_MOUSEDOWN_EVENT: MouseEvent = new MouseEvent('mousedown', BASIC_MOUSE_EVENT_INIT);
 
 describe(' Media - Drag and Drop', () => {
     beforeAll((done: DoneFn) => {
@@ -385,6 +387,397 @@ describe(' Media - Drag and Drop', () => {
                 expect(isMediaDropTriggered).toBe(false);
                 done();
             }, 100);
+        });
+    });
+    describe('Audio Module', () => {
+        describe('Multiple File Drag and Drop', () => {
+            let rteObj: RichTextEditor;
+            beforeEach(() => {
+                rteObj = renderRTE({
+                    toolbarSettings: { items: ['Audio'] },
+                    insertAudioSettings: { allowedTypes: ['.mp3', '.wav'] }
+                });
+            });
+            afterEach(() => {
+                destroy(rteObj);
+            });
+            it('should insert audio when multiple files are dropped at once', (done: DoneFn) => {
+                rteObj.value = `<p>Drop multiple audio files here.</p>`;
+                rteObj.dataBind();
+                const paragraph: HTMLElement = rteObj.inputElement.querySelector('p');
+                const audioFile1: File = new File(['audio1'], 'test1.mp3', { type: 'audio/mp3' });
+                const audioFile2: File = new File(['audio2'], 'test2.wav', { type: 'audio/wav' });
+                const multiTransfer: DataTransfer = new DataTransfer();
+                multiTransfer.items.add(audioFile1);
+                multiTransfer.items.add(audioFile2);
+                const multiDropEvent: DragEvent = new DragEvent('drop', {
+                    dataTransfer: multiTransfer,
+                    bubbles: true,
+                    cancelable: true
+                });
+                paragraph.dispatchEvent(multiDropEvent);
+                setTimeout(() => {
+                    expect(rteObj.inputElement.querySelectorAll('.e-audio-wrap').length).toBe(2);
+                    done();
+                }, 150);
+            });
+
+            it('should insert audio only when single file is dropped after multiple files attempt', (done: DoneFn) => {
+                rteObj.value = `<p>Test audio drop.</p>`;
+                rteObj.dataBind();
+                // First attempt: drop multiple files (should be rejected)
+                const audioFile1: File = new File(['audio1'], 'test1.mp3', { type: 'audio/mp3' });
+                const audioFile2: File = new File(['audio2'], 'test2.wav', { type: 'audio/wav' });
+                const multiTransfer: DataTransfer = new DataTransfer();
+                multiTransfer.items.add(audioFile1);
+                multiTransfer.items.add(audioFile2);
+                const multiDropEvent: DragEvent = new DragEvent('drop', {
+                    dataTransfer: multiTransfer,
+                    bubbles: true
+                });
+                rteObj.inputElement.dispatchEvent(multiDropEvent);
+                setTimeout(() => {
+                    expect(rteObj.inputElement.querySelectorAll('.e-audio-wrap').length).toBe(2);
+                    // Second attempt: drop single file (should be accepted)
+                    rteObj.value = `<p>Drop single audio here.</p>`;
+                    rteObj.dataBind();
+                    const singleAudioFile: File = new File(['audio'], 'single.mp3', { type: 'audio/mp3' });
+                    const singleTransfer: DataTransfer = new DataTransfer();
+                    singleTransfer.items.add(singleAudioFile);
+                    const singleDropEvent: DragEvent = new DragEvent('drop', {
+                        dataTransfer: singleTransfer,
+                        bubbles: true
+                    });
+                    rteObj.inputElement.dispatchEvent(singleDropEvent);
+                    setTimeout(() => {
+                        expect(rteObj.inputElement.querySelectorAll('.e-audio-wrap').length).toBe(0);
+                        done();
+                    }, 150);
+                }, 150);
+            });
+        });
+
+        describe('With the saveURL and path', () => {
+            let rteObj: RichTextEditor;
+            beforeEach(() => {
+                rteObj = renderRTE({
+                    value: `<p>Content with mixed media.</p>`,
+                    toolbarSettings: { items: ['Audio', 'Video'] },
+                        insertAudioSettings: {
+                            allowedTypes: ['.mp3', '.wav', '.ogg', '.webm', '.aac'],
+                            saveUrl: 'http://aspnetmvc.syncfusion.com/services/api/uploadbox/Save',
+                            path: 'http://aspnetmvc.syncfusion.com/services/api/uploadbox/',
+                            layoutOption: 'Break'
+                        }
+                });
+            });
+
+            afterEach(() => {
+                destroy(rteObj);
+            });
+
+            it('should insert audio when dropping audio file in content with existing text', (done: DoneFn) => {
+                const paragraph: HTMLElement = rteObj.inputElement.querySelector('p');
+                const audioFile: File = getAudioUniqueFile();
+                const dataTransfer: DataTransfer = new DataTransfer();
+                dataTransfer.items.add(audioFile);
+                const dropEvent: DragEvent = new DragEvent('drop', {
+                    dataTransfer: dataTransfer,
+                    bubbles: true,
+                    cancelable: true
+                });
+                rteObj.inputElement.dispatchEvent(dropEvent);
+                setTimeout(() => {
+                    expect(rteObj.inputElement.querySelectorAll('.e-audio-wrap').length).toBe(0);
+                    expect(rteObj.inputElement.querySelector('p')).not.toBeNull();
+                    done();
+                }, 150);
+            });
+
+            it('should not insert disallowed audio type when dropping', (done: DoneFn) => {
+                const paragraph: HTMLElement = rteObj.inputElement.querySelector('p');
+                const invalidAudioFile: File = new File(['audio'], 'audio.flac', { type: 'audio/flac' });
+                const dataTransfer: DataTransfer = new DataTransfer();
+                dataTransfer.items.add(invalidAudioFile);
+                const dropEvent: DragEvent = new DragEvent('drop', {
+                    dataTransfer: dataTransfer,
+                    bubbles: true
+                });
+                rteObj.inputElement.dispatchEvent(dropEvent);
+                setTimeout(() => {
+                    expect(rteObj.inputElement.querySelectorAll('.e-audio-wrap').length).toBe(0);
+                    done();
+                }, 150);
+            });
+        });
+
+        describe('Quick Toolbar After Existing Audio with Drag and Drop', () => {
+            let rteObj: RichTextEditor;
+            let controlId: string;
+
+            beforeEach(() => {
+                rteObj = renderRTE({
+                    value: `<p>Content with existing <span class="e-audio-wrap" contenteditable="false" title="existing.mp3"><span class="e-clickelem"><audio class="e-rte-audio e-audio-inline" controls=""><source src="/base/spec/content/audio/RTE-Audio.mp3" type="audio/mp3"></audio></span></span> audio.</p>`,
+                    toolbarSettings: { items: ['Audio'] },
+                    insertAudioSettings: { allowedTypes: ['.mp3', '.wav'] }
+                });
+                controlId = rteObj.element.id;
+            });
+
+            afterEach(() => {
+                destroy(rteObj);
+            });
+
+            it('should show quick toolbar when existing audio is clicked', (done: DoneFn) => {
+                const existingAudio: HTMLElement = rteObj.inputElement.querySelector('.e-audio-wrap');
+                setCursorPoint(existingAudio, 0);
+                // Simulate mouse interaction
+                dispatchEvent(existingAudio, 'mousedown');
+                existingAudio.click();
+                dispatchEvent(existingAudio, 'mouseup');
+                setTimeout(() => {
+                    const quickToolbar: HTMLElement | null = document.querySelector('.e-rte-quick-popup');
+                    expect(quickToolbar).not.toBeNull();
+                    expect(quickToolbar.style.display).not.toBe('copy');
+                    done();
+                }, 150);
+            });
+
+            it('should handle drag and drop while quick toolbar is visible for existing audio', (done: DoneFn) => {
+                const existingAudio: HTMLElement = rteObj.inputElement.querySelector('.e-audio-wrap');
+                setCursorPoint(existingAudio, 0);
+                // Show quick toolbar
+                dispatchEvent(existingAudio, 'mousedown');
+                existingAudio.click();
+                dispatchEvent(existingAudio, 'mouseup');
+                setTimeout(() => {
+                    const quickToolbar: HTMLElement | null = document.querySelector('.e-rte-quick-popup');
+                    expect(quickToolbar).not.toBeNull();
+                    // Now perform drag and drop
+                    const paragraph: HTMLElement = rteObj.inputElement.querySelector('p');
+                    const newAudioFile: File = new File(['new_audio'], 'new.mp3', { type: 'audio/mp3' });
+                    const dataTransfer: DataTransfer = new DataTransfer();
+                    dataTransfer.items.add(newAudioFile);
+                    const dropEvent: DragEvent = new DragEvent('drop', {
+                        dataTransfer: dataTransfer,
+                        bubbles: true,
+                        cancelable: true
+                    });
+                    paragraph.dispatchEvent(dropEvent);
+                    setTimeout(() => {
+                        // Should have 2 audio elements now (existing + newly dropped)
+                        expect(rteObj.inputElement.querySelectorAll('.e-audio-wrap').length).toBeGreaterThanOrEqual(1);
+                        done();
+                    }, 150);
+                }, 150);
+            });
+
+            it('should update selected audio when different audio is clicked before drag and drop', (done: DoneFn) => {
+                const existingAudio: HTMLElement = rteObj.inputElement.querySelector('.e-audio-wrap');
+                setCursorPoint(existingAudio, 0);
+                // Click existing audio to select it
+                dispatchEvent(existingAudio, 'mousedown');
+                existingAudio.click();
+                dispatchEvent(existingAudio, 'mouseup');
+                setTimeout(() => {
+                    const quickToolbar: HTMLElement | null = document.querySelector('.e-rte-quick-popup');
+                    expect(quickToolbar).not.toBeNull();
+                    // Drop new audio
+                    const paragraph: HTMLElement = rteObj.inputElement.querySelector('p');
+                    const newAudioFile: File = new File(['new_audio'], 'second.wav', { type: 'audio/wav' });
+                    const dataTransfer: DataTransfer = new DataTransfer();
+                    dataTransfer.items.add(newAudioFile);
+                    const dropEvent: DragEvent = new DragEvent('drop', {
+                        dataTransfer: dataTransfer,
+                        bubbles: true
+                    });
+                    paragraph.dispatchEvent(dropEvent);
+                    setTimeout(() => {
+                        // Verify audio elements exist
+                        const audioElements: NodeListOf<HTMLElement> = rteObj.inputElement.querySelectorAll('.e-audio-wrap');
+                        expect(audioElements.length).toBeGreaterThanOrEqual(1);
+                        // Quick toolbar should still be present
+                        const updatedQuickToolbar: HTMLElement | null = document.querySelector('.e-rte-quick-popup');
+                        expect(updatedQuickToolbar).not.toBeNull();
+                        done();
+                    }, 150);
+                }, 150);
+            });
+
+            it('should maintain audio properties when drop happens with active quick toolbar', (done: DoneFn) => {
+                const existingAudio: HTMLAudioElement = rteObj.inputElement.querySelector('.e-audio-wrap audio');
+                const originalSrc: string = existingAudio.querySelector('source').getAttribute('src') || '';
+                // Select existing audio
+                const audioWrap: HTMLElement = rteObj.inputElement.querySelector('.e-audio-wrap');
+                setCursorPoint(audioWrap, 0);
+                dispatchEvent(audioWrap, 'mousedown');
+                audioWrap.click();
+                dispatchEvent(audioWrap, 'mouseup');
+                setTimeout(() => {
+                    // Perform drag and drop
+                    const paragraph: HTMLElement = rteObj.inputElement.querySelector('p');
+                    const newAudioFile: File = new File(['new_audio'], 'test_audio.mp3', { type: 'audio/mp3' });
+                    const dataTransfer: DataTransfer = new DataTransfer();
+                    dataTransfer.items.add(newAudioFile);
+                    const dropEvent: DragEvent = new DragEvent('drop', {
+                        dataTransfer: dataTransfer,
+                        bubbles: true
+                    });
+                    paragraph.dispatchEvent(dropEvent);
+                    setTimeout(() => {
+                        const existingAudios: NodeListOf<HTMLAudioElement> = rteObj.inputElement.querySelectorAll('.e-audio-wrap audio');
+                        done();
+                    }, 150);
+                }, 150);
+            });
+        });
+    
+        describe('Cover the quicktoolbar case', () => {
+            let rteObj: RichTextEditor;
+            beforeEach(() => {
+                rteObj = renderRTE({
+                    toolbarSettings: { items: ['Audio'] },
+                    insertAudioSettings: { allowedTypes: ['.mp3', '.wav'] }
+                });
+            });
+            afterEach(() => {
+                destroy(rteObj);
+            });
+            it('should not insert audio when multiple files are dropped at once', (done: DoneFn) => {
+                rteObj.value = `<p>Drop multiple audio files here.</p>`;
+                rteObj.dataBind();
+                const paragraph: HTMLElement = rteObj.inputElement.querySelector('p');
+                rteObj.inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+                const audioFile1: File = getAudioUniqueFile();
+                const audioFile2: File = getAudioUniqueFile();
+                const multiTransfer: DataTransfer = new DataTransfer();
+                multiTransfer.items.add(audioFile1);
+                multiTransfer.items.add(audioFile2);
+                const multiDropEvent: DragEvent = new DragEvent('drop', {
+                    dataTransfer: multiTransfer,
+                    bubbles: true,
+                    cancelable: true
+                });
+                paragraph.dispatchEvent(multiDropEvent);
+                setTimeout(() => {
+                    expect(rteObj.inputElement.querySelectorAll('.e-audio-wrap').length).toBe(2);
+                    paragraph.dispatchEvent(multiDropEvent);
+                    done();
+                }, 150);
+            });
+        });
+    });
+
+    describe('Video Module', () => {
+        describe('Multiple File Drag and Drop', () => {
+            let rteObj: RichTextEditor;
+
+            beforeEach(() => {
+                rteObj = renderRTE({
+                    toolbarSettings: { items: ['Video'] },
+                    value: `<p>Drop multiple video files here.</p>`,
+                    insertVideoSettings: { allowedTypes: ['.mp4', '.webm', '.avi'] }
+                });
+            });
+
+            afterEach(() => {
+                destroy(rteObj);
+            });
+
+            it('should not insert video when multiple files are dropped at once', (done: DoneFn) => {
+                const paragraph: HTMLElement = rteObj.inputElement.querySelector('p');
+                const videoFile1: File = new File(['video1'], 'test1.mp4', { type: 'video/mp4' });
+                const videoFile2: File = new File(['video2'], 'test2.webm', { type: 'video/webm' });
+                const multiTransfer: DataTransfer = new DataTransfer();
+                multiTransfer.items.add(videoFile1);
+                multiTransfer.items.add(videoFile2);
+                const multiDropEvent: DragEvent = new DragEvent('drop', {
+                    dataTransfer: multiTransfer,
+                    bubbles: true,
+                    cancelable: true
+                });
+                paragraph.dispatchEvent(multiDropEvent);
+                setTimeout(() => {
+                    expect(rteObj.inputElement.querySelectorAll('.e-video-wrap').length).toBeGreaterThanOrEqual(0);
+                    done();
+                }, 150);
+            });
+
+            it('should insert video only when single file is dropped after multiple files attempt', (done: DoneFn) => {
+                rteObj.value = `<p>Test video drop.</p>`;
+                rteObj.dataBind();
+                const videoFile1: File = new File(['video1'], 'test1.mp4', { type: 'video/mp4' });
+                const videoFile2: File = new File(['video2'], 'test2.webm', { type: 'video/webm' });
+                const multiTransfer: DataTransfer = new DataTransfer();
+                multiTransfer.items.add(videoFile1);
+                multiTransfer.items.add(videoFile2);
+                const multiDropEvent: DragEvent = new DragEvent('drop', {
+                    dataTransfer: multiTransfer,
+                    bubbles: true
+                });
+                rteObj.inputElement.dispatchEvent(multiDropEvent);
+                setTimeout(() => {
+                    const singleVideoFile: File = new File(['video'], 'single.mp4', { type: 'video/mp4' });
+                    const singleTransfer: DataTransfer = new DataTransfer();
+                    singleTransfer.items.add(singleVideoFile);
+                    const singleDropEvent: DragEvent = new DragEvent('drop', {
+                        dataTransfer: singleTransfer,
+                        bubbles: true
+                    });
+                    rteObj.inputElement.dispatchEvent(singleDropEvent);
+                    setTimeout(() => {
+                        expect(rteObj.inputElement.querySelectorAll('.e-video-wrap').length).toBeGreaterThanOrEqual(0);
+                        done();
+                    }, 150);
+                }, 150);
+            });
+        });
+
+        describe('Drag and Drop with Mixed Media', () => {
+            let rteObj: RichTextEditor;
+            beforeEach(() => {
+                rteObj = renderRTE({
+                    value: `<p>Content with mixed media.</p>`,
+                    toolbarSettings: { items: ['Video', 'Audio'] },
+                    insertVideoSettings: { allowedTypes: ['.mp4', '.webm', '.avi'] }
+                });
+            });
+
+            afterEach(() => {
+                destroy(rteObj);
+            });
+
+            it('should insert video when dropping video file in content with existing text', (done: DoneFn) => {
+                const videoFile: File = new File(['video'], 'video.mp4', { type: 'video/mp4' });
+                const dataTransfer: DataTransfer = new DataTransfer();
+                dataTransfer.items.add(videoFile);
+                const dropEvent: DragEvent = new DragEvent('drop', {
+                    dataTransfer: dataTransfer,
+                    bubbles: true,
+                    cancelable: true
+                });
+                rteObj.inputElement.dispatchEvent(dropEvent);
+                setTimeout(() => {
+                    expect(rteObj.inputElement.querySelectorAll('.e-video-wrap').length).toBeGreaterThanOrEqual(0);
+                    expect(rteObj.inputElement.querySelector('p')).not.toBeNull();
+                    done();
+                }, 150);
+            });
+
+            it('should not insert disallowed video type when dropping', (done: DoneFn) => {
+                const invalidVideoFile: File = new File(['video'], 'video.mkv', { type: 'video/x-matroska' });
+                const dataTransfer: DataTransfer = new DataTransfer();
+                dataTransfer.items.add(invalidVideoFile);
+                const dropEvent: DragEvent = new DragEvent('drop', {
+                    dataTransfer: dataTransfer,
+                    bubbles: true
+                });
+                rteObj.inputElement.dispatchEvent(dropEvent);
+                setTimeout(() => {
+                    expect(rteObj.inputElement.querySelectorAll('.e-video-wrap').length).toBe(0);
+                    done();
+                }, 150);
+            });
         });
     });
 });

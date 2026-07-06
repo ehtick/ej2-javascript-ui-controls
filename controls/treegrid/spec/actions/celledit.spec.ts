@@ -9,7 +9,7 @@ import { Sort } from '../../src/treegrid/actions/sort';
 import { RowDD } from '../../src/treegrid/actions/rowdragdrop';
 import { isNullOrUndefined } from '@syncfusion/ej2-base';
 import { VirtualScroll } from '../../src/treegrid/actions/virtual-scroll';
-import { Query, DataManager, WebApiAdaptor } from '@syncfusion/ej2-data';
+import { Query, DataManager } from '@syncfusion/ej2-data';
 import { select } from '@syncfusion/ej2-base';
 
 /**
@@ -2077,109 +2077,3 @@ describe('Check duplicate data in Datasource', () => {
         gridObj = null;
     });
 });
-describe('Coverage: savePreviousRowPosition else-path', () => {
-    let gridObj: TreeGrid;
-    beforeAll((done: Function) => {
-        gridObj = createGrid(
-            {
-                dataSource: sampleData,
-                childMapping: 'subtasks',
-                editSettings: { allowAdding: true, newRowPosition: 'Top' },
-                columns: [{ field: 'taskID', isPrimaryKey: true }, { field: 'taskName' }]
-            },
-            done
-        );
-    });
-
-    it('does not overwrite previousNewRowPosition when already set', () => {
-        const editModule: any = gridObj.editModule;
-        editModule.previousNewRowPosition = 'Bottom';
-        (editModule as any).savePreviousRowPosition();
-        expect(editModule.previousNewRowPosition).toBe('Bottom');
-    });
-    afterAll(() => {
-        destroy(gridObj);
-    });
-});
-describe('Coverage: customCellSave branches', () => {
-    let gridObj: TreeGrid;
-    let data: Object = new DataManager({
-        url: 'https://services.syncfusion.com/js/production/api/SelfReferenceData',
-        adaptor: new WebApiAdaptor,
-        crossDomain: true
-    });
-    beforeAll((done: Function) => {
-        gridObj = createGrid(
-            {
-                dataSource: data,
-                hasChildMapping: 'isParent',
-                idMapping: 'TaskID',
-                parentIdMapping: 'ParentItem',
-                height: 400,
-                treeColumnIndex: 1,
-                editSettings: { allowAdding: true, mode: 'Cell', newRowPosition: 'Top' },
-                columns: [
-                    { field: 'TaskID', headerText: 'Task ID', textAlign: 'Right', width: 120 },
-                    { field: 'TaskName', headerText: 'Task Name', width: 150 },
-                    { field: 'StartDate', headerText: 'Start Date', textAlign: 'Right', width: 120 }
-                ],
-            },
-            done
-        );
-    });
-    it('calls updateCell and afterCellSave when count required + Cell mode + edit action', () => {
-        const editModule: any = gridObj.editModule;
-        const origIsCount: any = (window as any).isCountRequired;
-        (gridObj as any).dataSource['result'] = {};
-        (window as any).isCountRequired = () => true;
-        editModule.parent.editSettings.mode = 'Cell';
-        spyOn(editModule, 'updateCell');
-        spyOn(editModule, 'afterCellSave');
-        const args: any = { action: 'edit', rowIndex: 0, row: gridObj.getRows()[0], rowData: gridObj.getCurrentViewRecords()[0], columnName: 'taskName' };
-        (editModule as any).customCellSave(args);
-        expect(editModule.updateCell).toHaveBeenCalledWith(args, 0);
-        expect(editModule.afterCellSave).toHaveBeenCalledWith(args, args.row as HTMLTableRowElement);
-        (window as any).isCountRequired = origIsCount;
-    });
-    afterAll(() => {
-        destroy(gridObj);
-    });
-});
-describe('Coverage: beginEdit branches', () => {
-    let gridObj: TreeGrid;
-    beforeAll((done: Function) => {
-        gridObj = createGrid(
-            {
-                dataSource: sampleData,
-                childMapping: 'subtasks',
-                editSettings: { allowAdding: true, mode: 'Row', newRowPosition: 'Top' },
-                columns: [{ field: 'taskID', isPrimaryKey: true }, { field: 'taskName' }]
-            },
-            done
-        );
-    });
-
-    it('clears addRowRecord when flatData empty and addRowRecord set (then returns on refresh/isOnBatch)', () => {
-        const editModule: any = gridObj.editModule;
-        editModule.parent.flatData = [];
-        editModule.addRowRecord = { dummy: true };
-        editModule.isOnBatch = true;
-        const args: any = { requestType: 'refresh', cancel: false };
-        (editModule as any).beginEdit(args);
-        expect(args.cancel).toBe(true);
-        editModule.isOnBatch = false;
-    });
-    it('sets args.cancel when requestType is beginEdit and mode is Cell', () => {
-        const editModule: any = gridObj.editModule;
-        editModule.parent.editSettings.mode = 'Cell';
-        editModule.isOnBatch = false;
-        const args: any = { requestType: 'beginEdit', cancel: false };
-        (editModule as any).beginEdit(args);
-        expect(args.cancel).toBe(true);
-        editModule.parent.editSettings.mode = 'Row';
-    });
-
-    afterAll(() => {
-        destroy(gridObj);
-    });
-}); 

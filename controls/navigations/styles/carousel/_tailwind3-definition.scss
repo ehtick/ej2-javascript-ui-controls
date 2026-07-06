@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/tailwind3' as *;
-@forward 'ej2-base/styles/definition/tailwind3';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $carousel-navigator-btn-bg: transparent !default;
 $carousel-navigator-btn-bg-hover: $content-bg-color-hover !default;
 $carousel-navigator-btn-bg-active: $content-bg-color-pressed !default;

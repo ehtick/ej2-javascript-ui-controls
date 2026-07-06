@@ -1322,3 +1322,66 @@ describe('Batch Edit - Full ContextMenuItemClick Prototype Coverage', () => {
         destroy(gridObj);
     });
 });
+
+// Additional branch coverage for ContextMenu (append to spec/actions/contextmenu.spec.ts)
+describe('ContextMenu - additional branch coverage', () => {
+  let gridObj: TreeGrid;
+
+  beforeAll((done: Function) => {
+    gridObj = createGrid({
+      dataSource: sampleData,
+      childMapping: 'subtasks',
+      treeColumnIndex: 1,
+      editSettings: { allowAdding: true, allowDeleting: true, allowEditing: true, mode: 'Row' },
+      contextMenuItems: ['Indent', 'Outdent', 'Delete', 'AddRow'],
+      columns: [
+        { field: 'taskID', headerText: 'Task ID', isPrimaryKey: true },
+        { field: 'taskName', headerText: 'Task Name' },
+        { field: 'progress', headerText: 'Progress' }
+      ]
+    }, done);
+  });
+
+  it('calls deleteRow when Delete is triggered for a single-leaf selection', () => {
+    gridObj.selectRow(2);
+    spyOn(gridObj, 'deleteRow');
+    spyOn(gridObj,'deleteRecord');
+    const deleteItem: any ={ item: { id: gridObj.element.id + '_gridcontrol_cmenu_Delete' } };
+    gridObj.contextMenuModule['contextMenuItemClick'](deleteItem) 
+    expect(gridObj.deleteRow).toHaveBeenCalled();
+    gridObj.grid.clearSelection();
+    gridObj.selectRows([2,3]);
+    gridObj.contextMenuModule['contextMenuItemClick'](deleteItem);
+  });
+
+  it('sets indent style to block when selected item level equals previous row level', () => {
+    gridObj.selectRow(2);
+    gridObj.grid.isCheckBoxSelection = true;
+    const contextMenuModule = gridObj.contextMenuModule as any;
+    const eventName = 'rowDeselected'
+    contextMenuModule.eventArgs = { target: gridObj.getCellFromIndex(2, 1) };
+    const contextElId = gridObj.element.id + '_gridcontrol_cmenu';
+    let cMenuEl = document.getElementById(contextElId);
+    if (!cMenuEl) {
+      cMenuEl = document.createElement('div');
+      cMenuEl.id = contextElId;
+      document.body.appendChild(cMenuEl);
+    }
+    const e: any = {
+      event: contextMenuModule.eventArgs,
+      items: contextMenuModule.contextMenu ? contextMenuModule.contextMenu.items : [{ text: 'Indent' }, { text: 'Outdent' }],
+      parentItem: document.querySelector('tr'),
+      element: cMenuEl,
+      name: eventName,
+    };
+    
+    try { contextMenuModule['contextMenuOpen'](e as any); } catch (e) {}
+    const indentEl = document.getElementById(gridObj.element.id + '_gridcontrol_cmenu_Indent') as HTMLElement;
+    expect(indentEl).toBeTruthy();
+    expect(indentEl.style.display).toBe('block');
+  });
+
+  afterAll(() => {
+    destroy(gridObj);
+  });
+});

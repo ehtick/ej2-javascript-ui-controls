@@ -5,7 +5,7 @@ export type TextAlign = 'left' | 'center' | 'right';
 /**
  * Vertical alignment type
  */
-export type VerticalAlign = 'bottom' | 'middle' | 'top';
+export type VerticalAlign = 'bottom' | 'middle' | 'top' | 'sub' | 'super';
 /**
  * Font weight type
  */

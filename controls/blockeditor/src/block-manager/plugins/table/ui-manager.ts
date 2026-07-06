@@ -535,6 +535,7 @@ export class TableUIManager {
             });
         } else {
             const rowsMeta: Array<{ index: number; rowModel: TableRowModel }> = [];
+            const oldBlockModel: BlockModel = decoupleReference(getBlockModelById(this.blockId, this.parent.getEditorBlocks()));
             // Collect metadata for undo/redo
             Array.from(selectedRows)
                 .map((row: HTMLTableRowElement) => parseInt((row as HTMLTableRowElement).dataset.row, 10))
@@ -557,14 +558,18 @@ export class TableUIManager {
                 rows: rowsMeta
             });
 
-            // Perform deletions (skip internal single tracking)
+            // Perform deletions (skip internal single tracking untill before last selected row deleted)
             rowsMeta.forEach(({ index }: { index: number }) => {
                 this.parent.tableService.deleteRowAt({
                     blockId: this.blockId,
                     modelIndex: index,
-                    isUndoRedoAction: true
+                    preventTracking: true
                 });
             });
+
+            // Trigger block update after batch deletion
+            const updatedBlock: BlockModel = getBlockModelById(this.blockId, this.parent.getEditorBlocks());
+            this.parent.tableService.triggerBlockUpdate({ block: updatedBlock, oldBlock: oldBlockModel });
         }
     }
 
@@ -686,6 +691,7 @@ export class TableUIManager {
         const sortedIndices: number[] = Array.from(uniqueColIndices).sort((a: number, b: number) => b - a);
         if (sortedIndices.length > 1) {
             const colsMeta: Array<{ index: number; columnModel: TableColumnModel; columnCells: TableCellModel[] }> = [];
+            const oldBlockModel: BlockModel = decoupleReference(getBlockModelById(this.blockId, this.parent.getEditorBlocks()));
             sortedIndices.forEach((dataColIdx: number) => {
                 const colModel: TableColumnModel = props.columns[parseInt(dataColIdx.toString(), 10)];
                 const columnCells: TableCellModel[] = props.rows.map((r: TableRowModel) => {
@@ -708,9 +714,13 @@ export class TableUIManager {
                 this.parent.tableService.deleteColumnAt({
                     blockId: this.blockId,
                     colIndex: dataColIdx,
-                    isUndoRedoAction: true
+                    preventTracking: true
                 });
             });
+
+            // Trigger block update after batch deletion
+            const updatedBlock: BlockModel = getBlockModelById(this.blockId, this.parent.getEditorBlocks());
+            this.parent.tableService.triggerBlockUpdate({ block: updatedBlock, oldBlock: oldBlockModel });
         } else if (sortedIndices.length === 1) {
             // Single column — normal deletion
             this.parent.tableService.deleteColumnAt({
@@ -1067,7 +1077,7 @@ export class TableUIManager {
             document.removeEventListener('mouseup', onMouseUp);
 
             const deltaX: number = (e.clientX + this.tableContainer.scrollLeft) - startMouseX;
-            if (deltaX === 0) {
+            if (Math.abs(deltaX) < 2) {
                 this.colHoverLine.style.display = 'none';
                 setResizeStatus(false);
                 return;
@@ -1085,11 +1095,14 @@ export class TableUIManager {
             leftColEl.style.width = `${newWidthPx.toFixed(0)}px`;
             props.columns[resizingColumnIndex as number].width = `${newWidthPx.toFixed(0)}px`;
 
+            // Update table's width value
+            props.width = this.table.style.width;
+
             this.colHoverLine.style.display = 'none';
             setResizeStatus(false);
 
             // Notify changes and track
-            this.parent.tableService.triggerBlockUpdate(this.blockModel, oldBlock);
+            this.parent.tableService.triggerBlockUpdate({ block: this.blockModel, oldBlock });
             this.parent.undoRedoAction.trackTableColumnResizeForUndoRedo({
                 blockId: this.blockId,
                 resizedColIndex: resizingColumnIndex,

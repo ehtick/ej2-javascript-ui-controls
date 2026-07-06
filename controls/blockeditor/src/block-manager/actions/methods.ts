@@ -1,7 +1,7 @@
 import { Browser, createElement, detach, isNullOrUndefined, print as printWindow } from '@syncfusion/ej2-base';
 import { BlockType, CommandName } from '../../models/enums';
-import { BlockModel, IChecklistBlockSettings, StyleModel } from '../../models/index';
-import { decoupleReference, getBlockContentElement, getBlockModelById, getInlineToolbarItems, getSelectedRange, hasActiveTableSelection, isListTypeBlock, setCursorPosition, setSelectionRange } from '../../common/utils/index';
+import { BlockModel, IChecklistBlockSettings, StyleModel, TableCellModel } from '../../models/index';
+import { decoupleReference, findCellById, getBlockContentElement, getBlockModelById, getInlineToolbarItems, getSelectedRange, hasActiveTableSelection, isListTypeBlock, rangeIsWithinTableHeader, setCursorPosition, setSelectionRange } from '../../common/utils/index';
 import { convertHtmlElementToBlocks, getBlockDataAsHTML } from '../../common/utils/html-parser';
 import * as constants from '../../common/constant';
 import { BlockManager } from '../base/block-manager';
@@ -17,7 +17,11 @@ export class BlockEditorMethods {
 
     public addBlock(block: BlockModel, targetId?: string, isAfter?: boolean, preventUIUpdate?: boolean): void {
         const targetBlockModel: BlockModel = getBlockModelById(targetId, this.parent.getEditorBlocks());
-        const populatedBlock: BlockModel[] = BlockFactory.populateBlockProperties([block], targetBlockModel ? targetBlockModel.parentId : '');
+        const populatedBlock: BlockModel[] = BlockFactory.populateBlockProperties(
+            [block],
+            this.parent,
+            targetBlockModel ? targetBlockModel.parentId : ''
+        );
 
         this.parent.execCommand({
             command: 'AddBlock',
@@ -30,8 +34,9 @@ export class BlockEditorMethods {
         });
     }
 
-    public removeBlock(blockId: string): void {
-        const blockElement: HTMLElement = this.parent.blockContainer.querySelector(`#${blockId}`);
+    public removeBlock(blockId: string, parentId?: string): void {
+        const targetContainer: HTMLElement = parentId ? this.parent.getBlockElementById(parentId) : this.parent.blockContainer;
+        const blockElement: HTMLElement = targetContainer.querySelector(`#${blockId}`);
 
         this.parent.execCommand({
             command: 'DeleteBlock',
@@ -62,8 +67,8 @@ export class BlockEditorMethods {
     public updateBlock(blockId: string, properties: Partial<BlockModel>): boolean {
         if (!blockId || !properties) { return false; }
         const block: BlockModel = this.getBlock(blockId);
-
         if (!block) { return false; }
+        const oldBlock: BlockModel = decoupleReference(block);
 
         /* Model Updates */
         this.parent.blockService.updateBlock(blockId, properties);
@@ -71,12 +76,18 @@ export class BlockEditorMethods {
         this.parent.stateManager.updateManagerBlocks();
 
         /* UI Updates */
+        let wrapper: HTMLElement = this.parent.blockContainer;
         const updatedBlockModel: BlockModel = this.getBlock(blockId);
         const oldBlockElement: HTMLElement = this.parent.getBlockElementById(blockId);
         const newBlockElement: HTMLElement = this.parent.blockRenderer.createBlockElement(updatedBlockModel);
         const parentBlock: BlockModel = getBlockModelById(updatedBlockModel.parentId, this.parent.getEditorBlocks());
-        let wrapper: HTMLElement = this.parent.blockContainer;
-        if (parentBlock) {
+        const cellBlock: TableCellModel = findCellById(updatedBlockModel.parentId, this.parent.getEditorBlocks());
+
+        // Nested cell block
+        if (cellBlock) {
+            wrapper = this.parent.getBlockElementById(cellBlock.id);
+        }
+        else if (parentBlock) {
             const parentBlockElement: HTMLElement = this.parent.getBlockElementById(parentBlock.id);
             let selector: string = '';
 
@@ -114,6 +125,16 @@ export class BlockEditorMethods {
                 }
             }
         }
+
+        this.parent.eventService.addChange({
+            action: 'Update',
+            data: {
+                block: updatedBlockModel,
+                prevBlock: oldBlock
+            }
+        });
+        this.parent.observer.notify('triggerBlockChange', this.parent.eventService.getChanges());
+        this.parent.undoRedoAction.trackContentChangedForUndoRedo(oldBlock, updatedBlockModel);
         return true;
     }
 
@@ -144,6 +165,9 @@ export class BlockEditorMethods {
         if (!range) { return null; }
         const tableBlk: HTMLElement = this.parent.currentFocusedBlock &&
             this.parent.currentFocusedBlock.closest(`.${constants.TABLE_BLOCK_CLS}`) as HTMLElement;
+        if (tableBlk && rangeIsWithinTableHeader(range, tableBlk)) {
+            return null;
+        }
         if (tableBlk && hasActiveTableSelection(tableBlk)) {
             return this.parent.tableSelectionManager.getSelectedCellBlocks(tableBlk);
         }
@@ -303,7 +327,7 @@ export class BlockEditorMethods {
 
             const sanitizedBlocks: BlockModel[] = blocks.map((block: BlockModel) => decoupleReference(block));
             this.parent.stateManager.populateUniqueIds(sanitizedBlocks);
-            const populatedBlocks: BlockModel[] = BlockFactory.populateBlockProperties(sanitizedBlocks);
+            const populatedBlocks: BlockModel[] = BlockFactory.populateBlockProperties(sanitizedBlocks, this.parent);
 
             if (replace) {
                 return this.replaceAllBlocks(populatedBlocks);

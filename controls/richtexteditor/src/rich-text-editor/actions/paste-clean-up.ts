@@ -166,6 +166,9 @@ export class PasteCleanup {
             imageUpload: () => {
                 this.imgUploading(this.parent.inputElement);
             },
+            mediaUpload: () => {
+                this.mediaUploading(this.parent.inputElement);
+            },
             getCropImageData: () => {
                 return this.getCropImageData();
             }
@@ -227,7 +230,7 @@ export class PasteCleanup {
         elm.innerHTML = value;
         const source: string = this.findSource(elm);
         // Handle empty HTML content (plain text or image)
-        if (source === 'html' && !isNOU(files) && files.length > 0 ) {
+        if (source === 'html' && !isNOU(files) && files.length > 0) {
             const result: { value: string, shouldContinue: boolean } =
                 this.handleFileDataPaste(e, value, args, allowedTypes, imageproperties);
             processedValue = result.value;
@@ -289,6 +292,7 @@ export class PasteCleanup {
         return processedValue;
     }
 
+
     private findSource(element: HTMLElement): string {
         const metaNodes: NodeListOf<Element> = element.querySelectorAll('meta');
         for (let i: number = 0; i < metaNodes.length; i++) {
@@ -309,7 +313,6 @@ export class PasteCleanup {
         }
         return 'html';
     }
-
     /* Detects Excel content by checking for Excel-specific HTML patterns */
     private isExcelContent(element: HTMLElement): boolean {
         // Check for Excel-specific table attributes and styles
@@ -385,64 +388,223 @@ export class PasteCleanup {
         const clipboardData: DataTransfer = (e.args as ClipboardEvent).clipboardData;
         const clipboardFiles: File[] = clipboardData && clipboardData.files && clipboardData.files.length ?
             Array.from(clipboardData.files) : [];
-        // Filter valid image files
-        const validImageFiles: File[] = [];
-        for (const file of clipboardFiles) {
-            const fileName: string = file.name || '';
-            const imgType: string = fileName.substring(fileName.lastIndexOf('.'));
-            if (this.isInvalidImageType(imgType, allowedTypes)) {
+        const validImages: File[] = [];
+        const validVideos: File[] = [];
+        const validAudios: File[] = [];
+        const audioAllowedTypes: string[] = this.parent.insertAudioSettings && this.parent.insertAudioSettings.allowedTypes ?
+            this.parent.insertAudioSettings.allowedTypes : [];
+        const videoAllowedTypes: string[] = this.parent.insertVideoSettings && this.parent.insertVideoSettings.allowedTypes ?
+            this.parent.insertVideoSettings.allowedTypes : [];
+        for (let i: number = 0; i < clipboardFiles.length; i++) {
+            const file: File = clipboardFiles[i as number];
+            if (!file) {
                 continue;
             }
-            validImageFiles.push(file);
+            const mime: string = (file.type || '').toLowerCase();
+            // Image handling: validate against image allowed types
+            if (mime.indexOf('image/') === 0) {
+                const imgType: string = mime.split('/')[1] ? '.' + mime.split('/')[1] : '';
+                if (this.isInvalidImageType(imgType, allowedTypes)) {
+                    continue;
+                }
+                validImages.push(file);
+                continue;
+            }
+            // Video handling: validate against video allowed types
+            if (mime.indexOf('video/') === 0) {
+                let isValidVideo: boolean = false;
+                for (let j: number = 0; j < videoAllowedTypes.length; j++) {
+                    if (mime.endsWith(videoAllowedTypes[j as number].replace('.', ''))) {
+                        isValidVideo = true;
+                        break;
+                    }
+                }
+                if (!isValidVideo) {
+                    continue;
+                }
+                validVideos.push(file);
+                continue;
+            }
+            // Audio handling: validate against audio allowed types
+            if (mime.indexOf('audio/') === 0) {
+                let isValidAudio: boolean = false;
+                for (let j: number = 0; j < audioAllowedTypes.length; j++) {
+                    if (mime.endsWith(audioAllowedTypes[j as number].replace('.', ''))) {
+                        isValidAudio = true;
+                        break;
+                    }
+                }
+                if (!isValidAudio) {
+                    continue;
+                }
+                validAudios.push(file);
+            }
         }
-        this.validFiles = validImageFiles;
-        // Process the image pasting with validImageFiles
-        const result: { value: string, shouldContinue: boolean } =
-            this.processPasteWithImage(e, validImageFiles, processedValue, args, imageproperties, htmlRegex);
-        return result;
+        this.validFiles = validImages;
+        // Process video files
+        if (validVideos.length > 0) {
+            const videoResult: { value: string, shouldContinue: boolean } = this.processPasteWithMedia('video', validVideos, e, value);
+            if (!videoResult.shouldContinue) {
+                return videoResult;
+            }
+        }
+        // Process audio files
+        if (validAudios.length > 0) {
+            const audioResult: { value: string, shouldContinue: boolean } = this.processPasteWithMedia('audio', validAudios, e, value);
+            if (!audioResult.shouldContinue) {
+                return audioResult;
+            }
+        }
+        return this.processPasteWithMedia('image', validImages, e, processedValue, args, imageproperties, htmlRegex);
+    }
+
+    // Unified handler for pasting image, audio, or video files.
+    private processPasteWithMedia(
+        mediaType: 'image' | 'audio' | 'video',
+        file: File | File[],
+        e: NotifyArgs,
+        value: string,
+        args?: { [key: string]: string | NotifyArgs },
+        imageproperties?: string | object,
+        htmlRegex?: RegExp
+    ): { value: string, shouldContinue: boolean } {
+        // Media-specific configuration
+        const mediaConfig: { [key: string]: { event: string, command: string, subCommand: string } } = {
+            image: { event: events.paste, command: 'Images', subCommand: 'Image' },
+            audio: { event: events.audioPaste, command: 'Audios', subCommand: 'Audio' },
+            video: { event: events.videoPaste, command: 'Videos', subCommand: 'Video' }
+        };
+        const config: { event: string, command: string, subCommand: string } = mediaConfig[mediaType as string];
+        // For audio/video: ensure there are files and track them as valid files
+        if (mediaType !== 'image') {
+            const files: File[] = file as File[];
+            if (files.length === 0) {
+                return { value: value, shouldContinue: true };
+            }
+            this.validFiles = files;
+        }
+        let processedValue: string = value;
+        let mediaproperties: string | object = imageproperties;
+        // Choose the correct formatter callback based on media type
+        const formatterCallback: Function = mediaType === 'image' ?
+            this.imageFormatting.bind(this, args) :
+            this.mediaFormatting.bind(this, e.args);
+        // Notify the appropriate paste event to let the respective module insert markup
+        this.parent.notify(config.event, {
+            file: file,
+            args: e.args,
+            text: processedValue,
+            isWordPaste: mediaType !== 'image' ? false : undefined,
+            callBack: (b: string | object) => {
+                mediaproperties = b;
+                if (typeof (mediaproperties) === 'object') {
+                    this.parent.formatter.editorManager.execCommand(config.command, config.subCommand, e.args, formatterCallback,
+                                                                    'pasteCleanup', mediaproperties, 'pasteCleanupModule' );
+                } else {
+                    processedValue = mediaproperties as string;
+                }
+            }
+        });
+        // Image flow: continue processing, format plain text with line breaks if not HTML
+        if (mediaType === 'image') {
+            if (htmlRegex && !htmlRegex.test(processedValue)) {
+                const divElement: HTMLElement = this.parent.createElement('div');
+                divElement.innerHTML = this.pasteObj.splitBreakLine(processedValue);
+                processedValue = divElement.innerHTML;
+            }
+            return { value: processedValue, shouldContinue: true };
+        }
+        // Audio/Video flow: stop further processing
+        return { value: '', shouldContinue: false };
+    }
+
+    /* Processes and uploads audios from pasted content */
+    /* Processes and uploads audios from pasted content with base64 sources */
+    private processMediassWithSaveUrl(allMediaElm: NodeListOf<HTMLMediaElement>): void {
+        const base64Src: string[] = [];
+        const mediaName: string[] = [];
+        const uploadMedia: Element[] = [];
+        // Collect base64 audios
+        for (let i: number = 0; i < allMediaElm.length; i++) {
+            const audioSrc: string = allMediaElm[i as number].querySelector('source').src;
+            if (!isNOU(audioSrc) && audioSrc.split(',')[0].indexOf('base64') >= 0) {
+                base64Src.push(audioSrc);
+                if (allMediaElm[i as number].classList.contains('pasteContent_Audio')) {
+                    mediaName.push(getUniqueID('rte_audio'));
+                }
+                if (allMediaElm[i as number].classList.contains('pasteContent_Video')) {
+                    mediaName.push(getUniqueID('rte_video'));
+                }
+                uploadMedia.push(allMediaElm[i as number]);
+            }
+        }
+
+        // Convert base64 to files and upload
+        const fileList: File[] = [];
+        for (let i: number = 0; i < base64Src.length; i++) {
+            fileList.push(this.pasteObj.base64ToFile(base64Src[i as number], mediaName[i as number]));
+        }
+
+        // Upload each file with opacity effect
+        for (let i: number = 0; i < fileList.length; i++) {
+            const audioSrc: HTMLElement = allMediaElm[i as number].querySelector('source');
+            this.uploadMethod(fileList[i as number], audioSrc);
+        }
+    }
+
+    private mediaFormatting(pasteArgs: Object, audioElement: { [key: string]: Element[] }): void {
+        const mediaELm: Element = audioElement.elements[0];
+        let mediaValueValue: string;
+        if (mediaELm.tagName === 'AUDIO') {
+            const audioWrapper: HTMLElement = createElement('span', { className: classes.CLS_AUDIOWRAP, attrs: { contentEditable: 'false' }});
+            const audElement: HTMLElement = createElement('span', { className: classes.CLS_CLICKELEM});
+            audioWrapper.appendChild(audElement);
+            audElement.appendChild(mediaELm);
+            if (!isNOU(mediaELm.querySelector('source'))) {
+                audioWrapper.classList.add('pasteContent_Audio');
+            }
+            mediaValueValue = audioWrapper.outerHTML;
+        }
+        if (mediaELm.tagName === 'VIDEO') {
+            const videoWrapper: HTMLElement = createElement('span', { className: classes.CLS_VIDEOWRAP, attrs: { contentEditable: 'false' }});
+            const vidElement: HTMLElement = createElement('span', { className: classes.CLS_CLICKELEM});
+            videoWrapper.appendChild(vidElement);
+            vidElement.appendChild(mediaELm);
+            if (!isNOU(mediaELm.querySelector('source'))) {
+                videoWrapper.classList.add('pasteContent_Video');
+            }
+            mediaValueValue = videoWrapper.outerHTML;
+        }
+        this.contentModule = this.renderFactory.getRenderer(RenderType.Content);
+        const currentDocument: Document = this.contentModule.getDocument();
+        const range: Range = this.nodeSelectionObj.getRange(currentDocument);
+        this.saveSelection = this.nodeSelectionObj.save(range, currentDocument);
+        const settings: PasteCleanupSettingsModel = this.parent.pasteCleanupSettings;
+        // Queue audio similar to image flow so batch insertion and imgUploading() detection works
+        this.pendingPasteQueue.push(mediaValueValue);
+        const isAudioQueueCompleted: boolean = (this.validFiles.length === 0) || (this.pendingPasteQueue.length === this.validFiles.length);
+        if (!isAudioQueueCompleted) {
+            return;
+        }
+        const combinedHtml: string = this.pendingPasteQueue.join('');
+        if (settings.prompt) {
+            this.pasteDialog(combinedHtml, pasteArgs);
+            return;
+        } else if (settings.plainText) {
+            this.plainFormatting(combinedHtml, pasteArgs);
+            this.pendingPasteQueue = [];
+        } else if (settings.keepFormat) {
+            this.formatting(combinedHtml, false, pasteArgs);
+            this.pendingPasteQueue = [];
+        } else {
+            this.formatting(combinedHtml, true, pasteArgs);
+            this.pendingPasteQueue = [];
+        }
     }
 
     /* Checks if image type is not in allowed types */
     private isInvalidImageType(imgType: string, allowedTypes: string[]): boolean {
         return allowedTypes.every((type: string) => type.toLowerCase() !== imgType);
-    }
-
-    /* Processes paste operation that may contain an image */
-    private processPasteWithImage(
-        e: NotifyArgs, file: File | File[], value: string,
-        args: { [key: string]: string | NotifyArgs },
-        imageproperties: string | object,
-        htmlRegex: RegExp
-    ): { value: string, shouldContinue: boolean } {
-        let processedValue: string = value;
-        //let shouldContinue: boolean = true;
-        this.parent.notify(events.paste, {
-            file: file,
-            args: e.args,
-            text: processedValue,
-            callBack: (b: string | object) => {
-                imageproperties = b;
-                if (typeof (imageproperties) === 'object') {
-                    this.parent.formatter.editorManager.execCommand(
-                        'Images',
-                        'Image',
-                        e.args,
-                        this.imageFormatting.bind(this, args),
-                        'pasteCleanup',
-                        imageproperties,
-                        'pasteCleanupModule');
-                } else {
-                    processedValue = imageproperties as string;
-                }
-            }
-        });
-        // Format plain text with line breaks if not HTML
-        if (!htmlRegex.test(processedValue)) {
-            const divElement: HTMLElement = this.parent.createElement('div');
-            divElement.innerHTML = this.pasteObj.splitBreakLine(processedValue);
-            processedValue = divElement.innerHTML;
-        }
-        return { value: processedValue, shouldContinue: true };
     }
 
     /* Handles non-empty HTML content */
@@ -504,6 +666,7 @@ export class PasteCleanup {
         this.handlePasteBasedOnSettings(e, finalValue, args, isValueNotEmpty);
     }
 
+
     /* Processes unsupported images in pasted content */
     private processUnsupportedImages(tempDivElem: HTMLElement): void {
         const unsupportedImg: NodeListOf<HTMLImageElement> = tempDivElem.querySelectorAll('.e-rte-image-unsupported');
@@ -537,17 +700,40 @@ export class PasteCleanup {
     }
 
     /* Processes and uploads images from pasted content */
-    private imgUploading(elm: HTMLElement): void {
+    public imgUploading(elm: HTMLElement): void {
         const allImgElm: NodeListOf<HTMLImageElement> = elm.querySelectorAll('.pasteContent_Img');
         // Handle image upload if save URL is configured and images exist
-        if (this.parent.insertImageSettings.saveUrl && allImgElm.length > 0) {
+        if (this.parent.insertImageSettings && this.parent.insertImageSettings.saveUrl && allImgElm.length > 0) {
             this.processImagesWithSaveUrl(allImgElm);
-        } else if (this.parent.insertImageSettings.saveFormat === 'Blob') {
+        } else if (this.parent.insertImageSettings && this.parent.insertImageSettings.saveFormat === 'Blob') {
             // Convert to blob format if specified
             this.pasteObj.getBlob(allImgElm);
         }
-        // Clean up temporary CSS classes from images
-        this.cleanupImageClasses(elm, allImgElm);
+        // Clean up temporary CSS classes from images and audios
+        this.cleanupMediaClasses(elm, allImgElm);
+    }
+
+    /* Processes and uploads audio and video from pasted content */
+    public mediaUploading(elm: HTMLElement): void {
+        const allAudioElm: NodeListOf<HTMLAudioElement> = elm.querySelectorAll('.pasteContent_Audio');
+        const allVideoElm: NodeListOf<HTMLAudioElement> = elm.querySelectorAll('.pasteContent_Video');
+        // Handle audio upload if save URL is configured and audios exist
+        if (this.parent.insertAudioSettings && this.parent.insertAudioSettings.saveUrl && allAudioElm.length > 0) {
+            this.processMediassWithSaveUrl(allAudioElm as unknown as NodeListOf<HTMLMediaElement>);
+        } else if (this.parent.insertAudioSettings && this.parent.insertAudioSettings.saveFormat === 'Blob') {
+            // Convert to blob format if specified
+            this.pasteObj.getBlob(allAudioElm);
+        }
+        // Handle audio upload if save URL is configured and audios exist
+        if (this.parent.insertVideoSettings && this.parent.insertVideoSettings.saveUrl && allVideoElm.length > 0) {
+            this.processMediassWithSaveUrl(allVideoElm as unknown as NodeListOf<HTMLMediaElement>);
+        } else if (this.parent.insertVideoSettings && this.parent.insertVideoSettings.saveFormat === 'Blob') {
+            // Convert to blob format if specified
+            this.pasteObj.getBlob(allVideoElm);
+        }
+        // Clean up temporary CSS classes from videos and audios
+        this.cleanupMediaClasses(elm, allAudioElm);
+        this.cleanupMediaClasses(elm, allVideoElm);
     }
 
     /* Processes images when save URL is configured */
@@ -581,13 +767,30 @@ export class PasteCleanup {
     }
 
     /* Removes temporary CSS classes from processed images */
-    private cleanupImageClasses(elm: HTMLElement, allImgElm: NodeListOf<HTMLImageElement>): void {
+    private cleanupMediaClasses(elm: HTMLElement, allImgElm: NodeListOf<HTMLElement>): void {
         const allImgElmId: NodeListOf<Element> = elm.querySelectorAll('.pasteContent_Img');
+        const allAudioElmId: NodeListOf<Element> = elm.querySelectorAll('.pasteContent_Audio');
+        const allVideoElmId: NodeListOf<Element> = elm.querySelectorAll('.pasteContent_Video');
+
         for (let i: number = 0; i < allImgElmId.length; i++) {
             allImgElmId[i as number].classList.remove('pasteContent_Img');
             // Remove class attribute if empty
             if (allImgElmId[i as number].getAttribute('class').trim() === '') {
                 allImgElm[i as number].removeAttribute('class');
+            }
+        }
+
+        for (let i: number = 0; i < allAudioElmId.length; i++) {
+            allAudioElmId[i as number].classList.remove('pasteContent_Audio');
+            if (allAudioElmId[i as number].getAttribute('class').trim() === '') {
+                allAudioElmId[i as number].removeAttribute('class');
+            }
+        }
+
+        for (let i: number = 0; i < allVideoElmId.length; i++) {
+            allVideoElmId[i as number].classList.remove('pasteContent_Video');
+            if (allVideoElmId[i as number].getAttribute('class').trim() === '') {
+                allVideoElmId[i as number].removeAttribute('class');
             }
         }
     }
@@ -609,10 +812,16 @@ export class PasteCleanup {
     }
 
     /* Handles the upload process for an image file */
-    private uploadMethod(file: File, imgElem: Element): void {
-        this.pasteObj.setImageOpacity(imgElem);
-        const popupObj: Popup = this.createPopupObject(imgElem, file);
-        this.createUploader(imgElem, popupObj, file);
+    private uploadMethod(file: File, mediaElem: Element): void {
+        this.pasteObj.setImageOpacity(mediaElem);
+        let popupObj: Popup;
+        if (mediaElem.tagName === 'SOURCE') {
+            popupObj = this.createPopupObject(mediaElem.parentElement, file);
+        }
+        else {
+            popupObj = this.createPopupObject(mediaElem, file);
+        }
+        this.createUploader(mediaElem, popupObj, file);
         this.hideFileSelectWrapper(popupObj);
     }
 
@@ -1164,8 +1373,31 @@ export class PasteCleanup {
         }
         // Process paste content, image conversion & emit callbacks if present
         if (this.pasteObj.hasContentToPaste(clipBoardElem)) {
+            if (clipBoardElem.querySelector('audio') || clipBoardElem.querySelector('video')) {
+                this.handlePastedMediaAndEvents(clipBoardElem, value, args);
+                return;
+            }
             this.handlePastedImagesAndEvents(clipBoardElem, value, args);
         }
+    }
+
+    private handlePastedMediaAndEvents(clipBoardElem: HTMLElement, value: string, args: Object): void {
+        // Trigger afterPasteCleanup event to allow external modification
+        this.parent.trigger(
+            events.afterPasteCleanup,
+            { value: clipBoardElem.innerHTML, filesData: null },
+            (updatedArgs: PasteCleanupArgs) => { value = updatedArgs.value; }
+        );
+        clipBoardElem.innerHTML = value;
+        // Execute the paste command to insert audio into editor (same as images)
+        this.execPasteCommand(clipBoardElem, args);
+
+        // After insertion, trigger auto resize and cleanup
+        this.parent.notify(events.autoResize, {});
+        scrollToCursor(this.parent.contentModule.getDocument(), this.parent.inputElement);
+        this.pasteObj.removeTempClass();
+        this.parent.notify(events.toolbarRefresh, {});
+        this.pasteObj.handleBlobOrUpload();
     }
 
     private handlePastedImagesAndEvents(clipBoardElem: HTMLElement, value: string, args: Object): void {

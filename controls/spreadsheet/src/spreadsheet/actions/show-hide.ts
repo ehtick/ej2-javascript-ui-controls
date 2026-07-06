@@ -155,8 +155,10 @@ export class ShowHide {
                 if (isFinite) {
                     height += getRowHeight(sheet, i, true, true);
                 }
-                this.refreshChart(i, 'rows');
-                if (!args.isFiltering) { this.refreshChartCellModel(prevChartIndexes, currentChartIndexes); }
+                if (!args.isSuspended) {
+                    this.refreshChart(i, 'rows');
+                    if (!args.isFiltering) { this.refreshChartCellModel(prevChartIndexes, currentChartIndexes); }
+                }
                 row = content && content.rows[idx as number];
                 if (row) {
                     if (!merge) {
@@ -167,27 +169,31 @@ export class ShowHide {
                         }
                     }
                     if (merge) { continue; }
-                    if (rowHdr.rows[idx as number]) {
-                        detach(rowHdr.rows[idx as number]);
-                    }
-                    detach(row);
-                    count++;
-                    row = content.rows[idx as number];
-                    if (row && i === args.endIndex) {
-                        let cell: HTMLElement; nextIdx = skipHiddenIdx(sheet, i + 1, true);
-                        const first: string = nextIdx !== skipHiddenIdx(sheet, 0, true) && nextIdx ===
-                            (this.parent.viewport.topIndex >= args.startIndex ? args.endIndex + 1 : this.parent.viewport.topIndex) ? 'Row' : '';
-                        for (let j: number = this.parent.viewport.leftIndex; j <= this.parent.viewport.rightIndex; j++) {
-                            const borderTop: string = this.parent.getCellStyleValue(['borderTop'], [nextIdx, j]).borderTop;
-                            if (borderTop !== '') {
-                                cell = row.cells[j as number];
-                                this.parent.notify(applyCellFormat, <CellFormatArgs>{
-                                    onActionUpdate: false, rowIdx: nextIdx, colIdx: j,
-                                    style: { borderTop: borderTop }, row: row, pRow: <HTMLElement>row.previousElementSibling,
-                                    first: first, td: cell
-                                });
+                    if (!args.isSuspended) {
+                        if (rowHdr.rows[idx as number]) {
+                            detach(rowHdr.rows[idx as number]);
+                        }
+                        detach(row);
+                        count++;
+                        row = content.rows[idx as number];
+                        if (row && i === args.endIndex) {
+                            let cell: HTMLElement; nextIdx = skipHiddenIdx(sheet, i + 1, true);
+                            const first: string = nextIdx !== skipHiddenIdx(sheet, 0, true) && nextIdx ===
+                                (this.parent.viewport.topIndex >= args.startIndex ? args.endIndex + 1 : this.parent.viewport.topIndex) ? 'Row' : '';
+                            for (let j: number = this.parent.viewport.leftIndex; j <= this.parent.viewport.rightIndex; j++) {
+                                const borderTop: string = this.parent.getCellStyleValue(['borderTop'], [nextIdx, j]).borderTop;
+                                if (borderTop !== '') {
+                                    cell = row.cells[j as number];
+                                    this.parent.notify(applyCellFormat, <CellFormatArgs>{
+                                        onActionUpdate: false, rowIdx: nextIdx, colIdx: j,
+                                        style: { borderTop: borderTop }, row: row, pRow: <HTMLElement>row.previousElementSibling,
+                                        first: first, td: cell
+                                    });
+                                }
                             }
                         }
+                    } else {
+                        count++;
                     }
                 } else {
                     if (i <= this.parent.viewport.bottomIndex) {
@@ -196,6 +202,9 @@ export class ShowHide {
                         count--;
                     }
                 }
+            }
+            if (args.isSuspended) {
+                return;
             }
             if (args.refreshUI) {
                 return;
@@ -333,6 +342,9 @@ export class ShowHide {
                 }
                 if (startRow === undefined) { startRow = i; }
                 setRow(sheet, i, model);
+                if (args.isSuspended) {
+                    continue;
+                }
                 if (sheetIndex !== this.parent.activeSheetIndex) {
                     continue;
                 }
@@ -385,6 +397,9 @@ export class ShowHide {
                         }
                     }
                 }
+            }
+            if (args.isSuspended) {
+                return;
             }
             const currentChartIndexes: { chart: ChartModel, chartRowIdx: number, chartColIdx: number }[] = getChartsIndexes(this.parent);
             this.refreshChartCellModel(prevChartIndexes, currentChartIndexes);
@@ -507,8 +522,10 @@ export class ShowHide {
             const prevChartIndexes: { chart: ChartModel, chartRowIdx: number, chartColIdx: number }[] = getChartsIndexes(this.parent);
             setColumn(sheet, i, { hidden: args.hide });
             const currentChartIndexes: { chart: ChartModel, chartRowIdx: number, chartColIdx: number }[] = getChartsIndexes(this.parent);
-            this.refreshChart(i, 'columns');
-            this.refreshChartCellModel(prevChartIndexes, currentChartIndexes);
+            if (!args.isSuspended) {
+                this.refreshChart(i, 'columns');
+                this.refreshChartCellModel(prevChartIndexes, currentChartIndexes);
+            }
             if (this.parent.scrollSettings.enableVirtualization && !args.freezePane && (i < viewportLeftIdx ||
                 (i > this.parent.viewport.rightIndex && (!this.parent.scrollSettings.isFinite ||
                     !(skipColCount === this.parent.viewport.rightIndex && i >= skipColCount && i < sheet.colCount))))) {
@@ -524,6 +541,9 @@ export class ShowHide {
                     scrollable = true;
                 }
             }
+        }
+        if (args.isSuspended) {
+            return;
         }
         if (!beforeViewportIdx.length && !hiddenIndex.length) {
             return;

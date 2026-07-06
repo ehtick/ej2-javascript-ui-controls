@@ -8,7 +8,7 @@ import { PdfDocument, PdfMargins, PdfPageSettings } from './../src/pdf/core/pdf-
 import { PdfDestination, PdfPage } from './../src/pdf/core/pdf-page';
 import { _PdfDictionary, _PdfName, _PdfReference } from './../src/pdf/core/pdf-primitives';
 import { _PdfFlateStream } from './../src/pdf/core/flate-stream';
-import { _PdfStream, _PdfContentStream } from './../src/pdf/core/base-stream';
+import { _PdfContentStream, _PdfStream } from './../src/pdf/core/base-stream';
 import { PdfStandardFont } from './../src/pdf/core/fonts/pdf-standard-font';
 import { PdfStringFormat } from '../src/pdf/core/fonts/pdf-string-format';
 import { _stringToBytes } from "./../src/pdf/core/utils";

@@ -1228,6 +1228,74 @@ describe('892496 - Unable to unselect selected node using CTRL+Click when zoompa
         done();
     });
 });
+
+describe('Pivot line persistence when cursor leaves diagram (fix-rotate-pivot-line)', () => {
+    let diagram: Diagram;
+    let ele: HTMLElement;
+    let events: MouseEvents = new MouseEvents();
+
+    beforeAll((): void => {
+        const isDef = (o: any) => o !== undefined && o !== null;
+        if (!isDef(window.performance)) {
+            console.log("Unsupported environment, window.performance.memory is unavailable");
+            this.skip();
+            return;
+        }
+        ele = createElement('div', { id: 'diagramPivotLinePersistence' });
+        document.body.appendChild(ele);
+
+        let node: NodeModel = {
+            id: 'nodeForPivot',
+            offsetX: 250,
+            offsetY: 250,
+            width: 100,
+            height: 100,
+            annotations: [{ content: 'Rotate me' }]
+        };
+
+        diagram = new Diagram({
+            width: '100%',
+            height: '600px',
+            nodes: [node]
+        });
+
+        diagram.appendTo('#diagramPivotLinePersistence');
+    });
+
+    afterAll((): void => {
+        diagram.destroy();
+        ele.remove();
+        events = null;
+    });
+
+    it('Pivot line should be visible when node is selected', (done: Function) => {
+        let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+        events.clickEvent(diagramCanvas, 250, 250);
+        expect(diagram.selectedItems.nodes.length === 1).toBe(true);
+        expect(document.getElementById('pivotLine') !== null).toBe(true);
+        done();
+    });
+
+    it('Pivot line should remain visible when cursor leaves diagram while node is selected', (done: Function) => {
+        let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+        events.clickEvent(diagramCanvas, 250, 250);
+        expect(diagram.selectedItems.nodes.length === 1).toBe(true);
+        expect(document.getElementById('pivotLine') !== null).toBe(true);
+
+        // Simulate mouse leave from diagram
+        let mouseLeaveEvent = new MouseEvent('mouseleave', {
+            bubbles: true,
+            cancelable: true,
+            view: window
+        });
+        diagramCanvas.dispatchEvent(mouseLeaveEvent);
+
+        // Pivot line should still be visible because node is selected
+        expect(document.getElementById('pivotLine') !== null).toBe(true);
+        done();
+    });
+});
+
 // describe('834641-Support to unselect the diagram element that is already selected ', () => {
 //     let diagram: Diagram;
 //     let ele: HTMLElement;

@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/material3' as *;
-@forward 'ej2-base/styles/definition/material3';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $acrdn-header-bg-color: $transparent !default;
 $acrdn-header-text-color: $on-surface !default;
 $acrdn-header-text-color-selected: $on-surface !default;

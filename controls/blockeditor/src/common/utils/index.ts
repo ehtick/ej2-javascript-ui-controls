@@ -4,6 +4,7 @@
 export * from './block';
 export * from './common';
 export * from './data';
+export * from './dom';
 export * from './selection';
 export * from './transform';
 export * from './html-parser';

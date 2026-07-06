@@ -21,25 +21,125 @@ import { TextLine } from './text-structure';
  * ```
  */
 export class PdfStructureElement {
+    /**
+     * Internal text content collected for this structure element.
+     *
+     * @private
+     */
     _text: string = '';
+    /**
+     * Internal PDF dictionary backing this structure element.
+     *
+     * @private
+     */
     _dictionary: _PdfDictionary;
+    /**
+     * Internal reference to the parent structure element.
+     *
+     * @private
+     */
     _parent: PdfStructureElement;
+    /**
+     * Internal order index of the element within its parent.
+     *
+     * @private
+     */
     _order: number;
+    /**
+     * Owning PdfDocument instance.
+     *
+     * @private
+     */
     _document: PdfDocument;
+    /**
+     * Internal tag type for the element.
+     *
+     * @private
+     */
     _tagType: PdfTagType = PdfTagType.none;
+    /**
+     * Internal content ids (MCIDs) associated with this element.
+     *
+     * @private
+     */
     _contentId: number[] = [];
+    /**
+     * Internal page dictionary reference when the element references a page.
+     *
+     * @private
+     */
     _pageDictionary: _PdfDictionary;
+    /**
+     * Internal abbreviation/expansion text for the element.
+     *
+     * @private
+     */
     _abbreviation: string;
+    /**
+     * Cached PdfPage for this element.
+     *
+     * @private
+     */
     _page: PdfPage;
+    /**
+     * Child structure elements of this element.
+     *
+     * @private
+     */
     _childElements: PdfStructureElement[];
+    /**
+     * Internal MCID value parsed from structure content.
+     *
+     * @private
+     */
     _mcid: number = -1;
+    /**
+     * Bounding rectangle for the element.
+     *
+     * @private
+     */
     _bounds: Rectangle;
+    /**
+     * Map of abbreviation strings keyed by MCID.
+     *
+     * @private
+     */
     _abbreviationCollection: Map<number, string>;
+    /**
+     * Internal array of text fragments associated with element.
+     *
+     * @private
+     */
     _textCollection: string[] = [];
+    /**
+     * ActualText property.
+     *
+     * @private
+     */
     _actualText: string;
+    /**
+     * Alternate/Alt text property.
+     *
+     * @private
+     */
     _alternateText: string;
+    /**
+     * Language code associated with the element.
+     *
+     * @private
+     */
     _language: string;
+    /**
+     * Title property associated with the element.
+     *
+     * @private
+     */
     _title: string = '';
+    /**
+     * Scope type.
+     *
+     * @private
+     */
     _scope: ScopeType = ScopeType.none;
     /**
      * Gets the text of the tag (Read only).
@@ -379,6 +479,16 @@ export class PdfStructureElement {
     get scope(): ScopeType {
         return this._scope;
     }
+    /**
+     * Create and initialize a PdfStructureElement instance from raw PDF dictionaries.
+     *
+     * @private
+     * @param {PdfDocument} [document] - Owning document instance.
+     * @param {_PdfDictionary} [dictionary] - Source dictionary for this element.
+     * @param {number} [order] - Order index within parent element.
+     * @param {PdfStructureElement} [parent] - Parent element reference.
+     * @returns {PdfStructureElement} Initialized structure element.
+     */
     static _load(document?: PdfDocument, dictionary?: _PdfDictionary, order?: number, parent?: PdfStructureElement): PdfStructureElement {
         const element: PdfStructureElement = new PdfStructureElement();
         element._document = document;
@@ -390,6 +500,13 @@ export class PdfStructureElement {
         element._language = '';
         return element;
     }
+    /**
+     * Resolve a PdfPage reference from an element (if available).
+     *
+     * @private
+     * @param {PdfStructureElement} element - Element to resolve the page for.
+     * @returns {PdfPage} Resolved page or undefined.
+     */
     _getPageFromElement(element: PdfStructureElement): PdfPage {
         if (element._page) {
             return element._page;
@@ -405,6 +522,12 @@ export class PdfStructureElement {
         }
         return this._page;
     }
+    /**
+     * Recursively search child elements for an associated page.
+     *
+     * @private
+     * @returns {PdfPage} Found page or undefined.
+     */
     _getChildPage(): PdfPage {
         let page: PdfPage;
         const elements: PdfStructureElement[] = this.childElements;
@@ -421,6 +544,13 @@ export class PdfStructureElement {
         }
         return page;
     }
+    /**
+     * Extract tagged content text and bounds by rendering page text and mapping MCIDs.
+     *
+     * @private
+     * @param {PdfStructureElement[]} elements - Array of structure elements to process.
+     * @returns {void} Nothing.
+     */
     _getTaggedContent(elements: PdfStructureElement[]): void {
         const textExtractor: PdfDataExtractor = new PdfDataExtractor(this._document);
         textExtractor._extractTaggedText = true;
@@ -674,6 +804,14 @@ export class PdfStructureElement {
             }
         }
     }
+    /**
+     * Adjust bounds for page rotation and element's page.
+     *
+     * @private
+     * @param {PdfStructureElement} element - Element whose page rotation is considered.
+     * @param {Rectangle} bounds - Original bounds.
+     * @returns {Rectangle} Transformed bounds.
+     */
     _calculateBounds(element: PdfStructureElement, bounds: Rectangle): Rectangle {
         if (element && element._page) {
             const rotation: PdfRotationAngle = element._page.rotation;
@@ -692,6 +830,13 @@ export class PdfStructureElement {
         }
         return bounds;
     }
+    /**
+     * Map a PDF tag string to the PdfTagType enum.
+     *
+     * @private
+     * @param {string} value - Tag name from PDF structure (e.g. 'P', 'Figure').
+     * @returns {PdfTagType} Corresponding enum value.
+     */
     _getTagType(value: string): PdfTagType {
         let type: PdfTagType = PdfTagType.none;
         switch (value) {
@@ -822,6 +967,13 @@ export class PdfStructureElement {
         }
         return type;
     }
+    /**
+     * Parse content string/array for MCID and abbreviation (E) entries.
+     *
+     * @private
+     * @param {string[]} element - Tokenized content array from structure tree.
+     * @returns {number} Parsed MCID or -1 if none.
+     */
     _parseContent(element: string[]): number {
         let abbreviation: string;
         if (element && element.length > 1) {

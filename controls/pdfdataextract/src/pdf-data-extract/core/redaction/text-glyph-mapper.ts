@@ -1,8 +1,28 @@
 import { TextGlyph } from '../text-structure';
 
+/**
+ * Internal helper that maps decoded text segments to glyphs and synthesizes replaced TJ arrays.
+ *
+ * @private
+ */
 export class _TextGlyphMapper {
+    /**
+     * Original text segment captured from the content stream.
+     *
+     * @private
+     */
     _text: string;
+    /**
+     * Glyphs aligned with the decoded text.
+     *
+     * @private
+     */
     _glyph: TextGlyph[];
+    /**
+     * Whether this mapper is operating on hex-encoded text.
+     *
+     * @private
+     */
     _isHex: boolean = false;
     set text(value: string) {
         this._text = value;
@@ -16,6 +36,13 @@ export class _TextGlyphMapper {
     get glyph(): TextGlyph[] {
         return this._glyph;
     }
+    /**
+     * Applies PDF string escaping to parentheses, backslashes and control characters.
+     *
+     * @private
+     * @param {string} text Plain text input.
+     * @returns {string} Escaped text suitable for literal strings.
+     */
     _applyEscapeSequence(text: string): string {
         let escapedText: string = text;
         if (text.indexOf('(') !== -1) {
@@ -44,6 +71,12 @@ export class _TextGlyphMapper {
         }
         return escapedText;
     }
+    /**
+     * Builds final TJ array content by concatenating original and replacement segments.
+     *
+     * @private
+     * @returns {string} The emitted TJ array text.
+     */
     _getText(): string {
         if (typeof (this.glyph) === 'undefined') {
             return this.text;
@@ -121,6 +154,14 @@ export class _TextGlyphMapper {
             return finalText;
         }
     }
+    /**
+     * Trims the first `glyphs` characters from the literal text being emitted.
+     *
+     * @private
+     * @param {string} text Current unconsumed literal text.
+     * @param {TextGlyph[]} glyphs Replacement glyphs that determine the trim length.
+     * @returns {string} Remaining text after trimming.
+     */
     _replacedText(text: string, glyphs: TextGlyph[]): string {
         if (!text) {
             return text;
@@ -136,6 +177,13 @@ export class _TextGlyphMapper {
         currentText = currentText.substring(count);
         return currentText;
     }
+    /**
+     * Computes the numeric kerning width to represent the replaced segment in a TJ array.
+     *
+     * @private
+     * @param {TextGlyph[]} glyphs Replacement glyph sequence.
+     * @returns {number} The cumulative width value to emit.
+     */
     _getReplacedCharacter(glyphs: TextGlyph[]): number {
         let totalWidth: number = 0;
         for (let i: number = 0; i < glyphs.length; i++) {

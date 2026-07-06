@@ -188,7 +188,9 @@ export class ContextMenu implements IContextMenu {
         }
         this.defaultContextMenuItems = [this.pdfViewer.localeObj.getConstant('Cut'), this.pdfViewer.localeObj.getConstant('Copy'), this.pdfViewer.localeObj.getConstant('Highlight context'),
             this.pdfViewer.localeObj.getConstant('Underline context'), this.pdfViewer.localeObj.getConstant('Strikethrough context'), this.pdfViewer.localeObj.getConstant('Squiggly context'),
-            this.pdfViewer.localeObj.getConstant('Redact Text'), this.pdfViewer.localeObj.getConstant('Paste'),
+            this.pdfViewer.localeObj.getConstant('Redact Text'),
+            this.pdfViewer.localeObj.getConstant('Apply Redactions'),
+            this.pdfViewer.localeObj.getConstant('Paste'),
             this.pdfViewer.localeObj.getConstant('Delete Context'), this.pdfViewer.localeObj.getConstant('Scale Ratio'), this.pdfViewer.localeObj.getConstant('Comment'), this.pdfViewer.localeObj.getConstant('Properties')
         ];
         const customItems: string[] = this.customMenuItems.length > 0 ?

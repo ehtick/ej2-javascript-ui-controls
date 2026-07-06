@@ -1,13 +1,36 @@
 declare let importScripts: (...scripts: string[]) => void;
 /**
- *@returns {void}
+ * QCMS worker entry point. Loads the qcms runtime and handles ICC-based color conversions.
+ *
+ * @private
+ * @returns {void} nothing.
  */
 export function _PdfQcmsRunner(): void {
     let baseUrl: string = '';
     let moduleLoaded: boolean = false;
+    /**
+     * Internal scratch memory view used to read module output.
+     *
+     * @private
+     */
     let _memoryArray: Uint8Array;
+    /**
+     * Indicates whether alpha bytes should be appended during copy operations.
+     *
+     * @private
+     */
     let _mustAddAlpha: boolean = false;
+    /**
+     * Output buffer where converted pixel data is written.
+     *
+     * @private
+     */
     let _destBuffer: any = null; // eslint-disable-line
+    /**
+     * Offset inside `_destBuffer` where writing begins.
+     *
+     * @private
+     */
     let _destOffset: number = 0;
     const ctx: Worker = self as any; // eslint-disable-line
     const qcmsModule: any = {}; // eslint-disable-line
@@ -63,7 +86,7 @@ export function _PdfQcmsRunner(): void {
         };
     }
     /**
-     *@returns {void}
+     * @returns {void}
      */
     function ensureLoaded(): void {
         if (!moduleLoaded) {

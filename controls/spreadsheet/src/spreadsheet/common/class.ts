@@ -38,9 +38,33 @@ export class SelectionSettings extends ChildProperty<SelectionSettings> {
      */
     @Property('Multiple')
     public mode: SelectionMode;
-
-/**
- * Represents the selection settings.
- */
 }
 
+/**
+ * Represents the AI assist settings.
+ */
+export class AIAssistSettings extends ChildProperty<AIAssistSettings> {
+    /**
+     * Specifies the service endpoint URL where the Spreadsheet AI assist sends chat requests and receives responses.
+     *
+     * @default null
+     */
+    @Property(null)
+    public requestUrl: string;
+
+    /**
+     * Specifies the placeholder text displayed in the AI assist chat input box.
+     *
+     * @default null
+     */
+    @Property(null)
+    public placeholder: string;
+
+    /**
+     * Specifies a list of sample prompts displayed in the AI assist chat to help users initiate a conversation.
+     *
+     * @default null
+     */
+    @Property(null)
+    public promptSuggestions: string[];
+}

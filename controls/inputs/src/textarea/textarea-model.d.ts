@@ -17,7 +17,7 @@ export interface TextAreaModel extends ComponentModel{
     /**
      * Sets the content of the TextArea.
      *
-     * @default null
+     * @default ''
      */
     value?: string;
 

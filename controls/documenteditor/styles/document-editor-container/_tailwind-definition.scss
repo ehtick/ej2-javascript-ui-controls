@@ -1,6 +1,6 @@
-@use 'ej2-base/styles/definition/tailwind' as *;
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 @use '../document-editor/tailwind-definition' as *;
-@forward 'ej2-base/styles/definition/tailwind';
+
 @forward '../document-editor/tailwind-definition';
 $de-ctnr-height: calc(100%) !default;
 $de-ctnr-tlbr-height: 85px !default;
@@ -169,8 +169,8 @@ $de-ribbon-classic-editor-height-big: calc(100% - 188px) !default;
 $de-ctnr-layout-margin-bottom: 8px;
 $de-ctnr-picture-margin-bottom: 0;
 
-$de-ribbon-simplified-ctnr-collapsed-editor-height: calc(100% - 55px) !default;
-$de-ribbon-classic-collapsed-editor-height: calc(100% - 61px) !default;
+$de-ribbon-simplified-ctnr-collapsed-editor-height: calc(100% - 67px) !default;
+$de-ribbon-classic-collapsed-editor-height: calc(100% - 64px) !default;
 
 // layout.scss
 $de-toolbar-line-height: 0;

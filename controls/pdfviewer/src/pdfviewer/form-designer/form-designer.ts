@@ -1,5 +1,5 @@
 import { Browser, createElement, initializeCSPTemplate } from '@syncfusion/ej2-base';
-import { cornersPointsBeforeRotation, DrawingElement, PointModel, Rect, TextAlign, splitArrayCollection, processPathData, randomId } from '@syncfusion/ej2-drawings';
+import { cornersPointsBeforeRotation, DrawingElement, PointModel, Rect, TextAlign, splitArrayCollection, processPathData, randomId } from '../ej2-drawings/index';
 import { FormFieldAnnotationType, PdfAnnotationBase, PdfFormFieldBaseModel, PdfFontModel } from '../drawing';
 import { DiagramHtmlElement } from '../drawing/html-element';
 import { PdfAnnotationBaseModel, PdfViewer, PdfViewerBase, IPageAnnotations } from '../index';
@@ -1955,12 +1955,6 @@ export class FormDesigner {
                                                       this.isSetFormFieldMode);
             this.updatePasswordFieldProperties(drawingObject, inputElement, isPrint);
         } else {
-            /*
-            The below line have been commented for "EJ2-59941 bug"
-            While setting the textAlign to center the radio button position moved from center to the parent element
-            instead of left to the parent element
-            element.style.textAlign = (Browser.info.name === "chrome") ? "-webkit-center" : "center";
-            */
             element.style.display = 'flex';
             element.style.justifyContent = 'center';
             element.style.alignItems = 'center';
@@ -2745,6 +2739,30 @@ export class FormDesigner {
             obj.thickness = !isNullOrUndefined((options as CheckBoxFieldSettings).thickness) ?
                 (options as CheckBoxFieldSettings).thickness : 1;
             obj.borderColor = !isNullOrUndefined((options as CheckBoxFieldSettings).borderColor) ? (options as CheckBoxFieldSettings).borderColor : '#303030';
+            if (isAddedProgrammatically) {
+                const groupFields: any[] = this.pdfViewer.formFieldCollections.filter((f: any): boolean => {
+                    return f.type === 'Checkbox' && f.name === obj.name && f.value === obj.value;
+                });
+                groupFields.forEach((f: any): void => {
+                    if (f.isChecked) {
+                        obj.isChecked = true;
+                    }
+                    else if (obj.isChecked) {
+                        f.isChecked = true;
+                        const checkboxElement: Element = document.getElementById(f.id + '_input');
+                        checkboxElement.firstElementChild.classList.remove('e-pv-cb-uncheck');
+                        checkboxElement.firstElementChild.classList.add('e-pv-checkbox-span', 'e-pv-cb-check');
+                        (checkboxElement.firstElementChild.querySelector('.e-pv-checkbox-tick-svg') as any).style.display = 'block';
+                    }
+                    const base: any = this.pdfViewerBase.formFieldCollection.find((ff: any) => ff.id === f.id || (ff.FormField && ff.FormField.id.split('_')[0] === f.id));
+                    if (base && base.FormField) {
+                        base.FormField.isChecked = f.isChecked;
+                        this.updateFormFieldCollections(base.FormField);
+                        (this.pdfViewer.nameTable as any)[f.id].isChecked = f.isChecked;
+                        (this.pdfViewer.nameTable as any)[f.id].isSelected = f.isChecked;
+                    }
+                });
+            }
             break;
         case 'RadioButton':
             obj.formFieldAnnotationType = formFieldType;
@@ -2836,6 +2854,9 @@ export class FormDesigner {
     }
 
     public addFieldCollection(node: any): void {
+        if (!Array.isArray(this.pdfViewer.formFieldCollections)) {
+            this.pdfViewer.formFieldCollections = [];
+        }
         const formField: FormFieldModel = {
             id: randomId(), name: (node as PdfFormFieldBaseModel).name, value: (node as PdfFormFieldBaseModel).value,
             type: node.formFieldAnnotationType as FormFieldType, isReadOnly: node.isReadonly, fontFamily: node.fontFamily,
@@ -2867,6 +2888,12 @@ export class FormDesigner {
      * @returns {void}
      */
     public drawFormField(obj: PdfFormFieldBaseModel, isAddedProgrammatically?: boolean, action?: string): HTMLElement {
+        if (!Array.isArray(this.pdfViewer.formFieldCollections)) {
+            this.pdfViewer.formFieldCollections = [];
+        }
+        if (!Array.isArray(this.pdfViewer.formFieldCollection)) {
+            this.pdfViewer.formFieldCollection = [];
+        }
         const node: PdfAnnotationBaseModel = this.pdfViewer.add(obj as PdfAnnotationBase);
         const index: number = this.pdfViewer.formFieldCollections.findIndex(function (el: any): boolean { return el.id === node.id; });
         let data: any;
@@ -4680,6 +4707,7 @@ export class FormDesigner {
             (inputElement as HTMLInputElement).disabled = true;
             inputElement.style.cursor = 'default';
             inputElement.style.backgroundColor = obj.backgroundColor !== fillColor ? obj.backgroundColor : 'transparent';
+            labelElement.style.backgroundColor = obj.backgroundColor !== fillColor ? obj.backgroundColor : 'transparent';
         }
         if (obj.isRequired) {
             (inputElement as HTMLInputElement).required = true;
@@ -4967,7 +4995,7 @@ export class FormDesigner {
                             currentData.signatureBound = boundsObjects;
                             image = null;
                         }
-                        else if (currentData.signatureType === 'Path') {
+                        else if (currentData.signatureType === 'Path' || currentData.signatureType === 'Draw') {
                             let boundsObjects: any = {
                                 x: currentData.lineBound.X, y: currentData.lineBound.Y,
                                 width: currentData.lineBound.Width, height: currentData.lineBound.Height
@@ -4993,6 +5021,15 @@ export class FormDesigner {
                                 boundsObjects.y = boundsObjects.y + signatureBounds.top;
                             }
                             currentData.signatureBound = boundsObjects;
+                            if (currentData.signatureType === 'Draw') {
+                                this.pdfViewer.formFieldCollections.some((field: any) => {
+                                    if (field.name === currentData.name && (field.type === 'SignatureField' || field.type === 'InitialField')) {
+                                        currentData.signatureBound = field.signatureBounds;
+                                        return true;
+                                    }
+                                    return false;
+                                });
+                            }
                             const collectionData: Object[] = processPathData(filteredField[0].value);
                             const csData: Object[] = splitArrayCollection(collectionData);
                             currentData.value = JSON.stringify(csData);
@@ -6291,7 +6328,6 @@ export class FormDesigner {
             }
         }
     }
-
     /**
      * @param {any} selectedItem - It describes about the selected item
      * @param {any} element - It describes about the element
@@ -8024,7 +8060,7 @@ export class FormDesigner {
             const formField: PdfFormFieldBaseModel =
             this.pdfViewer.formFieldCollection[parseInt(i.toString(), 10)] as PdfFormFieldBaseModel;
             if (formField.formFieldAnnotationType === selectedItem.formFieldAnnotationType &&
-                formField.name === selectedItem.name && formField.id === selectedItem.id) {
+                formField.name === selectedItem.name && (formField.id === selectedItem.id || formField.id + '_content' === selectedItem.id)) {
                 formField.isReadonly = isReadOnly;
                 switch (formField.formFieldAnnotationType) {
                 case 'Textbox':

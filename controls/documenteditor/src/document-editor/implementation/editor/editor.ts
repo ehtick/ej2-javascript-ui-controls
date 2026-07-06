@@ -11404,7 +11404,6 @@ export class Editor {
                     if (!isNoBreak && prevWidget) {
                         if (firstBlock.containerWidget.equals(prevWidget.containerWidget) && !(prevWidget.containerWidget.lastChild instanceof ParagraphWidget && (prevWidget.containerWidget.lastChild.isEndsWithPageBreak || prevWidget.containerWidget.lastChild.isEndsWithColumnBreak))) {
                             this.owner.viewer.cutFromTop(prevWidget.y + prevWidget.height);
-
                             this.documentHelper.layout.updateContainerWidget(firstBlock as Widget, prevWidget.containerWidget as BodyWidget, prevWidget.indexInOwner + 1, false);
                         }
                     }

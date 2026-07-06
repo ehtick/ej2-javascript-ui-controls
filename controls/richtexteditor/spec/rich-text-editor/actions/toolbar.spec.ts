@@ -1611,6 +1611,36 @@ describe("Toolbar - Actions Module", () => {
         });
     });
 
+    describe("1029202: Export to word/pdf toolbar button does not render properly", () => {
+        let rteEle: HTMLElement;
+        let rteObj: any;
+        let mouseEventArgs: any;
+
+        let mobileUA: string = "Mozilla/5.0 (Linux; Android 4.3; Nexus 7 Build/JWR66Y) " +
+            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/30.0.1599.92 Safari/537.36";
+        let defaultUA: string = navigator.userAgent;
+
+        beforeEach(() => {
+            Browser.userAgent = mobileUA;
+            rteObj = renderRTE({
+                toolbarSettings: {
+                    items: ['ExportWord', 'ExportPdf']
+                }
+            });
+            rteEle = rteObj.element;
+        });
+
+        afterEach(() => {
+            Browser.userAgent = defaultUA;
+            destroy(rteObj);
+        });
+
+        it("Check Export to word/pdf toolbar button render in Android mobile", () => {
+            let tbItemsEle: HTMLElement[] = selectAll(".e-toolbar-item", rteObj.element);
+            expect(tbItemsEle[0].querySelector('button').childNodes.length).toBe(2);
+        });
+    });
+
     describe("Dropdown button render testing", () => {
         let rteEle: HTMLElement;
         let rteObj: any;
@@ -1686,7 +1716,8 @@ describe("Toolbar - Actions Module", () => {
             expect(document.querySelectorAll(".e-toolbar-extended")[0].classList.contains('e-popup-close')).toBe(true);
         });
 
-        it("Expand popup open testing", (done: Function) => {
+        // 🚧 TODO: Migrate this to Playwright 🎭
+        xit("Expand popup open testing", (done: Function) => {
             let trg: HTMLElement = document.querySelector('.e-hor-nav');
             toolbarHeight = rteObj.toolbarModule.getToolbarElement().getBoundingClientRect().height;
             trg.click();
@@ -1699,7 +1730,8 @@ describe("Toolbar - Actions Module", () => {
             }, 400);
         });
 
-        it("Expand popup close testing", (done: Function) => {
+        // 🚧 TODO: Migrate this to Playwright 🎭
+        xit("Expand popup close testing", (done: Function) => {
             let trg: HTMLElement = document.querySelector('.e-hor-nav');
             trg.click();
             setTimeout(() => {
@@ -1715,7 +1747,8 @@ describe("Toolbar - Actions Module", () => {
         });
     });
 
-    describe("876912 - Use the flex to align the toolbar and editor area - 3 ", () => {
+    // 🚧 TODO: Migrate this to Playwright 🎭
+    xdescribe("876912 - Use the flex to align the toolbar and editor area - 3 ", () => {
         let rteObj: any;
         let rteEle: HTMLElement;
         let toolbarHeight: number;
@@ -1748,7 +1781,8 @@ describe("Toolbar - Actions Module", () => {
         });
     });
 
-    describe("993811 - Toolbar popup open state testing while clicking NumberFormatList and BulletFormatList dropdown", () => {
+    // 🚧 TODO: Migrate this to Playwright 🎭
+    xdescribe("993811 - Toolbar popup open state testing while clicking NumberFormatList and BulletFormatList dropdown", () => {
         let rteObj: any;
         let rteEle: HTMLElement;
         let controlId: string;

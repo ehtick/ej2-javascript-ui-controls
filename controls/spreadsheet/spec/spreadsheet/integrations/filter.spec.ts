@@ -3037,4 +3037,52 @@ describe('Filter ->', () => {
             done();
         });
     });
+
+    describe('EJ2-1002811', () => {
+        beforeAll((done: Function) => {
+            helper.initializeSpreadsheet({
+                sheets: [{
+                    ranges: [{ dataSource: defaultData }]
+                }]
+            }, done);
+        });
+        afterAll(() => {
+            helper.invoke('destroy');
+        });
+        it('Clear Formats on whole sheet should remove underline from filtered column and Undo restores it', (done: Function) => {
+            const spreadsheet: Spreadsheet = helper.getInstance();
+            helper.invoke('selectRange', ['A1']);
+            helper.getElement('#' + helper.id + '_sorting').click();
+            helper.getElement('#' + helper.id + '_applyfilter').click();
+            helper.invoke('selectRange', ['D1']);
+            const td: HTMLTableCellElement = helper.invoke('getCell', [0, 3]);
+            td.focus();
+            helper.getInstance().keyboardNavigationModule.keyDownHandler({ preventDefault: function () { }, target: td, altKey: true, keyCode: 40 });
+            setTimeout(() => {
+                const popup = helper.getElement().querySelector('.e-excelfilter');
+                const items = popup.querySelectorAll('.e-checkboxlist .e-ftrchk');
+                items[1].click();
+                items[2].click();
+                helper.getElement('.e-excelfilter .e-btn.e-primary').click();
+                setTimeout(() => {
+                    helper.invoke('selectRange', ['D1:D200']);
+                    helper.getElement('#' + helper.id + '_underline').click();
+                    expect(spreadsheet.sheets[0].rows[0].cells[3].style.textDecoration).toBe('underline');
+                    const selectAllElem = helper.getElement('#' + helper.id + '_select_all');
+                    helper.triggerMouseAction('mousedown', { x: selectAllElem.getBoundingClientRect().left + 1, y: selectAllElem.getBoundingClientRect().top + 1 }, null, selectAllElem);
+                    helper.triggerMouseAction('mouseup', { x: selectAllElem.getBoundingClientRect().left + 1, y: selectAllElem.getBoundingClientRect().top + 1 }, document, selectAllElem);
+                    helper.getElement('#' + helper.id + '_clear').click();
+                    helper.getElement('#' + helper.id + '_clear-popup ul li:nth-child(2)').click();
+                    setTimeout(() => {
+                       expect(spreadsheet.sheets[0].rows[0].cells[3].style).toBeUndefined();
+                        helper.getElement('#' + helper.id + '_undo').click();
+                        setTimeout(() => {
+                            expect(spreadsheet.sheets[0].rows[0].cells[3].style.textDecoration).toBe('underline');
+                            done();
+                        }, 10); 
+                    }, 10);
+                }, 10);
+            }, 10);
+        });
+    });
 });

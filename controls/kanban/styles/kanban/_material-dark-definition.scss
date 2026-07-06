@@ -1,5 +1,4 @@
-@use 'ej2-base/styles/definition/material-dark' as *;
-@forward 'ej2-base/styles/definition/material-dark';
+@use '../../node_modules/@syncfusion/ej2-base/styles/common/base-variables' as *;
 
 /*! Kanban component's material theme definitions and variables */
 $kanban-column-bg-color:  rgba($grey-black, 16%) !default;

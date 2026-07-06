@@ -1,5 +1,4 @@
-@use 'ej2-base/styles/definition/bootstrap-dark' as *;
-@forward 'ej2-base/styles/definition/bootstrap-dark';
+@use '../../node_modules/@syncfusion/ej2-base/styles/common/base-variables' as *;
 
 /*! Kanban component's bootstrap theme definitions and variables */
 $kanban-column-bg-color:$gray-dark !default;

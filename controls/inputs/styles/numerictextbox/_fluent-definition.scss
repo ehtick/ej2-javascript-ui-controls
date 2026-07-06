@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/fluent' as *;
-@forward 'ej2-base/styles/definition/fluent';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $numeric-skin-name: $skin-name !default;
 $numeric-input-icon-size: 16px !default;
 $numeric-input-bigger-icon-size: 20px !default;
@@ -22,3 +22,4 @@ $numeric-bigger-prepend-outline-label-bottom-top: 19px !default;
 $numeric-bigger-prepend-outline-label-top-top: 18px !default;
 $numeric-bigger-prepend-filled-label-bottom-top: 19px !default;
 $numeric-bigger-prepend-filled-label-top-top: 18px !default;
+$numeric-box-full-border-color: $border !default;

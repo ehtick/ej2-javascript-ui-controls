@@ -38,9 +38,9 @@ export class ImageBlockSettings extends ChildProperty<ImageBlockSettings> {
      * Specifies the format to save the image.
      * Accepts either 'base64' for inline image encoding or 'blob' for binary object representation.
      *
-     * @default 'Base64'
+     * @default 'Blob'
      */
-    @Property('Base64')
+    @Property('Blob')
     public saveFormat: SaveFormat;
 
     /**

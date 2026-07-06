@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/fabric' as *;
-@forward 'ej2-base/styles/definition/fabric';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $tbar-skin: 'fabric' !default;
 $tbar-icons-bgr-font-size: 18px;
 $tbar-separator-bgr-mrgn: 10px 5px;

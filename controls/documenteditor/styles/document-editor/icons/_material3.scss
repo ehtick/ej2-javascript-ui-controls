@@ -1,5 +1,4 @@
-@use 'ej2-base/styles/common/mixin' as *;
-@use '../material3-definition' as *;
+@use '../variables' as *;
 @include export-module('documenteditor-material3-icons') {
   .e-documenteditor {
     .e-close::before {

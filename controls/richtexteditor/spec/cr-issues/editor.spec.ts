@@ -554,7 +554,7 @@ describe('Editor specs', ()=> {
                 format: {
                     default: 'Preformatted'
                 },
-                value: `<p>a</p>`
+                value: `<p><br></p>`
             });
             rteEle = rteObj.element;
             controlId = rteEle.id;
@@ -834,8 +834,8 @@ describe('Editor specs', ()=> {
             tableCell.dispatchEvent(clickEvent);
             let items: any = document.querySelectorAll('#' + controlId + '_quick_TableCell-popup .e-item');
             expect(items[0].textContent === 'Zellen verbinden').toBe(true);
-            expect(items[1].textContent === 'Vertikale Aufteilung').toBe(true);
-            expect(items[2].textContent === 'Horizontale Aufteilung').toBe(true);
+            expect(items[1].textContent === 'Horizontale Aufteilung').toBe(true);
+            expect(items[2].textContent === 'Vertikale Aufteilung').toBe(true);
             done();
         });
     });

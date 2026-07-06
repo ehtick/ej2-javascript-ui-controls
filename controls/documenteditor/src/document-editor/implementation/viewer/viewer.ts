@@ -755,6 +755,7 @@ export class DocumentHelper {
      */
     public async openTextFile(text: string): Promise<void> {
         this.layout.isTextFormat = true;
+        this.clearDocumentItems();
         let arr: string[] = [];
         text = text.replace(/\r\n/g, '\n');
         arr = text.split('\n');

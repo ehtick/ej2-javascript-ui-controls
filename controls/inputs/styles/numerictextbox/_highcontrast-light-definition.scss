@@ -1,5 +1,4 @@
-@use 'ej2-base/styles/definition/highcontrast-light' as *;
-@forward 'ej2-base/styles/definition/highcontrast-light';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 
 //default
 $numeric-skin-name: 'highcontrast' !default;
@@ -24,3 +23,4 @@ $numeric-bigger-prepend-outline-label-bottom-top: 20px !default;
 $numeric-bigger-prepend-outline-label-top-top: 18px !default;
 $numeric-bigger-prepend-filled-label-bottom-top: 19px !default;
 $numeric-bigger-prepend-filled-label-top-top: 20px !default;
+$numeric-box-full-border-color: $border-fg !default;

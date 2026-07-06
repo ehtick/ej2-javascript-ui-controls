@@ -275,6 +275,7 @@ export function createTooltip(element: HTMLElement, ribbon: Ribbon): void {
     const ribbonTooltip: Tooltip = new Tooltip({
         target: '.' + constants.RIBBON_TOOLTIP_TARGET,
         beforeRender: beforeTooltipRender.bind(this),
+        beforeOpen: beforeTooltipOpen.bind(this),
         windowCollision: true
     });
     ribbonTooltip.appendTo(element);
@@ -285,6 +286,13 @@ export function createTooltip(element: HTMLElement, ribbon: Ribbon): void {
      */
     function beforeTooltipRender(args: TooltipEventArgs): void {
         setToolTipContent(args, ribbonTooltip, ribbon.tooltipData);
+    }
+    function beforeTooltipOpen(args: TooltipEventArgs): void {
+        const target: HTMLElement = ribbon.getAppendToElement();
+        const tooltipPopup: HTMLElement = args.element;
+        if (tooltipPopup && !target.contains(tooltipPopup)) {
+            target.appendChild(tooltipPopup);
+        }
     }
 }
 

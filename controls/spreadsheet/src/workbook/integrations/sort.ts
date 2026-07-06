@@ -1,6 +1,6 @@
 import { Workbook, SheetModel, CellModel, getCell, setCell, getData, getSheet, isHiddenRow, wrap as wrapText, RangeModel } from '../base/index';
 import { DataManager, Query, ReturnOption, DataUtil, Deferred } from '@syncfusion/ej2-data';
-import { getCellIndexes, getColumnHeaderText, getRangeAddress, workbookLocale, isNumber, getUpdatedFormula, getDataRange, getCellAddress } from '../common/index';
+import { getCellIndexes, getColumnHeaderText, getRangeAddress, workbookLocale, isNumber, getUpdatedFormula, getDataRange, getCellAddress, ExtendedNoteModel } from '../common/index';
 import { SortDescriptor, SortOptions, BeforeSortEventArgs, SortEventArgs, getSwapRange, CellStyleModel } from '../common/index';
 import { parseIntValue, SortCollectionModel, getColIndex } from '../common/index';
 import { initiateSort, updateSortedDataOnCell } from '../common/event';
@@ -207,10 +207,24 @@ export class WorkbookSort {
                     if (existingCell.wrap) {
                         wrapText(getCellAddress(rowIdx, j), false, this.parent as Workbook);
                     }
+                    if (existingCell.notes) {
+                        this.parent.notify('processSheetNotes', {
+                            sheet: args.sheet, id: (existingCell.notes as ExtendedNoteModel).id, isDelete: true
+                        });
+                    }
                 }
                 if (cell && cell.formula) {
                     cell.formula = getUpdatedFormula(
                         [rowIdx, j], [parseInt(data['__rowIndex'] as string, 10) - 1, j], args.sheet, this.parent, cell, true);
+                }
+                if (cell && cell.notes) {
+                    const note: ExtendedNoteModel = {};
+                    Object.assign(note, <ExtendedNoteModel>cell.notes);
+                    delete note.id;
+                    note.rowIdx = rowIdx;
+                    note.colIdx = j;
+                    this.parent.notify('processSheetNotes', { sheet: args.sheet, note: note });
+                    cell.notes = note;
                 }
                 setCell(rowIdx, j, args.sheet, cell);
             }

@@ -1,6 +1,5 @@
 @use 'sass:math';
-@use 'ej2-base/styles/definition/highcontrast' as *;
-@forward 'ej2-base/styles/definition/highcontrast';
+@use '../../node_modules/@syncfusion/ej2-base/styles/common/base-variables' as *;
 
 $grid-chart-border-color: $border-default !default;
 $grid-chart-list-hover-bg-color: $hover-bg !default;
@@ -9,3 +8,4 @@ $grid-chart-list-hover-icon-color: $hover-font !default;
 $grid-chart-list-selected-bg-color: $selection-bg !default;
 $grid-chart-list-selected-content-font-color: $selection-font !default;
 $grid-chart-list-selected-icon-color: $selection-font !default;
+$grid-chart-skin: 'highcontrast' !default;

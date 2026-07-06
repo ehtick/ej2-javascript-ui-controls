@@ -5,7 +5,7 @@ import {
 } from "../../../../src/index";
 import { openAnnotationToolbar, verifyAndClickButton, closeAnnotationToolbar } from "../../utils.spec";
 import { EMPTY_PDF_B64 } from "../../Data/pdf-data.spec";
-import { getTarget, mouseDownEvent, mouseMoveEvent, mouseUpEvent, waitFor, deleteAllAnnotationsHelper } from "../../utils.spec";
+import { deleteAllAnnotationsHelper, getTarget, mouseDownEvent, mouseMoveEvent, mouseUpEvent, waitFor } from "../../utils.spec";
 
 
 describe('PDF_Viewer - Annotation Toolbar', () => {
@@ -56,8 +56,8 @@ describe('PDF_Viewer - Annotation Toolbar', () => {
     });
 
     // Ensure annotation toolbar is closed after each test
-    afterEach(async () => {
-        await closeAnnotationToolbar('pdfviewer_Toolbar');
+    afterEach(() => {
+        closeAnnotationToolbar('pdfviewer_Toolbar');
     });
 
     /**
@@ -71,7 +71,7 @@ describe('PDF_Viewer - Annotation Toolbar', () => {
         expect(toolbar).not.toBeNull();
 
         // Open annotation toolbar
-        await openAnnotationToolbar('pdfviewer_Toolbar');
+        openAnnotationToolbar('pdfviewer_Toolbar');
 
         // Get PDF text layer target for mouse interactions
         const target = getTarget('#pdfviewer_Toolbar_textLayer_0');
@@ -88,13 +88,11 @@ describe('PDF_Viewer - Annotation Toolbar', () => {
         mouseDownEvent(target, sx, sy);
         mouseMoveEvent(target, ex, ey);
         mouseUpEvent(target, ex, ey);
-
         // Wait until annotation is added
         await waitFor(() =>
             pdfviewer_Toolbar.annotationCollection &&
             pdfviewer_Toolbar.annotationCollection.length > 0
         );
-
         // Store initial annotation reference
         const annotationBefore = pdfviewer_Toolbar.annotationCollection[
             pdfviewer_Toolbar.annotationCollection.length - 1
@@ -108,7 +106,6 @@ describe('PDF_Viewer - Annotation Toolbar', () => {
         const opacityBtn = document.getElementById('pdfviewer_Toolbar_annotation_opacity') as HTMLElement | null;
         expect(opacityBtn).not.toBeNull();
         (opacityBtn as HTMLElement).click();
-
         // Wait for opacity slider handle to render
         await waitFor(() => {
             return !!document.querySelector('.e-pv-annotation-opacity-slider .e-handle');
@@ -122,7 +119,6 @@ describe('PDF_Viewer - Annotation Toolbar', () => {
 
         // Read slider handle position
         const sliderRect = sliderHandle.getBoundingClientRect();
-
         // Drag opacity slider using mouse events
         mouseMoveEvent(sliderHandle, sliderRect.left, sliderRect.top);
         mouseDownEvent(sliderHandle, sliderRect.left, sliderRect.top);
@@ -147,8 +143,8 @@ describe('PDF_Viewer - Annotation Toolbar', () => {
         // Reopen opacity control and apply minimum opacity (0)
         opacityBtn.click();
         mouseDownEvent(sliderHandle, sliderRect.left + 100, sliderRect.top);
-        mouseMoveEvent(target, rect.left + 10, rect.top);
-        mouseUpEvent(target, rect.left + 10, rect.top);
+        mouseMoveEvent(target, rect.left - 10, rect.top);
+        mouseUpEvent(target, rect.left - 10, rect.top);
 
         // Validate annotation remains selected
         const selectedItems = pdfviewer_Toolbar.selectedItems.annotations;
@@ -226,10 +222,10 @@ describe('PDF_Viewer - Annotation Toolbar', () => {
 
         expect(sliderHandle).not.toBeNull();
 
-        // Read slider handle position
+         // Read slider handle position
         const sliderRect = sliderHandle.getBoundingClientRect();
 
-        // Drag opacity slider using mouse events
+        // Drag thickness slider using mouse events
         mouseMoveEvent(sliderHandle, sliderRect.left, sliderRect.top);
         mouseDownEvent(sliderHandle, sliderRect.left, sliderRect.top);
 

@@ -895,6 +895,8 @@ $gray-400: #ced4da !default;
   --color-sf-content-text-color-alt2: var(--color-sf-on-secondary);
 }
 
+$font-family: $font-family !default;
+$font-size: $text-xs !default;
 $font-weight: $font-weight-normal !default;
 $error-font-color: $danger !default;
 $warning-font-color: $warning !default;

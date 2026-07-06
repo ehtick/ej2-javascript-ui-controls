@@ -78,7 +78,7 @@ export class DialogRenderer {
     }
     private handleEnterKeyDown(args: KeyboardEventArgs): void {
         if (args.key === 'Enter') {
-            args.preventDefault();
+            args.stopPropagation();
         }
     }
     private beforeOpenCallback(args: BeforeOpenEventArgs): void {

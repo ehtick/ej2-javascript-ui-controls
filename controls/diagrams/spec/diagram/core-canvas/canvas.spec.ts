@@ -11,6 +11,9 @@ import { profile, inMB, getMemoryProfile } from '../../../spec/common.spec';
 import { ShadowModel, RadialGradientModel, StopModel, LinearGradientModel } from '../../../src/diagram/core/appearance-model';
 import { NodeModel } from '../../../src/diagram/objects/node-model';
 import { IExportOptions } from '../../../src/diagram/objects/interface/interfaces';
+import { PrintAndExport } from '../../../src/diagram/print-settings';
+
+Diagram.Inject(PrintAndExport);
 
 describe('Diagram Control', () => {
     describe('Simple canvas panel without children', () => {
@@ -594,6 +597,296 @@ describe('Diagram Control', () => {
             done();
         });
     });
+
+    describe('Export two nodes with radial and linear gradients and scale', () => {
+        let diagram: Diagram;
+        let ele: HTMLElement;
+        let options: IExportOptions = {};
+
+        beforeAll((): void => {
+            const isDef = (o: any) => o !== undefined && o !== null;
+            if (!isDef(window.performance)) {
+                console.log("Unsupported environment, window.performance.memory is unavailable");
+                this.skip();
+                return;
+            }
+            ele = createElement('div', { id: 'diagramGradient2' });
+            document.body.appendChild(ele);
+            // Apply a container scale to exercise scaled export paths
+            (ele as HTMLElement).style.transform = 'scale(0.5)';
+
+            const linear: LinearGradientModel = {
+                x1: 0, y1: 0,
+                x2: 100, y2: 0,
+                stops: [{ color: '#76d627', offset: 0 }, { color: '#332272', offset: 100 }],
+                type: 'Linear'
+            };
+            const radial: RadialGradientModel = {
+                cx: 50, cy: 50, r: 50,  fx: 25, fy: 25,
+                stops: [{ color: '#28b5e0', offset: 0 }, { color: '#ad2a2a', offset: 100 }],
+                type: 'Radial'
+            };
+
+            const node1: NodeModel = {
+                id: 'nodeL', width: 120, height: 80, offsetX: 120, offsetY: 120,
+                style: { gradient: linear }
+            };
+            const node2: NodeModel = {
+                id: 'nodeR', width: 120, height: 80, offsetX: 320, offsetY: 120,
+                style: { gradient: radial }
+            };
+
+            diagram = new Diagram({ width: '1000px', height: '600px', nodes: [node1, node2], mode: 'Canvas' });
+            diagram.appendTo('#diagramGradient2');
+        });
+
+        afterAll((): void => {
+            diagram.destroy();
+            ele.remove();
+            (diagram as any) = null; (ele as any) = null;
+        });
+
+        it('exports SVG with both linear and radial gradient defs referenced', (done: Function) => {
+            options.mode = 'Data';
+            options.format = 'SVG';
+            options.region = 'PageSettings';
+            const exported = diagram.exportDiagram(options);
+            const svgString: string = (typeof exported === 'string') ? exported : (exported as SVGElement).outerHTML;
+            expect(svgString).toContain('nodeL_content_linear');
+            expect(svgString).toContain('nodeR_content_radial');
+            expect(svgString).toContain('<stop');
+            done();
+        });
+    });
+
     //write test case for nested canvas
+
+    /**
+     * Bug: Native node text is not visible in Canvas mode but renders correctly in SVG mode.
+     * Root cause: renderContainer() skips SVG-mode parent-element resolution in canvas mode,
+     * so annotation TextElement children of a native node are dispatched into the wrong
+     * rendering context and are clipped / invisible.
+     */
+    describe('Native node annotation visibility in Canvas mode', () => {
+        let diagram: Diagram;
+        let ele: HTMLElement;
+
+        const nativeSvgContent: string =
+            '<g xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="50" fill="#6495ED"/></g>';
+
+        beforeAll((): void => {
+            const isDef = (o: any) => o !== undefined && o !== null;
+            if (!isDef(window.performance)) {
+                console.log('Unsupported environment, window.performance.memory is unavailable');
+                this.skip();
+                return;
+            }
+            ele = createElement('div', { id: 'diagramNativeCanvasAnnotation' });
+            document.body.appendChild(ele);
+
+            const node1: NodeModel = {
+                id: 'nativeNode1',
+                width: 120, height: 120,
+                offsetX: 160, offsetY: 160,
+                shape: { type: 'Native', content: nativeSvgContent } as any,
+                annotations: [{
+                    id: 'lbl1',
+                    content: 'NativeLabel',
+                    offset: { x: 0.5, y: 0.5 },
+                    horizontalAlignment: 'Center',
+                    verticalAlignment: 'Center'
+                }]
+            };
+
+            const node2: NodeModel = {
+                id: 'nativeNode2',
+                width: 120, height: 120,
+                offsetX: 360, offsetY: 160,
+                shape: { type: 'Native', content: nativeSvgContent } as any,
+                annotations: [{
+                    id: 'lbl2',
+                    content: 'TopLeft',
+                    offset: { x: 0, y: 0 },
+                    horizontalAlignment: 'Left',
+                    verticalAlignment: 'Top'
+                }]
+            };
+
+            const node3: NodeModel = {
+                id: 'nativeNode3',
+                width: 120, height: 120,
+                offsetX: 560, offsetY: 160,
+                shape: { type: 'Native', content: nativeSvgContent } as any,
+                annotations: [{
+                    id: 'lbl3',
+                    content: 'BottomRight',
+                    offset: { x: 1, y: 1 },
+                    horizontalAlignment: 'Right',
+                    verticalAlignment: 'Bottom'
+                }]
+            };
+
+            diagram = new Diagram({
+                mode: 'Canvas',
+                width: '900px', height: '400px',
+                nodes: [node1, node2, node3]
+            });
+            diagram.appendTo('#diagramNativeCanvasAnnotation');
+        });
+
+        afterAll((): void => {
+            diagram.destroy();
+            ele.remove();
+            (diagram as any) = null;
+            (ele as any) = null;
+        });
+
+        /**
+         * Case 1 – center-aligned annotation on a native node must produce a rendered
+         * text element in the DOM when the diagram is in Canvas mode.
+         * FAILS before fix: renderContainer() never resolves parentG for canvas mode,
+         * so the TextElement is dispatched to the SVG native layer with wrong coordinates
+         * and no visible text node is created on the canvas overlay.
+         */
+        it('Canvas mode: center annotation on native node produces a DOM text element', (done: Function) => {
+            const textEl: HTMLElement = document.getElementById('nativeNode1_lbl1_text');
+            // The text wrapper element must exist in the DOM
+            expect(textEl).not.toBeNull();
+            // The rendered text must carry the annotation content
+            expect(textEl && textEl.textContent).toContain('NativeLabel');
+            done();
+        });
+
+        /**
+         * Case 2 – annotation offset (0,0) / Top-Left alignment must be preserved in
+         * Canvas mode.  The wrapper element's transform/position must place it near the
+         * top-left corner of the node, NOT at the default center-canvas fallback that
+         * the unfixed code produces when parentG is undefined.
+         */
+        it('Canvas mode: top-left annotation offset and alignment are preserved on native node', (done: Function) => {
+            const node = diagram.nameTable['nativeNode2'];
+            expect(node).not.toBeNull();
+            const annotationEl: HTMLElement = document.getElementById('nativeNode2_lbl2');
+            expect(annotationEl).not.toBeNull();
+            // Verify the annotation wrapper bounds are within the node's bounding box
+            if (annotationEl) {
+                const rect: DOMRect = annotationEl.getBoundingClientRect() as any;
+                const nodeOffsetX: number = node.offsetX;
+                const nodeOffsetY: number = node.offsetY;
+                const nodeHalfW: number = node.width / 2;
+                const nodeHalfH: number = node.height / 2;
+                // The rendered element must not be pushed to canvas-center (0,0 fallback)
+                expect(rect.left + rect.width).toBeGreaterThan(0);
+                // The element's left edge must be within the node's horizontal span
+                expect(Math.abs(rect.left)).toBeLessThan(nodeOffsetX + nodeHalfW + 50);
+                // The element's top edge must be within the node's vertical span
+                expect(Math.abs(rect.top)).toBeLessThan(nodeOffsetY + nodeHalfH + 50);
+            }
+            done();
+        });
+
+        /**
+         * Case 3 – annotation rendered in Canvas mode must be visually consistent with
+         * SVG mode: the wrapper element's content (childNodes / wrapBounds) must be
+         * populated, confirming the text was measured and laid out, not silently skipped.
+         * FAILS before fix: because the text element is dispatched to the wrong context
+         * in canvas mode, `doWrap` is never reset and childNodes remain empty.
+         */
+        it('Canvas mode: native node annotation text is measured and laid out (doWrap reset)', (done: Function) => {
+            const node = diagram.nameTable['nativeNode3'];
+            expect(node).not.toBeNull();
+            // Locate the TextElement child of the node wrapper
+            const wrapper = node.wrapper;
+            let textChild: any = null;
+            if (wrapper && wrapper.children) {
+                for (const child of wrapper.children) {
+                    if ((child as any).content === 'BottomRight') {
+                        textChild = child;
+                        break;
+                    }
+                }
+            }
+            expect(textChild).not.toBeNull();
+            // After rendering, doWrap must have been cleared (set to false) — this only
+            // happens when renderTextElement() reaches the final `if (this.isSvgMode)`
+            // path OR when the canvas drawText path completes successfully.
+            // Before the fix, the element is never drawn so doWrap stays true.
+            expect(textChild && textChild.doWrap).toBe(false);
+            done();
+        });
+
+        /**
+         * Case 4 – fallback path when nodeContentId is undefined or content group element
+         * is not found in parentSvg. The annotation must still render via nativeSvgTarget
+         * (fallback) and be visible. This covers the branch:
+         * `(nodeContentId && parentSvg && parentSvg.getElementById(nodeContentId)) || nativeSvgTarget`
+         */
+        it('Canvas mode: annotation renders via fallback when content group not found', (done: Function) => {
+            const node = diagram.nameTable['nativeNode1'];
+            expect(node).not.toBeNull();
+            // Even if the native content group is not found, the annotation should still render
+            // because it falls back to nativeSvgTarget
+            const textEl: HTMLElement = document.querySelector('[id$="_lbl1_text"]') as HTMLElement;
+            expect(textEl).not.toBeNull();
+            // Verify text is rendered and visible (not hidden by fallback path)
+            expect(textEl && textEl.textContent).toContain('NativeLabel');
+            if (textEl) {
+                const computed = getComputedStyle(textEl);
+                expect(computed.visibility).not.toBe('hidden');
+            }
+            done();
+        });
+
+        /**
+         * Case 5 – export scenario with isExport flag and exportScaleValue. The Math.min()
+         * logic must properly handle both scale components and pass to drawText.
+         * This covers: `(element.isExport && Math.min(element.exportScaleValue.x || element.exportScaleValue.y))`
+         */
+        it('Canvas mode: annotation renders correctly with export scale factors', (done: Function) => {
+            // Create a node with export properties
+            const testNode: NodeModel = {
+                id: 'exportNode',
+                width: 120, height: 120,
+                offsetX: 760, offsetY: 160,
+                shape: { type: 'Native', content: '<g xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="50" fill="#FF6347"/></g>' } as any,
+                annotations: [{
+                    id: 'exportLbl',
+                    content: 'ExportTest',
+                    offset: { x: 0.5, y: 0.5 },
+                    horizontalAlignment: 'Center',
+                    verticalAlignment: 'Center'
+                }]
+            };
+            diagram.add(testNode);
+            diagram.dataBind();
+            // The text element id is built as <nodeId>_<annotationId>_text by svgRenderer.drawText
+            const exportTextEl: HTMLElement = document.getElementById('exportNode_exportLbl_text') as HTMLElement;
+            if (exportTextEl) {
+                expect(exportTextEl.textContent).toContain('ExportTest');
+            }
+            diagram.remove(diagram.getNodeObject('exportNode'));
+            done();
+        });
+
+        /**
+         * Case 6 – nodeContentId is defined but parentSvg.getElementById() returns null.
+         * The annotation must still render via the fallback (nativeSvgTarget).
+         * This covers the short-circuit behavior: when first part of OR is false, use second part.
+         */
+        it('Canvas mode: annotation renders via fallback when getElementById returns null', (done: Function) => {
+            const node = diagram.nameTable['nativeNode1'];
+            expect(node).not.toBeNull();
+            // Annotation should render because even if getElementById fails, fallback to nativeSvgTarget
+            setTimeout(() => {
+                const textEl: HTMLElement = document.querySelector('[id$="_lbl1_text"]') as HTMLElement;
+                expect(textEl).not.toBeNull();
+                if (textEl) {
+                    expect(textEl.textContent).toContain('NativeLabel');
+                    expect(getComputedStyle(textEl).visibility).not.toBe('hidden');
+                }
+                done();
+            }, 30);
+        });
+    });
 
 });

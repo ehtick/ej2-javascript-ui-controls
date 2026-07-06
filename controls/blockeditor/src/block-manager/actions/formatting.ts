@@ -73,6 +73,11 @@ export class FormattingAction {
             this.nodeSelection.savedSelectionState
         );
 
+        // Since all events are collected in above loop, trigger once here
+        if (!options.isRemoteChanges) {
+            this.parent.observer.notify('triggerBlockChange', this.parent.eventService.getChanges());
+        }
+
         this.parent.observer.notify('formatting-performed', options);
     }
 
@@ -90,25 +95,26 @@ export class FormattingAction {
             if (this.ignoredBlockTypes.has(block.blockType) || block.content.length <= 0) {
                 continue;
             }
-
-            blockIDs.push(block.id);
-            oldBlockModels.push(decoupleReference(block));
-
-            this.processFormattingActions(block, options);
-
-            updatedBlockModels.push(decoupleReference(block));
+            const oldBlockModel: BlockModel = decoupleReference(block);
+            const isFomatProcessed: boolean = this.processFormattingActions(block, options);
+            if (isFomatProcessed) {
+                blockIDs.push(block.id);
+                oldBlockModels.push(oldBlockModel);
+                updatedBlockModels.push(decoupleReference(block));
+            }
         }
 
         return { blockIDs, oldBlockModels, updatedBlockModels };
     }
 
-    private processFormattingActions(block: BlockModel, options: ExecCommandOptions): void {
+    private processFormattingActions(block: BlockModel, options: ExecCommandOptions): boolean {
         const blockElement: HTMLElement = this.parent.getBlockElementById(block.id);
         const contentElement: HTMLElement = getBlockContentElement(blockElement);
         const oldBlock: BlockModel = decoupleReference(block);
 
         const globalRange: Range = getSelectedRange();
         const blockRange: Range = getBlockSpecificRange(globalRange, blockElement);
+        if (!blockRange) { return false; }
 
         // Apply formatting using new handler
         const format: string = options.subCommand ? options.subCommand.toString() : options.command.toString();
@@ -119,12 +125,13 @@ export class FormattingAction {
         this.parent.blockService.updateContent(block.id, newContents);
         this.parent.stateManager.updateManagerBlocks();
 
-        // For event track
+        // For event track alone, no DOM re-renders and event triggers
         this.parent.observer.notify('modelChanged', { type: 'ReRenderBlockContent', state: {
             data: [ { block: block, oldBlock: oldBlock } ],
             excludeDomUpdate: true,
-            preventEventTrigger: options.isRemoteChanges
+            preventEventTrigger: true
         }});
+        return true;
     }
 
     /**
@@ -224,8 +231,10 @@ export class FormattingAction {
 
             const blockElement: HTMLElement = this.parent.getBlockElementById(block.id);
             const blockRange: Range = getBlockSpecificRange(globalRange, blockElement);
-            const nodes: Node[] = getNodesInRange(blockRange);
-            allNodes.push(...nodes);
+            if (blockRange) {
+                const nodes: Node[] = getNodesInRange(blockRange);
+                allNodes.push(...nodes);
+            }
         }
 
         // Use FormattingHelper to determine if all nodes have the format

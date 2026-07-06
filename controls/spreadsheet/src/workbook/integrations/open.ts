@@ -310,7 +310,7 @@ export class WorkbookOpen {
         if (!isNullOrUndefined(workbookModel.showSheetTabs)) {
             this.parent.showSheetTabs = workbookModel.showSheetTabs;
         }
-        if (workbookModel.isProtected && ((workbookModel.password && workbookModel.password.length > 0) || workbookModel.hashValue)) {
+        if (workbookModel.isProtected && (workbookModel.password && workbookModel.password.length > 0 || workbookModel.hashValue)) {
             if (this.parent.showSheetTabs) {
                 this.parent.element.querySelector('.e-add-sheet-tab').setAttribute('disabled', 'true');
                 this.parent.element.querySelector('.e-add-sheet-tab').classList.add('e-disabled');

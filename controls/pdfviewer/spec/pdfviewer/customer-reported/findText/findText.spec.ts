@@ -3,8 +3,7 @@ import {
     PdfViewer, Toolbar, Magnification, Navigation, LinkAnnotation, ThumbnailView, BookmarkView,
     TextSelection, TextSearch, Print, Annotation, FormFields, AnnotationDataFormat, FormDesigner, PageOrganizer
 } from "../../../../src/index";
-import { getTarget, mouseDownEvent, mouseMoveEvent, mouseUpEvent, waitFor } from "../../utils.spec";
-import { DOC_WITHOUT_SPACE, FAIL_PDF_B64, OLD_PDFVIEWER_JSON, PDF_WITH_EMPTYPAGE_B64, TEXT_WITH_LINE_BREAK } from "../../Data/pdf-data.spec";
+import { DOC_WITHOUT_SPACE, FAIL_PDF_B64, PDF_WITH_EMPTYPAGE_B64, TEXT_WITH_LINE_BREAK } from "../../Data/pdf-data.spec";
 
 /**
 * PdfViewer spec
@@ -39,40 +38,32 @@ describe('PDF_Viewer_findText', () => {
     afterEach(() => {
     });
 
-    it('1015569 - Search using findText API for the word sign', async () => {
+    it('1015569 - Search using findText API for the word sign', (done) => {
         try {
-            // Wait for the PDF text layer to finish rendering
-            await waitFor(() => {
+            pdfviewer_findText.extractTextCompleted = function () {
                 const el = document.querySelector('#pdfviewer_findText_textLayer_0');
-                return el && el.textContent.trim().length > 0;
-            });
-
-            await waitFor(() => {
+                expect(el.textContent.trim().length).toBeGreaterThan(0);
                 const m = pdfviewer_findText.viewerBase.documentTextCollection;
-                return m.length >= 2;
-            });
-            const results = pdfviewer_findText.textSearchModule.findText('sign', false, null);
-            const values = JSON.stringify(results);
-            const value = JSON.parse(values);
-            expect(value[0].bounds[0].x).toBe(321.22468535156247);
-            expect(value[0].bounds[0].y).toBe(279.89355136718757);
+                expect(m.length).toBeGreaterThanOrEqual(2);
+                const results = pdfviewer_findText.textSearchModule.findText('sign', false, null);
+                const values = JSON.stringify(results);
+                const value = JSON.parse(values);
+                expect(value[0].bounds[0].x).toBe(321.22468535156247);
+                expect(value[0].bounds[0].y).toBe(279.89355136718757);
+                done();
+            }
 
         } catch (e) {
-            fail(e);
+            done.fail(e);
         }
     });
 
-    it('1015569 - Search using findText API for the word contract', async () => {
+    it('1015569 - Search using findText API for the word contract', (done) => {
         try {
-            await waitFor(() => {
-                const el = document.querySelector('#pdfviewer_findText_textLayer_0');
-                return el && el.textContent.trim().length > 0;
-            });
-
-            await waitFor(() => {
-                const m = pdfviewer_findText.viewerBase.documentTextCollection;
-                return m.length >= 2;
-            });
+            const el = document.querySelector('#pdfviewer_findText_textLayer_0');
+            expect(el.textContent.trim().length).toBeGreaterThan(0);
+            const m = pdfviewer_findText.viewerBase.documentTextCollection;
+            expect(m.length).toBeGreaterThanOrEqual(2);
             const results = pdfviewer_findText.textSearchModule.findText('contract', false, null);
             const values = JSON.stringify(results);
             const value = JSON.parse(values);
@@ -87,7 +78,7 @@ describe('PDF_Viewer_findText', () => {
 
             expect(value[0].bounds[3].x).toBe(180.80967680664065);
             expect(value[0].bounds[3].y).toBe(243.9886441406251);
-
+            done();
         } catch (e) {
             fail(e);
         }

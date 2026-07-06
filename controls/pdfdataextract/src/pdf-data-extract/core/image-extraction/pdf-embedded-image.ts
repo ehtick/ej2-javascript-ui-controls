@@ -32,15 +32,65 @@ import { ImageFormat } from '../enum';
  * ```
  */
 export class PdfEmbeddedImage {
+    /**
+     * Raw decoded bytes of the embedded image.
+     *
+     * @private
+     */
     _data: Uint8Array = new Uint8Array([]);
+    /**
+     * Internal stored image format.
+     *
+     * @private
+     */
     _type: ImageFormat;
+    /**
+     * Internal XObject resource name for the image.
+     *
+     * @private
+     */
     _resourceName: string;
+    /**
+     * Internal physical pixel dimensions of the embedded image.
+     *
+     * @private
+     */
     _physicalDimension: Size;
+    /**
+     * Internal page index the image belongs to.
+     *
+     * @private
+     */
     _pageIndex: number;
+    /**
+     * Internal index of this image occurrence within the page.
+     *
+     * @private
+     */
     _index: number;
+    /**
+     * Internal bounding rectangle of the image on the page.
+     *
+     * @private
+     */
     _bounds: Rectangle;
+    /**
+     * Internal flag indicating interpolation requirement.
+     *
+     * @private
+     */
     _isImageInterpolated: boolean;
+    /**
+     * Internal flag indicating image mask presence.
+     *
+     * @private
+     */
     _isImageMasked: boolean;
+    /**
+     * Internal flag indicating soft-mask presence.
+     *
+     * @private
+     */
     _isSoftMasked: boolean;
     /**
      * Gets the raw image bytes of the embedded image.

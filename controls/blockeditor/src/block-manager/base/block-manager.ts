@@ -5,7 +5,7 @@ import * as constants from '../../common/constant';
 import { BlockCommand } from '../plugins/block/block-command';
 import { BlockFactory, BlockService, EventService, TableService } from '../services/index';
 import { IBlockSelectionState } from '../../common/interface';
-import { BlockActionMenuSettingsModel, BlockModel, CommandMenuSettingsModel, ContextMenuSettingsModel, IHeadingBlockSettings, ImageBlockSettingsModel, CodeBlockSettingsModel, InlineToolbarSettingsModel, LabelSettingsModel, PasteCleanupSettingsModel, TableCellModel, UserModel, BasePlaceholderProp } from '../../models/index';
+import { BlockActionMenuSettingsModel, BlockModel, CommandMenuSettingsModel, ContextMenuSettingsModel, IHeadingBlockSettings, ImageBlockSettingsModel, CodeBlockSettingsModel, InlineToolbarSettingsModel, LabelSettingsModel, PasteCleanupSettingsModel, TableCellModel, UserModel, BasePlaceholderProp, User, VersionHistorySettingsModel } from '../../models/index';
 import { StateManager } from '../services/state-manager';
 import { CommandOptions } from './interface';
 import { NodeSelection } from '../../selection/selection';
@@ -17,6 +17,10 @@ import { BlockType } from '../../models/enums';
 import { clearBreakTags, findClosestParent, isElementEmpty } from '../../common/utils/dom';
 import { ListPlugin } from '../plugins/block/list';
 import { UndoRedoAction } from '../actions/undo';
+/* Collaboration Start */
+import { Collaboration } from '../../collaboration/y-blockeditor/base/collaboration';
+import { CollaborationSettingsModel } from '../../models/collaboration/collaboration-settings-model';
+/* Collaboration End */
 import { BlockEditorMethods } from '../actions/methods';
 import { FormattingAction } from '../actions/formatting';
 import { LinkModule } from '../plugins/inline/link';
@@ -27,9 +31,9 @@ import { DragAndDropAction } from '../actions/drag';
 import { InlineToolbarModule } from '../actions/inline-toolbar';
 import { EventAction } from '../actions/event';
 import { BlockRenderer } from '../plugins/block/block-renderer';
-import { BlockEditor } from '../../blockeditor/base/blockeditor';
 import { TableSelectionManager } from '../plugins/table/selection-manager';
 import { SelectionOverlay } from '../renderer/common/selection-overlay';
+import { VersionHistory } from '../../collaboration/y-blockeditor/plugins/version-plugin';
 
 export class BlockManager {
 
@@ -70,7 +74,10 @@ export class BlockManager {
 
     public tableService: TableService;
     public tableSelectionManager: TableSelectionManager;
-
+    /* Collaboration Start */
+    public collaborationModule: Collaboration;
+    public versionHistoryModule: VersionHistory;
+    /* Collaboration End */
     public blockCommand: BlockCommand;
     public blockRenderer: BlockRenderer;
     public listPlugin: ListPlugin;
@@ -96,8 +103,12 @@ export class BlockManager {
     public contextMenuSettings: ContextMenuSettingsModel;
     public commandMenuSettings: CommandMenuSettingsModel;
     public inlineToolbarSettings: InlineToolbarSettingsModel;
+    /* Collaboration Start */
+    public collaborationSettings: CollaborationSettingsModel;
+    /* Collaboration End */
     public keyConfig: { [key: string]: string };
     public users: UserModel[];
+    public currentUserId: string;
 
     public isPopupOpenedOnAddIconClick: boolean;
     public updateTimer: ReturnType<typeof setTimeout>;
@@ -123,7 +134,7 @@ export class BlockManager {
 
     public initialize(): void {
         /* Populate all block level properties which are not provided on application end */
-        const populatedBlocks: BlockModel[] = BlockFactory.populateBlockProperties(this.blocks);
+        const populatedBlocks: BlockModel[] = BlockFactory.populateBlockProperties(this.blocks, this);
         this.blocks = populatedBlocks.slice();
         this.observer.notify('updateEditorBlocks', { blocks: this.blocks });
 
@@ -163,6 +174,18 @@ export class BlockManager {
         this.scrollParentElements = getScrollableParent(this.rootEditorElement);
         this.wireEvents();
         this.initializeKeyBindings();
+
+        /* Collaboration Start */
+        // Check if the module is injected, props are passed and then initialize the modules
+        if (this.collaborationModule && this.collaborationSettings.adapter) {
+            this.collaborationModule.initialize(this, this.collaborationSettings);
+
+            const vhSettings: VersionHistorySettingsModel = this.collaborationSettings.versionHistory;
+            if (this.versionHistoryModule && vhSettings && vhSettings.storage) {
+                this.versionHistoryModule.initialize(this, this.collaborationSettings);
+            }
+        }
+        /* Collaboration End */
     }
 
     private wireEvents(): void {
@@ -271,6 +294,10 @@ export class BlockManager {
         return this.blockContainer.querySelector(`#${blockId}`);
     }
 
+    public getCurrentUserModel(): UserModel {
+        return this.users.find((user: UserModel) => user.id === this.currentUserId);
+    }
+
     /**
      * Adjusts the view to focus on the current block
      *
@@ -339,7 +366,7 @@ export class BlockManager {
     }
 
     /**
-     * Toggles the placeholder for a block element
+     * Toggles the placeholder visibility for a given block element.
      *
      * @param {HTMLElement} blockElement The block element
      * @param {boolean} isFocused Whether the block is currently focused
@@ -347,27 +374,52 @@ export class BlockManager {
      * @hidden
      */
     public togglePlaceholder(blockElement: HTMLElement, isFocused: boolean): void {
-        const blockModel: BlockModel = blockElement ? getBlockModelById(blockElement.id, this.getEditorBlocks()) : null;
-        const isTableBlock: HTMLElement = blockElement && findClosestParent(blockElement, `.${constants.TABLE_BLOCK_CLS}`);
-        const isCalloutBlock: HTMLElement = blockElement && findClosestParent(blockElement, `.${constants.CALLOUT_BLOCK_CLS}`);
-        const isQuoteBlock: HTMLElement   = blockElement && findClosestParent(blockElement, `.${constants.QUOTE_BLOCK_CLS}`);
-        const isCalloutHasOneChild: boolean = isCalloutBlock && isCalloutBlock.querySelectorAll(`.${constants.BLOCK_CLS}`).length === 1;
-        const isQuoteHasOneChild: boolean   = isQuoteBlock   && isQuoteBlock.querySelectorAll(`.${constants.BLOCK_CLS}`).length === 1;
-        const isAlwaysOnBlock: boolean = blockModel && isAlwaysOnPlaceHolderBlk(blockModel.blockType);
-        const tableCriteria: boolean = (isTableBlock &&
-            ((blockModel && !((blockModel.properties as BasePlaceholderProp).placeholder)) || !isFocused));
-        const isNullPlaceholder: boolean = (blockModel && (blockModel && !('placeholder' in blockModel.properties)));
-        if (!blockModel || isNullPlaceholder || tableCriteria || (isAlwaysOnBlock && !isFocused) || (isCalloutHasOneChild && !isFocused) ||
-        (isQuoteHasOneChild && !isFocused)) {
+        if (!blockElement) { return; }
+
+        const blockModel: BlockModel | null = getBlockModelById(blockElement.id, this.getEditorBlocks());
+        if (!blockModel) { return; }
+
+        const contentElement: HTMLElement = getBlockContentElement(blockElement);
+        if (!contentElement) { return; }
+
+        // Cache DOM lookups
+        const tableElement: HTMLElement | null = findClosestParent(blockElement, `.${constants.TABLE_BLOCK_CLS}`);
+        const calloutElement: HTMLElement | null = findClosestParent(blockElement, `.${constants.CALLOUT_BLOCK_CLS}`);
+        const quoteElement: HTMLElement | null = findClosestParent(blockElement, `.${constants.QUOTE_BLOCK_CLS}`);
+
+        const isCalloutWithSingleChild: boolean =
+            !!calloutElement && calloutElement.querySelectorAll(`.${constants.BLOCK_CLS}`).length === 1;
+
+        const isQuoteWithSingleChild: boolean =
+            !!quoteElement && quoteElement.querySelectorAll(`.${constants.BLOCK_CLS}`).length === 1;
+
+        const isAlwaysOnPlaceholderBlock: boolean = isAlwaysOnPlaceHolderBlk(blockModel.blockType);
+
+        const hasPlaceholderProp: boolean = 'placeholder' in (blockModel.properties || {});
+        const currentPlaceholderValue: string | undefined = blockModel.properties
+            && (blockModel.properties as BasePlaceholderProp).placeholder;
+
+        // Skip conditions
+        const shouldSkipForTable: boolean = !!tableElement && (!currentPlaceholderValue || !isFocused);
+
+        if (
+            !hasPlaceholderProp ||
+            shouldSkipForTable ||
+            (isAlwaysOnPlaceholderBlock && !isFocused) ||
+            (isCalloutWithSingleChild && !isFocused) ||
+            (isQuoteWithSingleChild && !isFocused)
+        ) {
             return;
         }
-        const blockType: string = blockElement.getAttribute('data-block-type');
+
+        // Main logic
         const placeholderValue: string = this.getPlaceholderValue(blockModel);
-        const contentEle: HTMLElement = getBlockContentElement(blockElement);
-        const isEmptyContent: boolean = isElementEmpty(contentEle);
-        contentEle.setAttribute('placeholder', isEmptyContent && isFocused ? placeholderValue : '');
-        if (isEmptyContent && blockType !== BlockType.Code) {
-            clearBreakTags(contentEle);
+        const isEmptyContent: boolean = isElementEmpty(contentElement);
+
+        contentElement.setAttribute('placeholder', (isEmptyContent && isFocused) ? placeholderValue : '');
+
+        if (isEmptyContent && blockModel.blockType !== BlockType.Code) {
+            clearBreakTags(contentElement);
         }
     }
 
@@ -379,7 +431,7 @@ export class BlockManager {
      * @hidden
      */
     public refreshPlaceholder(): void {
-        this.rootEditorElement.querySelectorAll('.' + constants.CONTENT_CLS).forEach((el: HTMLElement) => {
+        this.rootEditorElement.querySelectorAll('.' + constants.CONTENT_CLS).forEach((el: Element) => {
             const blockEle: HTMLElement = el.closest(`.${constants.BLOCK_CLS}`) as HTMLElement;
             this.togglePlaceholder(blockEle, false);
         });
@@ -445,6 +497,21 @@ export class BlockManager {
         return value;
     }
 
+    /* Collaboration Start */
+    /**
+     * Capture and save current selection in collaboration module.
+     *
+     * @param {IBlockSelectionState} prevSelection - current selection before any action takes place
+     * @returns {void}
+     * @hidden
+     */
+    public preCaptureSelection(prevSelection: IBlockSelectionState): void {
+        if (this.collaborationModule) {
+            this.collaborationModule.undoPlugin.capturePreActionSelection(prevSelection);
+        }
+    }
+    /* Collaboration End */
+
     public removeAndNullify(element: HTMLElement): void {
         if (element) {
             if (!isNOU(element.parentNode)) {
@@ -463,7 +530,7 @@ export class BlockManager {
         ];
 
         for (const prop of properties) {
-            const element: keyof BlockEditor = prop as keyof BlockEditor;
+            const element: string = prop as string;
             this.removeAndNullify(this[element as keyof BlockManager] as HTMLElement);
             (this[element as keyof BlockManager] as HTMLElement) = null;
         }
@@ -478,7 +545,6 @@ export class BlockManager {
         }
 
         this.popupRenderer = null;
-        if (this.selectionOverlay) { this.selectionOverlay.destroy(); }
         this.selectionOverlay = null;
 
         this.inlineToolbarModule = null;
@@ -512,6 +578,20 @@ export class BlockManager {
         this.dragAndDropAction = null;
         this.undoRedoAction = null;
         this.updateTimer = null;
+
+        /* Collaboration Start */
+        // Destroy collaboration manager
+        if (this.collaborationModule) {
+            this.collaborationModule.destroy();
+            this.collaborationModule = null;
+
+            if (this.versionHistoryModule) {
+                this.versionHistoryModule.destroy();
+                this.versionHistoryModule = null;
+            }
+        }
+        /* Collaboration End */
+
         this.destroyBlockEditor();
     }
 }

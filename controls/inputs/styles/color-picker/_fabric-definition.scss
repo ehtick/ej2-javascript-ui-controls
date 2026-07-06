@@ -1,7 +1,5 @@
-@use 'ej2-base/styles/definition/fabric' as *;
-@use 'ej2-buttons/styles/button/fabric-definition' as *;
-@forward 'ej2-base/styles/definition/fabric';
-@forward 'ej2-buttons/styles/button/fabric-definition';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $cpicker-split-btn-padding: 0 5px !default;
 $cpicker-bigger-split-btn-padding: 0 7px !default;
 $cpicker-split-line-height: 16px !default;

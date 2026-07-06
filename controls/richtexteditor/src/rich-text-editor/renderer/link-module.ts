@@ -153,7 +153,7 @@ export class Link {
                 const linkTop: number = target.getBoundingClientRect().top;
                 const linkLeft: number = target.getBoundingClientRect().left;
                 const linkPos: number = linkTop - parentTop;
-                const tbHeight: number = (tbElement) ? (tbElement.offsetHeight + this.parent.toolbarModule.getExpandTBarPopHeight()) : 0;
+                const tbHeight: number = (tbElement) ? tbElement.offsetHeight : 0;
                 pageX = (this.parent.iframeSettings.enable) ? parentLeft + linkLeft : target.getBoundingClientRect().left;
                 pageY = window.pageYOffset + ((this.parent.iframeSettings.enable) ?
                     (parentTop + tbHeight + linkTop) : (parentTop + linkPos));

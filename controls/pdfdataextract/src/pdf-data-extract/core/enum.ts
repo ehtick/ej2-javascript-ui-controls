@@ -1,3 +1,8 @@
+/**
+ * Modes used by the PDF content parser to control processing behavior.
+ *
+ * @private
+ */
 export enum _TextProcessingMode {
     textExtraction,
     textLayOut,

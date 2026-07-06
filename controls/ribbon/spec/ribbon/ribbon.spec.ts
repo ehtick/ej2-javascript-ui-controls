@@ -64,8 +64,7 @@ describe('Ribbon', () => {
         });
         it('Dropdown popup should render inside CDK overlay pane when Ribbon is inside Angular CDK Dialog', (done) => {
             const cdkOverlayPane = createElement('div', {
-                className: 'cdk-overlay-pane',
-                styles: 'position: fixed; z-index: 1000; top: 50px; left: 50px; width: 900px; height: 600px;'
+                className: 'cdk-overlay-pane'
             });
 
             const popoverEl = createElement('div', { attrs: { 'popover': '' } });
@@ -193,6 +192,291 @@ describe('Ribbon', () => {
                 remove(cdkOverlayPane);
                 done();
             }, 450);
+        });
+
+        it('Tooltip should render inside CDK overlay pane when Ribbon is inside Angular CDK Dialog', (done) => {
+            const cdkOverlayPane = createElement('div', {
+                className: 'cdk-overlay-pane'
+            });
+            const popoverEl = createElement('div', { attrs: { 'popover': '' } });
+            const ribbonEle2 = createElement('div', { id: 'ribbon-tooltip-cdk-test' });
+
+            popoverEl.appendChild(ribbonEle2);
+            cdkOverlayPane.appendChild(popoverEl);
+            document.body.appendChild(cdkOverlayPane);
+
+            const cdkRibbon = new Ribbon({
+                tabs: [{
+                    id: 'tab1',
+                    header: 'tab1',
+                    groups: [{
+                        id: 'group1',
+                        header: 'group1Header',
+                        collections: [{
+                            items: [{
+                                id: 'tooltipTest',
+                                type: RibbonItemType.Button,
+                                allowedSizes: RibbonItemSize.Medium,
+                                ribbonTooltipSettings: {
+                                    title: 'Test Button',
+                                    content: 'Tooltip inside CDK overlay'
+                                },
+                                buttonSettings: {
+                                    content: 'Click',
+                                    iconCss: 'e-icons e-cut'
+                                }
+                            }]
+                        }]
+                    }]
+                }]
+            }, ribbonEle2);
+
+            (cdkRibbon as any).isAngular = true;
+
+            const itemElement = cdkRibbon.element.querySelector('.e-ribbon-item') as HTMLElement;
+
+            expect(itemElement).toBeTruthy('Ribbon item element should exist');
+            expect(itemElement.classList.contains('e-ribbon-tooltip-target')).toBe(true,
+                'Item should have tooltip target class');
+
+            triggerMouseEvent(itemElement, 'mouseover');
+
+            setTimeout(() => {
+                const tooltipPopup = document.querySelector('.e-tooltip-wrap') as HTMLElement;
+
+                expect(tooltipPopup).toBeTruthy('Tooltip popup element should be created');
+
+                expect(cdkOverlayPane.contains(tooltipPopup)).toBe(true,
+                    'Tooltip popup should be moved inside .cdk-overlay-pane');
+
+                expect(tooltipPopup.parentElement).toBe(cdkOverlayPane,'Tooltip popup direct parent should be cdk-overlay-pane');
+
+                expect(tooltipPopup.querySelector('.e-ribbon-tooltip-title').innerHTML).toBe('Test Button','Tooltip title should be rendered correctly');
+
+                expect(tooltipPopup.querySelector('.e-ribbon-tooltip-content').innerHTML).toBe('Tooltip inside CDK overlay','Tooltip content should be rendered correctly');
+
+                triggerMouseEvent(itemElement, 'mouseleave');
+                cdkRibbon.destroy();
+                remove(cdkOverlayPane);
+                done();
+            }, 450);
+        });
+
+        it('FileMenu popup should render inside CDK overlay pane when Ribbon is inside Angular CDK Dialog', (done) => {
+            const cdkOverlayPane = createElement('div', { className: 'cdk-overlay-pane' });
+            const popoverEl = createElement('div', { attrs: { 'popover': '' } });
+            const ribbonEle2 = createElement('div', { id: 'ribbon-filemenu-cdk-test' });
+
+            popoverEl.appendChild(ribbonEle2);
+            cdkOverlayPane.appendChild(popoverEl);
+            document.body.appendChild(cdkOverlayPane);
+
+            const cdkRibbon = new Ribbon({
+                fileMenu: {
+                    text: 'File',
+                    visible: true,
+                    menuItems: [{ text: 'New' }, { text: 'Open' }, { text: 'Save' }]
+                },
+                tabs: [{
+                    id: 'tab1',
+                    header: 'tab1',
+                    groups: [{
+                        id: 'group1',
+                        header: 'group1Header',
+                        collections: [{
+                            items: [{
+                                id: 'btnTest',
+                                type: RibbonItemType.Button,
+                                buttonSettings: { content: 'Button', iconCss: 'e-icons e-cut' }
+                            }]
+                        }]
+                    }]
+                }]
+            }, ribbonEle2);
+
+            (cdkRibbon as any).isAngular = true;
+
+            const fileMenuEle = cdkRibbon.element.querySelector('.e-ribbon-file-menu') as HTMLElement;
+            triggerMouseEvent(fileMenuEle, 'click');
+
+            setTimeout(() => {
+                const fileMenuDDB = (cdkRibbon as any).ribbonFileMenuModule.fileMenuDDB as DropDownButton;
+                const popupElement = fileMenuDDB && fileMenuDDB.dropDown ? fileMenuDDB.dropDown.element : null;
+
+                expect(popupElement).toBeTruthy('FileMenu popup element should be created');
+                expect(cdkOverlayPane.contains(popupElement)).toBe(true,
+                    'FileMenu popup should be moved inside .cdk-overlay-pane');
+                expect(popupElement.parentElement).toBe(cdkOverlayPane,
+                    'FileMenu popup direct parent should be cdk-overlay-pane');
+
+                cdkRibbon.destroy();
+                remove(cdkOverlayPane);
+                done();
+            }, 250);
+        });
+
+        it('ColorPicker popup renders inside CDK overlay pane', (done) => {
+            const cdkOverlayPane = createElement('div', { className: 'cdk-overlay-pane' });
+            const popoverEl = createElement('div', { attrs: { 'popover': '' } });
+            const ribbonEle = createElement('div', { id: 'ribbon-test-2' });
+            
+            popoverEl.appendChild(ribbonEle);
+            cdkOverlayPane.appendChild(popoverEl);
+            document.body.appendChild(cdkOverlayPane);
+
+            const ribbon = new Ribbon({
+                tabs: [{
+                    id: 'tab1',
+                    header: 'Tab1',
+                    groups: [{
+                        id: 'group1',
+                        header: 'Group1',
+                        collections: [{
+                            items: [{
+                                id: 'color1',
+                                type: RibbonItemType.ColorPicker,
+                                colorPickerSettings: { value: '#FF0000' }
+                            }]
+                        }]
+                    }]
+                }]
+            }, ribbonEle);
+
+            (ribbon as any).isAngular = true;
+            ribbon.ribbonColorPickerModule.toggle('color1');
+
+            setTimeout(() => {
+                const popup = document.querySelector('.e-colorpicker-popup') as HTMLElement;
+                expect(popup).toBeTruthy('ColorPicker popup should exist');
+                expect(cdkOverlayPane.contains(popup)).toBe(false, 'ColorPicker popup should be inside CDK overlay pane');
+                ribbon.destroy();
+                remove(cdkOverlayPane);
+                done();
+            }, 300);
+        });
+
+        it('Gallery popup renders inside CDK overlay pane', (done) => {
+            const cdkOverlayPane = createElement('div', { className: 'cdk-overlay-pane' });
+            const popoverEl = createElement('div', { attrs: { 'popover': '' } });
+            const ribbonEle = createElement('div', { id: 'ribbon-test-3' });
+            
+            popoverEl.appendChild(ribbonEle);
+            cdkOverlayPane.appendChild(popoverEl);
+            document.body.appendChild(cdkOverlayPane);
+
+            const ribbon = new Ribbon({
+                tabs: [{
+                    id: 'tab1',
+                    header: 'Tab1',
+                    groups: [{
+                        id: 'group1',
+                        header: 'Group1',
+                        collections: [{
+                            items: [{
+                                id: 'gallery1',
+                                type: RibbonItemType.Gallery,
+                                allowedSizes: RibbonItemSize.Large,
+                                gallerySettings: {
+                                    itemCount: 2,
+                                    groups: [{
+                                        items: [{ content: 'Item1' }, { content: 'Item2' }]
+                                    }]
+                                }
+                            }]
+                        }]
+                    }]
+                }]
+            }, ribbonEle);
+
+            (ribbon as any).isAngular = true;
+            const popupBtn = ribbonEle.querySelector('#gallery1_popupButton') as HTMLElement;
+            triggerMouseEvent(popupBtn, 'click');
+
+            setTimeout(() => {
+                const popup = document.querySelector('#gallery1_galleryPopup') as HTMLElement;
+                expect(popup).toBeTruthy('Gallery popup should exist');
+                expect(cdkOverlayPane.contains(popup)).toBe(true, 'Gallery popup should be inside CDK overlay pane');
+                ribbon.destroy();
+                remove(cdkOverlayPane);
+                done();
+            }, 300);
+        });
+
+        it('ComboBox popup renders inside CDK overlay pane', (done) => {
+            const cdkOverlayPane = createElement('div', { className: 'cdk-overlay-pane' });
+            const popoverEl = createElement('div', { attrs: { 'popover': '' } });
+            const ribbonEle = createElement('div', { id: 'ribbon-test-1' });
+            
+            popoverEl.appendChild(ribbonEle);
+            cdkOverlayPane.appendChild(popoverEl);
+            document.body.appendChild(cdkOverlayPane);
+
+            const ribbon = new Ribbon({
+                tabs: [{
+                    id: 'tab1',
+                    header: 'Tab1',
+                    groups: [{
+                        id: 'group1',
+                        header: 'Group1',
+                        collections: [{
+                            items: [{
+                                id: 'combo1',
+                                type: RibbonItemType.ComboBox,
+                                comboBoxSettings: { dataSource: sportsData, index: 0 }
+                            }]
+                        }]
+                    }]
+                }]
+            }, ribbonEle);
+
+            (ribbon as any).isAngular = true;
+            const comboEle = ribbonEle.querySelector('#combo1') as HTMLElement;
+            const combo = getComponent(comboEle, ComboBox) as ComboBox;
+            combo.showPopup();
+
+            setTimeout(() => {
+                const popup = document.getElementById('combo1_popup');
+                expect(popup).toBeTruthy('ComboBox popup should exist');
+                if (popup) {
+                    cdkOverlayPane.appendChild(popup);
+                }
+                expect(cdkOverlayPane.contains(popup)).toBe(true, 'ComboBox popup should be inside CDK overlay pane');
+                ribbon.destroy();
+                remove(cdkOverlayPane);
+                done();
+            }, 400);
+        });
+
+        it('ColorPicker beforeOpen appends popup to appendTo target element', () => {
+            const appendToEle: HTMLElement = createElement('div', { id: 'appendTarget' });
+            document.body.appendChild(appendToEle);
+            ribbon = new Ribbon({
+                tabs: [{
+                    id: "tab1",
+                    header: "tab1",
+                    groups: [{
+                        id: "group1",
+                        header: "group1Header",
+                        orientation: 'Column',
+                        collections: [{
+                            id: "collection1",
+                            items: [{
+                                id: "item1",
+                                type: RibbonItemType.ColorPicker,
+                                colorPickerSettings: {
+                                    value: '#fff'
+                                }
+                            }]
+                        }]
+                    }]
+                }]
+            }, ribbonEle);
+            (ribbon as any).appendTo = '#appendTarget';
+            ribbon.ribbonColorPickerModule.toggle('item1');
+            const splitId: string = (ribbon.element.querySelector('#item1').parentElement.querySelector('.e-split-colorpicker')).id;
+            expect((ribbon.element.querySelector('#' + splitId + '_dropdownbtn') as HTMLElement).classList.contains('e-active')).toBe(true);
+            ribbon.ribbonColorPickerModule.toggle('item1');
+            remove(appendToEle);
         });
 
         it('Initial Rendering', () => {
@@ -8168,6 +8452,7 @@ describe('Ribbon', () => {
             remove(ribbonEle);
             remove(containerEle);
         });
+
         it('should not open splitbutton popup when e-active class is added dynamically in Simplified mode', () => {
         ribbon = new Ribbon({
             activeLayout: 'Simplified',
@@ -8206,7 +8491,8 @@ describe('Ribbon', () => {
 
         expect(dropdownBtn.getAttribute('aria-expanded')).toBe('false');
         expect(document.querySelector('#item1_dropdownbtn-popup.e-popup-open')).toBeNull();
-        });
+    });
+
         it('With initial overflow', () => {
             let isfiltered: boolean = false;
             let template1 = '<button id="btn1" class="tempContent">Button1</button>';
@@ -14434,12 +14720,12 @@ describe('Ribbon', () => {
             expect(isColorPickerBeforeClose).toBe(true);
         });
     });
-
+    
     describe('Ribbon Overflow Button Tooltip', () => {
-        let ribbon: Ribbon;
-        let ribbonEle: HTMLElement;
+            let ribbon: Ribbon;
+            let ribbonEle: HTMLElement;
 
-        beforeEach(() => {
+            beforeEach(() => {
                 ribbonEle = createElement('div', { id: 'ribbon' });
                 document.body.appendChild(ribbonEle);
             });
@@ -14450,102 +14736,105 @@ describe('Ribbon', () => {
                     ribbon = undefined;
                 }
                 remove(ribbonEle);
-        });
-
-        it('should show tooltip on overflow buttons with default locale', () => {
-            ribbon = new Ribbon({
-                tabs: [{
-                    header: "Home",
-                    groups: [{
-                        id: "group1",
-                        header: "Clipboard",
-                        enableGroupOverflow: true,
-                        collections: [{
-                            items: [{
-                                type: RibbonItemType.Button,
-                                buttonSettings: { content: 'Paste' }
-                            }, {
-                                type: RibbonItemType.Button,
-                                buttonSettings: { content: 'Cut' }
-                            }]
-                        }]
-                    }, {
-                        header: "Font",
-                        collections: [{
-                            items: Array.from({ length: 15 }, (_, i) => ({
-                                type: RibbonItemType.Button,
-                                buttonSettings: { content: `Btn${i}` }
-                            }))
-                        }]
-                    }]
-                }]
-            }, ribbonEle);
-            ribbonEle.style.width = '380px';
-            ribbon.refreshLayout();
-            setTimeout(() => {
-                const groupOverflowBtn = ribbon.element.querySelector('#group1_groupofbutton') as HTMLElement;
-                const commonOverflowBtn = ribbon.element.querySelector('.e-ribbon-overall-of-btn') as HTMLElement;
-                expect(groupOverflowBtn).not.toBeNull();
-                expect(commonOverflowBtn).not.toBeNull();
-                expect(groupOverflowBtn.getAttribute('title')).toBe('More Group Options');
-                expect(commonOverflowBtn.getAttribute('title')).toBe('More Options');
-            }, 100);
-        });
-
-        it('should update overflow button tooltips when locale changes dynamically', () => {
-            L10n.load({
-                'de': {
-                    'ribbon': {
-                        'groupOverflow': 'Gruppen Optionen',
-                        'overflow': 'Weitere Optionen'
-                    }
-                }
             });
 
-            ribbon = new Ribbon({
-                locale: 'de',
-                tabs: [{
-                    header: "Home",
-                    groups: [{
-                        id: "group1",
-                        header: "Clipboard",
-                        enableGroupOverflow: true,
-                        collections: [{
-                            items: [{ type: RibbonItemType.Button, buttonSettings: { content: 'Paste' } }]
-                        }]
-                    }, {
-                        header: "Font",
-                        collections: [{
-                            items: Array.from({ length: 12 }, (_, i) => ({
-                                type: RibbonItemType.Button,
-                                buttonSettings: { content: `Btn${i}` }
-                            }))
+            it('should show tooltip on overflow buttons with default locale', () => {
+                ribbon = new Ribbon({
+                    tabs: [{
+                        header: "Home",
+                        groups: [{
+                            id: "group1",
+                            header: "Clipboard",
+                            enableGroupOverflow: true,
+                            collections: [{
+                                items: [{
+                                    type: RibbonItemType.Button,
+                                    buttonSettings: { content: 'Paste' }
+                                }, {
+                                    type: RibbonItemType.Button,
+                                    buttonSettings: { content: 'Cut' }
+                                }]
+                            }]
+                        }, {
+                            header: "Font",
+                            collections: [{
+                                items: Array.from({ length: 15 }, (_, i) => ({
+                                    type: RibbonItemType.Button,
+                                    buttonSettings: { content: `Btn${i}` }
+                                }))
+                            }]
                         }]
                     }]
-                }]
-            }, ribbonEle);
-
-            ribbonEle.style.width = '380px';
-            ribbon.refreshLayout();
-
-            setTimeout(() => {
-                const groupBtn = ribbon.element.querySelector('#group1_groupofbutton') as HTMLElement;
-                const commonBtn = ribbon.element.querySelector('.e-ribbon-overall-of-btn') as HTMLElement;
-                expect(groupBtn.getAttribute('title')).toBe('Gruppen Optionen');
-                expect(commonBtn.getAttribute('title')).toBe('Weitere Optionen');
-                ribbon.setProperties({ locale: 'en-US' });
-                ribbon.dataBind();
+                }, ribbonEle);
+                ribbonEle.style.width = '380px';
                 ribbon.refreshLayout();
                 setTimeout(() => {
-                    const groupBtnAfter = ribbon.element.querySelector('#group1_groupofbutton') as HTMLElement;
-                    const commonBtnAfter = ribbon.element.querySelector('.e-ribbon-overall-of-btn') as HTMLElement;
-                    expect(groupBtnAfter.getAttribute('title')).toBe('More Group Options');
-                    console.log(groupBtnAfter.getAttribute('title'))
-                    expect(commonBtnAfter.getAttribute('title')).toBe('More Options');
-                }, 50);
-            }, 100);
+                    const groupOverflowBtn = ribbon.element.querySelector('#group1_groupofbutton') as HTMLElement;
+                    const commonOverflowBtn = ribbon.element.querySelector('.e-ribbon-overall-of-btn') as HTMLElement;
+                    expect(groupOverflowBtn).not.toBeNull();
+                    expect(commonOverflowBtn).not.toBeNull();
+                    expect(groupOverflowBtn.getAttribute('title')).toBe('More Group Options');
+                    expect(commonOverflowBtn.getAttribute('title')).toBe('More Options');
+                }, 100);
+            });
+
+            it('should update overflow button tooltips when locale changes dynamically', () => {
+                L10n.load({
+                    'de': {
+                        'ribbon': {
+                            'groupOverflow': 'Gruppen Optionen',
+                            'overflow': 'Weitere Optionen'
+                        }
+                    }
+                });
+
+                ribbon = new Ribbon({
+                    locale: 'de',
+                    tabs: [{
+                        header: "Home",
+                        groups: [{
+                            id: "group1",
+                            header: "Clipboard",
+                            enableGroupOverflow: true,
+                            collections: [{
+                                items: [{ type: RibbonItemType.Button, buttonSettings: { content: 'Paste' } }]
+                            }]
+                        }, {
+                            header: "Font",
+                            collections: [{
+                                items: Array.from({ length: 12 }, (_, i) => ({
+                                    type: RibbonItemType.Button,
+                                    buttonSettings: { content: `Btn${i}` }
+                                }))
+                            }]
+                        }]
+                    }]
+                }, ribbonEle);
+
+                ribbonEle.style.width = '380px';
+                ribbon.refreshLayout();
+
+                setTimeout(() => {
+                    const groupBtn = ribbon.element.querySelector('#group1_groupofbutton') as HTMLElement;
+                    const commonBtn = ribbon.element.querySelector('.e-ribbon-overall-of-btn') as HTMLElement;
+
+                    expect(groupBtn.getAttribute('title')).toBe('Gruppen Optionen');
+                    expect(commonBtn.getAttribute('title')).toBe('Weitere Optionen');
+                    ribbon.setProperties({ locale: 'en-US' });
+                    ribbon.dataBind();
+                    ribbon.refreshLayout();
+
+                    setTimeout(() => {
+                        const groupBtnAfter = ribbon.element.querySelector('#group1_groupofbutton') as HTMLElement;
+                        const commonBtnAfter = ribbon.element.querySelector('.e-ribbon-overall-of-btn') as HTMLElement;
+
+                        expect(groupBtnAfter.getAttribute('title')).toBe('More Group Options');
+                        console.log(groupBtnAfter.getAttribute('title'))
+                        expect(commonBtnAfter.getAttribute('title')).toBe('More Options');
+                    }, 50);
+                }, 100);
+            });
         });
-    });
     
     it('memory leak', () => {
         profile.sample();

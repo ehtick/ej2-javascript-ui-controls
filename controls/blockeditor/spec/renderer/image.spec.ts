@@ -1492,9 +1492,9 @@ describe('Image Block', () => {
                     const props = pastedImageBlock.properties as IImageBlockSettings;
 
                     // Confirm the image source is correctly set
-                    expect(props.src).toBe('data:image/png;base64,fakedata');
+                    expect(props.src).toBe('blob:mock-url');
 
-                    expect(editor.blockManager.imageBlockSettings.saveFormat).toBe('Base64');
+                    expect(editor.blockManager.imageBlockSettings.saveFormat).toBe('Blob');
 
                     // Confirm altText is empty or default
                     expect( props.altText === '').toBe(false);
@@ -1537,7 +1537,7 @@ describe('Image Block', () => {
                     expect(transformedBlock.blockType).toBe(BlockType.Image);
 
                     const props = transformedBlock.properties as IImageBlockSettings;
-                    expect(editor.blockManager.imageBlockSettings.saveFormat).toBe('Base64');
+                    expect(editor.blockManager.imageBlockSettings.saveFormat).toBe('Blob');
                     // alttext auto applies
                     expect(props.altText === undefined || props.altText === '').toBe(false);
 
@@ -1570,7 +1570,7 @@ describe('Image Block', () => {
                     expect(imgElement.getAttribute('alt')).toBe('test.png');
                     const imageBlocks = editor.blocks.filter(b => b.blockType=== BlockType.Image);
                     expect(imageBlocks.length).toBe(1); // Only one image block should be added
-                    expect(imgElement.src).toContain('data:image/png;base64');
+                    expect(imgElement.src).toContain('blob:');
                     expect(imgElement.classList.contains('e-image-block')).toBe(true);
 
                     const pastedImageBlock = imageBlocks[0];
@@ -1619,12 +1619,12 @@ describe('Image Block', () => {
                     const pastedImageBlock = imageBlocks[0];
                     const props = pastedImageBlock.properties as IImageBlockSettings;
 
-                    // Confirm the image source is set (likely via fallback or base64)
+                    // Confirm the image source is set (likely via fallback or blob)
                     expect(typeof props.src).toBe('string');
 
                     // Confirm the alt text matches the file name
                     expect(props.altText).toBe('test.png');
-                    expect(editor.blockManager.imageBlockSettings.saveFormat).toBe('Base64');
+                    expect(editor.blockManager.imageBlockSettings.saveFormat).toBe('Blob');
                     done();
                 }, 100);
             }).catch((error: any) => {
@@ -1642,6 +1642,9 @@ describe('Image Block', () => {
             const paragraphBlock = editorElement.querySelector('#paragraph') as HTMLElement;
             editor.blockManager.setFocusToBlock(paragraphBlock);
             
+            // Set saveFormat to Base64 to trigger FileReader code path
+            editor.blockManager.imageBlockSettings.saveFormat = 'Base64';
+
             // Mock FileReader to simulate error
             const mockFileReader = {
                 readAsDataURL: jasmine.createSpy('readAsDataURL').and.callFake(function() {
@@ -1777,7 +1780,7 @@ describe('Image Block', () => {
             editor.blockManager.clipboardAction.performPasteOperation(payload);
         }
 
-        it('should paste <img> with base64 src and create new Image block', (done) => {
+        it('should paste <img> with base64 src and create new Image block with blob src', (done) => {
             const html = `<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==" alt="Tiny red dot">`;
 
             simulateHtmlPaste(html);
@@ -1789,7 +1792,7 @@ describe('Image Block', () => {
 
                 const imgBlock = imageBlocks[0];
                 const props = imgBlock.properties as IImageBlockSettings;
-                expect(props.src).toContain('data:image/png;base64,');
+                expect(props.src).toContain('blob:');
                 expect(props.altText).toBe('Tiny red dot');
 
                 // DOM assertions
@@ -1799,7 +1802,7 @@ describe('Image Block', () => {
 
                 const imgTag = imageElement.querySelector('img') as HTMLImageElement;
                 expect(imgTag).not.toBeNull();
-                expect(imgTag.src).toContain('data:image/png;base64,');
+                expect(imgTag.src).toContain('blob:'); // convert to blob as default saveformat is blob
                 expect(imgTag.alt).toBe('Tiny red dot');
 
                 done();
@@ -1837,13 +1840,13 @@ describe('Image Block', () => {
                 const transformedBlock = editor.blocks.find(b => b.id === 'p2');
                 expect(transformedBlock.blockType).toBe(BlockType.Image);
                 const props = transformedBlock.properties as IImageBlockSettings;
-                expect(props.src).toContain('data:image/gif;base64,');
+                expect(props.src).toContain('blob:'); // convert to blob as default saveformat is blob
 
                 // DOM
                 const imageBlockEl = editorElement.querySelector('#p2') as HTMLElement;
                 expect(imageBlockEl.querySelector('p')).toBeNull(); // no paragraph content
                 const img = imageBlockEl.querySelector('img');
-                expect(img.src).toContain('data:image/gif;base64,');
+                expect(img.src).toContain('blob:');  // convert to blob as default saveformat is blob
 
                 done();
             }, 100);
@@ -1914,7 +1917,7 @@ describe('Image Block', () => {
             }, 100);
         });
     });
-    
+
     describe('File Paste Focus Handling - Auto-focus and paragraph creation', () => {
         let editor: BlockEditor;
         let editorElement: HTMLElement;

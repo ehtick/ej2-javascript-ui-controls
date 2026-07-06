@@ -1,6 +1,6 @@
-@use 'ej2-base/styles/definition/fluent-dark' as *;
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 @use '../context-menu/fluent-dark-definition' as *;
-@forward 'ej2-base/styles/definition/fluent-dark';
+
 @forward '../context-menu/fluent-dark-definition';
 $menu-bigger-caret-font-size: $cmenu-bigger-caret-font-size !default;
 $menu-bigger-caret-li-padding: 32px !default;

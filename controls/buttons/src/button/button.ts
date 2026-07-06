@@ -3,6 +3,16 @@ import { addClass, Event, EmitType, detach, removeClass } from '@syncfusion/ej2-
 import { rippleEffect, EventHandler, Observer, SanitizeHtmlHelper } from '@syncfusion/ej2-base';
 import { ButtonModel } from './button-model';
 import { getTextNode } from '../common/common';
+
+/**
+ * Defines the arguments for the clicked event of the Button component.
+ */
+export interface ClickedEventArgs {
+    /** The original DOM event that triggered the click. */
+    originalEvent: Event;
+    /** Indicates whether this click was a repeat fire (`true`) or the initial press (`false`). */
+    isRepeat: boolean;
+}
 /**
  * Defines the icon position of button.
  */
@@ -52,6 +62,22 @@ const cssClassName: CssClassNameT = {
 @NotifyPropertyChanges
 export class Button extends Component<HTMLButtonElement> implements INotifyPropertyChanged {
     private removeRippleEffect: Function;
+
+    // Repeat timer handles
+    private repeatDelayTimer: ReturnType<typeof setTimeout>;
+    private repeatIntervalTimer: ReturnType<typeof setInterval>;
+
+    // Bound handler references (required for correct EventHandler.remove behaviour in ES5 target)
+    private repeatPointerDownHandler: (e: PointerEvent) => void;
+    private repeatPointerUpHandler: (e: PointerEvent) => void;
+    private repeatPointerLeaveHandler: (e: PointerEvent) => void;
+    private repeatPointerCancelHandler: (e: PointerEvent) => void;
+    private repeatKeyDownHandler: (e: KeyboardEvent) => void;
+    private repeatKeyUpHandler: (e: KeyboardEvent) => void;
+    private repeatBlurHandler: (e: FocusEvent) => void;
+    private btnClickHandler: (e?: Event) => void;
+    private suppressToggleOnNextClick: boolean = false;
+    private mutationObserver: MutationObserver;
 
     /**
      * Positions the icon before/after the text content in the Button.
@@ -120,6 +146,36 @@ export class Button extends Component<HTMLButtonElement> implements INotifyPrope
     public isToggle: boolean;
 
     /**
+     * Enables hold-to-repeat behavior on the Button when set to `true`.
+     * While the button is held down (pointer or keyboard), repeated `clicked` events are fired
+     * at the rate controlled by `repeatDelay` and `repeatInterval`.
+     *
+     * @default false
+     */
+    @Property(false)
+    public enableRepeat: boolean;
+
+    /**
+     * Specifies the delay in milliseconds before repeat firing begins after the initial press.
+     * Only applicable when `enableRepeat` is `true`.
+     * Changes to this property take effect on the next hold cycle.
+     *
+     * @default 400
+     */
+    @Property(400)
+    public repeatDelay: number;
+
+    /**
+     * Specifies the interval in milliseconds between repeated `clicked` fires during a hold.
+     * When set to `0` (default), pointer repeat uses 100ms; keyboard repeat defers to the native OS rate.
+     * Changes to this property take effect on the next hold cycle.
+     *
+     * @default 0
+     */
+    @Property(0)
+    public repeatInterval: number;
+
+    /**
      * Overrides the global culture and localization value for this component. Default global culture is 'en-US'.
      *
      * @private
@@ -145,6 +201,17 @@ export class Button extends Component<HTMLButtonElement> implements INotifyPrope
     public created: EmitType<Event>;
 
     /**
+     * Triggers on every click fire — both the initial press and each repeat while the button is held.
+     * The event argument carries `originalEvent` (the originating DOM event) and `isRepeat`
+     * (`false` for the first press, `true` for subsequent repeat fires).
+     * Only emitted when `enableRepeat` is `true`.
+     *
+     * @event clicked
+     */
+    @Event()
+    public clicked: EmitType<ClickedEventArgs>;
+
+    /**
      * Constructor for creating the widget
      *
      * @param  {ButtonModel} options - Specifies the button model
@@ -155,7 +222,17 @@ export class Button extends Component<HTMLButtonElement> implements INotifyPrope
     }
 
     protected preRender(): void {
-        // pre render code snippets
+        // Bind handler references once so EventHandler.remove can match them exactly.
+        // Must be done here (not in constructor) because super() triggers render() → wireEvents()
+        // before the constructor body after super() has a chance to run.
+        this.repeatPointerDownHandler = this.startRepeat.bind(this);
+        this.repeatPointerUpHandler = this.stopRepeat.bind(this);
+        this.repeatPointerLeaveHandler = this.stopRepeat.bind(this);
+        this.repeatPointerCancelHandler = this.stopRepeat.bind(this);
+        this.repeatKeyDownHandler = this.onRepeatKeyDown.bind(this);
+        this.repeatKeyUpHandler = this.stopRepeat.bind(this);
+        this.repeatBlurHandler = this.stopRepeat.bind(this);
+        this.btnClickHandler = this.onClickToggle.bind(this);
     }
 
     /**
@@ -167,7 +244,22 @@ export class Button extends Component<HTMLButtonElement> implements INotifyPrope
     public render(): void {
         this.initialize();
         this.removeRippleEffect = rippleEffect(this.element, { selector: '.' + cssClassName.BUTTON });
+        this.observeDomAttributeChanges();
         this.renderComplete();
+    }
+
+    private observeDomAttributeChanges(): void {
+        this.mutationObserver = new MutationObserver((mutations: MutationRecord[]) => {
+            const isDomDisabled: boolean = this.element.hasAttribute('disabled');
+            if (isDomDisabled !== this.disabled) {
+                this.disabled = isDomDisabled;
+            }
+        });
+        this.mutationObserver.observe(this.element, {
+            attributes: true,
+            attributeFilter: ['disabled'],
+            subtree: false
+        });
     }
 
     private initialize(): void {
@@ -196,6 +288,11 @@ export class Button extends Component<HTMLButtonElement> implements INotifyPrope
 
     private controlStatus(disabled: boolean): void {
         this.element.disabled = disabled;
+        if (disabled) {
+            this.element.classList.add('e-disabled');
+        } else {
+            this.element.classList.remove('e-disabled');
+        }
     }
 
     private setIconCss(): void {
@@ -218,19 +315,144 @@ export class Button extends Component<HTMLButtonElement> implements INotifyPrope
         }
     }
 
+    /**
+     * Fires the native click on the element and emits the `clicked` EJ2 event.
+     *
+     * @param {Event} originalEvent - The originating DOM event.
+     * @param {boolean} isRepeat - `true` when this is a repeat fire, `false` for the initial press.
+     * @returns {void}
+     */
+    private fireClick(originalEvent: Event, isRepeat: boolean): void {
+        if (this.disabled) { return; }
+        // For toggle buttons we rely on the DOM `click` to toggle state once.
+        // For repeat fires, suppress the toggle on the next DOM click; for initial press, allow it.
+        if (this.isToggle && isRepeat === true) {
+            this.suppressToggleOnNextClick = true;
+        }
+        this.element.click();
+        this.trigger('clicked', { originalEvent: originalEvent, isRepeat: isRepeat });
+    }
+
+    /**
+     * Starts the hold-to-repeat cycle for pointer input.
+     * Fires the initial click immediately, then after `repeatDelay` ms begins firing
+     * at the effective interval (`repeatInterval > 0 ? repeatInterval : 100`).
+     * Only processes events where `PointerEvent.button === 0` (primary button:
+     * left-click, touch, primary pen). Non-primary buttons (right-click `button=2`,
+     * middle-click `button=1`, back/forward `button=3/4`) are ignored to prevent
+     * spurious `clicked` events and timer leaks caused by context-menu pointer capture.
+     *
+     * @param {Event} originalEvent - The originating event (PointerEvent or KeyboardEvent).
+     * @returns {void}
+     */
+    private startRepeat(originalEvent: Event): void {
+        if ((originalEvent as PointerEvent).button !== 0) { return; }
+        this.fireClick(originalEvent, false);
+        const effectiveInterval: number = this.repeatInterval > 0 ? this.repeatInterval : 100;
+        if (this.repeatDelay === 0) {
+            this.repeatIntervalTimer = setInterval(() => {
+                this.fireClick(originalEvent, true);
+            }, effectiveInterval);
+        } else {
+            this.repeatDelayTimer = setTimeout(() => {
+                this.repeatIntervalTimer = setInterval(() => {
+                    this.fireClick(originalEvent, true);
+                }, effectiveInterval);
+            }, this.repeatDelay);
+        }
+    }
+
+    /**
+     * Stops any active repeat timers.
+     *
+     * @returns {void}
+     */
+    private stopRepeat(): void {
+        clearTimeout(this.repeatDelayTimer);
+        clearInterval(this.repeatIntervalTimer);
+    }
+
+    /**
+     * Handles `keydown` events for keyboard-driven repeat.
+     * - First keydown (`e.repeat === false`): fires the initial click; if `repeatInterval > 0`
+     *   also starts the custom delay + interval cycle.
+     * - Subsequent keydown with `e.repeat === true` and `repeatInterval === 0`: fires via native OS rate.
+     * - Subsequent keydown with `e.repeat === true` and `repeatInterval > 0`: suppressed (custom interval handles it).
+     *
+     * @param {KeyboardEvent} e - The keyboard event.
+     * @returns {void}
+     */
+    private onRepeatKeyDown(e: KeyboardEvent): void {
+        if (e.key !== ' ' && e.key !== 'Enter') {
+            return;
+        }
+        if (!e.repeat) {
+            this.fireClick(e, false);
+            if (this.repeatInterval > 0) {
+                this.repeatDelayTimer = setTimeout(() => {
+                    this.repeatIntervalTimer = setInterval(() => {
+                        this.fireClick(e, true);
+                    }, this.repeatInterval);
+                }, this.repeatDelay);
+            }
+        } else if (this.repeatInterval === 0) {
+            this.fireClick(e, true);
+        }
+        // else: e.repeat === true && repeatInterval > 0 — suppress; custom interval is already running
+    }
+
     protected wireEvents(): void {
         if (this.isToggle) {
             EventHandler.add(this.element, 'click', this.btnClickHandler, this);
         }
+        if (this.enableRepeat) {
+            this.wireRepeatEvents();
+        }
+    }
+
+    private wireRepeatEvents(): void {
+        EventHandler.add(this.element, 'pointerdown', this.repeatPointerDownHandler, this);
+        EventHandler.add(this.element, 'pointerup', this.repeatPointerUpHandler, this);
+        EventHandler.add(this.element, 'pointerleave', this.repeatPointerLeaveHandler, this);
+        EventHandler.add(this.element, 'pointercancel', this.repeatPointerCancelHandler, this);
+        EventHandler.add(this.element, 'keydown', this.repeatKeyDownHandler, this);
+        EventHandler.add(this.element, 'keyup', this.repeatKeyUpHandler, this);
+        EventHandler.add(this.element, 'blur', this.repeatBlurHandler, this);
+    }
+
+    private unwireRepeatEvents(): void {
+        EventHandler.remove(this.element, 'pointerdown', this.repeatPointerDownHandler);
+        EventHandler.remove(this.element, 'pointerup', this.repeatPointerUpHandler);
+        EventHandler.remove(this.element, 'pointerleave', this.repeatPointerLeaveHandler);
+        EventHandler.remove(this.element, 'pointercancel', this.repeatPointerCancelHandler);
+        EventHandler.remove(this.element, 'keydown', this.repeatKeyDownHandler);
+        EventHandler.remove(this.element, 'keyup', this.repeatKeyUpHandler);
+        EventHandler.remove(this.element, 'blur', this.repeatBlurHandler);
+        this.stopRepeat();
     }
 
     protected unWireEvents(): void {
         if (this.isToggle) {
             EventHandler.remove(this.element, 'click', this.btnClickHandler);
         }
+        if (this.enableRepeat) {
+            this.unwireRepeatEvents();
+        }
     }
 
-    private btnClickHandler(): void {
+    /**
+     * Handles the toggle click behavior.
+     * When called from a repeat fire (`isRepeat === true`) the `e-active` state is NOT toggled,
+     * preserving the state set on the initial press.
+     *
+     * @param {boolean} [isRepeat] - `true` when invoked from a repeat fire.
+     * @returns {void}
+     */
+    private onClickToggle(isRepeat?: boolean): void {
+        // If called directly with `true` (repeat) bail out.
+        if (isRepeat === true) { return; }
+        // If a repeat fired and we suppressed the next DOM click, consume the suppression and bail.
+        if (this.suppressToggleOnNextClick) { this.suppressToggleOnNextClick = false; return; }
         if (this.element.classList.contains('e-active')) {
             this.element.classList.remove('e-active');
         } else {
@@ -245,9 +467,10 @@ export class Button extends Component<HTMLButtonElement> implements INotifyPrope
      * @returns {void}
      */
     public destroy(): void {
+        this.stopRepeat();
         let classList: string[] = [cssClassName.PRIMARY, cssClassName.RTL, cssClassName.ICONBTN, 'e-success', 'e-info', 'e-danger',
             'e-warning', 'e-flat', 'e-outline', 'e-small', 'e-bigger', 'e-active', 'e-round',
-            'e-top-icon-btn', 'e-bottom-icon-btn'];
+            'e-top-icon-btn', 'e-bottom-icon-btn', 'e-disabled'];
         if (this.cssClass) {
             classList = classList.concat(this.cssClass.split(/\s+/).filter((c: string) => c.length > 0));
         }
@@ -267,6 +490,9 @@ export class Button extends Component<HTMLButtonElement> implements INotifyPrope
             detach(span);
         }
         this.unWireEvents();
+        if (this.mutationObserver) {
+            this.mutationObserver.disconnect();
+        }
         if (isRippleEnabled) {
             this.removeRippleEffect();
         }
@@ -322,6 +548,9 @@ export class Button extends Component<HTMLButtonElement> implements INotifyPrope
                 }
                 break;
             case 'disabled':
+                if (newProp.disabled) {
+                    this.stopRepeat();
+                }
                 this.controlStatus(newProp.disabled as boolean);
                 break;
             case 'iconCss': {
@@ -388,6 +617,19 @@ export class Button extends Component<HTMLButtonElement> implements INotifyPrope
                     EventHandler.remove(this.element, 'click', this.btnClickHandler);
                     removeClass([this.element], ['e-active']);
                 }
+                break;
+            case 'enableRepeat':
+                if (newProp.enableRepeat) {
+                    this.wireRepeatEvents();
+                } else {
+                    this.unwireRepeatEvents();
+                }
+                break;
+            case 'repeatDelay':
+                // Changes take effect on the next hold cycle; no re-wiring needed.
+                break;
+            case 'repeatInterval':
+                // Changes take effect on the next hold cycle; no re-wiring needed.
                 break;
             }
         }

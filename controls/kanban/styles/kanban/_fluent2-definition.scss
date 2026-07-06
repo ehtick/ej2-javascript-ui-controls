@@ -1,5 +1,4 @@
-@use 'ej2-base/styles/definition/fluent2' as *;
-@forward 'ej2-base/styles/definition/fluent2';
+@use '../../node_modules/@syncfusion/ej2-base/styles/common/base-variables' as *;
 
 //Layout Variables Start
 $kanban-icons-border-radius: $radius-4 !default;
@@ -113,7 +112,7 @@ $kanban-empty-card-margin: 0 auto !default;
 $kanban-empty-card-display: table !default;
 $kanban-card-margin-bottom: 12px !default;
 $kanban-card-bgr-margin-bottom: 16px !default;
-$kanban-card-border: 1px solid $transparent !default;
+$kanban-card-border: 1px solid $flyout-border !default;
 $kanban-card-border-radius: $radius-6 !default;
 $kanban-card-normal-box-shadow: $shadow-sm !default;
 $kanban-card-header-padding: 18px 18px 0 !default;

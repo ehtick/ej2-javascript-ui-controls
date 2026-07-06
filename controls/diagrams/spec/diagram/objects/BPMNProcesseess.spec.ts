@@ -3,6 +3,8 @@ import { Diagram } from '../../../src/diagram/diagram';
 import { NodeModel, BasicShapeModel, BpmnActivityModel, BpmnSubProcessModel } from '../../../src/diagram/objects/node-model';
 import { NodeConstraints, ConnectorModel, BpmnShape, LinearGradientModel } from '../../../src/index';
 import { MouseEvents } from '../../diagram/interaction/mouseevents.spec';
+import { Canvas } from '../../../src/diagram/core/containers/canvas';
+import { Node } from '../../../src/diagram/objects/node';
 import { profile, inMB, getMemoryProfile } from '../../../spec/common.spec';
 
 
@@ -1724,6 +1726,216 @@ describe('Diagram Control', () => {
             diagram.select([process]);
             diagram.paste(diagram.selectedItems.nodes);
             expect(diagram.nodes.length === 21).toBe(true);
+            done();
+        });
+    });
+     describe('BPMN-006: collapsed Event SubProcess – events[].visible:false hides sub-event marker', () => {
+        let diagram: Diagram;
+        let ele: HTMLElement;
+
+        beforeAll((): void => {
+            const isDef = (o: any) => o !== undefined && o !== null;
+            if (!isDef(window.performance)) {
+                console.log('Unsupported environment, window.performance.memory is unavailable');
+                this.skip();
+                return;
+            }
+
+            ele = createElement('div', { id: 'diagram_bpmn_subevent_visible' });
+            document.body.appendChild(ele);
+
+            // Node A: collapsed Event SubProcess, one event with visible: false  (the bug scenario)
+            const nodeHiddenEvent: NodeModel = {
+                id: 'nodeHiddenEvent',
+                width: 100, height: 100,
+                offsetX: 200, offsetY: 200,
+                shape: {
+                    type: 'Bpmn', shape: 'Activity',
+                    activity: {
+                        activity: 'SubProcess',
+                        subProcess: {
+                            collapsed: true,
+                            type: 'Event',
+                            events: [{
+                                id: 'evt_hidden',
+                                event: 'Intermediate',
+                                trigger: 'Cancel',
+                                offset: { x: 0, y: 0.5 },
+                                visible: false              // <-- explicit visibility flag
+                            }]
+                        } as BpmnSubProcessModel
+                    }
+                }
+            };
+
+            // Node B: collapsed Event SubProcess, one event with visible: true  (control / positive case)
+            const nodeVisibleEvent: NodeModel = {
+                id: 'nodeVisibleEvent',
+                width: 100, height: 100,
+                offsetX: 400, offsetY: 200,
+                shape: {
+                    type: 'Bpmn', shape: 'Activity',
+                    activity: {
+                        activity: 'SubProcess',
+                        subProcess: {
+                            collapsed: true,
+                            type: 'Event',
+                            events: [{
+                                id: 'evt_visible',
+                                event: 'Intermediate',
+                                trigger: 'Cancel',
+                                offset: { x: 0, y: 0.5 },
+                                visible: true              // <-- explicitly visible
+                            }]
+                        } as BpmnSubProcessModel
+                    }
+                }
+            };
+
+            // Node C: collapsed Event SubProcess, no visible flag set (default should be visible)
+            const nodeDefaultVisible: NodeModel = {
+                id: 'nodeDefaultVisible',
+                width: 100, height: 100,
+                offsetX: 600, offsetY: 200,
+                shape: {
+                    type: 'Bpmn', shape: 'Activity',
+                    activity: {
+                        activity: 'SubProcess',
+                        subProcess: {
+                            collapsed: true,
+                            type: 'Event',
+                            events: [{
+                                id: 'evt_default',
+                                event: 'Intermediate',
+                                trigger: 'Error',
+                                offset: { x: 0, y: 0.5 }
+                                // visible omitted → default true
+                            }]
+                        } as BpmnSubProcessModel
+                    }
+                }
+            };
+
+            diagram = new Diagram({
+                width: 900, height: 500,
+                nodes: [nodeHiddenEvent, nodeVisibleEvent, nodeDefaultVisible]
+            });
+            diagram.appendTo('#diagram_bpmn_subevent_visible');
+        });
+
+        afterAll((): void => {
+            diagram.destroy();
+            ele.remove();
+        });
+
+        // -----------------------------------------------------------------------
+        // Helper: navigate to the sub-event Canvas element within the node wrapper
+        // Wrapper structure for collapsed Event SubProcess:
+        //   node.wrapper
+        //     └── [0] Canvas  (outer subprocess shape)
+        //           └── [0] Canvas  (subProcessShapes)
+        //                 ├── [0] DiagramElement  (_boundary)
+        //                 ├── [1] PathElement     (_collapsed)
+        //                 └── [2] Canvas          (_subprocessEvents)  ← the marker
+        // -----------------------------------------------------------------------
+        function getSubEventContainer(node: Node): Canvas | null {
+            try {
+                const outer = (node.wrapper.children[0] as Canvas).children[0] as Canvas;
+                // children[2] is the first sub-event Canvas pushed in getBPMNSubProcessShape
+                return (outer.children[2] as Canvas) || null;
+            } catch {
+                return null;
+            }
+        }
+
+        // -----------------------------------------------------------------------
+        // Test 1 (BPMN-006 bug): events[].visible = false → marker must NOT render
+        // Fails BEFORE fix (eventContainer.visible is not set from event.visible)
+        // Passes AFTER fix
+        // -----------------------------------------------------------------------
+        it('BPMN-006: sub-event marker with visible:false must not be rendered on initial render', (done: Function) => {
+            const node = diagram.nameTable['nodeHiddenEvent'] as Node;
+            const subEventCanvas = getSubEventContainer(node);
+
+            // The Canvas that wraps the event marker must exist in the tree …
+            expect(subEventCanvas).not.toBeNull('sub-event Canvas should exist in wrapper tree');
+
+            // … but its visible flag must be false
+            expect(subEventCanvas.visible).toBe(false,
+                'sub-event marker Canvas.visible should be false when events[].visible is false');
+
+            done();
+        });
+
+        // -----------------------------------------------------------------------
+        // Test 2 (control): events[].visible = true → marker MUST render
+        // -----------------------------------------------------------------------
+        it('BPMN-006: sub-event marker with visible:true must be rendered', (done: Function) => {
+            const node = diagram.nameTable['nodeVisibleEvent'] as Node;
+            const subEventCanvas = getSubEventContainer(node);
+
+            expect(subEventCanvas).not.toBeNull('sub-event Canvas should exist in wrapper tree');
+            expect(subEventCanvas.visible).toBe(true,
+                'sub-event marker Canvas.visible should be true when events[].visible is true');
+
+            done();
+        });
+
+        // -----------------------------------------------------------------------
+        // Test 3 (control): visible omitted (default) → marker MUST render
+        // -----------------------------------------------------------------------
+        it('BPMN-006: sub-event marker with no visible property defaults to rendered', (done: Function) => {
+            const node = diagram.nameTable['nodeDefaultVisible'] as Node;
+            const subEventCanvas = getSubEventContainer(node);
+
+            expect(subEventCanvas).not.toBeNull('sub-event Canvas should exist in wrapper tree');
+            expect(subEventCanvas.visible).toBe(true,
+                'sub-event marker Canvas.visible should be true when visible is omitted (default)');
+
+            done();
+        });
+
+        // -----------------------------------------------------------------------
+        // Test 4 (runtime toggle): toggling visible false → true via dataBind
+        // -----------------------------------------------------------------------
+        it('BPMN-006: toggling events[].visible false→true via dataBind shows the marker', (done: Function) => {
+            const node = diagram.nameTable['nodeHiddenEvent'] as Node;
+            const shape = node.shape as any;
+
+            // start: visible is false (already validated in Test 1)
+            let subEventCanvas = getSubEventContainer(node);
+            expect(subEventCanvas.visible).toBe(false, 'precondition: visible should be false before toggle');
+
+            // toggle to true
+            shape.activity.subProcess.events[0].visible = true;
+            diagram.dataBind();
+
+            subEventCanvas = getSubEventContainer(node);
+            expect(subEventCanvas.visible).toBe(true,
+                'sub-event marker Canvas.visible should become true after toggling events[].visible to true');
+
+            done();
+        });
+
+        // -----------------------------------------------------------------------
+        // Test 5 (runtime toggle): toggling visible true → false via dataBind
+        // -----------------------------------------------------------------------
+        it('BPMN-006: toggling events[].visible true→false via dataBind hides the marker', (done: Function) => {
+            const node = diagram.nameTable['nodeVisibleEvent'] as Node;
+            const shape = node.shape as any;
+
+            // start: visible is true (already validated in Test 2)
+            let subEventCanvas = getSubEventContainer(node);
+            expect(subEventCanvas.visible).toBe(true, 'precondition: visible should be true before toggle');
+
+            // toggle to false
+            shape.activity.subProcess.events[0].visible = false;
+            diagram.dataBind();
+
+            subEventCanvas = getSubEventContainer(node);
+            expect(subEventCanvas.visible).toBe(false,
+                'sub-event marker Canvas.visible should become false after toggling events[].visible to false');
+
             done();
         });
     });

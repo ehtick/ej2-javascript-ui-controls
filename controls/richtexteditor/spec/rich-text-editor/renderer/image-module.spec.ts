@@ -743,6 +743,55 @@ client side. Customer easy to edit the contents and get the HTML content for
         });
     });
 
+    describe('Bug 1013966: Non-breaking space remains in DOM after deleting inserted image', () => {
+        let innerHTML: string = `<p>Before image<img id="img1" src="https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png">&nbsp;After image</p><p>Only nbsp<img id="img2" src="https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png">&nbsp;</p>`;
+        let editor: RichTextEditor;
+        beforeEach(() => {
+            editor = renderRTE({
+                value: innerHTML,
+                quickToolbarSettings: {
+                    enable: true,
+                    image: ['Remove', 'Dimension']
+                }
+            });
+        });
+        afterEach(() => {
+            destroy(editor);
+        });
+        it('Should remove only the leading nbsp from text node following the image',(done) => {
+            editor.inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+            const target: HTMLElement = editor.inputElement.querySelectorAll('img')[0];
+            clickImage(target as HTMLImageElement);
+            setTimeout(function () {
+                const quickToolbar: HTMLElement = document.body.querySelector('.e-rte-quick-popup');
+                const caption: HTMLElement = quickToolbar.querySelectorAll('.e-toolbar-item')[0].firstElementChild as HTMLElement;
+                caption.click();
+                let p: HTMLElement = editor.element.querySelectorAll('p')[0];
+                expect(p.querySelector('#img1')).toBeNull();
+                // Original text was "\u00A0After image", should now be "After image"
+                expect(p.lastChild.textContent).toBe('After image');
+                done();
+            },400);
+        });
+
+        it('Should remove the entire text node if it only contains nbsp',(done) => {
+            editor.inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+            const target: HTMLElement = editor.inputElement.querySelectorAll('img')[1];
+            clickImage(target as HTMLImageElement);
+            setTimeout(function () {
+                const quickToolbar: HTMLElement = document.body.querySelector('.e-rte-quick-popup');
+                const caption: HTMLElement = quickToolbar.querySelectorAll('.e-toolbar-item')[0].firstElementChild as HTMLElement;
+                caption.click();
+                let p: HTMLElement = editor.element.querySelectorAll('p')[1];
+                expect(p.querySelector('#img2')).toBeNull();
+                // The text node was "\u00A0", it should be removed entirely
+                expect(p.childNodes.length).toBe(1);
+                expect(p.textContent).toBe('Only nbsp');
+                done();
+            },400);
+        });
+    });
+
     describe('Inserting image and applying heading in IE11', () => {
         let rteEle: HTMLElement;
         let rteObj: RichTextEditor;
@@ -4182,7 +4231,6 @@ client side. Customer easy to edit the contents and get the HTML content for
                 expect(!isNullOrUndefined(document.querySelector('.e-rte-quick-popup'))).toBe(true);
                 QTBarModule.imageQTBar.hidePopup();
                 setTimeout(() => {
-                    debugger;
                     // Verify quick toolbar is closed
                     expect(isNullOrUndefined(document.querySelector('.e-rte-quick-popup'))).toBe(true);
                     // Step 5: Select the image again to reopen quick toolbar
@@ -7999,6 +8047,7 @@ client side. Customer easy to edit the contents and get the HTML content for
                         const imageWidth: number = parseFloat(resizedImg.style.width);
                         expect(captionWidth).toBe(imageWidth);
                         expect(imageWidth === 206);
+                        expect(resizedImg.parentElement.style.cursor === '').toBe(true);
                         done();
                     }, 100);
                 }, 100);
@@ -9100,6 +9149,39 @@ client side. Customer easy to edit the contents and get the HTML content for
         });
     });
 
+    describe('1021910: In Iframe - caption caption text outline style check', () => {
+        let rteObj: RichTextEditor;
+        beforeEach(() => {
+            rteObj = renderRTE({
+                value: `<h1>Welcome to the Syncfusion Rich Text Editor</h1>
+                <p>The Rich Text Editor, a WYSIWYG (what you see is what you get) editor, is a user inter<img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 15%" class="e-rte-image e-img-inline"/> face that allows you to create, edit, and format rich text content. You can try out a demo of this editor here.</p>`,
+                iframeSettings: {
+                    enable: true
+                }
+            });
+        });
+        afterEach(() => {
+            destroy(rteObj);
+        });
+        it(" - caption text should have outline 0 in iframe captioned image", (done: DoneFn) => {
+            let iframeBody: HTMLElement = (document.querySelector('iframe') as HTMLIFrameElement).contentWindow.document.body as HTMLElement;
+            iframeBody.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+            const target: HTMLElement = rteObj.inputElement.querySelector('img');
+            setCursorPoint(target, 0);
+            target.dispatchEvent(MOUSEUP_EVENT);
+            setTimeout(() => {
+                (document.querySelectorAll('.e-image-quicktoolbar .e-toolbar-item')[1] as HTMLElement).click();
+                setTimeout(() => {
+                    const captionText: HTMLElement = iframeBody.querySelector('.e-img-caption-container .e-img-caption-text') as HTMLElement;
+                    const computedStyle: CSSStyleDeclaration = window.getComputedStyle(captionText);
+                    const outline: string = computedStyle.getPropertyValue('outline-width');
+                    expect(outline === '0px').toBe(true);
+                    done();
+                }, 100);
+            }, 100);
+        });
+    });
+
     describe('Bug 1025314: Image preview not shown properly for drag and dropped images in  RichTextEditor', () => {
         let editor: RichTextEditor;
         let URL: string = '';
@@ -9133,6 +9215,34 @@ client side. Customer easy to edit the contents and get the HTML content for
                     expect(URL.includes('blob:')).toBe(true);
                     done();
                 }
+            }, 100);
+        });
+    });
+
+    describe('Bug 1032762: Insert button disabled in file, image, video upload dialog', () => {
+        let rteObj: RichTextEditor;
+        let rteEle: HTMLElement;
+        beforeAll(() => {
+            rteObj = renderRTE({
+                height: 400,
+                toolbarSettings: { items: ['Image'] }
+            });
+            rteEle = rteObj.element;
+        });
+        afterAll(() => {
+            destroy(rteObj);
+        });
+
+        it('should toggle the disabled button after URL input happend', (done: Function) => {
+            (rteObj.contentModule.getEditPanel() as HTMLElement).focus();
+            (<HTMLElement>rteEle.querySelectorAll('.e-toolbar-item')[0] as HTMLElement).click();
+            let dialogEle: any = rteObj.element.querySelector('.e-dialog');
+            (dialogEle.querySelector('.e-img-url') as HTMLInputElement).value = 'https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png';
+            expect((document.querySelector('.e-insertImage.e-primary') as HTMLElement).hasAttribute('disabled')).toBe(true);
+            (dialogEle.querySelector('.e-img-url') as HTMLInputElement).dispatchEvent(new Event('input'));
+            setTimeout(() => {
+                expect((document.querySelector('.e-insertImage.e-primary') as HTMLElement).hasAttribute('disabled')).toBe(false);
+                done();
             }, 100);
         });
     });

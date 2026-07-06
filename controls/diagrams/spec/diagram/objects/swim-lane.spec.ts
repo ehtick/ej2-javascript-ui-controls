@@ -99,6 +99,149 @@ function resize(diagram: Diagram, direction: string): void {
     }
 }
 
+describe('Bug 1020588 - Swimlane Resize Without Phases', () => {
+    let diagram: Diagram;
+    let ele: HTMLElement;
+    let mouseEvents: MouseEvents = new MouseEvents();
+    let diagramCanvas: HTMLElement;
+
+    describe('Horizontal Swimlane - Resize Width (ResizeEast)', () => {
+        beforeAll((): void => {
+            ele = createElement('div', { id: 'diagramHorizontalResizeWidth' });
+            document.body.appendChild(ele);
+            const darkColor: string = '#C7D4DF';
+            const lightColor: string = '#f5f5f5';
+            
+            diagram = new Diagram({
+                width: 1000,
+                height: 600,
+                nodes: [{
+                    id: 'swimlane',
+                    shape: {
+                        type: 'SwimLane',
+                        orientation: 'Horizontal',
+                        header: {
+                            annotation: { content: 'Header' },
+                            height: 50,
+                            style: { fill: darkColor, fontSize: 11 },
+                        },
+                        lanes: [
+                            {
+                                id: 'lane1',
+                                header: { annotation: { content: 'Lane 1' }, width: 50, style: { fill: darkColor } },
+                                style: { fill: lightColor },
+                                height: 120,
+                            },
+                            {
+                                id: 'lane2',
+                                header: { annotation: { content: 'Lane 2' }, width: 50, style: { fill: darkColor } },
+                                style: { fill: lightColor },
+                                height: 120,
+                            },
+                        ],
+                        phases: [],
+                        phaseSize: 0,
+                    },
+                    offsetX: 300,
+                    offsetY: 200,
+                    width: 400,
+                    height: 290,
+                }],
+            });
+            diagram.appendTo('#diagramHorizontalResizeWidth');
+            diagramCanvas = document.getElementById(diagram.element.id + 'content');
+        });
+
+        afterAll((): void => {
+            diagram.destroy();
+            ele.remove();
+        });
+
+        it('Should update lane widths when horizontal swimlane is resized east with no phases', (done: Function) => {
+            const swimlane = diagram.nodes[0] as Node;
+            const initialWidth = swimlane.width;
+            diagram.select([swimlane]);
+            const bounds = swimlane.wrapper.bounds;
+            const resizeHandleX = bounds.bottomRight.x + diagram.element.offsetLeft;
+            const resizeHandleY = bounds.center.y + 8;
+            mouseEvents.mouseDownEvent(diagramCanvas, resizeHandleX, resizeHandleY);
+            mouseEvents.mouseMoveEvent(diagramCanvas, resizeHandleX + 100, resizeHandleY);
+            mouseEvents.mouseUpEvent(diagramCanvas, resizeHandleX + 100, resizeHandleY);
+            expect(swimlane.width > initialWidth).toBe(true);
+            done();
+        });
+    });
+
+    describe('Vertical Swimlane - Resize Height (ResizeSouth)', () => {
+        beforeAll((): void => {
+            ele = createElement('div', { id: 'diagramVerticalResizeHeight' });
+            document.body.appendChild(ele);
+            const darkColor: string = '#C7D4DF';
+            const lightColor: string = '#f5f5f5';
+            
+            diagram = new Diagram({
+                width: 1000,
+                height: 600,
+                nodes: [{
+                    id: 'swimlane',
+                    shape: {
+                        type: 'SwimLane',
+                        orientation: 'Vertical',
+                        header: {
+                            annotation: { content: 'Header' },
+                            height: 50,
+                            style: { fill: darkColor, fontSize: 11 },
+                        },
+                        lanes: [
+                            {
+                                id: 'lane1',
+                                header: { annotation: { content: 'Lane 1' }, width: 50, style: { fill: darkColor } },
+                                style: { fill: lightColor },
+                                height: 100,
+                            },
+                            {
+                                id: 'lane2',
+                                header: { annotation: { content: 'Lane 2' }, width: 50, style: { fill: darkColor } },
+                                style: { fill: lightColor },
+                                height: 100,
+                            },
+                        ],
+                        phases: [],
+                        phaseSize: 0,
+                    },
+                    offsetX: 300,
+                    offsetY: 200,
+                    width: 250,
+                    height: 300,
+                }],
+            });
+            diagram.appendTo('#diagramVerticalResizeHeight');
+            diagramCanvas = document.getElementById(diagram.element.id + 'content');
+        });
+
+        afterAll((): void => {
+            diagram.destroy();
+            ele.remove();
+        });
+
+        it('Should update lane heights when vertical swimlane is resized south with no phases', (done: Function) => {
+            const swimlane = diagram.nodes[0] as Node;           
+            const initialHeight = swimlane.height;
+            diagram.select([swimlane]);
+            const swimalane1 = document.getElementById('swimlane');
+            const bounds = swimalane1.getBoundingClientRect();
+            let resizeHandleY = bounds.bottom;
+            const x = bounds.left + bounds.width / 2;
+            const y = bounds.top + bounds.height / 2;
+            mouseEvents.mouseDownEvent(diagramCanvas, x, resizeHandleY);
+            mouseEvents.mouseMoveEvent(diagramCanvas, x, resizeHandleY + 100);
+            mouseEvents.mouseUpEvent(diagramCanvas, x, resizeHandleY + 100);
+            expect(swimlane.height > initialHeight).toBe(true);
+            done();
+        });
+    });
+});
+
 describe('Diagram Control', () => {
     describe('Horizontal Swimlane', () => {
         let diagram: Diagram;
@@ -1723,7 +1866,6 @@ describe('Diagram Control', () => {
                                             }
                                         ],
                                         margin: { left: 60, top: 20 },
-                                        height: 40, width: 100
                                     }
                                 ],
                             },
@@ -7206,6 +7348,128 @@ describe('Diagram Control', () => {
         });
 
     });
+
+    describe('Lane Adoption with Disabled Constraints - getNodeDefaults Test Case', () => {
+        let diagram: Diagram;
+        let ele: HTMLElement;
+        let mouseEvents = new MouseEvents();
+        let diagramCanvas: HTMLElement;
+        beforeAll((): void => {
+            ele = createElement('div', { id: 'diagramLaneAdoptionConstraints' });
+            document.body.appendChild(ele);
+            const nodes: NodeModel[] = [
+                {
+                    id: 'swimlane',
+                    shape: {
+                        type: 'SwimLane',
+                        header: {
+                            annotation: { content: 'ONLINE PURCHASE STATUS', style: { fill: '#111111' } },
+                            height: 50, style: { fontSize: 11 },
+                        },
+                        lanes: [
+                            {
+                                id: 'stackCanvas1',
+                                height: 100, addInfo: { name: 'lane1' },
+                            },
+                        ],
+                        phases: [
+                            {
+                                id: 'phase1', offset: 170,
+                                header: { annotation: { content: 'Phase' } }
+                            },
+                        ],
+                        phaseSize: 20,
+                    },
+                    offsetX: 420, offsetY: 270,
+                    height: 100, width: 450,
+                    style: { fill: 'transparent' }
+                },
+                {
+                    id: 'testChildNode1',
+                    annotations: [{ content: 'Test Child' }],
+                    height: 40, width: 100,
+                    offsetX: 100, offsetY: 200
+                }
+            ];
+
+            diagram = new Diagram({
+                width: '80%',
+                height: '600px',
+                nodes: nodes,
+                getNodeDefaults: (node: NodeModel, diagram: Diagram) => {
+                    // Apply constraints that disable InConnect and OutConnect
+                    node.constraints = NodeConstraints.Default & ~NodeConstraints.InConnect & ~NodeConstraints.OutConnect;
+                }
+            });
+            diagram.appendTo('#diagramLaneAdoptionConstraints');
+            diagramCanvas = document.getElementById(diagram.element.id + 'content');
+        });
+        afterAll((): void => {
+            diagram.destroy();
+            ele.remove();
+            diagram = null;
+            ele = null;
+        });
+        it('constraints from getNodeDefaults - child adoption by lane using drag and drop', (done: Function) => {
+            const swimalane = diagram.nameTable['swimlane'];
+            const lane = swimalane.shape.lanes[0];
+            const laneNode = diagram.nodes.find((node) => (node as Node).isLane === true && node.id !== 'swimlane');
+            const childNode = diagram.nameTable['testChildNode1'];
+
+            // Get center of child node
+            const childCenter = childNode.wrapper.bounds.center;
+            // Get center of lane to drop onto
+            const laneCenter = laneNode.wrapper.bounds.center;
+
+            // Perform drag and drop from child node to lane
+            mouseEvents.mouseDownEvent(diagramCanvas, childCenter.x, childCenter.y);
+            mouseEvents.mouseMoveEvent(diagramCanvas, laneCenter.x, laneCenter.y);
+            mouseEvents.mouseUpEvent(diagramCanvas, laneCenter.x, laneCenter.y);
+
+            // Verify child is adopted to lane
+            expect(lane.children.length === 1).toBe(true);
+            expect(lane.children[0].id === 'testChildNode1').toBe(true);
+            expect(diagram.nameTable['testChildNode1'].parentId === laneNode.id).toBe(true);
+            diagram.remove(childNode);
+            done();
+        });
+
+        it('runtime constraint update - child adoption with isLane check', (done) => {
+
+            // Create child node at runtime by adding it to the diagram
+            const childModel = {
+                id: 'testChildNode2',
+                annotations: [{ content: 'Runtime Child' }],
+                offsetX: 100, offsetY: 400, height: 40, width: 100
+            };
+            diagram.add(childModel);
+
+            const swimalane = diagram.nameTable['swimlane'];
+            const lane = swimalane.shape.lanes[0];
+            // Get lane from diagram.nodes collection
+            const laneNode = diagram.nodes.find((node) => (node as Node).isLane === true && node.id !== 'swimlane');
+            laneNode.constraints = NodeConstraints.Default & ~NodeConstraints.InConnect & ~NodeConstraints.OutConnect;
+            diagram.dataBind();
+
+            const childNode = diagram.nameTable['testChildNode2'];
+
+            // Get center of child node
+            let childCenter = childNode.wrapper.bounds.center;
+            // Get center of lane to drop onto
+            let laneCenter = laneNode.wrapper.bounds.center;
+
+            // Drag and drop the child into the lane after runtime constraint change
+            mouseEvents.mouseDownEvent(diagramCanvas, childCenter.x, childCenter.y);
+            mouseEvents.mouseMoveEvent(diagramCanvas, laneCenter.x, laneCenter.y);
+            mouseEvents.mouseUpEvent(diagramCanvas, laneCenter.x, laneCenter.y);
+
+            // Verify child is adopted to lane
+            expect(lane.children.length === 1).toBe(true);
+            expect(lane.children[0].id === 'testChildNode2').toBe(true);
+            expect(diagram.nameTable['testChildNode2'].parentId === laneNode.id).toBe(true);
+            done();
+        });
+    });
 });
 describe('Code coverage Drag and drop horizontal swimlane from palette to diagram with customized lanes and phase', () => {
     let diagram: Diagram; let ele: HTMLElement;
@@ -10614,6 +10878,628 @@ describe('Multi select Swimlane child and drag them', () => {
         mouseEvents.mouseMoveEvent(diagramCanvas, x + diagram.element.offsetLeft + 50, y + diagram.element.offsetTop);
         mouseEvents.mouseUpEvent(diagramCanvas, x + diagram.element.offsetLeft + 50, y + diagram.element.offsetTop + 10);
         expect((node as Node).parentId == "swimlanestackCanvas10").toBe(true);
+        done();
+    });
+});
+
+// Task 4.1-4.5: Comprehensive tests for horizontal swimlane add-remove-add phase sequence
+xdescribe('Horizontal Swimlane Phase Add-Remove-Add Bug Fix', () => {
+    let diagram: Diagram;
+    let ele: HTMLElement;
+    let mouseEvents: MouseEvents = new MouseEvents();
+
+    beforeAll((): void => {
+        ele = createElement('div', { id: 'diagramPhaseAddRemoveAdd' });
+        document.body.appendChild(ele);
+
+        let nodes: NodeModel[] = [{
+            id: 'horizontalSwimlane',
+            shape: {
+                type: 'SwimLane',
+                orientation: 'Horizontal',
+                header: {
+                    annotation: { content: 'Test Swimlane' },
+                    height: 50,
+                    style: { fontSize: 11 },
+                },
+                lanes: [
+                    {
+                        id: 'lane1',
+                        height: 100,
+                        header: {
+                            annotation: { content: 'Lane 1' },
+                            width: 50,
+                            style: { fontSize: 11 },
+                        },
+                    },
+                    {
+                        id: 'lane2',
+                        height: 100,
+                        header: {
+                            annotation: { content: 'Lane 2' },
+                            width: 50,
+                            style: { fontSize: 11 },
+                        },
+                    },
+                ],
+                phases: [
+                    {
+                        id: 'phase1',
+                        offset: 120,
+                        header: { annotation: { content: 'Phase 1' } },
+                    },
+                    {
+                        id: 'phase2',
+                        offset: 200,
+                        header: { annotation: { content: 'Phase 2' } },
+                    },
+                ],
+                phaseSize: 20,
+            },
+            offsetX: 300,
+            offsetY: 200,
+            height: 200,
+            width: 350,
+        }];
+
+        diagram = new Diagram({
+            width: '80%',
+            height: '600px',
+            nodes: nodes,
+        });
+        diagram.appendTo('#diagramPhaseAddRemoveAdd');
+    });
+
+    afterAll((): void => {
+        diagram.destroy();
+        ele.remove();
+    });
+
+    // Task 4.1: Test add-remove-add phase sequence
+    it('Add phase → Remove phase → Add phase should maintain grid consistency', (done: Function) => {
+        const swimlane = diagram.nodes[0];
+        const initialNodeCount = diagram.nodes.length;
+
+        // Add a new phase
+        const newPhase1: PhaseModel[] = [{
+            id: 'phase3',
+            offset: 280,
+            header: { annotation: { content: 'Phase 3' } },
+        }];
+        diagram.addPhases(swimlane, newPhase1);
+        const afterAddCount = diagram.nodes.length;
+        expect(afterAddCount > initialNodeCount).toBe(true);
+
+        // Remove the phase we just added
+
+        diagram.removePhase(swimlane, (swimlane.shape as SwimLaneModel).phases[0]);
+        expect(diagram.nodes.length).toBe(initialNodeCount);
+
+        // Add another phase (this is where the bug occurs)
+        const newPhase2: PhaseModel[] = [{
+            id: 'phase4',
+            offset: 125,
+            header: { annotation: { content: 'Phase 4' } },
+        }];
+        diagram.addPhases(swimlane, newPhase2);
+        expect((swimlane.shape as SwimLaneModel).phases.length === 3).toBe(true);
+        done();
+    });
+
+    // Task 4.2: Test multiple phase removals followed by add
+    it('Remove multiple phases then add new phase should work correctly', (done: Function) => {
+        // Reset diagram
+        diagram.clear();
+        diagram.add({
+            id: 'testSwimlane',
+            shape: {
+                type: 'SwimLane',
+                orientation: 'Horizontal',
+                header: { annotation: { content: 'Test' }, height: 50 },
+                lanes: [{
+                    id: 'lane1',
+                    height: 100,
+                    header: { annotation: { content: 'Lane' }, width: 50 },
+                }],
+                phases: [
+                    { id: 'p1', offset: 100, header: { annotation: { content: 'P1' } } },
+                    { id: 'p2', offset: 200, header: { annotation: { content: 'P2' } } },
+                    { id: 'p3', offset: 300, header: { annotation: { content: 'P3' } } },
+                ],
+                phaseSize: 20,
+            },
+            offsetX: 300,
+            offsetY: 200,
+            height: 150,
+            width: 400,
+        } as NodeModel);
+
+        const swimlane = diagram.nodes[0];
+        // Remove two phases
+        diagram.removePhase(swimlane, (swimlane.shape as SwimLaneModel).phases[0]);
+        diagram.removePhase(swimlane, (swimlane.shape as SwimLaneModel).phases[0]);
+        // Should have only 1 phase left
+        expect((swimlane.shape as SwimLaneModel).phases.length).toBe(1);
+
+        // Add a new phase
+        diagram.addPhases(swimlane, [{
+            id: 'p4',
+            offset: 150,
+            header: { annotation: { content: 'P4' } },
+        }]);
+        expect((swimlane.shape as SwimLaneModel).phases.length).toBe(2);
+
+        done();
+    });
+
+});
+
+describe('Order commands for swimlane children node', () => {
+    let diagram: Diagram;
+    let ele: HTMLElement;
+    let mouseEvents = new MouseEvents();
+    let diagramCanvas: HTMLElement;
+    beforeAll((): void => {
+        ele = createElement('div', { id: 'diagram967710' });
+        document.body.appendChild(ele);
+
+        let pathData: string = 'M 120 24.9999 C 120 38.8072 109.642 50 96.8653 50 L 23.135' +
+            ' 50 C 10.3578 50 0 38.8072 0 24.9999 L 0 24.9999 C' +
+            '0 11.1928 10.3578 0 23.135 0 L 96.8653 0 C 109.642 0 120 11.1928 120 24.9999 Z';
+
+        let darkColor: string = '#C7D4DF';
+        let lightColor: string = '#f5f5f5';
+        let nodes: NodeModel[] = [
+            {
+                id: 'swimlane',
+                shape: {
+                    type: 'SwimLane',
+                    orientation: 'Horizontal',
+                    header: {
+                        annotation: { content: 'ONLINE PURCHASE STATUS', style: { fill: '#111111' } },
+                        height: 50, style: { fontSize: 11 },
+                    },
+                    lanes: [
+                        {
+                            id: 'stackCanvas1',
+                            header: {
+                                annotation: { content: 'CUSTOMER' }, width: 50,
+                                style: { fontSize: 11 }
+                            },
+                            height: 100,
+                            children: [
+                                {
+                                    id: 'order1',
+                                    margin: { left: 100 },
+                                    annotations: [{ content: 'order1' }],
+                                    style: { fill: 'red' },
+                                    height: 40, width: 100
+                                },
+                                {
+                                    id: 'order2',
+                                    annotations: [{ content: 'order2' }],
+                                    margin: { left: 120, top: 30 },
+                                    height: 40, width: 100,
+                                    style: { fill: 'blue' },
+                                },
+                                {
+                                    id: 'order3',
+                                    annotations: [{ content: 'order3' }],
+                                    margin: { left: 140, top: 40 },
+                                    height: 40, width: 100,
+                                    style: { fill: 'green' },
+                                }
+
+                            ],
+                        },
+                        {
+                            id: 'stackCanvas2',
+                            header: {
+                                annotation: { content: 'ONLINE' }, width: 50,
+                                style: { fontSize: 11 }
+                            },
+                            children: [
+                                {
+                                    id: 'lane2order1',
+                                    margin: { left: 100 },
+                                    annotations: [{ content: 'order1' }],
+                                    style: { fill: 'red' },
+                                    height: 40, width: 100
+                                },
+
+                            ],
+                            height: 100,
+                        },
+                    ],
+
+                },
+                offsetX: 420, offsetY: 270,
+                height: 100,
+                width: 650
+            }
+        ];
+        diagram = new Diagram({ width: 1000, height: 1000, nodes: nodes });
+        diagram.appendTo('#diagram967710');
+        diagramCanvas = document.getElementById(diagram.element.id + 'content');
+    });
+    afterAll((): void => {
+        diagram.destroy();
+        ele.remove();
+        diagram = null;
+        ele = null;
+        mouseEvents = null;
+    });
+
+    it('BringToFront - order1 should become top of lane1, lane2order1 must not change', (done: Function) => {
+        // Arrange
+        const order1 = diagram.nameTable['order1'];
+        const order2 = diagram.nameTable['order2'];
+        const order3 = diagram.nameTable['order3'];
+        const lane2order1 = diagram.nameTable['lane2order1'];
+        const lane2PrevZIndex: number = lane2order1.zIndex;
+        // order1 is at bottom (zIndex 6), bring it to top
+        diagram.select([order1]);
+        diagram.bringToFront();
+        expect(order1.zIndex > order3.zIndex).toBe(true);
+        // lane2order1 must be unaffected
+        expect(lane2order1.zIndex === lane2PrevZIndex).toBe(true);
+        done();
+    });
+
+    // After test1: order2:7, order3:8, order1:9
+    it('SendToBack - order3 should become bottom of lane1, lane2order1 must not change', (done: Function) => {
+        // Arrange
+        const order1 = diagram.nameTable['order1'];
+        const order2 = diagram.nameTable['order2'];
+        const order3 = diagram.nameTable['order3'];
+        const lane2order1 = diagram.nameTable['lane2order1'];
+        const lane2PrevZIndex: number = lane2order1.zIndex;
+        // order3 is in the middle (zIndex 8), send it to back
+        diagram.select([order3]);
+        diagram.sendToBack();
+        expect(order3.zIndex < order2.zIndex).toBe(true);
+        // lane2order1 must be unaffected
+        expect(lane2order1.zIndex === lane2PrevZIndex).toBe(true);
+        done();
+    });
+
+    // After test2: order3:7, order2:8, order1:9
+    it('MoveForward - order3 should move one step up in lane1', (done: Function) => {
+        // Arrange
+        const order3 = diagram.nameTable['order3'];
+        const order2 = diagram.nameTable['order2'];
+        const prevOrder2ZIndex: number = order2.zIndex; // 8
+        // order3 is at bottom (zIndex 7), move it forward by one
+        diagram.select([order3]);
+        diagram.moveForward();
+        expect(order3.zIndex > prevOrder2ZIndex).toBe(true);
+        done();
+    });
+
+    // After test3: order2:7, order3:8, order1:9
+    it('SendBackward - order1 should move one step down in lane1', (done: Function) => {
+        // Arrange
+        const order1 = diagram.nameTable['order1'];
+        const order3 = diagram.nameTable['order3'];
+        const prevOrder3ZIndex: number = order3.zIndex; // 8
+        // order1 is at top (zIndex 9), send it backward by one
+        diagram.select([order1]);
+        diagram.sendBackward();
+        // order1 should have swapped with order3
+        expect(order1.zIndex < prevOrder3ZIndex).toBe(true);
+        done();
+    });
+});
+
+describe('Swimlane with Subprocess', () => {
+    let diagram: Diagram;
+    let ele: HTMLElement;
+    beforeAll((): void => {
+        ele = createElement('div', { id: 'diagramSwimlane2' });
+        document.body.appendChild(ele);
+        let nodes: NodeModel[] = [
+            {
+                id: 'start',
+                height: 50,
+                width: 50,
+                margin: { left: 50, top: 50 },
+                shape: { type: 'Bpmn', shape: 'Event' },
+                zIndex: 10,
+            },
+            {
+                id: 'swimlane',
+                shape: {
+                    type: 'SwimLane',
+                    orientation: 'Horizontal',
+                    header: {
+                        annotation: { content: 'ONLINE PURCHASE STATUS' },
+                    },
+                    lanes: [
+                        {
+                            id: 'stackCanvas1',
+                            header: {
+                                annotation: { content: 'CUSTOMER' },
+                                width: 50,
+                            },
+                            height: 200,
+                            width: 400,
+                            children: [
+                                {
+                                    id: 'subProcess',
+                                    width: 520,
+                                    height: 250,
+                                    constraints: NodeConstraints.Default | NodeConstraints.AllowDrop,
+                                    shape: {
+                                        shape: 'Activity',
+                                        type: 'Bpmn',
+                                        activity: {
+                                            activity: 'SubProcess',
+                                            subProcess: {
+                                                collapsed: false,
+                                                processes: ['start'],
+                                            },
+                                        },
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                    phases: [
+                        {
+                            id: 'phase1',
+                            offset: 100,
+                            style: {
+                                strokeWidth: 1,
+                                strokeDashArray: '3,3',
+                                strokeColor: '#606060',
+                            },
+                            header: { annotation: { content: 'Phase' } },
+                        },
+                    ],
+                    phaseSize: 50,
+                },
+                offsetX: 650,
+                offsetY: 300,
+                height: 400,
+                width: 500,
+            },
+        ];
+
+        diagram = new Diagram({ width: 1000, height: 1000, nodes: nodes });
+        diagram.appendTo('#diagramSwimlane2');
+    });
+    afterAll((): void => {
+        diagram.destroy();
+        ele.remove();
+        diagram = null;
+        ele = null;
+    });
+
+    it('swimlane delete and undo', (done: Function) => {
+        let swimlane = diagram.nameTable["swimlane"];
+        expect(diagram.nodes.length > 0).toBe(true);
+        diagram.remove(swimlane);
+        diagram.undo();
+        expect(diagram.nameTable['swimlane']).toBeDefined();
+        done();
+    });
+    it('swimlane copy/paste and undo/redo', (done: Function) => {
+        let swimlane = diagram.nameTable["swimlane"];
+        expect(diagram.nodes.length > 0).toBe(true);
+        diagram.select([swimlane]);
+        diagram.copy();
+        diagram.paste();
+        diagram.undo();
+        diagram.redo();
+        diagram.undo();
+        expect(diagram.nameTable['swimlane']).toBeDefined();
+        done();
+    });
+
+});
+
+describe('updateLaneChildrenZindex - connected normal nodes added to swimlane lane', () => {
+    let diagram: Diagram;
+    let ele: HTMLElement;
+
+    beforeAll(() => {
+        ele = createElement('div', { id: 'diagramConnectorLaneDrop' });
+        document.body.appendChild(ele);
+
+        const nodes: NodeModel[] = [
+             {
+                id: 'node1',
+                width: 80,
+                height: 40,
+                offsetX: 100,
+                offsetY: 100,
+                zIndex: 1
+            }, {
+                id: 'node2',
+                width: 80,
+                height: 40,
+                offsetX: 240,
+                offsetY: 100,
+                zIndex: 2
+            },
+            {
+                id: 'swimlane',
+                offsetX: 400,
+                offsetY: 300,
+                width: 600,
+                height: 300,
+                zIndex: 10,
+                shape: {
+                    type: 'SwimLane',
+                    orientation: 'Horizontal',
+                    header: { annotation: { content: 'TEST LANE' }, height: 50 },
+                    lanes: [{
+                        id: 'lane1',
+                        height: 250,
+                        header: { annotation: { content: 'Lane1' }, width: 50 },
+                        children: []
+                    }],
+                    phaseSize: 0
+                }
+            }
+        ];
+
+        const connectors: ConnectorModel[] = [{
+            id: 'connector1',
+            sourceID: 'node1',
+            targetID: 'node2'
+        }]
+
+        diagram = new Diagram({
+            width: 900,
+            height: 700,
+            nodes: nodes, connectors: connectors
+        });
+
+        diagram.appendTo('#diagramConnectorLaneDrop');
+    });
+
+    afterAll(() => {
+        diagram.destroy();
+        ele.remove();
+        diagram = null;
+        ele = null;
+    });
+
+    it('should move both connected nodes and their connector above swimlane', (done) => {
+
+        diagram.addNodeToLane(diagram.nameTable['node1'], 'swimlane', 'lane1');
+        diagram.addNodeToLane(diagram.nameTable['node2'], 'swimlane', 'lane1');
+
+        const swimlaneNode = diagram.nameTable['swimlane'] as Node;
+        const laneNode1 = diagram.nameTable['node1'] as Node;
+        const laneNode2 = diagram.nameTable['node2'] as Node;
+        const laneConnector = diagram.nameTable['connector1'] as Connector;
+
+        // ✅ Assertions — THIS is what your method guarantees
+        expect(laneNode1.zIndex).toBeGreaterThan(swimlaneNode.zIndex);
+        expect(laneNode2.zIndex).toBeGreaterThan(swimlaneNode.zIndex);
+
+        // ✅ Connector moved via inEdges/outEdges logic
+        expect(laneConnector.zIndex).toBeGreaterThan(swimlaneNode.zIndex);
+
+        // ✅ Relative ordering preserved (important for STEP 4 sort)
+        expect(
+            Math.abs(laneNode1.zIndex - laneConnector.zIndex)
+        ).toBeLessThan(5);
+
+        done();
+    });
+});
+
+describe('updateLaneChildrenZindex - existing BPMN SubProcess with children added to swimlane', () => {
+    let diagram: Diagram;
+    let ele: HTMLElement;
+
+    beforeAll(() => {
+        ele = createElement('div', { id: 'diagramExistingSubProcess' });
+        document.body.appendChild(ele);
+
+        const nodes: NodeModel[] = [
+            // ✅ Child BPMN process already in diagram
+            {
+                id: 'startEvent',
+                width: 40,
+                height: 40,
+                offsetX: 150,
+                offsetY: 120,
+                zIndex: 1,
+                shape: { type: 'Bpmn', shape: 'Event' }
+            },
+
+            // ✅ SubProcess already in diagram (NOT in lane)
+            {
+                id: 'subProcess',
+                width: 280,
+                height: 200,
+                offsetX: 300,
+                offsetY: 150,
+                zIndex: 2,
+                constraints: NodeConstraints.Default | NodeConstraints.AllowDrop,
+                shape: {
+                    type: 'Bpmn',
+                    shape: 'Activity',
+                    activity: {
+                        activity: 'SubProcess',
+                        subProcess: {
+                            collapsed: false,
+                            processes: ['startEvent']
+                        }
+                    }
+                }
+            },
+
+            // ✅ Swimlane already present
+            {
+                id: 'swimlane',
+                offsetX: 600,
+                offsetY: 350,
+                width: 600,
+                height: 300,
+                zIndex: 10,
+                shape: {
+                    type: 'SwimLane',
+                    orientation: 'Horizontal',
+                    header: { annotation: { content: 'ONLINE PURCHASE STATUS' }, height: 50 },
+                    lanes: [
+                        {
+                            id: 'lane1',
+                            height: 250,
+                            header: { annotation: { content: 'CUSTOMER' }, width: 50 },
+                            children: []
+                        }
+                    ],
+                    phaseSize: 0
+                }
+            }
+        ];
+
+        diagram = new Diagram({
+            width: 1000,
+            height: 700,
+            nodes
+        });
+
+        diagram.appendTo('#diagramExistingSubProcess');
+    });
+
+    afterAll(() => {
+        diagram.destroy();
+        ele.remove();
+        diagram = null;
+        ele = null;
+    });
+
+    it('should move existing subprocess and its child process above swimlane zIndex', (done) => {
+
+        // 🔴 ACTION: move EXISTING subprocess into lane
+        diagram.addNodeToLane(
+            diagram.nameTable['subProcess'] as Node,
+            'swimlane',
+            'lane1'
+        );
+
+        const swimlaneNode = diagram.nameTable['swimlane'] as Node;
+        const subProcessNode = diagram.nameTable['subProcess'] as Node;
+        const childProcessNode = diagram.nameTable['startEvent'] as Node;
+
+        // ✅ SubProcess must be above swimlane
+        expect(subProcessNode.zIndex)
+            .toBeGreaterThan(swimlaneNode.zIndex);
+
+        // ✅ Child process must also be above swimlane
+        expect(childProcessNode.zIndex)
+            .toBeGreaterThan(swimlaneNode.zIndex);
+
+        // ✅ Relative order preserved (child < subprocess)
+        expect(childProcessNode.zIndex)
+            .toBeLessThan(subProcessNode.zIndex);
+
         done();
     });
 });

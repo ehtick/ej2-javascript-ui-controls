@@ -1,7 +1,5 @@
-@use 'ej2-base/styles/definition/tailwind-dark' as *;
-@use 'ej2-buttons/styles/button/tailwind-dark-definition' as *;
-@forward 'ej2-base/styles/definition/tailwind-dark';
-@forward 'ej2-buttons/styles/button/tailwind-dark-definition';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $cpicker-split-btn-padding: 4px 8px !default;
 $cpicker-bigger-split-btn-padding: 6px 12px !default;
 $cpicker-split-line-height: 14px !default;

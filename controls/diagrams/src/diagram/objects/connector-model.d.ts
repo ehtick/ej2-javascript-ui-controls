@@ -1,4 +1,4 @@
-import { HyperlinkModel } from './annotation-model';import { Property, Complex, Collection, ChildProperty, ComplexFactory, CollectionFactory, isBlazor, compile as baseTemplateCompiler } from '@syncfusion/ej2-base';import { Margin, ShapeStyle, StrokeStyle } from '../core/appearance';import { StrokeStyleModel, ShapeStyleModel } from '../core/appearance-model';import { Point } from '../primitives/point';import { TextElement } from '../core/elements/text-element';import { PointModel } from '../primitives/point-model';import { Segments, DecoratorShapes, Transform, ConnectorConstraints, ControlPointsVisibility, BezierSegmentEditOrientation, Orientation, SegmentThumbShapes, PortVisibility, ElementAction, AnnotationConstraints, ParentType } from '../enum/enum';import { Direction, LayoutOrientation, Status, PortConstraints, BezierSmoothness } from '../enum/enum';import { Rect } from '../primitives/rect';import { Size } from '../primitives/size';import { getAnnotationPosition, alignLabelOnSegments, updateConnector, checkPortRestriction, updatePortEdges, getPortsPosition, getPathOffset } from '../utility/diagram-util';import { setUMLActivityDefaults, initFixedUserHandlesSymbol } from '../utility/diagram-util';import { findDistance, findPath, updatePathElement, setConnectorDefaults } from '../utility/diagram-util';import { randomId, getFunction } from './../utility/base-util';import { flipConnector } from './../utility/diagram-util';import { PathElement } from '../core/elements/path-element';import { PathAnnotation } from './annotation';import { Canvas } from '../core/containers/canvas';import { getDecoratorShape, getPortShape } from './dictionary/common';import { IElement } from './interface/IElement';import { GroupableView } from '../core/containers/container';import { DiagramElement } from '../core/elements/diagram-element';import { HorizontalAlignment, VerticalAlignment, AssociationFlow, ClassifierShape, Multiplicity, DiagramAction } from '../enum/enum';import { ConnectionShapes, UmlActivityFlows, BpmnFlows, BpmnMessageFlows, BpmnSequenceFlows, BpmnAssociationFlows } from '../enum/enum';import { SegmentInfo, Alignment, IReactDiagram } from '../rendering/canvas-interface';import { PathAnnotationModel } from './annotation-model';import { NodeBase } from './node-base';import { DiagramTooltipModel } from './tooltip-model';import { DiagramTooltip } from './tooltip';import { Matrix, identityMatrix, rotateMatrix, scaleMatrix, transformPointsByMatrix, transformPointByMatrix } from '../primitives/matrix';import { DiagramHtmlElement } from '../core/elements/html-element';import { getTemplateContent, getContent } from '../utility/dom-util';import { SymbolSizeModel } from './preview-model';import { SymbolSize } from './preview';import { ConnectorFixedUserHandle } from './fixed-user-handle';import { ConnectorFixedUserHandleModel } from './fixed-user-handle-model';import { ResizeTool } from '../interaction/tool';import { PathPort, Port } from './port';import { PathPortModel } from './port-model';
+import { HyperlinkModel } from './annotation-model';import { Property, Complex, Collection, ChildProperty, ComplexFactory, CollectionFactory, isBlazor, compile as baseTemplateCompiler } from '@syncfusion/ej2-base';import { Margin, ShapeStyle, StrokeStyle } from '../core/appearance';import { StrokeStyleModel, ShapeStyleModel } from '../core/appearance-model';import { Point } from '../primitives/point';import { TextElement } from '../core/elements/text-element';import { PointModel } from '../primitives/point-model';import { Segments, DecoratorShapes, Transform, ConnectorConstraints, ControlPointsVisibility, BezierSegmentEditOrientation, Orientation, SegmentThumbShapes, PortVisibility, ElementAction, AnnotationConstraints, ParentType } from '../enum/enum';import { Direction, LayoutOrientation, Status, PortConstraints, BezierSmoothness } from '../enum/enum';import { Rect } from '../primitives/rect';import { Size } from '../primitives/size';import { getAnnotationPosition, alignLabelOnSegments, updateConnector, checkPortRestriction, updatePortEdges, getPortsPosition, getPathOffset } from '../utility/diagram-util';import { setUMLActivityDefaults, initFixedUserHandlesSymbol } from '../utility/diagram-util';import { findDistance, findPath, updatePathElement, setConnectorDefaults } from '../utility/diagram-util';import { randomId, getFunction } from './../utility/base-util';import { flipConnector } from './../utility/diagram-util';import { PathElement } from '../core/elements/path-element';import { PathAnnotation } from './annotation';import { Canvas } from '../core/containers/canvas';import { getDecoratorShape, getPortShape } from './dictionary/common';import { IElement } from './interface/IElement';import { GroupableView } from '../core/containers/container';import { DiagramElement } from '../core/elements/diagram-element';import { HorizontalAlignment, VerticalAlignment, AssociationFlow, ClassifierShape, Multiplicity, DiagramAction } from '../enum/enum';import { ConnectionShapes, UmlActivityFlows, BpmnFlows, BpmnMessageFlows, BpmnSequenceFlows, BpmnAssociationFlows } from '../enum/enum';import { SegmentInfo, Alignment, IReactDiagram } from '../rendering/canvas-interface';import { PathAnnotationModel } from './annotation-model';import { NodeBase } from './node-base';import { DiagramTooltipModel } from './tooltip-model';import { DiagramTooltip } from './tooltip';import { Matrix, identityMatrix, rotateMatrix, scaleMatrix, transformPointsByMatrix, transformPointByMatrix } from '../primitives/matrix';import { DiagramHtmlElement } from '../core/elements/html-element';import { getTemplateContent, getContent } from '../utility/dom-util';import { SymbolSizeModel } from './preview-model';import { SymbolSize } from './preview';import { ConnectorFixedUserHandle } from './fixed-user-handle';import { ConnectorFixedUserHandleModel } from './fixed-user-handle-model';import { ResizeTool } from '../interaction/tool';import { PathPort, Port } from './port';import { PathPortModel } from './port-model';import { ErMultiplicity, ErRelationshipTypes } from './er-objects';import { ErMultiplicityModel } from './er-objects-model';
 import {NodeBaseModel} from "./node-base-model";
 
 /**
@@ -560,6 +560,54 @@ export interface RelationShipModel extends ConnectorShapeModel{
 }
 
 /**
+ * Interface for a class ErConnectorShape
+ */
+export interface ErConnectorShapeModel extends ConnectorShapeModel{
+
+    /**
+     * Defines the connector shape type.
+     *
+     * @default 'Er'
+     */
+    type?: ConnectionShapes;
+
+    /**
+     * Defines whether the relationship is identifying or non-identifying.
+     *
+     * Identifying relationships are typically rendered as solid lines.
+     * Non-identifying relationships are typically rendered as dashed lines.
+     *
+     * @default 'NonIdentifying'
+     */
+    relationship?: ErRelationshipTypes;
+
+    /**
+     * Defines the Crow's Foot multiplicity rendered at the source end of the ER
+     * connector.
+     *
+     * This property uses an object model to support future extensibility, such
+     * as end-specific styling, visibility, sizing, labels, or metadata, without
+     * changing the public connector shape contract.
+     *
+     * @default { type: 'One' }
+     */
+    sourceMultiplicity?: ErMultiplicityModel;
+
+    /**
+     * Defines the Crow's Foot multiplicity rendered at the target end of the ER
+     * connector.
+     *
+     * This property uses an object model to support future extensibility, such
+     * as end-specific styling, visibility, sizing, labels, or metadata, without
+     * changing the public connector shape contract.
+     *
+     * @default { type: 'One' }
+     */
+    targetMultiplicity?: ErMultiplicityModel;
+
+}
+
+/**
  * Interface for a class DiagramConnectorShape
  */
 export interface DiagramConnectorShapeModel {
@@ -684,7 +732,7 @@ export interface ConnectorModel extends NodeBaseModel{
      * @default 'Bpmn'
      * @aspType object
      */
-    shape?: ConnectorShapeModel | BpmnFlowModel | RelationShipModel | DiagramConnectorShapeModel;
+    shape?: ConnectorShapeModel | BpmnFlowModel | RelationShipModel | DiagramConnectorShapeModel | ErConnectorShapeModel;
 
     /**
      * Defines the constraints of connector

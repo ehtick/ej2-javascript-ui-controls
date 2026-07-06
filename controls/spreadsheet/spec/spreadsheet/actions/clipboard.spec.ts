@@ -444,6 +444,43 @@ describe('Clipboard ->', () => {
         });
     });
 
+    describe('87107 -> Copy/paste data with chart between sheets', () => {
+        beforeAll((done: Function) => {
+            helper.initializeSpreadsheet({
+                sheets: [{
+                    ranges: [{ dataSource: defaultData }],
+                    rows: [{ index: 2, cells: [{ index: 3, chart: [{ type: 'Column', range: 'C4D6' }] }] },
+                    { index: 6, cells: [{ index: 1, image: [{ src: 'https://www.w3schools.com/images/w3schools_green.jpg', height: 300, width: 400, top: 120, left: 64 }] }] }]
+                }, {}]
+            }, done);
+        });
+        afterAll(() => {
+            helper.invoke('destroy');
+        });
+        it('T87107 - Data with chart copy one sheet and pasted into another sheet, the chart also pasted incorrectly', (done: Function) => {
+            const spreadsheet: Spreadsheet = helper.getInstance();
+            helper.invoke('copy', ['A1:Z20']).then(() => {
+                helper.invoke('goTo', ['Sheet2!A1']);
+                setTimeout(() => {
+                    helper.invoke('paste', ['Sheet2!A1']);
+                    expect(spreadsheet.sheets[1].rows[2].cells[3].chart).toBeUndefined();
+                    expect(spreadsheet.sheets[1].rows[6].cells[1].image).toBeUndefined();
+                    expect(helper.getElement().querySelector('.e-datavisualization-chart')).toBeNull();
+                    expect(helper.getElement().querySelector('.e-ss-overlay')).toBeNull();
+                    done();
+                });
+            });
+        });
+        it('T85370 - Dis-Continuous range Pie chart single series', (done: Function) => {
+            helper.invoke('insertChart', [[{ type: 'Pie', range: 'Sheet2!D1:E5' }]]);
+            expect(helper.getInstance().spreadsheetChartModule.chart.series.length).toBe(1);
+            helper.switchRibbonTab(7);
+            helper.getElement('#' + helper.id + 'switch_row_column_chart').click();
+            expect(helper.getInstance().spreadsheetChartModule.chart.series.length).toBe(1);
+            done();
+        });
+    });
+    
     describe('Apply copy Freeze Pane applied cells', () => {
         beforeAll((done: Function) => {
             helper.initializeSpreadsheet({ sheets: [{ ranges: [{ dataSource: defaultData }], frozenRows: 3, frozenColumns: 3, selectedRange: 'C3' }] }, done);

@@ -2,12 +2,14 @@ import { VisioTextAlignmentModel, VisioTextDecorationModel } from './visio-annot
 import { VisioConnector, VisioDecoratorModel } from './visio-connectors';
 import { LINE_PATTERN_MAP, TransformKey, VALID_TYPES } from './visio-constants';
 import { getDecoratorShape, inchToPoint, inchToPx, isObject } from './visio-core';
-import { ParsingContext } from './visio-import-export';
+import { ParsingContext, VisioStyle } from './visio-import-export';
 import { VisioTheme } from './visio-models';
 import { getTextAlign, getTextDecoration } from './visio-nodes';
-import { ConnectorInput, ConnectorResolvedStyle, ConnectorStrokeList, FlatTransform, FormattedColors, ParsedXmlObject, ResolvedAnnotationStyle, VisioColorTransform, VarientStyle, VisioNode, ColorEntry, FaceNameEntry, SchemeColor, GradientStop, SolidFillValue } from './visio-types';
+import { ConnectorInput, ConnectorResolvedStyle, ConnectorStrokeList, FlatTransform, FormattedColors, ParsedXmlObject, ResolvedAnnotationStyle, VisioColorTransform, VarientStyle, VisioNode, ColorEntry, FaceNameEntry, VisioRootDocument, GradientStop, SolidFillValue, SchemeColor } from './visio-types';
 import { ensureArray } from './visio-core';
 import { VisioStyleModel } from './visio-connectors';
+import { isThemeApplied } from './visio-model-parsers';
+import { getCellElement } from './visio-node-parser';
 import { GradientType } from '../../enum/enum';
 
 // ==================== Configuration ====================
@@ -330,15 +332,31 @@ export function getNodeStyle(node: NodeInput, context: ParsingContext, isGroup: 
         };
     }
 
+    // ==================== Check if Active Theme is Applied ====================
+    // Determines if the current theme should be used for styling
+    const activeTheme: ActiveThemeResult = isActiveThemeApplied((node as VisioNode), context) || { isThemeApplied: false };
+
     // ==================== Initialize Style Properties ====================
-    // For groups, use transparent defaults; for regular shapes, use node values
-    let fill: string | undefined = isGroup ? 'transparent' : node.style.fillColor;
-    let strokeColor: string | undefined = isGroup ? 'transparent' : node.style.strokeColor;
-    let strokeDashArray: string | undefined = isGroup ? '' : node.style.strokeDashArray;
-    let strokeWidth: number | undefined = isGroup ? 0 : node.style.strokeWidth;
+    let fill: string | undefined;
+    let strokeColor: string | undefined;
+    let strokeDashArray: string | undefined;
+    let strokeWidth: number | undefined;
+    if (isGroup && !isThemeApplied(context)) {
+        fill = node.style.fillColor ? node.style.fillColor : 'transparent';
+        strokeColor = node.style.strokeColor ? node.style.strokeColor : 'transparent';
+        strokeDashArray = node.style.strokeDashArray ? node.style.strokeDashArray : '';
+        strokeWidth = node.style.strokeWidth ? node.style.strokeWidth : 0;
+
+    } else {
+        fill = isGroup ? 'transparent' : node.style.fillColor;
+        strokeColor = isGroup ? 'transparent' : node.style.strokeColor;
+        strokeDashArray = isGroup ? '' : node.style.strokeDashArray;
+        strokeWidth = isGroup ? 0 : node.style.strokeWidth;
+    }
     let isGradientAccent: boolean = false;
     let gradient: ResolvedGradientStyle | undefined;
-
+    const lineElement: Element = getCellElement(node.visioParentStyles as VisioStyle, node, context, 'LinePattern');
+    const lineValue: string = lineElement && lineElement.getAttribute('V');
     // ==================== Apply Fill Pattern Logic ====================
     // FillPattern = 0 => No fill (transparent)
     // FillPattern = 1 => Solid fill
@@ -346,10 +364,6 @@ export function getNodeStyle(node: NodeInput, context: ParsingContext, isGroup: 
     if (fillPattern === 0) {
         fill = 'transparent';
     }
-
-    // ==================== Check if Active Theme is Applied ====================
-    // Determines if the current theme should be used for styling
-    const activeTheme: ActiveThemeResult = isActiveThemeApplied((node as VisioNode), context) || { isThemeApplied: false };
 
     // ==================== Resolve Fill Color or Gradient ====================
     if (!fill) {
@@ -362,19 +376,15 @@ export function getNodeStyle(node: NodeInput, context: ParsingContext, isGroup: 
                 // Handle gradient fill
                 if (themeElement.name === 'a:gradFill') {
                     const findGradient: VisioLinearGradient = convertVisioGradientToEJ2(themeElement);
-                    if (findGradient) {
-                        gradient = resolveGradientAccent(findGradient, activeTheme.theme, activeTheme.fillIdxColor);
-                        isGradientAccent = true;
-                    }
+                    gradient = resolveGradientAccent(findGradient, activeTheme.theme, activeTheme.fillIdxColor);
+                    isGradientAccent = true;
                 } else {
                     // Handle solid fill or pattern fill
                     const fillColorElement: AccentColorDefinition = (themeElement.name === 'a:pattFill')
                         ? (themeElement.value as PatternFillValue)['a:bgClr'] as AccentColorDefinition
                         : themeElement;
                     const colorModifiers: ColorInfo = extractColorWithModifiers(fillColorElement as SolidFillValue);
-                    if (colorModifiers) {
-                        fill = resolveAccentColor(colorModifiers, activeTheme.theme, activeTheme.fillIdxColor);
-                    }
+                    fill = resolveAccentColor(colorModifiers, activeTheme.theme, activeTheme.fillIdxColor);
                 }
             }
         } else {
@@ -384,7 +394,7 @@ export function getNodeStyle(node: NodeInput, context: ParsingContext, isGroup: 
     }
 
     // ==================== Resolve Stroke Color ====================
-    if (!strokeColor) {
+    if (!strokeColor || !strokeWidth) {
         if (activeTheme.isThemeApplied) {
             const range: number = activeTheme.range;
             // Get stroke type from theme (line style)
@@ -393,24 +403,18 @@ export function getNodeStyle(node: NodeInput, context: ParsingContext, isGroup: 
             if (strokeElement && strokeElement.value) {
                 const strokeValue: any = strokeElement.value;
 
-                if (strokeValue && strokeValue['$'] && strokeValue['$'].w) {
-                    const strokeInInches: number = emuToInches(Number(strokeValue.$.w));
-                    strokeWidth = (strokeWidth !== undefined) ? strokeWidth : strokeInInches;
+                const strokeInInches: number = emuToInches(Number(strokeValue.$.w));
+                strokeWidth = (strokeWidth !== undefined) ? strokeWidth : strokeInInches;
+                if (lineElement && lineValue && lineValue === '0') {
+                    strokeWidth = 0;
                 }
-
-                if (strokeValue && strokeValue['a:prstDash'] && strokeValue['a:prstDash']['$']) {
-                    const prstDash: string = strokeValue['a:prstDash'].$.val;
-                    if (prstDash) {
-                        const themeDashArray: StrokeDashArrayValue = mapPrstDashToStrokeDashArray(prstDash, strokeWidth || 0);
-                        strokeDashArray = (strokeDashArray !== undefined) ? strokeDashArray : themeDashArray;
-                    }
-                }
+                const prstDash: string = strokeValue['a:prstDash'].$.val;
+                const themeDashArray: StrokeDashArrayValue = mapPrstDashToStrokeDashArray(prstDash, strokeWidth || 0);
+                strokeDashArray = (strokeDashArray !== undefined) ? strokeDashArray : themeDashArray;
 
                 if (strokeValue && strokeValue['a:solidFill'] && !strokeColor) {
                     const solidFillData: ColorInfo = extractColorWithModifiers(strokeValue['a:solidFill']);
-                    if (solidFillData) {
-                        strokeColor = resolveAccentColor(solidFillData, activeTheme.theme, activeTheme.fillIdxColor);
-                    }
+                    strokeColor = resolveAccentColor(solidFillData, activeTheme.theme, activeTheme.fillIdxColor);
                 }
             }
         } else {
@@ -427,7 +431,15 @@ export function getNodeStyle(node: NodeInput, context: ParsingContext, isGroup: 
                 strokeDashArray = '';
             } else {
                 // Fallback to default only when stroke is clearly intended
-                strokeColor = defaultStroke;
+                if (!strokeColor) {
+                    strokeColor = defaultStroke;
+                }
+                if (lineElement && lineValue) {
+                    strokeWidth = 0.01041; //default strokeWidth of textNode in no theme
+                }
+                else {
+                    strokeWidth = 0.00333; //default strokeWidth of node in no theme
+                }
             }
         }
     }
@@ -820,7 +832,7 @@ function getType(VisioTheme: VisioTheme, range: number): AccentColorDefinition {
     const rangeIndex: number = toZeroBasedIndex(range);
 
     // ==================== Access Fill Style ====================
-    const cacheKey: string = `fill_${range}_${rangeIndex}`;
+    const cacheKey: string = `fill_${VisioTheme.schemeEnum}_${range}_${rangeIndex}`;
     return getCachedThemeValue(cacheKey, () => {
         const accent: AccentColorDefinition = VisioTheme.fmtSchemeFill[parseInt(rangeIndex.toString(), 10)] as AccentColorDefinition;
         return accent;
@@ -848,7 +860,7 @@ function getStrokeType(VisioTheme: VisioTheme, range: number): AccentColorDefini
     const rangeIndex: number = toZeroBasedIndex(range);
 
     // ==================== Access Stroke Style ====================
-    const cacheKey: string = `stroke_${range}_${rangeIndex}`;
+    const cacheKey: string = `stroke_${VisioTheme.schemeEnum}_${range}_${rangeIndex}`;
     return getCachedThemeValue(cacheKey, () => {
         const accent: AccentColorDefinition = VisioTheme.fmtSchemeStroke[parseInt(rangeIndex.toString(), 10)] as AccentColorDefinition;
         return accent;
@@ -996,17 +1008,13 @@ export function applyThemeStyles(connector: ConnectorInput | VisioConnector | Vi
         // ==================== Check if LineElement is valid ====================
         if (LineElement && LineElement['$']) {
             // ==================== Extract Width and Convert ====================
-            if (LineElement['$'].w) {
-                const widthInInches: number = emuToInches(Number(LineElement.$.w));
-                strokeWidth = strokeWidth !== undefined ? strokeWidth : widthInInches;
-            }
+            const widthInInches: number = emuToInches(Number(LineElement.$.w));
+            strokeWidth = strokeWidth !== undefined ? strokeWidth : widthInInches;
 
             // ==================== Extract Stroke Color ====================
             if (LineElement['a:solidFill'] && !strokeColor) {
                 const findFill: ColorInfo = extractColorWithModifiers(LineElement['a:solidFill']);
-                if (findFill) {
-                    strokeColor = resolveAccentColor(findFill, activeTheme.theme, activeTheme.fillIdxColor);
-                }
+                strokeColor = resolveAccentColor(findFill, activeTheme.theme, activeTheme.fillIdxColor);
             }
         }
 
@@ -1040,16 +1048,10 @@ export function applyThemeStyles(connector: ConnectorInput | VisioConnector | Vi
                 const rounding: string = parseAttr('rndg') as string | undefined;
 
                 // Map numeric codes to decorator shape strings
-                if (start !== undefined) {
-                    sourceDecorator = getDecoratorShape(Number(start));
-                }
-                if (end !== undefined) {
-                    targetDecorator = getDecoratorShape(Number(end));
-                }
+                sourceDecorator = getDecoratorShape(Number(start));
+                targetDecorator = getDecoratorShape(Number(end));
                 // ==================== Extract Dash Pattern ====================
-                if (pattern !== undefined) {
-                    strokeDashArray = strokeDashArray !== undefined ? strokeDashArray : VisioStyleModel.convertDashPattern(pattern);
-                }
+                strokeDashArray = strokeDashArray !== undefined ? strokeDashArray : VisioStyleModel.convertDashPattern(pattern);
                 // ==================== Extract Source Decorator Size ====================
                 if (startSize !== undefined && (connector as VisioDecoratorModel).arrowDimension === undefined) {
                     sourceDecoratorSize = startSize;
@@ -1059,10 +1061,8 @@ export function applyThemeStyles(connector: ConnectorInput | VisioConnector | Vi
                     targetDecoratorSize = endSize;
                 }
                 // ==================== Extract Connector Corner Radius ====================
-                if (rounding !== undefined) {
-                    cornerRadius = (connector as VisioConnector).cornerRadius !== undefined ? (connector as VisioConnector).cornerRadius
-                        : emuToInches(Number(rounding));
-                }
+                cornerRadius = (connector as VisioConnector).cornerRadius !== undefined ? (connector as VisioConnector).cornerRadius
+                    : emuToInches(Number(rounding));
             }
         }
     }
@@ -1208,7 +1208,7 @@ export function normalizeRange(range: number): number {
  * @private
  */
 export interface IVisioPropertiesManager {
-    initialize(rootElement: ParsedXmlObject): void;
+    initialize(rootElement: VisioRootDocument): void;
     getColor(index: string | number): string;
     dispose(): void;
 }
@@ -1282,12 +1282,12 @@ export class VisioPropertiesManager implements IVisioPropertiesManager {
      * Loads the properties of the document from the XML root element.
      * Parses both color and font entries from the Visio document structure.
      *
-     * @param {ParsedXmlObject} rootElement The parsed XML element of the Visio document
+     * @param {VisioRootDocument} rootElement The parsed XML element of the Visio document
      * @returns {void}
      *
      * @private
      */
-    public initialize(rootElement: ParsedXmlObject): void {
+    public initialize(rootElement: VisioRootDocument): void {
         if (!rootElement) {
             return;
         }
@@ -1452,17 +1452,11 @@ export function setAnnotationStyle(node: any, context: ParsingContext): Resolved
             const range: number = normalizeRange(activeTheme.range);
             const fontEntry: FontSchemeEntry = getFontType(activeTheme.currentTheme, range);
 
-            if (fontEntry && fontEntry['vt:color']) {
-                const colorNode: ThemeColorElement = fontEntry['vt:color'];
-                const colorModifiers: ColorInfo = extractColorWithModifiers(colorNode);
-                if (colorModifiers) {
-                    const themeColor: string = resolveAccentColor(colorModifiers, activeTheme.theme, activeTheme.fillIdxColor);
-                    if (typeof themeColor === 'string' && themeColor !== '' && isValidColor(themeColor)) {
-                        resolvedColor = themeColor;
-                        themeColorApplied = true;
-                    }
-                }
-            }
+            const colorNode: ThemeColorElement = fontEntry['vt:color'];
+            const colorModifiers: ColorInfo = extractColorWithModifiers(colorNode);
+            const themeColor: string = resolveAccentColor(colorModifiers, activeTheme.theme, activeTheme.fillIdxColor);
+            resolvedColor = themeColor;
+            themeColorApplied = true;
 
             // ==================== Extract Bold from Font Style ====================
             if (fontEntry && fontEntry['$']) {
@@ -1691,8 +1685,7 @@ function applyOfficeColorModifiers(gradStopArray: VisioLinearGradient,
             // ==================== Resolve Base Color ====================
             const baseHex: string =
                 colorType === 'srgb'
-                    ? ensureHash(s.color) : (s.color === 'phClr') ? ensureHash(baseColor)
-                        : resolveSchemeColor(s.color, theme[0].fontColor);
+                    ? ensureHash(s.color) : ensureHash(baseColor);
 
             // ==================== Apply Color Transforms ====================
             const color: string = applyTransformsOOXML(baseHex, s.modifiers as VisioColorTransform);
@@ -2031,36 +2024,6 @@ function clampToUnit(x: number): number {
 }
 
 /**
- * Resolves a scheme color name to a hex value from the theme palette.
- *
- * Handles both direct hex values and theme color names like 'lt1', 'dk1', 'accent1', etc.
- *
- * @param {string} name - The color name or hex value.
- * @param {FormattedColors} palette - Theme color palette for scheme color lookup.
- * @returns {string} Hex color (with '#'), or black if not resolved.
- *
- * @private
- */
-function resolveSchemeColor(name: string, palette: FormattedColors): string {
-    // ==================== Validate Input ====================
-    if (!name || typeof name !== 'string') {
-        return '#000000';
-    }
-
-    // ==================== Check if Direct Hex ====================
-    if (/^#?[0-9A-Fa-f]{6}$/.test(name)) {
-        return name.startsWith('#') ? name.toUpperCase() : ('#' + name).toUpperCase();
-    }
-
-    // ==================== Look Up in Theme Palette ====================
-    if (palette && palette[`${name}`]) {
-        return palette[`${name}`].toUpperCase();
-    }
-
-    return '#000000';
-}
-
-/**
  * Extracts gradient angle from OOXML linear gradient element.
  *
  * OOXML stores angles in 60000ths of degrees (0-21600000 for 0-360 degrees).
@@ -2107,9 +2070,7 @@ function extractGradientStops(gsLst: ThemeGradientStopList): ProcessedGradientSt
     // }
 
     // ==================== Normalize to Array ====================
-    const gsArray: FillColorElement[] = Array.isArray(gsLst['a:gs'])
-        ? gsLst['a:gs']
-        : [gsLst['a:gs']];
+    const gsArray: FillColorElement[] = gsLst['a:gs'];
 
     // ==================== Process Each Stop ====================
     return gsArray.map((gs: FillColorElement) => {
@@ -2336,7 +2297,7 @@ export function extractColorWithModifiers(solidFill: SolidFillValue | ThemeColor
  *
  * @interface NodeInput
  */
-interface NodeInput extends VisioNode {
+export interface NodeInput extends VisioNode {
     /** Node styling properties */
     style: NodeStyle;
     /** Theme index (0 = no theme) */

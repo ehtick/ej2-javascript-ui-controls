@@ -1,5 +1,3 @@
-[![coverage](http://ej2.syncfusion.com/badges/ej2-heatmap/coverage.svg)](http://ej2.syncfusion.com/badges/ej2-heatmap)
-
 # JavaScript HeatMap Control
 
 The [JavaScript HeatMap](https://www.syncfusion.com/javascript-ui-controls/js-heatmap-chart?utm_source=npm&utm_medium=listing&utm_campaign=javascript-heatmap-npm) control is a graphical representation of two-dimensional data where the values are represented with gradient or solid color variations. The data points are rendered as HeatMap cells using Scalable Vector Graphics (SVG) or canvas UI rendering.
@@ -85,4 +83,4 @@ Check the changelog [here](https://github.com/syncfusion/ej2-javascript-ui-contr
 
 See [LICENSE FILE](https://github.com/syncfusion/ej2/blob/master/license?utm_source=npm&utm_campaign=javascript-heatmap-npm) for more info.
 
-&copy; Copyright 2025 Syncfusion<sup>®</sup>, Inc. All Rights Reserved. The Syncfusion<sup>®</sup> Essential Studio license and copyright applies to this distribution.
+&copy; Copyright 2025 Syncfusion<sup>®</sup>, Inc. All Rights Reserved. The Syncfusion<sup>®</sup> Essential Studio license and copyright applies to this distribution. 

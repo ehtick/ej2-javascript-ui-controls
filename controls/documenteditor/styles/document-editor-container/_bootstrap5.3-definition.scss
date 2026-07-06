@@ -1,6 +1,6 @@
-@use 'ej2-base/styles/definition/bootstrap5.3' as *;
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 @use '../document-editor/bootstrap5.3-definition' as *;
-@forward 'ej2-base/styles/definition/bootstrap5.3';
+
 @forward '../document-editor/bootstrap5.3-definition';
 $de-ctnr-height: calc(100%) !default;
 $de-ctnr-tlbr-height: 72px !default;
@@ -182,8 +182,8 @@ $de-ribbon-classic-editor-height-big: calc(100% - 209px) !default;
 $de-ctnr-layout-margin-bottom: 2px;
 $de-ctnr-picture-margin-bottom: 0;
 
-$de-ribbon-simplified-ctnr-collapsed-editor-height: calc(100% - 44px) !default;
-$de-ribbon-classic-collapsed-editor-height: calc(100% - 53px) !default;
+$de-ribbon-simplified-ctnr-collapsed-editor-height: calc(100% - 75px) !default;
+$de-ribbon-classic-collapsed-editor-height: calc(100% - 75px) !default;
 
 // layout.scss
 $de-toolbar-line-height: 0;

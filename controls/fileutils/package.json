@@ -5,7 +5,7 @@
 	"author": "Syncfusion Inc.",
 	"license": "SEE LICENSE IN license",
 	"devDependencies": {
-		"@syncfusion/ej2-staging": "^1.0.2",
+		"@syncfusion/ej2-staging": "^1.0.14",
 		"@types/chai": "^3.4.28",
 		"@types/jasmine": "2.8.9",
 		"@types/jasmine-ajax": "^3.1.27",
@@ -31,7 +31,7 @@
 	},
 	"main": "./dist/ej2-file-utils.umd.min.js",
 	"module": "./index.js",
-	"es2015": "./dist/es6/ej2-file-utils.es2015.js",
+	"es2015": "./dist/es6/ej2-file-utils.es5.js",
 	"scripts": {
 		"build": "gulp build",
 		"test": "gulp test"

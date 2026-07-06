@@ -1,3 +1,4 @@
-@use 'ej2-icons/styles/highcontrast' as *;
-@forward 'highcontrast-light-definition';
-@use 'all.highcontrast-light' as *;
+@use '@syncfusion/ej2-icons/styles/highcontrast.scss' as *;
+@use 'highcontrast-light-definition' as *;
+@use './common/all' as *;
+@use './animation/all' as *;

@@ -218,7 +218,13 @@ export type LayoutOrientation =
      */
     'Horizontal' |
     /**
+     * Vertical - Renders only the mindmap layout from top to bottom
+     */
+    'Vertical' |
+    /**
      * vertical - Renders only the mindmap layout from top to bottom
+     *
+     * @deprecated The `'vertical'` value is replcaed by the enum `'Vertical'` value, The `'Vertical'` property will be removed in a future release.
      */
     'vertical';
 
@@ -1371,6 +1377,11 @@ export type GradientType =
  * Bpmn - Sets the type of the node as Bpmn
  * Native - Sets the type of the node as Native
  * HTML - Sets the type of the node as HTML
+ * UMLActivity - Sets the type of the node as UMLActivity
+ * UMLClassifier - Sets the type of the node as UMLClassifier
+ * SwimLane - Sets the type of the node as SwimLane
+ * Container - Sets the type of the node as Container
+ * Er - Sets the node shape as an Entity Relationship entity shape
  */
 export type Shapes =
     /** Basic - Sets the type of the node as Basic */
@@ -1396,7 +1407,9 @@ export type Shapes =
     /** SwimLane - Sets the type of the node as SwimLane */
     'SwimLane' |
     /** Container - Sets the type of the node as Container */
-    'Container';
+    'Container' |
+    /** Er - Sets the node shape as an Entity Relationship entity shape */
+    'Er';
 /**
  * None - Scale value will be set as None for the image
  * Meet - Scale value Meet will be set for the image
@@ -1880,6 +1893,9 @@ export type BpmnBoundary =
 /**
  * Defines the connection shapes
  * Bpmn - Sets the type of the connection shape as Bpmn
+ * UMLActivity - Sets the type of the connection shape as UMLActivity
+ * UMLClassifier - Sets the type of the connection shape as UMLClassifier
+ * Er - Sets the type of the connection shape as an Entity Relationship connector
  */
 export type ConnectionShapes =
     /** None - Sets the type of the connection shape as None */
@@ -1889,7 +1905,9 @@ export type ConnectionShapes =
     /** UMLActivity - Sets the type of the connection shape as UMLActivity */
     'UmlActivity' |
     /** UMLClassifier - Sets the type of the connection shape as UMLClassifier */
-    'UmlClassifier';
+    'UmlClassifier' |
+    /** Er - Sets the type of the connection shape as an Entity Relationship connector */
+    'Er';
 
 /**
  * Defines the type of the Bpmn flows
@@ -2162,7 +2180,11 @@ export type EntryType =
     /** RemoveChildFromGroupNode - Sets the entry type as  RemoveChildFromGroupNode */
     'RemoveChildFromGroupNode'|
     /** ExtrenalEntry - Sets the entry type as ExtrenalEntry */
-    'ExternalEntry';
+    'ExternalEntry' |
+    /** FieldPositionChanged - Sets the entry type as FieldPositionChanged */
+    'ErFieldPositionChanged' |
+    /** FieldCollectionChanged - Sets the entry type as FieldCollectionChanged */
+    'ErFieldCollectionChanged';
 /**
  * Defines the entry category type
  * Internal - Sets the entry category type as Internal

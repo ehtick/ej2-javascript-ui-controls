@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/material3-dark' as *;
-@forward 'ej2-base/styles/definition/material3-dark';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $icon-zero: 0 !default;
 $icon-border-radius: 50% !default;
 $grid-layout-position: relative !default;

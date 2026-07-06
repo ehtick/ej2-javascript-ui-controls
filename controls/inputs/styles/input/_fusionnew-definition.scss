@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/fusionnew' as *;
-@forward 'ej2-base/styles/definition/fusionnew';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $input-skin-name: $skin-name !default;
 $zero-value: 0 !default;
 $one-value: 1px !default;

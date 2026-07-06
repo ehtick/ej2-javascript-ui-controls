@@ -10,7 +10,7 @@ import { addClass, attributes, extend, compile, isNullOrUndefined, detach, appen
 import { getFormattedCellObject, applyCellFormat, workbookFormulaOperation, wrapEvent, applyCF } from '../../workbook/common/index';
 import { getTypeFromFormat, activeCellMergedRange, updateHighlight, getCellIndexes, updateView, skipHiddenIdx } from '../../workbook/index';
 import { checkIsFormula, ApplyCFArgs, NumberFormatArgs, ExtendedCellModel, calculateFormula } from '../../workbook/common/index';
-import { addListValidationDropdown } from './../../workbook/common/index';
+import { addListValidationDropdown, RichTextModel } from './../../workbook/common/index';
 /**
  * CellRenderer class which responsible for building cell content.
  *
@@ -209,6 +209,24 @@ export class CellRenderer implements ICellRenderer {
             this.parent.notify(getFormattedCellObject, formatArgs);
         }
         this.parent.refreshNode(args.td, formatArgs);
+        if (args.cell && args.cell.richText && args.cell.richText.length) {
+            let wrapper: HTMLElement = args.td as HTMLElement;
+            const hyperlinkElem: HTMLElement = wrapper.querySelector('.e-hyperlink') as HTMLElement;
+            if (hyperlinkElem) {
+                wrapper = hyperlinkElem;
+            } else {
+                const wrapContent: HTMLElement = wrapper.querySelector('.e-wrap-content');
+                if (wrapContent && !(hyperlinkElem || wrapper.querySelector('.e-databar-value'))) {
+                    wrapper = wrapContent;
+                }
+            }
+            while (wrapper.firstChild) {
+                wrapper.removeChild(wrapper.firstChild);
+            }
+            args.cell.richText.forEach((model: RichTextModel) => {
+                wrapper.appendChild(this.createRichTextNode(model));
+            });
+        }
         let style: CellStyleModel = {};
         if (args.cell) {
             if (args.cell.style) {
@@ -721,6 +739,14 @@ export class CellRenderer implements ICellRenderer {
             if (!(cellStyle.borderRight || cellStyle.border)) { prevColCell.style.borderRight = ''; }
         }
     }
+    private createRichTextNode(model: RichTextModel): Node {
+        if (model.style && model.style.verticalAlign) {
+            const span: HTMLElement = this.parent.createElement('span', { className: `e-vert-${model.style.verticalAlign.toLowerCase()}` }) as HTMLElement;
+            span.appendChild(document.createTextNode(model.text));
+            return span;
+        }
+        return document.createTextNode(model.text);
+    }
     /**
      * @hidden
      * @param {number[]} range - Specifies the range.
@@ -736,13 +762,14 @@ export class CellRenderer implements ICellRenderer {
      * @param {boolean} isSelectAll - Specifies the all sheet cells selected or not.
      * @param {PreviousCellDetails[]} cells - Specifies the undo redo cell collections.
      * @param {number[]} mergeBorderRows - Specifies the rows with the top borders, and adjacent cells containing merged cells have to be updated.
+     * @param {number[]} mergeBorderCols - Specifies the columns with the left borders, and adjacent cells containing merged cells have to be updated.
      * @returns {void}
      */
     public refreshRange(
         range: number[], refreshing?: boolean, checkWrap?: boolean, checkHeight?: boolean, checkCF?: boolean,
         skipFormatCheck?: boolean, checkFormulaAdded?: boolean, isFromAutoFillOption?: boolean,
         isHeightCheckNeeded: boolean = true, isSortAction?: boolean, isSelectAll?: boolean, cells?: PreviousCellDetails[],
-        mergeBorderRows?: number[]): void {
+        mergeBorderRows?: number[], mergeBorderCols?: number[]): void {
         const sheet: SheetModel = this.parent.getActiveSheet();
         const cRange: number[] = range.slice(); let args: CellRenderArgs; let cell: HTMLTableCellElement;
         if (inView(this.parent, cRange, true)) {
@@ -759,7 +786,7 @@ export class CellRenderer implements ICellRenderer {
                             manualUpdate: true, first: '', onActionUpdate: checkHeight, skipFormatCheck: skipFormatCheck,
                             isFromAutoFillOption: isFromAutoFillOption, isSelectAll: isSelectAll,
                             rowHeight: cells && cells[cellIdx as number] && cells[cellIdx as number].rowHeight,
-                            mergeBorderRows: mergeBorderRows
+                            mergeBorderRows: mergeBorderRows, mergeBorderCols: mergeBorderCols
                         };
                         cellIdx++;
                         if (checkFormulaAdded) {
@@ -793,6 +820,9 @@ export class CellRenderer implements ICellRenderer {
             }
             if (mergeBorderRows) {
                 updateMergeBorder(this.parent, args.mergeBorderRows);
+            }
+            if (mergeBorderCols) {
+                updateMergeBorder(this.parent, null, args.mergeBorderCols, true);
             }
         }
     }

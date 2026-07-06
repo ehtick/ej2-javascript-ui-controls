@@ -3,7 +3,7 @@ import { BlockType } from '../../../models/enums';
 import * as constants from '../../../common/constant';
 import { getBlockModelById } from '../../../common/utils/index';
 import { BlockModel } from '../../../models/index';
-import { createElement } from '@syncfusion/ej2-base';
+import { createElement, detach } from '@syncfusion/ej2-base';
 
 /**
  * Selection overlay to visually indicate a selection over a target content element.
@@ -16,6 +16,15 @@ export class SelectionOverlay {
 
     constructor(manager: BlockManager) {
         this.parent = manager;
+        this.wireGlobalEvents();
+    }
+
+    wireGlobalEvents(): void {
+        this.parent.observer.on(constants.events.destroy, this.destroy, this);
+    }
+
+    unWireGlobalEvents(): void {
+        this.parent.observer.off(constants.events.destroy, this.destroy);
     }
 
     public show(targetId: string): void {
@@ -36,18 +45,13 @@ export class SelectionOverlay {
         this.positionTo(targetId);
     }
 
-    public destroy(): void {
-        if (this.overlayEl && this.overlayEl.parentElement) {
-            this.overlayEl.parentElement.removeChild(this.overlayEl);
-        }
-        this.overlayEl = null;
-    }
-
     public clearSelectionOverlay(): void {
-        const dragIcon: HTMLElement = this.parent.floatingIconAction.floatingIconContainer.querySelector('.e-block-drag-icon') as HTMLElement;
-        if (dragIcon) { dragIcon.classList.remove('e-drag-icon-selected'); }
-        this.selectionOverlayInfo = null;
-        if (this.parent.selectionOverlay) { this.parent.selectionOverlay.hide(); }
+        if (this.parent.floatingIconAction && this.parent.floatingIconAction.floatingIconContainer) {
+            const dragIcon: HTMLElement = this.parent.floatingIconAction.floatingIconContainer.querySelector('.e-block-drag-icon') as HTMLElement;
+            if (dragIcon) { dragIcon.classList.remove('e-drag-icon-selected'); }
+            this.selectionOverlayInfo = null;
+            this.hide();
+        }
     }
 
     private ensureOverlay(): HTMLElement {
@@ -64,30 +68,36 @@ export class SelectionOverlay {
     }
 
     private positionTo(targetId: string): void {
-        const isMultipleBlockSeleceted: boolean =
+        const isMultipleBlockSelected: boolean =
             this.parent.editorMethods.getSelectedBlocks() && this.parent.editorMethods.getSelectedBlocks().length > 1;
-        if (this.overlayEl && !isMultipleBlockSeleceted) {
-            const targetBlock: HTMLElement = this.parent.getBlockElementById(targetId);
-            if (targetBlock) {
-                const rootRect: DOMRect = this.parent.rootEditorElement.getBoundingClientRect() as DOMRect;
-                const targetRect: DOMRect = targetBlock.getBoundingClientRect() as DOMRect;
-                const isRtl: boolean = this.parent.rootEditorElement.classList.contains('e-rtl');
-                const styles: CSSStyleDeclaration = getComputedStyle(targetBlock);
-                const paddingLeft: string = styles.getPropertyValue('padding-left');
-                const marginLeft: string = styles.getPropertyValue('margin-left');
-                const paddingRight: string = styles.getPropertyValue('padding-right');
-                const marginRight: string = styles.getPropertyValue('margin-right');
-                const left: number =
-                    (targetRect.left - rootRect.left + parseInt(paddingLeft, 10) - parseInt(marginLeft, 10) +
-                    (!isRtl ? -3 : parseInt(paddingRight, 10) - 6.5 + parseInt(marginRight, 10))) +
-                    this.parent.rootEditorElement.scrollLeft;
-                const top: number = (targetRect.top - rootRect.top) + this.parent.rootEditorElement.scrollTop;
-                this.overlayEl.style.left = left + 'px';
-                this.overlayEl.style.top = top + 'px';
-                this.overlayEl.style.width = targetRect.width - 50 - (parseInt(targetBlock.style.getPropertyValue('--block-indent'), 10)) + 'px';
-                this.overlayEl.style.height = targetRect.height + 'px';
-                this.overlayEl.setAttribute('data-target-id', targetId);
-            }
+        const targetBlock: HTMLElement = this.parent.getBlockElementById(targetId);
+        if (this.overlayEl && !isMultipleBlockSelected && targetBlock) {
+            const rootRect: DOMRect = this.parent.rootEditorElement.getBoundingClientRect() as DOMRect;
+            const targetRect: DOMRect = targetBlock.getBoundingClientRect() as DOMRect;
+            const isRtl: boolean = this.parent.rootEditorElement.classList.contains('e-rtl');
+            const styles: CSSStyleDeclaration = getComputedStyle(targetBlock);
+            const paddingLeft: string = styles.getPropertyValue('padding-left');
+            const marginLeft: string = styles.getPropertyValue('margin-left');
+            const paddingRight: string = styles.getPropertyValue('padding-right');
+            const marginRight: string = styles.getPropertyValue('margin-right');
+            const scrollbarWidth: number = this.parent.rootEditorElement.offsetWidth - this.parent.rootEditorElement.clientWidth;
+            const left: number =
+                (targetRect.left - rootRect.left + parseInt(paddingLeft, 10) - parseInt(marginLeft, 10) +
+                (!isRtl ? -3 : parseInt(paddingRight, 10) - 6.5 + parseInt(marginRight, 10) - scrollbarWidth)) +
+                this.parent.rootEditorElement.scrollLeft;
+            const top: number = (targetRect.top - rootRect.top) + this.parent.rootEditorElement.scrollTop;
+            this.overlayEl.style.left = left + 'px';
+            this.overlayEl.style.top = top + 'px';
+            this.overlayEl.style.width = targetRect.width - 50 - (parseInt(targetBlock.style.getPropertyValue('--block-indent'), 10)) + 'px';
+            this.overlayEl.style.height = targetRect.height + 'px';
+            this.overlayEl.setAttribute('data-target-id', targetId);
         }
+    }
+
+    public destroy(): void {
+        this.unWireGlobalEvents();
+        this.clearSelectionOverlay();
+        detach(this.overlayEl);
+        this.overlayEl = null;
     }
 }

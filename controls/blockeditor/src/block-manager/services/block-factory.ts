@@ -2,12 +2,14 @@ import { BaseChildrenProp, BlockModel, BlockProperties, IBulletListBlockSettings
     ICodeBlockSettings, ICollapsibleHeadingBlockSettings, ICollapsibleBlockSettings, ContentModel, IDividerBlockSettings,
     IHeadingBlockSettings, IImageBlockSettings, ILabelContentSettings, ILinkContentSettings, IMentionContentSettings,
     INumberedListBlockSettings, IParagraphBlockSettings, IQuoteBlockSettings, TableCellModel,
-    TableColumnModel, ITableBlockSettings, TableRowModel, ITextContentSettings } from '../../models/index';
+    TableColumnModel, ITableBlockSettings, TableRowModel, ITextContentSettings,
+    BasePlaceholderProp} from '../../models/index';
 import { generateUniqueId } from '../../common/utils/common';
-import { isChildrenProp, isEmptyString } from '../../common/utils/block';
+import { isChildrenProp, isEmptyString, isPlaceholderApplicable } from '../../common/utils/block';
 import { sanitizeHeadingProps } from '../../common/utils/transform';
 import * as constants from '../../common/constant';
 import { BlockType, ContentType } from '../../models/enums';
+import { BlockManager } from '../base/block-manager';
 
 /**
  * Factory class for creating block models and content
@@ -460,11 +462,13 @@ export class BlockFactory {
 
         (tableBlock.properties as ITableBlockSettings).rows.forEach((r: TableRowModel) => {
             if (!r.id) { r.id = generateUniqueId('row_'); }
-            r.cells.forEach((cell: TableCellModel, idx: number) => {
-                if (!cell.id) { cell.id = generateUniqueId('cell_'); }
-                if (!cell.columnId) { cell.columnId = (tableBlock.properties as ITableBlockSettings).columns[idx as number].id; }
-                cell.blocks = this.populateBlockProperties(cell.blocks, cell.id);
-            });
+            if (r.cells) {
+                r.cells.forEach((cell: TableCellModel, idx: number) => {
+                    if (!cell.id) { cell.id = generateUniqueId('cell_'); }
+                    if (!cell.columnId) { cell.columnId = (tableBlock.properties as ITableBlockSettings).columns[idx as number].id; }
+                    cell.blocks = this.populateBlockProperties(cell.blocks, null, cell.id);
+                });
+            }
         });
 
         return tableBlock;
@@ -508,14 +512,21 @@ export class BlockFactory {
      * Populates blocks with missing properties if they don't have them
      *
      * @param {BlockModel[]} blocks Array of block models
+     * @param {BlockManager} blockManager The manager instance
      * @param {string} parentId The id of the parent block
      * @returns {BlockModel[]} Updated array of block models
      */
-    static populateBlockProperties(blocks: BlockModel[], parentId?: string): BlockModel[] {
+    static populateBlockProperties(blocks: BlockModel[], blockManager: BlockManager, parentId?: string): BlockModel[] {
         const populatedBlocks: BlockModel[] = blocks.map((block: BlockModel) => {
             if (parentId) { block.parentId = parentId; }
 
             const updatedBlock: BlockModel = BlockFactory.createBlockFromPartial(block);
+
+            const isPlaceholderType: boolean = isPlaceholderApplicable(updatedBlock.blockType);
+            if (blockManager && isPlaceholderType &&
+                (updatedBlock.properties && (updatedBlock.properties as BasePlaceholderProp).placeholder === '')) {
+                (updatedBlock.properties as BasePlaceholderProp).placeholder = blockManager.getPlaceholderValue(updatedBlock);
+            }
 
             if (updatedBlock.content && updatedBlock.content.length > 0) {
                 updatedBlock.content = updatedBlock.content.map((originalContent: ContentModel) => {
@@ -525,7 +536,7 @@ export class BlockFactory {
 
             const props: BaseChildrenProp = updatedBlock.properties as BaseChildrenProp;
             if ((isChildrenProp(updatedBlock)) && props.children.length > 0) {
-                props.children = this.populateBlockProperties(props.children, block.id);
+                props.children = this.populateBlockProperties(props.children, blockManager, block.id);
             }
 
             return updatedBlock;

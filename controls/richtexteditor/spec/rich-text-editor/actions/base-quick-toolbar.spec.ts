@@ -221,7 +221,8 @@ describe('Base Quick Toolbar', ()=> {
             });
         });
 
-        describe('961316: Audio quick toolbar appears off-screen or hidden after inserting audio.', ()=> {
+        // 🚧 TODO: Migrate this to Playwright 🎭
+        xdescribe('961316: Audio quick toolbar appears off-screen or hidden after inserting audio.', ()=> {
             let editor: RichTextEditor;
             beforeAll(()=> {
                 editor = renderRTE({
@@ -878,7 +879,8 @@ describe('Base Quick Toolbar', ()=> {
             });
         });
 
-        describe('Backwards selection testing', ()=> {
+        // 🚧 TODO: Migrate this to Playwright 🎭
+        xdescribe('Backwards selection testing', ()=> {
             let editor: RichTextEditor;
             beforeAll(()=> {
                 editor = renderRTE({

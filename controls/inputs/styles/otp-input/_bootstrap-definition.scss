@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/bootstrap' as *;
-@forward 'ej2-base/styles/definition/bootstrap';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $otp-input-width: 34px !default;
 $otp-input-height: 34px !default;
 $otp-input-gap: 12px !default;

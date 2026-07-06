@@ -4755,6 +4755,7 @@ describe('UndoRedo', () => {
         }
 
         it('Paste image into empty paragraph, UNDO REDO', (done) => {
+            editor.imageBlockSettings.saveFormat = 'Base64';
             const html = `<img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="transparent">`;
 
             simulateHtmlPaste(html, 'p2').then(() => {

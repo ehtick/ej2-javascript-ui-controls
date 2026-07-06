@@ -2,13 +2,18 @@ import { _PdfCrossReference } from './pdf-cross-reference';
 import { _PdfDictionary, _PdfReference, _PdfName } from './pdf-primitives';
 import { _areArrayEqual, _checkRotation, _getInheritableProperty, _getPageIndex, _isNullOrUndefined, _stringToBytes } from './utils';
 import { PdfAnnotationCollection } from './annotations/annotation-collection';
-import { PdfGraphics, PdfGraphicsState } from './graphics/pdf-graphics';
+import { PdfGraphics, PdfGraphicsState, PdfBrush } from './graphics/pdf-graphics';
 import { _PdfBaseStream, _PdfContentStream } from './base-stream';
-import { PdfRotationAngle, PdfDestinationMode, PdfFormFieldsTabOrder, PdfPageOrientation } from './enumerator';
+import { PdfRotationAngle, PdfDestinationMode, PdfFormFieldsTabOrder, PdfPageOrientation, PdfLayoutBreakType, PdfLayoutType } from './enumerator';
 import { PdfDocument, PdfPageSettings } from './pdf-document';
 import { PdfTemplate } from './graphics/pdf-template';
+import { PdfLayoutResult, _PdfLayoutParameters, PdfLayoutFormat } from './graphics/pdf-layouter';
 import { _PdfCatalog } from './pdf-catalog';
 import { Point, Size, Rectangle } from './pdf-type';
+import { PdfTextElement } from './pdf-type';
+import { PdfFont } from './fonts/pdf-standard-font';
+import { PdfStringFormat } from './fonts/pdf-string-format';
+import { _PdfStringLayouter, _PdfStringLayoutResult } from './fonts/string-layouter';
 /**
  * Represents a page loaded from the PDF document.
  * ```typescript
@@ -161,6 +166,18 @@ export class PdfPage {
      * @private
      */
     _isLineAnnotation: boolean  = false;
+    /**
+     * Indicates whether the page content was accessed before template rendering started.
+     *
+     * @private
+     */
+    _accessedBeforeTemplate: boolean = false;
+    /**
+     * Indicates whether all templates have been rendered for the document or section.
+     *
+     * @private
+     */
+    _templatesRendered: boolean = false;
     /**
      * Represents a loaded page of the PDF document.
      *
@@ -503,8 +520,110 @@ export class PdfPage {
     get graphics(): PdfGraphics {
         if (typeof this._g === 'undefined' || this._needInitializeGraphics) {
             this._parseGraphics();
+        } else {
+            if (this._crossReference && this._crossReference._document &&
+                this._crossReference._document._hasTemplateContentValue && !this._templatesRendered &&
+                !this._crossReference._document._templateRenderingStarted) {
+                this._accessedBeforeTemplate = true;
+            }
         }
         return this._g;
+    }
+    /**
+     * Draws a text element on the page at a given location.
+     *
+     * ```typescript
+     * // Load an existing PDF document
+     * let document: PdfDocument = new PdfDocument(data);
+     * // Access the first page of the document
+     * let page: PdfPage = document.getPage(0);
+     * // Create a text element
+     * let element: PdfTextElement = {
+     *     text: 'Hello world drawn using a point location.',
+     *     font: document.embedFont(PdfFontFamily.helvetica, 12, PdfFontStyle.regular),
+     *     brush: new PdfBrush({ r: 0, g: 0, b: 0 })
+     * };
+     * // Draw the text element using a specific point
+     * const result = page.drawTextElement(element, { x: 50, y: 100 });
+     * // Save the PDF document
+     * document.save('output.pdf');
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     *
+     * @param {PdfTextElement} element The text element to draw.
+     * @param {Point} location The location where the text element should be drawn.
+     * @returns {PdfLayoutResult} The layout result for the drawn text element.
+     */
+    public drawTextElement(element: PdfTextElement, location: Point): PdfLayoutResult;
+    /**
+     * Draws a text element inside a rectangle on the page.
+     *
+     * ```typescript
+     * // Load an existing PDF document
+     * let document: PdfDocument = new PdfDocument(data);
+     * // Access the first page of the document
+     * let page: PdfPage = document.getPage(0);
+     * // Create a text element
+     * let element: PdfTextElement = {
+     *     text: 'Hello world drawn inside rectangle bounds.',
+     *     font: document.embedFont(PdfFontFamily.helvetica, 12, PdfFontStyle.regular),
+     *     brush: new PdfBrush({ r: 0, g: 0, b: 0 })
+     * };
+     * // Define the rectangle bounds
+     * let rect: Rectangle = { x: 10, y: 20, width: 200, height: 50 };
+     * // Draw the text element inside rectangle bounds
+     * const result = page.drawTextElement(element, rect);
+     * // Save the document
+     * document.save('output.pdf');
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     *
+     * @param {PdfTextElement} element The text element to draw.
+     * @param {Rectangle} bounds The bounds within which the text element should be drawn.
+     * @returns {PdfLayoutResult} The layout result for the drawn text element.
+     */
+    public drawTextElement(element: PdfTextElement, bounds: Rectangle): PdfLayoutResult;
+    public drawTextElement(element: PdfTextElement, locationOrBounds: Point | Rectangle): PdfLayoutResult {
+        if (typeof element === 'undefined' || element === null) {
+            throw new Error('PdfTextElement cannot be null or undefined');
+        }
+        if (typeof element.text !== 'string' || element.text.length === 0) {
+            throw new Error('PdfTextElement.text must be a non-empty string');
+        }
+        if (typeof element.font === 'undefined' || element.font === null) {
+            throw new Error('PdfTextElement.font is required');
+        }
+        if (typeof element.layoutFormat !== 'undefined' && element.layoutFormat !== null && !(element.layoutFormat instanceof PdfLayoutFormat)) {
+            throw new Error('PdfTextElement.layoutFormat must be an instance of PdfLayoutFormat');
+        }
+        const bounds: Rectangle = this.graphics._isRectangle(locationOrBounds) ?
+            { x: locationOrBounds.x, y: locationOrBounds.y, width: locationOrBounds.width, height: locationOrBounds.height } :
+            { x: locationOrBounds.x, y: locationOrBounds.y, width: 0, height: 0 };
+        const brush: PdfBrush = element.brush ? element.brush : new PdfBrush({ r: 0, g: 0, b: 0 });
+        if (element.layoutFormat || (typeof bounds.width === 'number' && typeof bounds.height === 'number' && (bounds.width > 0 || bounds.height > 0))) {
+            const params: _PdfLayoutParameters = new _PdfLayoutParameters();
+            const actualBounds: number[] = this._getActualBounds(this._pageSettings);
+            if (bounds.y < 0) {
+                bounds.y = 0;
+            }
+            if (bounds.height === 0) {
+                bounds.height = actualBounds[3] - bounds.y;
+            } else {
+                const maxHeight: number = actualBounds[3] - bounds.y;
+                if (bounds.height > maxHeight) {
+                    bounds.height = maxHeight;
+                }
+            }
+            params._page = this;
+            params._bounds = [bounds.x, bounds.y, bounds.width, bounds.height];
+            params._format = element.layoutFormat ? element.layoutFormat : new PdfLayoutFormat();
+            params._graphics = this.graphics;
+            return this._layoutTextElement(params, element);
+        }
+        this.graphics.drawString(element.text, element.font, bounds, element.pen, brush, element.stringFormat);
+        return new PdfLayoutResult(this, bounds);
     }
     /**
      * Adds a widget annotation reference to the page's Annots array.
@@ -670,7 +789,6 @@ export class PdfPage {
         } else {
             this._g._initializeCoordinates(this);
         }
-        //Need to code - set transparency group
         if (!this._isNew) {
             const rotation: PdfRotationAngle = this.rotation;
             if (!Number.isNaN(rotation) && (rotation !== PdfRotationAngle.angle0 || this._pageDictionary.has('Rotate'))) {
@@ -697,20 +815,84 @@ export class PdfPage {
         }
         if (this._isNew && this._pageSettings && !this._isLineAnnotation) {
             const clipBounds: number[] = this._getActualBounds(this._pageSettings);
-            this._g._clipTranslateMargins(clipBounds);
+            if (!this._crossReference._document._hasTemplateContentValue) {
+                this._g._clipTranslateMargins(clipBounds);
+            } else {
+                const bounds: number[] = [
+                    clipBounds[0],
+                    clipBounds[1],
+                    this._pageSettings.margins._left,
+                    this._pageSettings.margins._top,
+                    this._pageSettings.margins._right,
+                    this._pageSettings.margins._bottom];
+                this._g._clipTranslateMarginsWithBounds(bounds);
+            }
         }
         this._needInitializeGraphics = false;
     }
     /**
-     * Computes the effective content bounds based on the page settings.
+     * Computes the effective drawable content bounds of the page by excluding
+     * both page margins and the space reserved for document templates on all sides.
      *
      * @private
-     * @param {PdfPageSettings} pageSettings Page settings containing margins and size.
-     * @returns {number[]} Calculated bounds as [x, y, width, height].
+     * @param {PdfPageSettings} pageSettings - The page settings that define the page size and margins.
+     * @param {boolean} [includeMargins] - Specifies whether the calculation should use the full page size
+     * (including margins) or the already adjusted content size.
+     * @returns {number[]} An array representing the computed bounds in the format:
+     * [x, y, width, height], where:
+     * - x: left offset including margin and left template space
+     * - y: top offset including margin and top template space
+     * - width: usable width after excluding left and right template spaces
+     * - height: usable height after excluding top and bottom template spaces.
      */
-    _getActualBounds(pageSettings: PdfPageSettings): number[] {
+    _getActualBounds(pageSettings: PdfPageSettings, includeMargins?: boolean): number[] {
+        const actualSize: number[] = includeMargins ? [pageSettings.size.width, pageSettings.size.height] : pageSettings._getActualSize();
+        const templateReserved: number[] = this._getTemplateReservedSpace(includeMargins);
+        return [
+            pageSettings.margins.left + templateReserved[3],
+            pageSettings.margins.top + templateReserved[0],
+            actualSize[0] - templateReserved[3] - templateReserved[1],
+            actualSize[1] - templateReserved[0] - templateReserved[2]
+        ];
+    }
+    /**
+     * Calculates the effective template bounds of the page by excluding space
+     * reserved for other document templates on each side.
+     *
+     * @private
+     * @param {PdfPageSettings} pageSettings - The page settings that determine the actual page size.
+     * @param {boolean} [includeMargins] - Specifies whether page margins should be included in the reserved space calculation.
+     * @returns {number[]} An array representing the effective bounds in the format: * [x, y, width, height], where:
+     * - x: left offset
+     * - y: top offset
+     * - width: available width after excluding left and right reserved space
+     * - height: available height after excluding top and bottom reserved space
+     */
+    _getActualTemplateBounds(pageSettings: PdfPageSettings, includeMargins?: boolean): number[] {
         const actualSize: number[] = pageSettings._getActualSize();
-        return [pageSettings.margins.left, pageSettings.margins.top, actualSize[0], actualSize[1]];
+        const templateReserved: number[] = this._getTemplateReservedSpace(includeMargins);
+        return [
+            templateReserved[3],
+            templateReserved[0],
+            actualSize[0] - templateReserved[3] - templateReserved[1],
+            actualSize[1] - templateReserved[0] - templateReserved[2]
+        ];
+    }
+    /**
+     * Calculates the space reserved by document templates on all four edges.
+     *
+     * @private
+     * @param {boolean} includeMargins - Indicates whether page margins should be
+     * included along with template space in the calculation.
+     * @returns {number[]} An array representing the reserved space in the order: [top, right, bottom, left], in page units.
+     */
+    _getTemplateReservedSpace(includeMargins?: boolean): number[] {
+        const margin: boolean = includeMargins ? true : false;
+        const top: number = this._crossReference._document._getTopIndentHeight(this, margin);
+        const right: number = this._crossReference._document._getRightIndentWidth(this, margin);
+        const bottom: number = this._crossReference._document._getBottomIndentHeight(this, margin);
+        const left: number = this._crossReference._document._getLeftIndentWidth(this, margin);
+        return [top, right, bottom, left];
     }
     /**
      * Fetches or creates the resources dictionary for the page.
@@ -889,6 +1071,162 @@ export class PdfPage {
         list.push(new Uint8Array([13, 10]));
         const targetArray: Uint8Array = this._combineIntoSingleArray(list);
         return targetArray;
+    }
+    /**
+     * Lays out and renders text within layout bounds, supporting column flow and pagination.
+     *
+     * @private
+     * @param {_PdfLayoutParameters} params Layout parameters defining page context, bounds, and layout behavior.
+     * @param {PdfTextElement} element Text element containing content, font, brush, and formatting information.
+     * @returns {PdfLayoutResult} The layout result containing the final page, bounds, and any remaining text.
+     */
+    _layoutTextElement(params: _PdfLayoutParameters, element: PdfTextElement): PdfLayoutResult {
+        const format: PdfLayoutFormat = params._format;
+        let text: string = element.text ? element.text : '';
+        let page: PdfPage = params._page;
+        const initialBounds: number[] = params._bounds.slice();
+        const paginateBounds: Rectangle = format && format.paginateBounds;
+        const usePaginateBounds: Rectangle = format && format.usePaginateBounds && paginateBounds;
+        let result: PdfLayoutResult;
+        let isFirstPage: boolean = true;
+        let hasDrawnAfterFirstPage: boolean = false;
+        while (text.length > 0) {
+            let bounds: number[];
+            if (isFirstPage) {
+                bounds = initialBounds.slice();
+            } else if (usePaginateBounds) {
+                bounds = [paginateBounds.x, paginateBounds.y, paginateBounds.width, paginateBounds.height];
+            } else {
+                bounds = [initialBounds[0], 0, initialBounds[2], initialBounds[3]];
+            }
+            const previousText: string = text;
+            result = this._layoutOnPage(text, page, bounds, params, element);
+            text = result.remainingText ? result.remainingText : '';
+            if (format.layout === PdfLayoutType.onePage &&
+                format.break === PdfLayoutBreakType.fitElement) {
+                return result;
+            }
+            if ((format.break === PdfLayoutBreakType.fitElement
+                || format.break === PdfLayoutBreakType.fitPage) &&
+                isFirstPage && text === previousText) {
+                const document: PdfDocument = page._crossReference._document;
+                page = page._pageIndex + 1 < document.pageCount
+                    ? document.getPage(page._pageIndex + 1)
+                    : document.addPage();
+
+                isFirstPage = false;
+                continue;
+            }
+            if (result._hasRenderedContent && !isFirstPage) {
+                hasDrawnAfterFirstPage = true;
+            }
+            const breakType: PdfLayoutBreakType = format.break;
+            if (format.layout === PdfLayoutType.paginate &&
+                breakType === PdfLayoutBreakType.fitElement &&
+                hasDrawnAfterFirstPage) {
+                return result;
+            }
+            if (text === previousText) {
+                break;
+            }
+            if (!text || text.length === 0) {
+                break;
+            }
+            if (format.layout === PdfLayoutType.onePage) {
+                break;
+            }
+            const document: PdfDocument = page._crossReference._document;
+            page = page._pageIndex + 1 < document.pageCount
+                ? document.getPage(page._pageIndex + 1)
+                : document.addPage();
+            isFirstPage = false;
+        }
+        return result;
+    }
+    /**
+     * Lays out and renders text within the specified bounds on a page, supporting multi-column flow and FitElement behavior, and returns layout details including remaining text.
+     *
+     * @private
+     * @param {string} text The input text content to be processed and rendered.
+     * @param {PdfPage} page The target page on which the text is laid out and drawn.
+     * @param {number[]} bounds The layout bounds as [x, y, width, height].
+     * @param {_PdfLayoutParameters} params Layout parameters providing page context and formatting options.
+     * @param {PdfTextElement} element The text element containing font, brush, and formatting settings.
+     * @returns {PdfLayoutResult} The result containing the rendered bounds, last line info, and any remaining text.
+     */
+    private _layoutOnPage(text: string, page: PdfPage, bounds: number[],
+                          params: _PdfLayoutParameters, element: PdfTextElement): PdfLayoutResult {
+        const font: PdfFont = element.font;
+        const brush: PdfBrush = element.brush ? element.brush : new PdfBrush({ r: 0, g: 0, b: 0 });
+        const format: PdfLayoutFormat = params._format;
+        const stringFormat: PdfStringFormat = element.stringFormat ? element.stringFormat :  new PdfStringFormat();
+        const layouter: _PdfStringLayouter = new _PdfStringLayouter();
+        const clientHeight: number = page.graphics.clientSize.height;
+        const availableHeight: number = clientHeight - bounds[1];
+        const columns: number = format && format._columns ? Math.max(1, format._columns) : 1;
+        const gutter: number = format && format._columnGutter ? format._columnGutter : 0;
+        const totalWidth: number = bounds[2];
+        const columnWidth: number = (totalWidth - (columns - 1) * gutter) / columns;
+        let tempText: string = text;
+        for (let col: number = 0; col < columns && tempText.length > 0; col++) {
+            const lr: _PdfStringLayoutResult = layouter._layout(tempText, font, stringFormat, [columnWidth, availableHeight]);
+            if (lr._empty) {
+                return new PdfLayoutResult(page,
+                                           { x: bounds[0], y: bounds[1], width: 0, height: 0 },
+                                           undefined,
+                                           tempText
+                );
+            }
+            tempText = lr._remainder ? lr._remainder : '';
+        }
+        const textFinished: boolean = !tempText || tempText.length === 0;
+        const isFirstPage: boolean = page === params._page;
+        if (format.break === PdfLayoutBreakType.fitElement && isFirstPage &&
+            !textFinished) {
+            return new PdfLayoutResult(page,
+                                       { x: bounds[0], y: bounds[1], width: 0, height: 0 },
+                                       undefined,
+                                       text
+            );
+        }
+        let remainingText: string = text;
+        let lastBounds: Rectangle = { x: bounds[0], y: bounds[1], width: 0, height: 0 };
+        let lastLineBounds: Rectangle = lastBounds;
+        let didDraw: boolean = false;
+        for (let col: number = 0; col < columns && remainingText.length > 0; col++) {
+            const x: number = bounds[0] + col * (columnWidth + gutter);
+            const y: number = bounds[1];
+            const lr: _PdfStringLayoutResult = layouter._layout(remainingText, font,
+                                                                stringFormat, [columnWidth, availableHeight]);
+            if (lr._empty) {
+                return new PdfLayoutResult(page, lastBounds, lastLineBounds, remainingText);
+            }
+            const remainder: string = lr._remainder ? lr._remainder : '';
+            if (remainder === remainingText) {
+                break;
+            }
+            const consumedLength: number = remainingText.length - remainder.length;
+            const columnText: string = remainingText.substring(0, consumedLength);
+            page.graphics.drawString(columnText, font, {x, y, width: columnWidth,
+                height: lr._actualSize.height}, brush, stringFormat);
+
+            didDraw = true;
+            lastBounds = {x, y, width: lr._actualSize.width, height: lr._actualSize.height};
+            lastLineBounds = {x, y: y + Math.max(0, lr._actualSize.height - lr._lineHeight),
+                width: lr._actualSize.width, height: lr._lineHeight};
+            remainingText = remainder;
+        }
+        const result: PdfLayoutResult = new PdfLayoutResult(page, lastBounds, lastLineBounds, remainingText);
+        result._hasRenderedContent = didDraw;
+        return result;
+    }
+    _getSectionIndex(): number {
+        const parent: _PdfReference = this._pageDictionary.getRaw('Parent');
+        if (!parent) {
+            return -1;
+        }
+        const document: PdfDocument = this._crossReference._document;
+        return document._getSectionIndexByPage(parent);
     }
 }
 /**
@@ -1442,13 +1780,8 @@ export class PdfDestination {
             switch (this._destinationMode) {
             case PdfDestinationMode.location:
                 this._array.push(_PdfName.get('XYZ'));
-                if (typeof page !== 'undefined' && page !== null) {
-                    this._array.push(this._location.x);
-                    this._array.push(this._page.graphics._size.height - this._location.y);
-                } else {
-                    this._array.push(0);
-                    this._array.push(0);
-                }
+                this._array.push(this._location.x);
+                this._array.push(this._page.graphics._size.height - this._location.y);
                 this._array.push(this._zoom);
                 break;
             case PdfDestinationMode.fitToPage:
@@ -1628,8 +1961,8 @@ export class _PdfDestinationHelper {
                     if (destinationArray.length > 3) {
                         topValue = destinationArray[3];
                     }
-                    if ((typeof left === 'undefined' && left === null) || (typeof topValue === 'undefined' && topValue === null)
-                        || (typeof zoom === 'undefined' && zoom === null)) {
+                    if ((typeof left === 'undefined' || left === null) || (typeof topValue === 'undefined' || topValue === null)
+                        || (typeof zoom === 'undefined' || zoom === null)) {
                         destination._setValidation(false);
                     }
                 }

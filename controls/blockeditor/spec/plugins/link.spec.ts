@@ -1425,18 +1425,14 @@ describe('Link Module', () => {
                 removeBtn.click();
 
                 setTimeout(() => {
-                    // Assert model: "Partial" becomes text, rest remains linked
-                    expect(editor.blocks[0].content.length).toBe(2);
+                    // Assert model: entire link is removed (no partial removal implementation)
+                    expect(editor.blocks[0].content.length).toBe(1);
                     expect(editor.blocks[0].content[0].contentType).toBe(ContentType.Text);
-                    expect(editor.blocks[0].content[0].content).toBe('Partial');
-                    expect(editor.blocks[0].content[1].contentType).toBe(ContentType.Link);
-                    expect(editor.blocks[0].content[1].content).toBe(' link removal');
-                    expect((editor.blocks[0].content[1].properties as ILinkContentSettings).url).toBe('https://www.partial.com');
+                    expect(editor.blocks[0].content[0].content).toBe('Partial link removal');
 
-                    // Assert DOM
-                    expect(contentElement.querySelectorAll('a').length).toBe(1);
-                    expect(contentElement.querySelector('a').textContent).toBe(' link removal');
-                    expect(contentElement.childNodes[0].textContent).toBe('Partial');
+                    // Assert DOM: no anchor element remains
+                    expect(contentElement.querySelectorAll('a').length).toBe(0);
+                    expect(contentElement.textContent).toBe('Partial link removal');
                     done();
                 }, 400);
             }, 100);

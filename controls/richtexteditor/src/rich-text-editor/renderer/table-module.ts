@@ -102,8 +102,8 @@ export class Table {
         this.rendererFactory = serviceLocator.getService<RendererFactory>('rendererFactory');
         this.dialogRenderObj = serviceLocator.getService<DialogRenderer>('dialogRenderObject');
         this.addEventListener();
-        this.isDestroyed = false;
         this.isTableCopyAll = false;
+        this.isDestroyed = false;
     }
 
     /*
@@ -603,6 +603,16 @@ export class Table {
             }
             event.preventDefault();
             break;
+        case 'tab':
+        case 'shift-tab': {
+            const indentsNodes: Node[] = this.parent.formatter.editorManager.domNode.blockNodes();
+            if (this.parent.enableTabKey && indentsNodes.length === 1 && (indentsNodes[0] as HTMLElement).classList.contains('e-table-fake-selection')) {
+                const args: ActionBeginEventArgs = !event.shiftKey ? { item: { command: 'Indents', subCommand: 'Indent' } } :
+                    { item: { command: 'Indents', subCommand: 'Outdent' } };
+                this.parent.formatter.process(this.parent, args, event);
+            }
+            break;
+        }
         }
     }
 
@@ -903,7 +913,7 @@ export class Table {
         // Right-click / left-click logic
         // Custom condition: only skip on right-click if a certain class exists in DOM
         if (((e.args as MouseEvent).target as HTMLElement).nodeType === Node.ELEMENT_NODE) {
-            const gripper: boolean = target.classList.length > 0 && (target.className.includes('e-icons e-drag-and-drop e-active')
+            const gripper: boolean =  target.classList.length > 0 && (target.className.includes('e-icons e-drag-and-drop e-active')
                 || target.className.includes('e-icons e-move e-active'));
             if (showOnRightClick && gripper) { return false; }
         }
@@ -1148,6 +1158,10 @@ export class Table {
      */
     private removeRowColumn(selectCell: NodeSelection, e: ClickEventArgs): void {
         this.parent.formatter.process(this.parent, e, e, { selection: selectCell, subCommand: (e.item as IDropDownItemModel).subCommand });
+        if (this.tableObj) {
+            this.tableObj.removeResizeElement();
+            this.tableObj.removeSelectionWrappers(true);
+        }
         this.hideTableQuickToolbar();
     }
 
@@ -1169,6 +1183,7 @@ export class Table {
         if (this.tableObj) {
             this.tableObj.setDefaultEmptyContent();
             this.tableObj.removeResizeElement();
+            this.tableObj.removeSelectionWrappers(true);
         }
         this.hideTableQuickToolbar();
     }
@@ -1425,7 +1440,8 @@ export class Table {
      * Opens a dialog to edit properties of an existing table.
      */
     private editTable(args: ITableArgs): void {
-        this.createDialog();
+        this.parent.formatter.editorManager.observer.notify(EVENTS.ON_TABLE_EDIT_DIALOG_OPEN, {});
+        this.createDialog(args.selection);
         // Save the editor selection before the dialog steals focus
         const currentRange: Range = this.parent.formatter.editorManager.nodeSelection
             .getRange(this.contentModule.getDocument());
@@ -1468,7 +1484,13 @@ export class Table {
         if (proxy.popupObj) {
             proxy.popupObj.hide();
         }
-        proxy.createDialog();
+        const tableArgs: ITableNotifyArgs = this as ITableNotifyArgs;
+        const notifyArgs: NotifyArgs = args as NotifyArgs;
+        let selection: NodeSelection = tableArgs.selection;
+        if (!selection && notifyArgs) {
+            selection = notifyArgs.selection;
+        }
+        proxy.createDialog(selection);
         const dlgContent: HTMLElement = proxy.tableCellDlgContent();
         const insert: string = proxy.l10n.getConstant('dialogInsert');
         const cancel: string = proxy.l10n.getConstant('dialogCancel');
@@ -1577,7 +1599,7 @@ export class Table {
     /*
      * Creates a dialog for table operations.
      */
-    private createDialog(): void {
+    private createDialog(selection: NodeSelection): void {
         if (this.editdlgObj) {
             this.editdlgObj.hide({ returnValue: true } as Event);
             return;
@@ -1611,6 +1633,12 @@ export class Table {
             close: (event: { [key: string]: object }) => {
                 (event as any).preventFocus = true;
                 this.parent.isBlur = false;
+                if (!isNOU(selection.startNodeName)
+                    && event && !isNOU(event.event) && (event.event as { [key: string]: string }).returnValue) {
+                    if (this.parent.editorMode === 'HTML') {
+                        selection.restore();
+                    }
+                }
                 const dialogElement: HTMLElement = this.selectedItem ? this.selectedItem.nodeName === 'TABLE' ? this.editdlgObj.element.querySelector('.e-rte-edit-table-content') : this.editdlgObj.element.querySelector('.e-rte-edit-tablecell-dialog') : null;
                 if (dialogElement && (event.closedBy.toString() === 'escape' || event.closedBy.toString() === 'close icon')) {
                     for (const property in this.tableStyles) {

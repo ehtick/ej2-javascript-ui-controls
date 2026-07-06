@@ -1,7 +1,7 @@
 import { ExtendedImageModel, ExtendedSheet, getRangeIndexes, ImageModel } from '../common/index';
 import { CellModel, SheetModel, getCell, setCell, getSheetIndex, Workbook, getSheet } from '../base/index';
 import { importModelUpdate, setImage } from '../common/event';
-import { isUndefined, getUniqueID, isNullOrUndefined  } from '@syncfusion/ej2-base';
+import { isUndefined, getUniqueID, isNullOrUndefined } from '@syncfusion/ej2-base';
 /**
  * Specifies image.
  */
@@ -12,7 +12,8 @@ export class WorkbookImage {
         this.addEventListener();
     }
 
-    private setImage(args: { options: ImageModel[], range: string, isPositionChanged?: boolean, isElementRemoved?: boolean }): boolean {
+    private setImage(args: { options: ImageModel[], range: string, isPositionChanged?: boolean, isElementRemoved?: boolean,
+        modelUpdateOnly?: boolean }): boolean {
         const lastIndex: number = args.range ? args.range.lastIndexOf('!') : -1;
         const imgRange: string = args.range ? (lastIndex > -1) ? args.range.substring(lastIndex + 1) : args.range
             : this.parent.getActiveSheet().selectedRange;
@@ -29,7 +30,7 @@ export class WorkbookImage {
                 for (let i: number = 0; i < oldImgData.length; i++) {
                     for (let j: number = 0; j < imgData.length; j++) {
                         oldImgData[i as number] = imgData[j as number];
-                        if (document.getElementById(imgData[j as number].id)) {
+                        if (!args.modelUpdateOnly && document.getElementById(imgData[j as number].id)) {
                             args.isElementRemoved = true;
                             document.getElementById(imgData[j as number].id).remove();
                         }

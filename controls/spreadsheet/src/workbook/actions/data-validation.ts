@@ -59,7 +59,8 @@ export class WorkbookDataValidation {
     }
 
     private updateValidationHandler(
-        args: { range: string, rules?: ValidationModel, isRemoveValidation?: boolean, isAction?: boolean }): void {
+        args: { range: string, rules?: ValidationModel, isRemoveValidation?: boolean, isAction?: boolean,
+            modelUpdateOnly?: boolean }): void {
         let sheetName: string;
         const lastIndex: number = args.range.lastIndexOf('!');
         let sheet: SheetModel; let isActiveSheet: boolean;
@@ -110,8 +111,9 @@ export class WorkbookDataValidation {
                 };
             }
             updateCellHighlightOnUI = (validation: ValidationModel): void => {
-                if (validation.isHighlighted && uiRefresh && ((options.colIdx >= viewport[1] && options.colIdx <= viewport[3]) ||
-                    options.colIdx < frozenCol) && !isHiddenCol(sheet, options.colIdx)) {
+                if (!args.modelUpdateOnly && validation.isHighlighted && uiRefresh
+                    && ((options.colIdx >= viewport[1] && options.colIdx <= viewport[3]) ||
+                        options.colIdx < frozenCol) && !isHiddenCol(sheet, options.colIdx)) {
                     this.parent.notify(updateHighlight, options);
                 }
             };
@@ -170,7 +172,7 @@ export class WorkbookDataValidation {
                 if (args.isRemoveValidation) {
                     column = sheet.columns[options.colIdx];
                     if (column && column.validation) {
-                        if (isActiveSheet) {
+                        if (isActiveSheet && !args.modelUpdateOnly) {
                             updateColHighlightOnUI(column.validation);
                         }
                         delete column.validation;
@@ -182,7 +184,7 @@ export class WorkbookDataValidation {
                         sheet.columns[options.colIdx] = {};
                     }
                     sheet.columns[options.colIdx].validation = options.validation;
-                    if (isActiveSheet) {
+                    if (isActiveSheet && !args.modelUpdateOnly) {
                         updateColHighlightOnUI(options.validation);
                     }
                     continue;
@@ -198,24 +200,34 @@ export class WorkbookDataValidation {
                             column.validation.address = getSplittedAddressForColumn(
                                 column.validation.address, [indexes[0], options.colIdx, indexes[2], options.colIdx], options.colIdx);
                         }
-                        if (isActiveSheet) {
+                        if (isActiveSheet && !args.modelUpdateOnly) {
                             updateCellHighlightOnUI(column.validation);
                         }
                     }
                     cell = getCell(options.rowIdx, options.colIdx, sheet);
-                    if (cell && cell.validation && !updateCell(
-                        this.parent, sheet, { cell: { validation: {} }, rowIdx: options.rowIdx, colIdx: options.colIdx })) {
-                        if (isActiveSheet) {
-                            updateCellHighlightOnUI(cell.validation);
+                    if (cell && cell.validation) {
+                        if (args.modelUpdateOnly) {
+                            delete cell.validation;
+                        } else if (!updateCell(
+                            this.parent, sheet, {
+                                cell: { validation: {} }, rowIdx: options.rowIdx, colIdx: options.colIdx,
+                                preventEvt: false, uiRefresh: true
+                            })) {
+                            if (isActiveSheet) {
+                                updateCellHighlightOnUI(cell.validation);
+                            }
+                            delete cell.validation;
                         }
-                        delete cell.validation;
                     }
                 } else {
                     options.validation = Object.assign({}, args.rules, highlightObj);
                     updateFormula(options.rowIdx);
                     if (!updateCell(
-                        this.parent, sheet, { cell: { validation: options.validation }, rowIdx: options.rowIdx, colIdx: options.colIdx })) {
-                        if (isActiveSheet) {
+                        this.parent, sheet, {
+                            cell: { validation: options.validation }, rowIdx: options.rowIdx, colIdx: options.colIdx,
+                            preventEvt: args.modelUpdateOnly, uiRefresh: !args.modelUpdateOnly
+                        })) {
+                        if (isActiveSheet && !args.modelUpdateOnly) {
                             options.cell = getCell(options.rowIdx, options.colIdx, sheet);
                             updateCellHighlightOnUI(options.validation);
                         }
@@ -223,7 +235,7 @@ export class WorkbookDataValidation {
                 }
             }
         }
-        if (isListType) {
+        if (isListType && !args.modelUpdateOnly) {
             cell = getCell(activeIdx[0], activeIdx[1], sheet, false, true);
             let validation: ValidationModel = cell.validation;
             if (!validation) {
@@ -235,21 +247,21 @@ export class WorkbookDataValidation {
         }
     }
 
-    private addHighlightHandler(args: { range?: string, isAction?: boolean }): void {
+    private addHighlightHandler(args: { range?: string, isAction?: boolean, modelUpdateOnly?: boolean }): void {
         if (args.isAction) {
             this.highlightInvalidData = true;
         }
-        this.invalidDataHandler(args.range);
+        this.invalidDataHandler(args.range, false, args.modelUpdateOnly);
     }
 
-    private removeHighlightHandler(args: { range?: string, isAction?: boolean }): void {
+    private removeHighlightHandler(args: { range?: string, isAction?: boolean, modelUpdateOnly?: boolean }): void {
         if (args.isAction) {
             this.highlightInvalidData = null;
         }
-        this.invalidDataHandler(args.range, true);
+        this.invalidDataHandler(args.range, true, args.modelUpdateOnly);
     }
 
-    private invalidDataHandler(range?: string, isRemoveHighlightedData?: boolean): void {
+    private invalidDataHandler(range?: string, isRemoveHighlightedData?: boolean, modelUpdateOnly?: boolean): void {
         let cell: CellModel; let col: ColumnModel; let rowIdx: number; let colIdx: number; let indexes: number[];
         let uiRefresh: boolean; let isActiveSheet: boolean; let isFullRange: boolean; let lastColIdx: number; let row: RowModel;
         const parent: ExtendedWorkbook = this.parent as ExtendedWorkbook;
@@ -260,7 +272,8 @@ export class WorkbookDataValidation {
                 parent.viewport.rightIndex] : []) : [0, 0, sheet.rowCount - 1, sheet.colCount - 1];
         const updateHighlightOnUI: (validation: ValidationModel, col?: ColumnModel) => void =
             (validation: ValidationModel, col?: ColumnModel): void => {
-                if (uiRefresh && ((colIdx >= viewport[1] && colIdx <= viewport[3]) || colIdx < frozenCol) && !isHiddenCol(sheet, colIdx)) {
+                if (!modelUpdateOnly && uiRefresh && ((colIdx >= viewport[1] && colIdx <= viewport[3]) || colIdx < frozenCol) &&
+                    !isHiddenCol(sheet, colIdx)) {
                     this.parent.notify(
                         updateHighlight, {
                             isRemoveHighlightedData: isRemoveHighlightedData, rowIdx: rowIdx, colIdx: colIdx, cell: cell,

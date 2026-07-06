@@ -2641,22 +2641,24 @@ export class Lists {
         const blockNodes: HTMLElement[] = this.parent.domNode.blockNodes() as HTMLElement[];
         const length: number = blockNodes.length;
         const itemType: ListItemType = this.getListSelectionType(isNestedStart ? 'Nested' : 'Parent', isNestedEnd ? 'Nested' : 'Parent');
-        if (isSelection) {
-            if (blockNodes.length === 1) {
-                selectionState = range.startOffset === 0 && range.endOffset === startList.textContent.length ? 'SingleFull' : 'SinglePartial';
+        if (!isNOU(startList)) {
+            if (isSelection) {
+                if (blockNodes.length === 1) {
+                    selectionState = range.startOffset === 0 && range.endOffset === startList.textContent.length ? 'SingleFull' : 'SinglePartial';
+                } else {
+                    selectionState = range.startOffset === 0 && range.endOffset === blockNodes[length - 1].textContent.length ? 'MultipleFull' : 'MultiplePartial';
+                }
+                position = 'None';
             } else {
-                selectionState = range.startOffset === 0 && range.endOffset === blockNodes[length - 1].textContent.length ? 'MultipleFull' : 'MultiplePartial';
+                if (range.startOffset === 0 && startNode.previousSibling === null) {
+                    position = isNestedStart ? 'StartNested' : 'StartParent';
+                } else if (range.startOffset === startList.textContent.length && startNode.nextSibling === null) {
+                    position = isNestedStart ? 'EndNested' : 'EndParent';
+                } else {
+                    position = isNestedStart ? 'MiddleNested' : 'MiddleParent';
+                }
+                selectionState = 'None';
             }
-            position = 'None';
-        } else {
-            if (range.startOffset === 0 && startNode.previousSibling === null) {
-                position = isNestedStart ? 'StartNested' : 'StartParent';
-            } else if (range.startOffset === startList.textContent.length && startNode.nextSibling === null) {
-                position = isNestedStart ? 'EndNested' : 'EndParent';
-            } else {
-                position = isNestedStart ? 'MiddleNested' : 'MiddleParent';
-            }
-            selectionState = 'None';
         }
         return { position, selectionState, itemType };
     }

@@ -3,7 +3,7 @@ import { CheckBox } from '@syncfusion/ej2-buttons';
 import { PdfViewer, PdfViewerBase, AjaxHandler, TileRenderingSettingsModel, IPdfRectBounds, ExtractTextOption } from '../index';
 import { RectangleBoundsModel, SearchResultModel } from '../pdfviewer-model';
 import { createSpinner, showSpinner, hideSpinner } from '../index';
-import { Rect } from '@syncfusion/ej2-drawings';
+import { Rect } from './../ej2-drawings/index';
 import { PdfPage } from '@syncfusion/ej2-pdf';
 import { AutoComplete } from '@syncfusion/ej2-dropdowns';
 import { regex } from '@syncfusion/ej2-inputs';
@@ -186,6 +186,7 @@ export class TextSearch {
             fields: { value: 'SearchString' },
             headerTemplate: headerTemplate,
             itemTemplate: itemTemplate,
+
             placeholder: this.pdfViewer.localeObj.getConstant('Find in document'),
             popupHeight: '200px',
             beforeOpen: (event: any) => {
@@ -667,6 +668,12 @@ export class TextSearch {
     public showSearchBox(isShow: boolean): void {
         if (!isNullOrUndefined(this.searchBox)) {
             if (isShow) {
+                if (this.searchBox.style.top === '0px' && !isBlazor()) {
+                    const toolbarElement: HTMLElement = this.pdfViewerBase.getElement('_toolbarContainer');
+                    if (toolbarElement) {
+                        this.searchBox.style.top = toolbarElement.clientHeight + 'px';
+                    }
+                }
                 this.searchBox.style.display = 'block';
                 this.textSearchOpen = true;
             } else {
@@ -702,10 +709,13 @@ export class TextSearch {
     private normalizeForSearch(s: string): string {
         if (isNullOrUndefined(s)) { return s; }
         return s
-            .normalize('NFKC')
+            // normalize quotes in a single pass
             // eslint-disable-next-line
-            .replace(/[\u2018\u2019\u201B]/g, "'")
-            .replace(/[\u201C\u201D]/g, '"')
+            .replace(/[\u2018\u2019\u201B\u201C\u201D]/g, function (c) {
+                // eslint-disable-next-line
+                return (c === '\u201C' || c === '\u201D') ? '"' : "'";
+            })
+            // replace non-breaking space
             .replace(/\u00A0/g, ' ');
     }
 
@@ -931,6 +941,16 @@ export class TextSearch {
                                 }
                             }
                         }
+                    }
+                }
+                if (matches.length > 1) {
+                    const allIndexesSame: any = (arr: any[]) =>
+                        arr.every((item: any) =>
+                            JSON.stringify(item) === JSON.stringify(arr[0])
+                        );
+                    const duplicateValues: boolean = allIndexesSame(matches);
+                    if (duplicateValues) {
+                        matches.splice(1, matches.length);
                     }
                 }
             }
@@ -1168,7 +1188,7 @@ export class TextSearch {
                 this.pdfViewerBase.clearAllTextSearchOccurrences();
                 if (this.currentOccurrence !== 0) {
                     this.searchIndex = this.searchIndex + 1;
-                    if (this.areAllOccurencesSearched() && !this.isMessagePopupOpened) {
+                    if (this.areAllOccurencesSearched() && this.currentOccurrence === this.searchCount && !this.isMessagePopupOpened) {
                         this.onMessageBoxOpen();
                     }
                 }
@@ -1249,7 +1269,7 @@ export class TextSearch {
         }
         else {
             this.pdfViewerBase.clearAllTextSearchOccurrences();
-            if (this.areAllOccurencesSearched()) {
+            if (this.areAllOccurencesSearched() && this.currentOccurrence === this.searchCount) {
                 this.onMessageBoxOpen();
             }
             if (!this.isMessagePopupOpened) {
@@ -1314,7 +1334,7 @@ export class TextSearch {
                 if (this.currentOccurrence === 0) {
                     this.currentOccurrence = this.searchCount + 1;
                 }
-                if (this.areAllOccurencesSearched() && !this.isMessagePopupOpened) {
+                if (this.areAllOccurencesSearched() && this.currentOccurrence === 1 && !this.isMessagePopupOpened) {
                     this.onMessageBoxOpen();
                 }
                 if (!this.isMessagePopupOpened) {
@@ -1354,7 +1374,7 @@ export class TextSearch {
         }
         else {
             this.pdfViewerBase.clearAllTextSearchOccurrences();
-            if (this.areAllOccurencesSearched()) {
+            if (this.areAllOccurencesSearched() && this.currentOccurrence === 1) {
                 this.onMessageBoxOpen();
             }
             if (!this.isMessagePopupOpened) {
@@ -1603,6 +1623,17 @@ export class TextSearch {
                         }
                     }
 
+                }
+
+            }
+            if (matches.length > 1) {
+                const allIndexesSame: any = (arr: any[]) =>
+                    arr.every((item: any) =>
+                        JSON.stringify(item) === JSON.stringify(arr[0])
+                    );
+                const duplicateValues: boolean = allIndexesSame(matches);
+                if (duplicateValues) {
+                    matches.splice(1, matches.length);
                 }
             }
         }
@@ -3270,9 +3301,11 @@ export class TextSearch {
                 isCompleted: false,
                 isRequestsend: false
             };
+
             this.textSearchHandleRequest = new AjaxHandler(this.pdfViewer);
             this.textSearchHandleRequest.url = this.pdfViewer.serviceUrl + '/RenderPdfTexts';
             this.textSearchHandleRequest.responseType = 'json';
+
             return new Promise<any>((resolve: any) => {
                 proxy.textSearchHandleRequest.send(jsonObject);
                 proxy.textSearchHandleRequest.onSuccess = function (result: any): void {

@@ -165,7 +165,6 @@ export class DiagramScroller {
     private hScrollSize: number = 0;
     private vScrollSize: number = 0;
     private isFitToPageAction: boolean = false;
-    private isFitToPageExecuted: boolean = false;
     /** @private */
     public isNegativeOffset: boolean = false;
     constructor(diagram: Diagram) {
@@ -391,17 +390,10 @@ export class DiagramScroller {
         const difY: number = -this.verticalOffset + this.viewPortHeight - pageBounds.bottom;
         let hScrollSize: number = this.scrollerWidth;
         let vScrollSize: number = this.scrollerWidth;
-        const zoom: number = this.currentZoom;
-        const scaledX: number = (this.horizontalOffset * -1) / zoom;
-        const scaledY: number = (this.verticalOffset * -1) / zoom;
-        const scaledWidth: number = this.viewPortWidth / zoom;
-        const scaledHeight: number = this.viewPortHeight / zoom;
-        const isDiagramLimit: boolean = this.diagram.scrollSettings.scrollLimit === 'Diagram';
-        const contentBounds: Rect = isDiagramLimit && this.isFitToPageExecuted ? this.getPageBounds(true, undefined, true) : pageBounds;
-        if (scaledY <= contentBounds.y && scaledY + scaledHeight >= contentBounds.bottom) {
+        if (-this.verticalOffset <= pageBounds.y && -this.verticalOffset + this.viewPortHeight >= pageBounds.bottom) {
             vScrollSize = 0;
         }
-        if (scaledX <= contentBounds.x && scaledX + scaledWidth >= contentBounds.right) {
+        if (-this.horizontalOffset <= pageBounds.x && -this.horizontalOffset + this.viewPortWidth >= pageBounds.right) {
             hScrollSize = 0;
         }
         this.hScrollSize = hScrollSize;
@@ -822,7 +814,6 @@ export class DiagramScroller {
         }
         this.checkScroll(true);
         this.isFitToPageAction = false;
-        this.isFitToPageExecuted = true;
     }
     /**
      * Checks and manages scrollbar visibility based on scroll settings and fit-to-page mode.
@@ -1019,7 +1010,7 @@ export class DiagramScroller {
                 if (isPanAction && diagramFitsHorizontally) {
                     const minScaledX: number = bounds.right + this.vScrollSize - scaledWidth;
                     const maxScaledX: number = bounds.left;
-                    newScaledX = this.gradualClamp(newScaledX, scaledX, minScaledX, maxScaledX);
+                    newScaledX = Math.max(minScaledX, Math.min(newScaledX, maxScaledX));
                 }
                 else if (bounds.left >= scaledX && bounds.right <= scaledX + scaledWidth) {
                     newScaledX = scaledX;
@@ -1031,7 +1022,7 @@ export class DiagramScroller {
 
                     const minX: number = bounds.left;
                     const maxX: number = Math.max(minX, bounds.right + this.vScrollSize - scaledWidth);
-                    newScaledX = this.gradualClamp(newScaledX, scaledX, minX, maxX);
+                    newScaledX = Math.max(minX, Math.min(newScaledX, maxX));
                 }
 
                 hOffset = (newScaledX * -1) * zoom;
@@ -1044,7 +1035,7 @@ export class DiagramScroller {
                 if (isPanAction && diagramFitsVertically) {
                     const minScaledY: number = bounds.bottom + this.hScrollSize - scaledHeight;
                     const maxScaledY: number = bounds.top;
-                    newScaledY = this.gradualClamp(newScaledY, scaledY, minScaledY, maxScaledY);
+                    newScaledY = Math.max(minScaledY, Math.min(newScaledY, maxScaledY));
                 }
                 else if (bounds.top >= scaledY && bounds.bottom <= scaledY + scaledHeight) {
                     newScaledY = scaledY;
@@ -1056,7 +1047,7 @@ export class DiagramScroller {
 
                     const minY: number = bounds.top;
                     const maxY: number = Math.max(minY, bounds.bottom + this.hScrollSize - scaledHeight);
-                    newScaledY = this.gradualClamp(newScaledY, scaledY, minY, maxY);
+                    newScaledY = Math.max(minY, Math.min(newScaledY, maxY));
                 }
 
                 vOffset = (newScaledY * -1) * zoom;
@@ -1113,24 +1104,6 @@ export class DiagramScroller {
             //vOffset *= -1;
         }
         return { x: hOffset, y: vOffset };
-    }
-
-    private gradualClamp(value: number, current: number, min: number, max: number): number {
-        if (min > max) {
-            const temp: number = min;
-            min = max;
-            max = temp;
-        }
-
-        if (current > max) {
-            return value < current ? Math.max(value, max) : current;
-        }
-
-        if (current < min) {
-            return value > current ? Math.min(value, min) : current;
-        }
-
-        return Math.max(min, Math.min(value, max));
     }
 }
 /** @private */

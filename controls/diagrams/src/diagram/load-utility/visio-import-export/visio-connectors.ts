@@ -3,7 +3,7 @@ import { DiagramConnectorSegmentModel } from '../../objects/connector-model';
 import { VisioConnectorAnnotation, VisioTextAlignmentModel, VisioTextStyleModel } from './visio-annotations';
 import { LINE_PATTERN_MAP } from './visio-constants';
 import { extractGradientStops, formatCoordinate, getDecoratorDimensions, getDecoratorShape, getGradientVectorByAngle, getRadialGradient, getRouting, getTooltip, getVisibility, inchToPoint, inchToPx, mapCellValues, roundTo2Decimals, toBoolean, toCamelCase } from './visio-core';
-import { ParsingContext } from './visio-import-export';
+import { ParsingContext, VisioStyle } from './visio-import-export';
 import { setDefaultData } from './visio-model-parsers';
 import { VisioMaster, VisioPage } from './visio-models';
 import { getBPMNFlowShapes, getShapeKeywordsFromMaster, getTextDecoration, getUMLConnectors, mergeGeometrySectionsByIndex, resolveMasterSourceForNode } from './visio-nodes';
@@ -45,9 +45,10 @@ import {
     ConnectorResolvedStyle,
     ResolvedAnnotationStyle,
     ShapeAddInfo,
-    GroupTransform
+    GroupTransform,
+    QuickStyleValues
 } from './visio-types';
-
+import { getParentStyle, getQuickStyleValues } from './visio-node-parser';
 /**
  * Represents a Visio connector (line, arrow, or connector shape).
  * Contains all properties needed to define connector geometry, styling, and metadata.
@@ -120,6 +121,13 @@ export class VisioConnector {
     /** Shape-level routing style (0-22) - Controls routing algorithm */
     shapeRouteStyle?: string;
 
+    /** Raw XML data of the shape */
+    xmlShapeData?: Element;
+    /** The parent style references (FillStyle, LineStyle, TextStyle) that this shape inherits. */
+    visioParentStyles?: VisioStyle;
+    /** The quick style values applied to this shape. */
+    quickStyleValues?: QuickStyleValues;
+
     /**
      * Creates VisioConnector instances from Visio shape data.
      * Parses connector cells and extracts all relevant properties.
@@ -143,6 +151,11 @@ export class VisioConnector {
         const pageHeight: number = inchToPx(context.data.currentPage.pageHeight);
 
         for (const shape of shapes) {
+            const visioParentStyles: VisioStyle = getParentStyle(shape, context);
+            if (visioParentStyles) {
+                shape.visioParentStyles = visioParentStyles;
+                shape.quickStyleValues = getQuickStyleValues(visioParentStyles, shape, context);
+            }
             // Check if this shape is actually a connector
             if (isConnectorShape(shape, context)) {
                 const attributes: Attributes = (shape && shape.$) ? (shape.$ as Attributes) : {};
@@ -231,9 +244,14 @@ export class VisioConnector {
                 connector.QuickStyleLineMatrix = getCell('QuickStyleLineMatrix') !== undefined ?
                     Number(getCell('QuickStyleLineMatrix')) : undefined as number;
 
+                //Extract XML shape, ParentStyles and QuickStyleValues
+                connector.xmlShapeData = shape.xmlShapeData;
+                connector.visioParentStyles = shape.visioParentStyles;
+                connector.quickStyleValues = shape.quickStyleValues;
+
                 // Extract style and annotation data
                 connector.style = VisioStyleModel.fromShape(shape);
-                connector.annotation = VisioConnectorAnnotation.fromJs(shape, defaultData);
+                connector.annotation = VisioConnectorAnnotation.fromJs(shape, defaultData, context);
 
                 // Extract decorator information
                 connector.sourceDecorator = VisioDecoratorModel.fromJs(shape, true, context);

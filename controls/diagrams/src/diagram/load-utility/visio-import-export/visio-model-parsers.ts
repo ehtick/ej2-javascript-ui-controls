@@ -17,6 +17,7 @@ import {
 } from './visio-core';
 import { ParsingContext } from './visio-import-export';
 import {
+    VisioDiagramData,
     VisioDocumentSettings,
     VisioLayer,
     VisioMaster,
@@ -81,7 +82,11 @@ import {
     StrokeItem,
     StrokeAttributes,
     RgbColor,
-    VisioStyleSheet
+    VisioStyleSheet,
+    VisioStyleSheetsContainer,
+    BackgroundExtension,
+    GradientStopRef,
+    SrgbClr, SchemeClr
 } from './visio-types';
 
 import { resolveMasterSourceForNode } from './visio-nodes';
@@ -391,7 +396,7 @@ export function parseVisioPage(pageSheet: VisioPageSheet | undefined): VisioPage
     page.pageShapeSplit = getCellMapBooleanValue(cellMap, 'PageShapeSplit');
 
     // Parse string properties
-    page.fillColor = getCellMapStringValue(cellMap, 'FillForegnd');
+    page.fillColor = getCellMapStringValue(cellMap, 'Background');
     page.lineRouteExt = getCellMapStringValue(cellMap, 'LineRouteExt', '0');
     page.routeStyle = getCellMapStringValue(cellMap, 'RouteStyle', '0');
 
@@ -1108,6 +1113,30 @@ export function parseVisioTheme(obj: ThemeElements, context: ParsingContext): Vi
     // quick-style matrices and color ids into concrete hex values.
     theme.baseColors = extractAndFormatColors(obj['a:clrScheme'] as unknown as ParsedXmlObject);
 
+    // ==================== Background Color ====================
+    // Get the background color from 'vt:bkgnd'.
+    if (clrExts && Array.isArray(clrExts) && clrExts.length > 1) {
+        const bkgndColorExtElement: ThemeExtension = clrExts[1];
+        if (bkgndColorExtElement && isObject(bkgndColorExtElement)) {
+            const bkgndColorElement: BackgroundExtension | undefined = (bkgndColorExtElement as ThemeExtension)['vt:bkgnd'];
+            for (const key in bkgndColorElement) {
+                if (key.startsWith('a:')) {
+                    const colorContent: SrgbClr | SchemeClr | undefined = bkgndColorElement[`${key}`];
+
+                    if (key === 'a:srgbClr' && colorContent && isObject(colorContent)) {
+                        const srgbObj: SrgbClr = colorContent;
+                        const attributes: { val: string } = srgbObj.$;
+                        const hexVal: string = attributes.val;
+                        if (typeof hexVal === 'string' && hexVal.length === 6) {
+                            theme.bkgndColor = '#' + hexVal.toUpperCase();
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // ==================== Process Fill Styles ====================
     // Transform extracted fill definitions into ProcessedColor objects using baseColors
     if (theme.fmtSchemeFill && Array.isArray(theme.fmtSchemeFill)) {
@@ -1233,7 +1262,7 @@ export function parseVisioTheme(obj: ThemeElements, context: ParsingContext): Vi
     if (theme.fontStyles && Array.isArray(theme.fontStyles)) {
         const fontStyles: ColorReferenceArray = [];
         for (let i: number = 0; i < theme.fontStyles.length; i++) {
-            fontStyles.push(transformStyle(theme.fontStyles[parseInt(i.toString(), 10)], theme.baseColor as Record<string, string>));
+            fontStyles.push(transformStyle(theme.fontStyles[parseInt(i.toString(), 10)], theme.baseColors as Record<string, string>));
         }
         theme.fontColorsArray = fontStyles;
     }
@@ -1243,7 +1272,7 @@ export function parseVisioTheme(obj: ThemeElements, context: ParsingContext): Vi
     if (theme.connectorFont && Array.isArray(theme.connectorFont)) {
         const fontStyles: ColorReferenceArray = [];
         for (let i: number = 0; i < theme.connectorFont.length; i++) {
-            fontStyles.push(transformStyle(theme.connectorFont[parseInt(i.toString(), 10)], theme.baseColor as Record<string, string>));
+            fontStyles.push(transformStyle(theme.connectorFont[parseInt(i.toString(), 10)], theme.baseColors as Record<string, string>));
         }
         theme.connFontColors = fontStyles;
     }
@@ -1261,6 +1290,8 @@ export function parseVisioTheme(obj: ThemeElements, context: ParsingContext): Vi
     // ==================== Build Variant Index Arrays ====================
     // Build 2D index arrays for fill, line, effect, and font styles across all variations
     theme.variantFillIdx = [] as Array<Array<number>>;
+    theme.variantFontIdx = [] as Array<Array<number>>;
+    theme.variantLineIdx = [] as Array<Array<number>>;
     if (variationStyleSchemes && variationStyleSchemes.length > 0) {
         for (let k: number = 0; k < variationStyleSchemes.length; k++) {
             const scheme: VariationStyleScheme = variationStyleSchemes[parseInt(k.toString(), 10)];
@@ -1269,6 +1300,8 @@ export function parseVisioTheme(obj: ThemeElements, context: ParsingContext): Vi
                 const varientStyle: OneOrMany<VarientStyle> | undefined = scheme['vt:varStyle'] as OneOrMany<VarientStyle> | undefined;
                 const variantStyleArray: ReadonlyArray<VarientStyle> | undefined = toReadonlyArray<VarientStyle>(varientStyle);
                 const fillRow: Array<number> = [];
+                const fontRow: Array<number> = [];
+                const lineRow: Array<number> = [];
                 if (variantStyleArray && variantStyleArray.length > 0) {
                     for (let j: number = 0; j < variantStyleArray.length; j++) {
                         const item: VarientStyle = variantStyleArray[parseInt(j.toString(), 10)];
@@ -1276,9 +1309,13 @@ export function parseVisioTheme(obj: ThemeElements, context: ParsingContext): Vi
                             ? item.$ : {};
 
                         fillRow.push((attrs.fillIdx ? parseInt(attrs.fillIdx as string, 10) : 0));
+                        fontRow.push((attrs.fontIdx ? parseInt(attrs.fontIdx as string, 10) : 0));
+                        lineRow.push((attrs.fontIdx ? parseInt(attrs.fontIdx as string, 10) : 0));
                     }
                 }
                 theme.variantFillIdx.push(fillRow);
+                theme.variantFontIdx.push(fontRow);
+                theme.variantLineIdx.push(lineRow);
             }
         }
     }
@@ -1313,7 +1350,7 @@ export function parseVisioTheme(obj: ThemeElements, context: ParsingContext): Vi
  *
  * @private
  */
-function hexToRgb(hex: string): { red: number; green: number; blue: number } {
+export function hexToRgb(hex: string): { red: number; green: number; blue: number } {
     const cleanHex: string = hex.replace(/^#/, '');
     const num: number = parseInt(cleanHex, 16);
     return {
@@ -1332,7 +1369,7 @@ function hexToRgb(hex: string): { red: number; green: number; blue: number } {
  *
  * @private
  */
-function createProcessedColor(hexColor: string): ProcessedColor {
+export function createProcessedColor(hexColor: string): ProcessedColor {
     const rgb: { red: number; green: number; blue: number } = hexToRgb(hexColor);
     return {
         tint: 0,
@@ -1508,7 +1545,24 @@ function transformStyle(colorElem: Partial<OrderEntry>, baseColors: Record<strin
 
         // Preserve gradient data if present
         if (value['a:gsLst']) {
-            result.value = value;
+            result.value = {};
+            const gradientColors: GradientStopRef[] = value['a:gsLst']['a:gs'];
+            for (let i: number = 0; i < gradientColors.length; i++) {
+                const color: string = 'color' + (i + 1);
+                const srgbClr: SrgbClr = gradientColors[parseInt(i.toString(), 10)]['a:srgbClr'];
+                if (srgbClr && srgbClr.$ && srgbClr.$.val) {
+                    const hexVal: string = srgbClr.$.val;
+                    result.value[`${color}`] = createProcessedColor('#' + hexVal);
+                }
+                const schemeClr: SchemeClr = gradientColors[parseInt(i.toString(), 10)]['a:schemeClr'];
+                if (schemeClr && schemeClr.$ && schemeClr.$.val) {
+                    const schemeVal: string = schemeClr.$.val;
+                    const modifiers: ColorModifiers = extractColorModifiers(schemeClr);
+                    if (schemeVal) {
+                        result.value[`${color}`] = createColorRef(schemeVal, modifiers);
+                    }
+                }
+            }
         }
     }
 
@@ -1545,25 +1599,85 @@ function transformLineStyle(strokeItem: StrokeItem, baseColors: Record<string, s
     };
 
     // Extract line width and cap style from attributes
-    if (strokeItem.$) {
-        const attributes: StrokeAttributes = strokeItem.$;
+    if (strokeItem && strokeItem.value && strokeItem.value.$) {
+        const attributes: StrokeAttributes = strokeItem.value.$;
         result.lineWidth = parseInt(attributes.w || '0', 10);
         result.lineCap = attributes.cap === 'rnd' ? 0 : attributes.cap === 'sq' ? 1 : null;
     }
 
     // Extract dash pattern
-    if (strokeItem['a:prstDash']) {
-        const dashVal: string | undefined = strokeItem['a:prstDash'].$.val;
+    if (strokeItem && strokeItem.value && strokeItem.value['a:prstDash']) {
+        const dashVal: string | undefined = strokeItem.value['a:prstDash'].$.val;
         result.isLineDashed = dashVal && dashVal !== 'solid';
     }
 
     // Extract fill color from solid fill
-    if (strokeItem['a:solidFill']) {
-        result.fillStyle = transformStyle({ value: strokeItem['a:solidFill'] }, baseColors);
+    if (strokeItem && strokeItem.value && strokeItem.value['a:solidFill']) {
+        result.fillStyle = transformStyle({ value: strokeItem.value['a:solidFill'] }, baseColors);
     }
 
     return result;
 }
+
+/**
+ * Returns true when the string represents a strict integer or float form without
+ * exponential notation and normalized string equals Number(value). This avoids
+ *
+ * @param {string | undefined} value - The input string to validate as a strict numeric string.
+ * @returns {boolean} True when the input is a strict numeric string (no exponent, normalized).
+ *
+ * @private
+ */
+function isStrictNumericString(value: string | undefined): boolean {
+    if (typeof value !== 'string') { return false; }
+    const trimmedValue: string = value.trim();
+    if (trimmedValue.length === 0) { return false; }
+    const numericValue: number = Number(trimmedValue);
+    return Number.isFinite(numericValue) && String(numericValue) === trimmedValue;
+}
+
+/**
+ * Returns true for non-negative numeric strings (integer or float) in strict form.
+ *
+ * @param {string | undefined} value - The input string to validate as a non-negative numeric string.
+ * @returns {boolean} True when the input is a strict numeric string and >= 0.
+ *
+ * @private
+ */
+function isNonNegativeNumericString(value: string | undefined): boolean {
+    if (!isStrictNumericString(value)) { return false; }
+    return Number(value as string) >= 0;
+}
+
+/**
+ * Determines whether a Visio theme is applied for the current document/page.
+ *
+ * @param {ParsingContext} context - Parser utilities for logging warnings and accessing parsing state.
+ * @returns {boolean} True when a theme is considered applied (themes array present or currentTheme schemeEnum matches page.theme), otherwise false.
+ *
+ * @private
+ */
+export function isThemeApplied(context?: ParsingContext): boolean {
+    const data: VisioDiagramData = context && context.data;
+    const themes: VisioTheme[] = data && data.themes;
+    // No themes info -> not applied
+    if (!themes) {
+        return false;
+    }
+    // If themes is an array with any entries, treat as applied
+    if (Array.isArray(themes) && themes.length > 0) {
+        return true;
+    }
+    const currentTheme: VisioTheme = data && data.currentTheme;
+    if (!currentTheme) {
+        return false;
+    }
+    const currentPageTheme: number = data && data.currentPage && data.currentPage.theme;
+    const enumIndex: number = typeof currentTheme.schemeEnum !== 'undefined' ? Number(currentTheme.schemeEnum) : undefined;
+    return currentPageTheme === enumIndex;
+}
+
+
 
 /**
  * Parses node styling properties (fills, strokes, gradients) from a shape's raw XML object.
@@ -1645,15 +1759,112 @@ export function parseVisioNodeStyle(shapeData: VisioShapeNode, context: ParsingC
         }
     };
 
+    const getStyleSheetCell: (name: string, Scell?: VisioCell | VisioCell[]) => string | undefined =
+        (name: string, Scell: VisioCell | VisioCell[]) => {
+            const cell: VisioCell | undefined = ensureArray(Scell).find((c: VisioCell) => c.$.N === name);
+            if (!cell) {
+                return undefined;
+            }
+            const value: CellMapValue = cell.$ && cell.$.V;
+            const formula: string | undefined = cell.$ && cell.$.F;
+
+            // If the formula references theme (THEMEVAL / THEME etc.) treat as unresolved
+            if (formula && /THEMEVAL\s*\(|\bTHEME\b/i.test(String(formula))) {
+                return undefined;
+            }
+            // Explicit 'Themed' token -> unresolved
+            if (value === 'Themed') {
+                return undefined;
+            }
+            if (!value) {
+                return undefined;
+            }
+            return typeof value === 'string' ? value : undefined;
+        };
+
+    const getStyleSheetById: (styleId?: string) => VisioStyleSheet = (styleId?: string) => {
+        if (!styleId) {
+            return undefined;
+        }
+        const styleSheet: VisioStyleSheet[] = context.entries && context.entries.RootDocument &&
+            context.entries.RootDocument.StyleSheets && (context.entries.RootDocument.StyleSheets).StyleSheet;
+        if (styleSheet) {
+            const array: VisioStyleSheet[] = Array.isArray(styleSheet) ? styleSheet : [styleSheet];
+            return array.find((s: VisioStyleSheet) => s && s.$ && String(s.$.ID) === String(styleId));
+        }
+        else {
+            return undefined;
+        }
+    };
+
+    const getStyleSheetCellValue: (styleId: string | undefined, name: string) => string | undefined =
+        (styleId: string | undefined, name: string): string | undefined => {
+            if (!styleId) {
+                return undefined;
+            }
+            // If theme is applied for this page/theme combo, stylesheet values are unresolved here
+            if (isThemeApplied(context)) {
+                return undefined;
+            }
+            const styleSheet: VisioStyleSheet | undefined = getStyleSheetById(styleId);
+            if (!styleSheet || !styleSheet.Cell) {
+                return undefined;
+            }
+
+            const cells: VisioCell[] = ensureArray(styleSheet.Cell);
+            const cellValue: string | undefined = getStyleSheetCell(name, cells);
+            if (!cellValue) {
+                return undefined;
+            }
+
+            const value: string = String(cellValue).trim();
+
+            // Color checks: ensure value is a real color (not numeric zero or theme placeholder)
+            if (name === 'FillForegnd' || name === 'LineColor') {
+                // reject plain numeric tokens like "0" or "1" used as placeholders
+                if (isStrictNumericString(value)) {
+                    return undefined;
+                }
+                // rely on isValidColor helper to validate hex/rgb/named colors
+                return isValidColor(value) ? value : undefined;
+            }
+
+            // Numeric check for LineWeight (should be a numeric string)
+            if (name === 'LineWeight') {
+                // Accept integer/float numeric strings (positive or zero). Return string to keep callers unchanged.
+                if (isNonNegativeNumericString(value)) {
+                    return value;
+                }
+                return undefined;
+            }
+
+            // Fallback: return string values (non-empty), excluding explicit themed placeholder
+            if (value === 'Themed' || value.length === 0) {
+                return undefined;
+            }
+            return value;
+        };
+
+    // -- store style references from shapeData.$ --
+    const fillStyleId: string | undefined = (shapeData && shapeData.$ && (shapeData.$.FillStyle)) ? String(shapeData.$.FillStyle) :
+        defaultStyle.FillStyle ? defaultStyle.FillStyle : undefined;
+    const lineStyleId: string | undefined = (shapeData && shapeData.$ && (shapeData.$.LineStyle)) ? String(shapeData.$.LineStyle) :
+        defaultStyle.LineStyle ? defaultStyle.LineStyle : undefined;
+    const textStyleId: string | undefined = (shapeData && shapeData.$ && (shapeData.$.TextStyle)) ? String(shapeData.$.TextStyle) :
+        defaultStyle.TextStyle ? defaultStyle.TextStyle : undefined;
+
     // Initialize the node style object
     const nodeStyle: VisioNodeStyle = new VisioNodeStyle();
+    // ==================== Parse Stroke Properties ====================
     const lineColor: string | undefined = getCell('LineColor');
     const masterLineColor: string | undefined = getMasterCell('LineColor');
-    // ==================== Parse Stroke Properties ====================
-    nodeStyle.strokeWidth = getCell('LineWeight') != null ? Number(getCell('LineWeight')) : undefined;
+    nodeStyle.strokeWidth = getCell('LineWeight') != null ? Number(getCell('LineWeight')) :
+        getStyleSheetCellValue(lineStyleId, 'LineWeight') != null ? Number(getStyleSheetCellValue(lineStyleId, 'LineWeight')) : undefined;
     nodeStyle.linePattern = getCell('LinePattern') != null ? getCell('LinePattern') : undefined;
-    nodeStyle.strokeColor = lineColor != null ? (nodeStyle.linePattern !== '0' ? lineColor : undefined) : masterLineColor != null ? masterLineColor : undefined;
-    nodeStyle.strokeDashArray = getCell('LinePattern') != null ? getCell('LinePattern') : undefined;
+    nodeStyle.strokeColor = lineColor != null ? (nodeStyle.linePattern !== '0' ? lineColor : undefined) :
+        getStyleSheetCellValue(lineStyleId, 'LineColor') != null ? getStyleSheetCellValue(lineStyleId, 'LineColor') : masterLineColor != null ? masterLineColor : undefined;
+    nodeStyle.strokeDashArray = getCell('LinePattern') != null ? getCell('LinePattern') :
+        getStyleSheetCellValue(lineStyleId, 'LinePattern') != null ? getStyleSheetCellValue(lineStyleId, 'LinePattern') : undefined;
 
     // Log warning about partial pattern matching between Visio and EJ2
     if (getCell('LinePattern') != null) {
@@ -1661,8 +1872,10 @@ export function parseVisioNodeStyle(shapeData: VisioShapeNode, context: ParsingC
     }
 
     // ==================== Parse Fill Properties ====================
-    nodeStyle.fillColor = getCell('FillForegnd') != null ? getCell('FillForegnd') : getMasterCell('FillForegnd') != null ? getMasterCell('FillForegnd') : getFillColor(shape, context);
-    nodeStyle.fillPattern = getCell('FillPattern') != null ? getCell('FillPattern') : (defaultStyle && defaultStyle.FillPattern) ? defaultStyle.FillPattern : undefined;
+    nodeStyle.fillColor = getCell('FillForegnd') != null ? getCell('FillForegnd') : getStyleSheetCellValue(fillStyleId, 'FillForegnd') != null ?
+        getStyleSheetCellValue(fillStyleId, 'FillForegnd') : getMasterCell('FillForegnd') != null ? getMasterCell('FillForegnd') : getFillColor(shape, context);
+    nodeStyle.fillPattern = getCell('FillPattern') != null ? getCell('FillPattern') : getStyleSheetCellValue(fillStyleId, 'FillPattern') != null ?
+        getStyleSheetCellValue(fillStyleId, 'FillPattern') : (defaultStyle && defaultStyle.FillPattern) ? defaultStyle.FillPattern : undefined;
 
     // ==================== Parse Opacity ====================
     // Image shapes use Transparency; other shapes use FillForegndTrans
@@ -1721,7 +1934,7 @@ export function parseVisioNodeStyle(shapeData: VisioShapeNode, context: ParsingC
  *
  * @private
  */
-function toHexStr(color: RgbColor): string {
+export function toHexStr(color: RgbColor): string {
     const red: string = color.red.toString(16);
     const redPadded: string = red.length === 1 ? '0' + red : red;
     const green: string = color.green.toString(16);
@@ -1886,7 +2099,65 @@ class HSVColor {
 }
 
 /**
- * Applies color modifiers (tint, shade, saturation, luminance, hue) to a fill style color.
+ * Converts an RGB color object to HSL color space for transformation operations.
+ * Used as an intermediate step for applying tint, shade, and other color modifiers.
+ *
+ * @param {RgbColor} color - The RGB color object with red, green, and blue properties (0-255).
+ * @returns {HSLColor} An HSLColor object representing the color in HSL space.
+ *
+ * @private
+ */
+export function toHsl(color: RgbColor): HSLColor {
+    const red: number = color.red / 255.0;
+    const green: number = color.green / 255.0;
+    const blue: number = color.blue / 255.0;
+    const max: number = Math.max(red, Math.max(green, blue));
+    const min: number = Math.min(red, Math.min(green, blue));
+    const lightness: number = (max + min) / 2.0;
+    let hue: number;
+    let saturation: number;
+
+    if (max === min) {
+        hue = saturation = 0;
+    } else {
+        const delta: number = max - min;
+        saturation = lightness > 0.5 ? delta / (2 - max - min) : delta / (max + min);
+        if (max === red) {
+            hue = (green - blue) / delta + (green < blue ? 6 : 0);
+        } else if (max === green) {
+            hue = (blue - red) / delta + 2;
+        } else {
+            hue = (red - green) / delta + 4;
+        }
+        hue /= 6;
+    }
+
+    return new HSLColor(hue, saturation, lightness);
+}
+
+/**
+ * HSLColor class for color space conversion and manipulation.
+ * Provides methods to apply tint, shade, and other color transformations.
+ *
+ * @private
+ */
+export class HSLColor {
+    hue: number = 0;
+    saturation: number = 0;
+    lightness: number = 0;
+
+    constructor(hue: number, saturation: number, lightness: number) {
+        this.hue = hue;
+        this.saturation = saturation;
+        this.lightness = lightness;
+    }
+
+    getLum(): number {
+        return this.lightness;
+    }
+}
+/**
+ * Applies color modifiers (tint, shade, saturation, lightness, hue) to a fill style color.
  * Converts to HSV space, applies modifications, and converts back to RGB.
  *
  * @param {ColorRef | ProcessedColor} fillStyleColor - The fill style color object with modifiers and RGB color.
@@ -1894,7 +2165,7 @@ class HSVColor {
  *
  * @private
  */
-function calcColor(fillStyleColor: ColorRef | ProcessedColor): void {
+export function calcColor(fillStyleColor: ColorRef | ProcessedColor): void {
     if (fillStyleColor.hasEffects) {
         const hsvColor: HSVColor = toHsv(fillStyleColor.color as RgbColor);
 
@@ -1923,13 +2194,13 @@ function calcColor(fillStyleColor: ColorRef | ProcessedColor): void {
  * Resolves fill colors from theme fill style matrices, variant colors, or base colors.
  * Applies color modifiers (tint, shade, etc.) to generate the final fill color.
  *
- * @param {VisioShape} shape - Parsed Visio shape(s) for the vertex node
+ * @param {VisioShape | VisioShapeNode} shape - Parsed Visio shape(s) for the vertex node
  * @param {ParsingContext} context - Parser context containing theme and shape data.
  * @returns {string | undefined} The resolved fill color in hex format (#RRGGBB), or undefined if not found.
  *
  * @private
  */
-function getFillColor(shape: VisioShape, context: ParsingContext): string | undefined {
+export function getFillColor(shape: VisioShape | VisioShapeNode, context: ParsingContext): string | undefined {
     const theme: VisioTheme | undefined = context.data.currentTheme ? context.data.currentTheme : undefined;
     if (!theme) {
         return undefined;
@@ -1939,9 +2210,11 @@ function getFillColor(shape: VisioShape, context: ParsingContext): string | unde
     let fillColorStyle: number = 0;
 
     if (shape) {
-        fillColorStyle = shape.QuickFillColor;
+        fillColorStyle = (shape as VisioShape).QuickFillColor ||
+            (shape as VisioShapeNode).quickStyleValues && (shape as VisioShapeNode).quickStyleValues.quickStyleFillColor;
 
-        const matrix: number = shape.QuickFillMatrix;
+        const matrix: number = (shape as VisioShape).QuickFillMatrix ||
+            (shape as VisioShapeNode).quickStyleValues && (shape as VisioShapeNode).quickStyleValues.quickStyleFillMatrix;
         const index: number = matrix - 100;
         switch (matrix) {
         case 1:
@@ -1975,7 +2248,7 @@ function getFillColor(shape: VisioShape, context: ParsingContext): string | unde
         return undefined;
     }
 
-    if (fillStyle && fillStyle.color && (fillStyle.color as ColorRef).val !== 'phClr') {
+    if (fillStyle && fillStyle.color && (fillStyle.color as ColorRef).val && (fillStyle.color as ColorRef).val !== 'phClr') {
         const colorValue: string = (fillStyle.color as ColorRef).val;
         return theme.baseColors[`${colorValue}`] ? theme.baseColors[`${colorValue}`] : undefined;
     }
@@ -2017,10 +2290,162 @@ function getFillColor(shape: VisioShape, context: ParsingContext): string | unde
     if (fillStyle && fillStyle.color) {
         fillStyle.color.color = variantColor.color;
         calcColor(fillStyle.color);
-        return toHexStr(fillStyle.color.color as RgbColor);
+        return toHexStr(fillStyle.color.color);
     }
 
+    if (variantColor && variantColor.color) {
+        return toHexStr(variantColor.color);
+    }
     return undefined;
+}
+
+/**
+ * Retrieves the line color for a shape based on quick style settings and theme data.
+ * Resolves line colors from theme line style matrices, variant colors, or base colors.
+ * Applies color modifiers (tint, shade, etc.) to generate the final line color.
+ *
+ * @param {VisioShapeNode} shape - Parsed Visio shape(s) for the vertex node
+ * @param {ParsingContext} context - Parser context containing theme and shape data.
+ * @returns {string | undefined} The resolved line color in hex format (#RRGGBB), or undefined if not found.
+ *
+ * @private
+ */
+export function getLineColor(shape: VisioShapeNode, context: ParsingContext): string | undefined {
+
+    const theme: VisioTheme | undefined = context.data.currentTheme ? context.data.currentTheme : undefined;
+    if (!theme) {
+        return undefined;
+    }
+    let lineColorStyle: number = shape.quickStyleValues && shape.quickStyleValues.quickStyleLineColor;
+    const lineColorMatrix: number = shape.quickStyleValues && shape.quickStyleValues.quickStyleLineMatrix;
+    const lineStyle: LineStyleRef = getLineStyle(lineColorMatrix, theme);
+    switch (lineColorMatrix) {
+    case 100:
+    case 101:
+    case 102:
+    case 103:
+        if (theme.isMonotoneVariant[theme.themeVariantStl]) {
+            lineColorStyle = 100;
+        }
+        break;
+    }
+    let lineClr: string;
+    if (lineStyle != null) {
+        lineClr = getLineColorStyle(lineStyle, lineColorStyle, theme);
+    }
+    const styleVariation: number = shape.quickStyleValues && shape.quickStyleValues.quickStyleVariation;
+    if ((styleVariation & 4) > 0) {
+        const bkgndColor: string = theme.bkgndColor;
+        const bkgHSLClr: HSLColor = toHsl(hexToRgb(bkgndColor));
+        const fillColor: string = getFillColor(shape, context);
+        const fillHSLClr: HSLColor = typeof fillColor == 'object' ? toHsl(fillColor) : toHsl(hexToRgb(fillColor));
+        const lineHSLClr: HSLColor = typeof lineClr == 'object' ? toHsl(lineClr) : toHsl(hexToRgb(lineClr));
+        if (Math.abs(bkgHSLClr.getLum() - lineHSLClr.getLum()) >= 0.1666) {
+            return lineClr;
+        }
+        if (bkgHSLClr.getLum() <= 0.7292) {
+            lineClr = 'ffffff';
+        }
+        else if (Math.abs(bkgHSLClr.getLum() - fillHSLClr.getLum()) > Math.abs(bkgHSLClr.getLum() - lineHSLClr.getLum())) {
+            lineClr = fillColor;
+        }
+    }
+    return lineClr;
+}
+
+/**
+ * Retrieves the line style object from theme based on quick style line matrix.
+ *
+ * @param {number} quickStyleLineMatrix - Matrix reference for line style.
+ * @param {VisioTheme} theme - Theme object containing line styles.
+ * @returns {LineStyleRef | null} Line style object or null
+ * @private
+ */
+function getLineStyle(quickStyleLineMatrix: number, theme: VisioTheme): LineStyleRef {
+    let lineStyle: LineStyleRef = null;
+    const index: number = quickStyleLineMatrix - 100;
+    switch ((quickStyleLineMatrix)) {
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+    case 5:
+    case 6:
+        lineStyle = theme.lineStyles[quickStyleLineMatrix - 1];
+        break;
+    case 100:
+    case 101:
+    case 102:
+    case 103:
+        if (theme.variantLineIdx[theme.themeVariantStl] != null) {
+            lineStyle = theme.lineStyles[theme.variantLineIdx[theme.themeVariantStl][parseInt(index.toString(), 10)] - 1];
+        }
+        break;
+    }
+    return lineStyle;
+}
+
+/**
+ * Resolves the actual stroke color from a theme line style definition.
+ *
+ * @param {LineStyleRef} lineStyle - The line style reference.
+ * @param {number} lineColorStyle - Quick style color index.
+ * @param {VisioTheme} theme - Theme object containing color mappings.
+ * @returns {string | undefined} Hex color or undefined.
+ * @private
+ */
+function getLineColorStyle(lineStyle: LineStyleRef, lineColorStyle: number, theme: VisioTheme): string {
+    if (lineStyle.fillStyle && lineStyle.fillStyle.color) {
+        if (lineStyle.fillStyle.color.color) {
+            return toHexStr(lineStyle.fillStyle.color.color);
+        }
+        const colorValue: string = (lineStyle.fillStyle.color as ColorRef).val;
+        const color: string = theme.baseColors[`${colorValue}`] ? theme.baseColors[`${colorValue}`] : undefined;
+        if (color) {
+            return color;
+        }
+        else {
+            let variantColor: ProcessedColor | null = null;
+            if (lineColorStyle < 8) {
+                // Base color from scheme (colors 1-7)
+                if (theme.baseColors) {
+                    const colorKey: string | undefined = getColorKeyFromId(lineColorStyle);
+                    if (colorKey && theme.baseColors[`${colorKey}`]) {
+                        variantColor = createProcessedColor(theme.baseColors[`${colorKey}`]);
+                    }
+                }
+            }
+            else {
+                // Variant colors (100-106, 200-206, etc.)
+                let clrIndex: number = 0;
+                if (lineColorStyle >= 200) {
+                    clrIndex = lineColorStyle - 200;
+                } else if (lineColorStyle >= 100) {
+                    clrIndex = lineColorStyle - 100;
+                }
+
+                if (clrIndex >= 0 && clrIndex <= 6) {
+                    if (theme.themeVariantClr !== undefined && theme.variantsColors && theme.variantsColors.length > 0) {
+                        const variantIndex: number = theme.themeVariantClr % theme.variantsColors.length;
+                        const variantColors: ProcessedColor[] = theme.variantsColors[parseInt(variantIndex.toString(), 10)];
+                        if (variantColors && variantColors[parseInt(clrIndex.toString(), 10)]) {
+                            variantColor = variantColors[parseInt(clrIndex.toString(), 10)];
+                        }
+                    }
+                }
+            }
+
+            if (variantColor && variantColor.color) {
+                lineStyle.fillStyle.color.color = variantColor.color;
+                calcColor(lineStyle.fillStyle.color);
+                return toHexStr(lineStyle.fillStyle.color.color);
+            }
+            return undefined;
+        }
+    }
+    else {
+        return undefined;
+    }
 }
 
 /**
@@ -2031,7 +2456,7 @@ function getFillColor(shape: VisioShape, context: ParsingContext): string | unde
  *
  * @private
  */
-function getColorKeyFromId(colorId: number): string | undefined {
+export function getColorKeyFromId(colorId: number): string | undefined {
     const colorIdMap: Record<number, string> = {
         1: 'dk1',
         2: 'lt1',

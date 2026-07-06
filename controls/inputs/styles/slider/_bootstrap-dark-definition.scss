@@ -1,5 +1,4 @@
-@use 'ej2-base/styles/definition/bootstrap-dark' as *;
-@forward 'ej2-base/styles/definition/bootstrap-dark';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 
 //default
 $slider-bg-color: $grey-99 !default;

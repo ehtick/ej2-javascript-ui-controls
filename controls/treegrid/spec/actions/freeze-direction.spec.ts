@@ -488,3 +488,36 @@ describe('code coverage improvement', () => {
         destroy(gridObj);
     });
 });
+
+describe('EJ2_1025203 - Column Alignment Issue When Changing Freeze Direction from Right to Left in the TreeColumn', ()=>{
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: sampleData,
+                childMapping: 'subtasks',
+                treeColumnIndex: 1,
+                allowSorting: true,
+                allowSelection: false,
+                height: 410,    
+                columns: [
+                    { field: 'taskID', headerText: 'Task ID', textAlign: 'Right', width: 100, freeze: 'Left'  },
+                    { field: 'taskName', headerText: 'Task Name', width: 250},
+                    { field: 'startDate', headerText: 'Start Date', width: 130, textAlign: 'Right',
+                        type: 'date', format: { type: 'dateTime', format: 'dd/MM/yyyy' } },
+                    { field: 'endDate', headerText: 'End Date', width: 150, textAlign: 'Right',
+                        type: 'date', format: { type: 'dateTime', format: 'dd/MM/yyyy' } },
+                ],
+            },
+            done
+        );
+    });
+
+    it('Changing freeze direction from right to left in the tree column', () => {
+        let column: any = gridObj.getColumnByField('taskName');
+        column.freeze = 'Right';
+        column.freeze = 'Left';
+        const cell: any = gridObj.getCellFromIndex(0,column.index);
+        expect(cell.classList.contains('e-rightalign')).toBe(false);
+    });
+});

@@ -123,18 +123,12 @@ export class EventAction {
         if (this.parent.readOnly || ((mouseEvent.target as HTMLElement).tagName === 'TD')) { return; }
         this.parent.selectionOverlay.clearSelectionOverlay();
         const range: Range = getSelectedRange();
-        const startContainerParent: HTMLElement = range ? getParentElement(range.startContainer) : null;
+        // Case - When click is performed outside the blockelement(edge of the editor), take range and update the focused block.
+        const startContainerParent: HTMLElement = (range && range.collapsed) ? getParentElement(range.startContainer) : null;
         const target: HTMLElement = (startContainerParent || mouseEvent.target) as HTMLElement;
         const blockElement: HTMLElement = target.closest('.' + constants.BLOCK_CLS) as HTMLElement;
-        if (blockElement && (this.parent.currentFocusedBlock !== blockElement)) {
-            this.parent.togglePlaceholder(this.parent.currentFocusedBlock, false);
-            this.parent.setFocusToBlock(blockElement);
-            this.parent.togglePlaceholder(this.parent.currentFocusedBlock, true);
-            this.parent.floatingIconAction.showFloatingIcons(this.parent.currentFocusedBlock);
-            if (blockElement.innerText.length === 0) {
-                setCursorPosition(getBlockContentElement(blockElement), 0);
-            }
-        }
+        this.refreshUIStateOnMouseAction(blockElement);
+
         setTimeout(() => {
             const isPopupInteracted: boolean = this.parent.inlineToolbarModule
                 && this.parent.inlineToolbarModule.popupObj.element.contains(mouseEvent.target as HTMLElement);
@@ -149,7 +143,15 @@ export class EventAction {
         this.parent.selectionOverlay.clearSelectionOverlay();
         if (this.parent.readOnly) { return; }
         const blockElement: HTMLElement = (mouseEvent.target as HTMLElement).closest('.' + constants.BLOCK_CLS) as HTMLElement;
+        this.refreshUIStateOnMouseAction(blockElement);
+    }
+
+    private refreshUIStateOnMouseAction(blockElement: HTMLElement): void {
         if (blockElement && (this.parent.currentFocusedBlock !== blockElement)) {
+            this.parent.togglePlaceholder(this.parent.currentFocusedBlock, false);
+            this.parent.setFocusToBlock(blockElement);
+            this.parent.togglePlaceholder(this.parent.currentFocusedBlock, true);
+            this.parent.floatingIconAction.showFloatingIcons(this.parent.currentFocusedBlock);
             if (blockElement.innerText.length === 0) {
                 setCursorPosition(getBlockContentElement(blockElement), 0);
             }
@@ -181,7 +183,13 @@ export class EventAction {
         this.updateUIAfterInput(inputEvent);
         this.filterSlashCommandOnUserInput();
         if (this.processFormattingActions(inputEvent)) { return; }
-        this.throttleContentUpdate(inputEvent);
+        if (this.parent.collaborationModule) {
+            const target: HTMLElement = this.parent.currentFocusedBlock as HTMLElement;
+            this.parent.stateManager.updateContentOnUserTyping(target, inputEvent);
+        }
+        else {
+            this.throttleContentUpdate(inputEvent);
+        }
     }
 
     private processEntireEditorSelection(): void {
@@ -282,6 +290,9 @@ export class EventAction {
 
     private handleKeydownActions(keyEvent: KeyboardEvent): void {
         this.parent.previousSelection = captureSelectionState();
+        /* Collaboration Start */
+        this.parent.preCaptureSelection(this.parent.previousSelection);
+        /* Collaboration End */
         if (!this.parent.currentFocusedBlock || !this.validateKeyEventProcessability(keyEvent) || ((keyEvent.target && (keyEvent.target as HTMLElement).closest('.e-embed-url-input')))) {
             return;
         }
@@ -359,6 +370,7 @@ export class EventAction {
         const commandPopupElement: HTMLElement = document.querySelector(`#${mentionPopupId}.e-blockeditor-command-menu`) as HTMLElement;
         const userMentionPopupElement: HTMLElement = document.querySelector(`#${mentionPopupId}.e-blockeditor-user-menu`) as HTMLElement;
         const labelMentionPopupElement: HTMLElement = document.querySelector(`#${mentionPopupId}.e-blockeditor-label-menu`) as HTMLElement;
+        const imageUploadPopup: HTMLElement = this.parent.rootEditorElement.querySelector(`#${this.parent.rootEditorElement.id + constants.IMAGE_POPUP_ID}`);
         const blockModel: BlockModel = getBlockModelById(this.parent.currentFocusedBlock.id, this.parent.getEditorBlocks());
         const actionPopupElement: HTMLElement = this.parent.rootEditorElement.querySelector(`#${this.parent.rootEditorElement.id + constants.BLOCKACTION_POPUP_ID}`);
         const linkDialogElement: HTMLElement = this.parent.rootEditorElement.querySelector(`#${this.parent.rootEditorElement.id + constants.LINKDIALOG_ID}`);
@@ -370,8 +382,9 @@ export class EventAction {
             (labelMentionPopupElement && labelMentionPopupElement.classList.contains('e-popup-open')) ||
             (blockModel && notAllowedTypes.indexOf(blockModel.blockType) !== -1) ||
             (actionPopupElement && actionPopupElement.classList.contains('e-popup-open')) ||
-            (linkDialogElement && linkDialogElement.classList.contains('e-popup-open') ||
-            (codeLanguagePopup && codeLanguagePopup.classList.contains('e-popup-open')));
+            (linkDialogElement && linkDialogElement.classList.contains('e-popup-open')) ||
+            (codeLanguagePopup && codeLanguagePopup.classList.contains('e-popup-open')) ||
+            (imageUploadPopup && imageUploadPopup.classList.contains('e-popup-open'));
     }
 
     private processListBlockEvents(keyEvent: KeyboardEvent, blockElement: HTMLElement, blockModel: BlockModel): boolean {
@@ -743,7 +756,6 @@ export class EventAction {
     // Reposition handled by SelectionOverlay
 
     public destroy(): void {
-        this.parent.selectionOverlay.clearSelectionOverlay();
         this.unWireGlobalEvents();
     }
 }

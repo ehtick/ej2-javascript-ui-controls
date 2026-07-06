@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/fluent' as *;
-@forward 'ej2-base/styles/definition/fluent';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $tbar-skin: 'FluentUI' !default;
 $border-size: 0;
 $border-type: solid;

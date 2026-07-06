@@ -65,7 +65,8 @@ import { HistoryEntry } from '../diagram/history';
 import { GridPanel } from '../core/containers/grid';
 import { Canvas } from '../core/containers/canvas';
 import { DiagramHtmlElement } from '../core/elements/html-element';
-import { containsBounds, getFlippedPoint, getPoint, isLabelFlipped, PathElement, randomId } from '../index';
+import { containsBounds, ErShape, getFlippedPoint, getPoint, isLabelFlipped, PathElement, randomId } from '../index';
+import { calculateFieldDropIndex, getErFieldIndexByNodeId, reorderErField } from '../entity-relationship/er-field-reorder-util';
 import { Tooltip } from '@syncfusion/ej2-popups';
 import { isBlazor } from '@syncfusion/ej2-base';
 import { PathPort, PointPort } from '../objects/port';
@@ -485,6 +486,10 @@ export class DiagramEventHandler {
             else {
                 element = document.getElementById(this.diagram.selectedItems.userHandles[parseInt(i.toString(), 10)].name + '_shape_html_element');
             }
+            // Fix for responsive mode: ensure userHandleObject is set even if mouseDown occurred before action was determined
+            if (!this.userHandleObject) {
+                this.userHandleObject = this.diagram.selectedItems.userHandles[parseInt(i.toString(), 10)].name;
+            }
             if (this.commandHandler.isUserHandle(this.currentPosition)
                 && element && element.id && (element.id.split(this.userHandleObject).length > 1)) {
                 //EJ2-838423 -onUserHandleMouseUp event triggers multiple times
@@ -557,7 +562,6 @@ export class DiagramEventHandler {
         //     this.commandHandler.oldSelectedObjects = cloneObject(this.diagram.selectedItems);
         // }
         this.checkFixedUserHandleEvent(DiagramEvent.onFixedUserHandleMouseDown, this.targetItem, this.previousTarget);
-        this.checkUserHandleEvent(DiagramEvent.onUserHandleMouseDown);
         if (!this.checkEditBoxAsTarget(evt) && (canUserInteract(this.diagram)) ||
             (canZoomPan(this.diagram) && !defaultTool(this.diagram))) {
             this.diagram.restrictedDeltaValue = { x: 0, y: 0 };
@@ -596,6 +600,10 @@ export class DiagramEventHandler {
                 const targetObject: any = this.getTargetElement();
                 this.action = this.diagram.findActionToBeDone(targetObject.obj, targetObject.sourceElement,
                                                               this.currentPosition, targetObject.target);
+
+                // 1030490: Call checkUserHandleEvent after action is determined to ensure currentAction matches userHandle name
+                this.checkUserHandleEvent(DiagramEvent.onUserHandleMouseDown);
+
                 //work around - correct it
                 const ctrlKey: boolean = this.isMetaKey(evt);
                 if (ctrlKey && evt.shiftKey && this.diagram.connectorEditingToolModule) {
@@ -1736,7 +1744,7 @@ export class DiagramEventHandler {
                 // this.diagram.zoom(up ? (1.2) : 1 / (1.2), mousePosition);
                 // EJ2-59803 - Added the below code to get the zoom factor value from scroll settings and
                 // set it to zoomFactor args in zoomTo method.
-                // 1026985: Trackpad zoom interaction is non‑linear and uncontrollable in Diagram component
+                // 1026985 - Trackpad zoom interaction is non linear and uncontrollable in Diagram component
                 // Detect trackpad vs mouse wheel for Ctrl+scroll zoom
                 const normalizedDeltaY: number = evt.deltaY !== undefined ? evt.deltaY : 0;
                 const isTrackpadZoom: boolean = evt.isTrusted && Math.abs(normalizedDeltaY) < 95;
@@ -2847,6 +2855,42 @@ export class DiagramEventHandler {
                         laneInterChanged(this.diagram, obj, (target as Node), this.currentPosition);
                     }
                     history.isPreventHistory = true;
+                } else if (obj && target && obj.isErField && (target as Node).isErField) {
+                    // Handle ER field reordering on drop
+                    const sourceEntity: Node = this.diagram.getObject((obj as Node).parentId) as Node;
+                    const targetEntity: Node = this.diagram.getObject(((target as Node).parentId)) as Node;
+
+                    if (sourceEntity && targetEntity && sourceEntity.id === targetEntity.id) {
+                        // Validate drop is within entity bounds (don't allow drop outside)
+                        const entityBounds: Rect = sourceEntity.wrapper.bounds;
+                        const isWithinBounds: boolean = entityBounds.containsPoint(this.currentPosition);
+
+                        if (!isWithinBounds) {
+                            history.isPreventHistory = true;
+                        } else {
+                            // Both fields belong to same entity - perform reorder
+                            const sourceIndex: number = getErFieldIndexByNodeId(obj.id, sourceEntity, this.diagram);
+                            const targetIndex: number = getErFieldIndexByNodeId((target as Node).id, sourceEntity, this.diagram);
+
+                            if (sourceIndex !== targetIndex && sourceIndex >= 0 && targetIndex >= 0) {
+                                // Calculate actual drop index based on cursor position
+                                const insertionIndex: number = calculateFieldDropIndex(
+                                    sourceEntity,
+                                    obj as Node,
+                                    target as Node,
+                                    this.currentPosition.y,
+                                    this.diagram
+                                );
+
+                                // Perform reorder and get history entry
+                                const historyEntry: HistoryEntry = reorderErField(sourceEntity, sourceIndex, insertionIndex, this.diagram);
+                                if (historyEntry) {
+                                    this.diagram.commandHandler.addHistoryEntry(historyEntry);
+                                }
+                            }
+                        }
+                    }
+                    history.isPreventHistory = true;
                 } else {
                     let parentNode: Node = this.diagram.nameTable[(obj as Node).parentId];
                     if (!parentNode || (parentNode && parentNode.shape.type !== 'SwimLane')) {
@@ -2877,7 +2921,7 @@ export class DiagramEventHandler {
                                 // Single node move with helper
                                 (obj as Node).offsetX = helperObject.offsetX;
                                 (obj as Node).offsetY = helperObject.offsetY;
-                                if (obj && obj.shape && obj.shape.type !== 'UmlClassifier' ) {
+                                if (obj && obj.shape && obj.shape.type !== 'UmlClassifier') {
                                     (obj as Node).width = helperObject.width;
                                     (obj as Node).height = helperObject.height;
                                 }
@@ -2899,7 +2943,8 @@ export class DiagramEventHandler {
                     if (parentNode && parentNode.container && parentNode.container.type === 'Stack') {
                         this.diagram.startGroupAction(); hasGroup = true;
                     }//1001268-UML Classifier Nodes break when moved rapidly
-                    if (!target && parentNode && parentNode.container && parentNode.container.type === 'Stack' && this.action === 'Drag' && parentNode.shape.type !== 'UmlClassifier') {
+                    if (!target && parentNode && parentNode.container && parentNode.container.type === 'Stack' && this.action === 'Drag' &&
+                        parentNode.shape.type !== 'UmlClassifier' && parentNode.shape.type !== 'Er') {
                         const index: number = parentNode.wrapper.children.indexOf(obj.wrapper);
                         undoElement = { targetIndex: undefined, target: undefined, sourceIndex: index, source: clone(obj) };
                         if (index > -1) {
@@ -2963,13 +3008,13 @@ export class DiagramEventHandler {
                     }
                     if (obj && obj.container && (obj.container.type === 'Stack' ||
                         (obj.container.type === 'Canvas' && (obj as Node).parentId === ''))) {
-                        if (obj && obj.shape && obj.shape.type === 'UmlClassifier') {
+                        if (obj && obj.shape && (obj.shape.type === 'UmlClassifier' || obj.shape.type === 'Er')) {
                             obj.wrapper.measureChildren = true;
                         }
                         this.diagram.nodePropertyChange(obj as Node, {} as Node, {
                             offsetX: obj.offsetX, offsetY: obj.offsetY, width: obj.width, height: obj.height, rotateAngle: obj.rotateAngle
                         } as Node);
-                        if (obj && obj.shape && obj.shape.type === 'UmlClassifier') {
+                        if (obj && obj.shape && (obj.shape.type === 'UmlClassifier' || obj.shape.type === 'Er')) {
                             obj.wrapper.measureChildren = false;
                         }
                     }
@@ -3052,10 +3097,13 @@ export class DiagramEventHandler {
                 const container: GridPanel = (shape ? parentNode.wrapper.children[0] : parentNode.wrapper) as GridPanel;
                 const padding: number = shape ? (parentNode.shape as SwimLane).padding : undefined;
                 const x: number = parentNode.wrapper.bounds.x; const y: number = parentNode.wrapper.bounds.y;
+                // Bug 1020588: When phases are not rendered, a horizontal and vertical swimlane width resize (ResizeEast/south) resolved
+                const isWidthResize: boolean = this.currentAction === 'ResizeEast';
+                const isHeightResize: boolean = this.currentAction === 'ResizeSouth';
                 if (obj.columnIndex !== undefined && (parentNode.container.orientation === 'Horizontal' &&
-                    ((shape && (obj as Node).isPhase) || (!shape && obj.rowIndex === 1))) ||
+                    ((shape && ((obj as Node).isPhase || ((obj as Node).isLane && isWidthResize))) || (!shape && obj.rowIndex === 1))) ||
                     (parentNode.container.orientation === 'Vertical' &&
-                        ((!shape && obj.rowIndex > 0 && obj.columnIndex > 0) || (shape && (obj as Node).isLane)))) {
+                        ((!shape && obj.rowIndex > 0 && obj.columnIndex > 0) || (shape && (obj as Node).isLane && !isHeightResize)))) {
                     if (parentNode.container.orientation === 'Horizontal' && (obj as Node).isPhase && obj.wrapper.width > obj.maxWidth) {
                         obj.maxWidth = obj.wrapper.width;
                         obj.wrapper.maxWidth = obj.wrapper.width;
@@ -3099,7 +3147,7 @@ export class DiagramEventHandler {
                 } as Node);
                 this.diagram.drag(parentNode, x - parentNode.wrapper.bounds.x, y - parentNode.wrapper.bounds.y);
             } else {
-                if (obj && obj.shape && obj.shape.type === 'UmlClassifier') {
+                if (obj && obj.shape && (obj.shape.type === 'UmlClassifier' || obj.shape.type === 'Er')) {
                     obj.wrapper.measureChildren = true;
                 }
                 this.diagram.nodePropertyChange(obj as Node, {} as Node, {
@@ -3134,7 +3182,7 @@ export class DiagramEventHandler {
             target = this.diagram.findObjectUnderMouse(objects, this.action, this.inAction);
         }
         if (node && node.container && node.container.type === 'Stack' && (target as Node) && (target as Node).parentId
-            && (target as Node).parentId === node.id) {
+            && (target as Node).parentId === node.id && node.shape.type === 'UmlClassifier') {
             const innerNode: NodeModel = target as NodeModel;
             const adornerSvg: SVGElement = getAdornerLayerSvg(this.diagram.element.id);
             const highlighter: SVGElement =
@@ -3275,7 +3323,7 @@ class ObjectFinder {
                     const index: number = actualTarget.indexOf(diagram.nameTable[(obj as Node).processId]);
                     if (index > -1) { actualTarget.splice(index, 1); }
                 }
-                if (obj.shape.type === 'UmlClassifier' && (obj as Node).container && (obj as Node).container.type === 'Stack') {
+                if ((obj.shape.type === 'UmlClassifier' || obj.shape.type === 'Er') && (obj as Node).container && (obj as Node).container.type === 'Stack') {
                     const index: number = actualTarget.indexOf(diagram.nameTable[diagram.nameTable[obj.id].wrapper.children[0].id]);
                     if (index > -1) { actualTarget.splice(index, 1); }
                 }
@@ -3369,13 +3417,21 @@ class ObjectFinder {
         node = action === 'ConnectorSourceEnd' ? diagram.nameTable[connector.targetID] :
             node = diagram.nameTable[connector.sourceID];
 
+        // EJ2-1033898: For ER diagrams, redirect field selections to parent ER entity
+        if ((action === 'ConnectorSourceEnd' || action === 'ConnectorTargetEnd') && actualTarget && actualTarget.parentId) {
+            const parentNode: NodeModel = diagram.nameTable[actualTarget.parentId];
+            if (parentNode && parentNode.shape && (parentNode.shape as ErShape).type === 'Er') {
+                // Redirect to parent ER entity node for field-level targets
+                actualTarget = parentNode as Node;
+            }
+        }
         if (node && !((node as Node).processId && !(actualTarget as Node).processId
             || (node as Node).processId !== (actualTarget as Node).processId)) {
             if ((node as Node).processId !== (actualTarget as Node).processId) {
                 actualTarget = null;
             }
             if (actualTarget && actualTarget.parentId &&
-                diagram.nameTable[actualTarget.parentId].shape.type === 'UmlClassifier') {
+                (diagram.nameTable[actualTarget.parentId].shape.type === 'UmlClassifier' || diagram.nameTable[actualTarget.parentId].shape.type === 'Er')) {
                 actualTarget = diagram.nameTable[actualTarget.parentId];
             }
         }
@@ -3388,7 +3444,7 @@ class ObjectFinder {
                     actualTarget = null;
                 }
                 if (actualTarget && actualTarget.parentId &&
-                    diagram.nameTable[actualTarget.parentId].shape.type === 'UmlClassifier') {
+                    (diagram.nameTable[actualTarget.parentId].shape.type === 'UmlClassifier' || diagram.nameTable[actualTarget.parentId].shape.type === 'Er')) {
                     actualTarget = diagram.nameTable[actualTarget.parentId];
                 }
             }
@@ -3614,10 +3670,16 @@ class ObjectFinder {
                     //EJ2-69047 - Node selection is improper while adding annotation for multiple nodes
                     //Checked textOverflow property to avoid the selection of text element with clip and ellipsis;
                     const textOverflow: boolean = ((element.style as TextStyleModel).textOverflow === 'Clip' || (element.style as TextStyleModel).textOverflow === 'Ellipsis');
+                    // Primary check: If position is within element bounds, always select it
+                    // This works for all cases including out-of-bounds annotations
+                    //959366 - Annotation (Interaction): Label becomes non-selectable after dragging it outside the node and mouse-up
                     if ((flippedBounds ? containsBounds(flippedBounds, position, padding || 0)
-                        : element.bounds.containsPoint(position, padding || 0)) && !textOverflow) {
+                        : element.bounds.containsPoint(position, padding || 0))) {
                         return element;
-                    } else if (container.bounds.containsPoint(position, padding || 0) && textOverflow) {
+                    }
+                    // Fallback for clipped/ellipsis text: If in container bounds but not element bounds
+                    // This preserves EJ2-69047 fix and tooltip functionality (913240)
+                    if (textOverflow && container.bounds.containsPoint(position, padding || 0)) {
                         // 913240 - Tooltip for annotation not visible while text overflow sets to Clip or Ellipsis
                         return element;
                     }

@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/highcontrast-light' as *;
-@forward 'ej2-base/styles/definition/highcontrast-light';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $carousel-navigator-btn-bg: transparent !default;
 $carousel-navigator-btn-bg-hover: rgba($selection-font, .4) !default;
 $carousel-navigator-icon-color: $selection-font !default;

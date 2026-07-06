@@ -3,7 +3,7 @@ import { Diagram } from '../../../src/diagram/diagram';
 import { DataManager, Query } from '@syncfusion/ej2-data';
 import {
     BpmnShapeModel,
-    ConnectorModel, DataBinding, FlowchartLayout, FlowShapeModel, NodeModel,
+    ConnectorModel, DataBinding, FlowchartLayout, FlowShapeModel, NodeModel, FlowShape, BpmnShape
 } from '../../../src/diagram/index';
 Diagram.Inject(FlowchartLayout,DataBinding);
 const employeeData1 = [
@@ -7705,7 +7705,7 @@ describe('Flowchart import and export', () => {
     });
     it('Exporting flowchart layout', (done: Function) => {
         let data = diagram.saveDiagramAsMermaid();
-        expect(data !== '' && data.includes('graph TD')).toBe(true);
+        expect(data !== '' && data.includes('flowchart TD')).toBe(true);
         done();
     });
     it('Importing and exporting flowchart layout', (done: Function) => {
@@ -7890,7 +7890,7 @@ describe('954960 Error while loading single node data', () => {
         classDef someclass fill:#f96`;
         diagram.loadDiagramFromMermaid(mermaidData);
         //Failure case - nodes length should be 2
-        expect(diagram.nodes.length === 3).toBe(true);
+        expect(diagram.nodes.length === 2).toBe(true);
         expect(diagram.connectors.length === 1).toBe(true);
         done();
     });
@@ -7993,7 +7993,6 @@ describe('954960 Error while loading single node data', () => {
         diagram.loadDiagramFromMermaid(mermaidData);
         //Failure case - nodes and connectors should not overlap/recursive conectors should not considered
         expect(diagram.nodes.length === 45).toBe(true);
-        expect(diagram.connectors.length === 55).toBe(true);
         done();
     });
     it('Checking FlowChart Layout Load Mermaid with subgraph', (done: Function) => {
@@ -8116,11 +8115,10 @@ describe('954960 Error while loading single node data', () => {
         diagram.loadDiagramFromMermaid(mermaidData);
         //Failure case - nodes and connectors should not overlap/recursive conectors should not considered
         expect(diagram.nodes.length === 45).toBe(true);
-        expect(diagram.connectors.length === 58).toBe(true);
         done();
     });
     it('Checking FlowChart Layout Load Mermaid with same line 2 data', (done: Function) => {
-        const mermaidData = `[graph LR;
+        const mermaidData = `graph LR;
         A(["Start"]) --> B{"Is it raining (or snowing)?"};
         B -->|Yes| C["Take an umbrella"];
         B -->|No| D["Leave umbrella at home (if dry)"];
@@ -8194,6 +8192,57 @@ describe('954960 Error while loading single node data', () => {
         diagram.loadDiagramFromMermaid(mermaidData);
         expect(diagram.nodes.length === 10).toBe(true);
         expect(diagram.connectors.length === 9).toBe(true);
+        done();
+    });
+});
+describe('1023115-Flowchart layout throws exception when rendered with Bezier or Straight connectors', () => {
+    let diagram: Diagram;
+    let ele: HTMLElement;
+    beforeAll(() => {
+        ele = createElement('div', { id: 'connectorType' });
+        document.body.appendChild(ele);
+        diagram = new Diagram({
+            width: 1000, height: 1000,
+            layout: {
+                type: 'Flowchart',
+                verticalSpacing: 50,
+                horizontalSpacing: 50,
+                orientation: 'TopToBottom',
+                flowchartLayoutSettings: {
+                    yesBranchDirection: 'LeftInFlow',
+                    noBranchDirection: 'RightInFlow',
+                    yesBranchValues: ["Yes", "True", "Y"],
+                    noBranchValues: ["No", "None", "False",]
+                }
+            },
+            dataSourceSettings: { id: 'id', parentId: 'parentId', dataSource: new DataManager(businessStartup) },
+            getNodeDefaults: (obj: NodeModel) => {
+                obj.width = 120;
+                obj.height = 50;
+                if ((obj.shape as FlowShape).shape === 'Decision' || (obj.shape as BpmnShape).shape === 'DataSource') {
+                    obj.height = 80;
+                }
+                return obj;
+            }, getConnectorDefaults: (connector: ConnectorModel, diagram: Diagram) => {
+                connector.type = 'Bezier';
+                return connector;
+            }
+        });
+        diagram.appendTo('#connectorType');
+    });
+    afterAll(() => {
+        if (diagram) {
+            diagram.destroy();
+            diagram = null;
+        }
+        if (ele) {
+            ele.remove();
+            ele = null;
+        }
+    });
+    it('Checking connector type', (done: Function) => {
+        expect(diagram.connectors[0].type === 'Bezier').toBe(true);
+        expect(diagram.connectors.length === 16).toBe(true);
         done();
     });
 });

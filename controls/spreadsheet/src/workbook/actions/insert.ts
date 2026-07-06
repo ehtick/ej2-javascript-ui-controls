@@ -60,6 +60,7 @@ export class WorkbookInsert {
         const eventArgs: InsertDeleteEventArgs = { model: model, index: index, modelType: args.modelType, insertType: args.insertType,
             cancel: false, isUndoRedo: args.isUndoRedo };
         const actionArgs: ActionEventArgs = { eventArgs: eventArgs, action: 'insert' };
+        const isSuspended: boolean = this.parent.paintSuspendCount > 0;
         if (args.isAction) {
             this.parent.notify(beginAction, actionArgs);
             if (eventArgs.cancel) {
@@ -95,7 +96,13 @@ export class WorkbookInsert {
                 args.model.maxHgts.splice(index, 0, ...maxHgtObj);
             }
             //this.setInsertInfo(args.model, index, model.length, 'count');
-            this.setRowColCount(insertArgs.startIndex, insertArgs.endIndex, args.model, 'row');
+            if (!isSuspended) {
+                this.setRowColCount(insertArgs.startIndex, insertArgs.endIndex, args.model, 'row');
+            } else {
+                this.parent.queuePaintAction('insertRow_count', () => {
+                    this.setRowColCount(insertArgs.startIndex, insertArgs.endIndex, args.model, 'row');
+                });
+            }
             if (index > args.model.usedRange.rowIndex) {
                 this.parent.setUsedRange(index + (model.length - 1), args.model.usedRange.colIndex, args.model, true);
             } else {
@@ -117,7 +124,7 @@ export class WorkbookInsert {
                 }
                 parentCell = getCell(index - 1, i, args.model, false, true);
                 style = parentCell.style;
-                cell = getCell(index + 1, i, args.model, false, true);
+                cell = getCell(index + model.length, i, args.model, false, true);
                 if (style || parentCell.wrap || parentCell.format) {
                     if (style) {
                         newStyle = {};
@@ -165,7 +172,13 @@ export class WorkbookInsert {
                 eventArgs.freezePane = true;
             }
             //this.setInsertInfo(args.model, index, model.length, 'fldLen', 'Column');
-            this.setRowColCount(insertArgs.startIndex, insertArgs.endIndex, args.model, 'col');
+            if (!isSuspended) {
+                this.setRowColCount(insertArgs.startIndex, insertArgs.endIndex, args.model, 'col');
+            } else {
+                this.parent.queuePaintAction('insertCol_count', () => {
+                    this.setRowColCount(insertArgs.startIndex, insertArgs.endIndex, args.model, 'col');
+                });
+            }
             if (index > args.model.usedRange.colIndex) {
                 this.parent.setUsedRange(args.model.usedRange.rowIndex, index + (model.length - 1), args.model, true);
             } else {
@@ -211,7 +224,7 @@ export class WorkbookInsert {
                 }
                 parentCell = getCell(i, index - 1, args.model, false, true);
                 style = parentCell.style;
-                cell = getCell(i, index + 1, args.model, false, true);
+                cell = getCell(i, index + model.length, args.model, false, true);
                 if (style || parentCell.wrap || parentCell.format) {
                     if (style) {
                         newStyle = {};
@@ -293,7 +306,7 @@ export class WorkbookInsert {
             eventArgs.activeSheetIndex = args.activeSheetIndex;
             eventArgs.sheetCount = this.parent.sheets.length;
         }
-        if (args.modelType !== 'Sheet') {
+        const postInsertUIWork: () => void = (): void => {
             this.insertConditionalFormats(args);
             const start: number = args.isUndoRedo ? insertArgs.startIndex : args.start as number;
             const end: number = args.isUndoRedo ? insertArgs.endIndex : args.end as number;
@@ -305,6 +318,13 @@ export class WorkbookInsert {
             eventArgs.activeSheetIndex = getSheetIndex(this.parent, args.model.name);
             if (this.parent.chartColl && this.parent.chartColl.length) {
                 this.parent.notify(refreshChart, { range: getRangeIndexes(args.model.selectedRange) });
+            }
+        };
+        if (args.modelType !== 'Sheet') {
+            if (!isSuspended) {
+                postInsertUIWork();
+            } else {
+                this.parent.queuePaintAction('insertSheet', () => { postInsertUIWork(); });
             }
         }
         this.parent.notify(insert, actionArgs);

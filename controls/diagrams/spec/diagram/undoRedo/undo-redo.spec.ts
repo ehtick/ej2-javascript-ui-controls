@@ -2344,4 +2344,287 @@ describe('Diagram Control', () => {
             done();
         });
     });
+
+    // Bug fix: Undo/Redo for swimlane/lane/phase header hyperlink
+    describe('Bug - Undo/Redo for swimlane header hyperlink', () => {
+        let diagram: Diagram;
+        let ele: HTMLElement;
+        beforeAll((): void => {
+            ele = createElement('div', { id: 'diagramSwimHyperlink' });
+            document.body.appendChild(ele);
+            const swimlaneNode: NodeModel = {
+                id: 'swimlane',
+                shape: {
+                    type: 'SwimLane',
+                    orientation: 'Horizontal',
+                    hasHeader: true,
+                    header: { annotation: { content: 'Swimlane Header' } },
+                    lanes: [{
+                        id: 'lane1',
+                        height: 100,
+                        header: { width: 50, annotation: { content: 'Lane Header' } }
+                    }],
+                    phases: [{
+                        id: 'phase1',
+                        offset: 200,
+                        header: { annotation: { content: 'Phase Header' } }
+                    }],
+                    phaseSize: 30
+                } as any,
+                offsetX: 400, offsetY: 300, width: 600, height: 200
+            };
+            diagram = new Diagram({
+                width: 1500, height: 1000,
+                nodes: [swimlaneNode]
+            });
+            diagram.appendTo('#diagramSwimHyperlink');
+        });
+        afterAll((): void => {
+            diagram.destroy();
+            diagram = null;
+            ele.remove();
+            ele = null;
+        });
+
+        it('Undo restores hyperlink AND original content after swimlane header hyperlink is updated', (done: Function) => {
+            const swimlane = diagram.nameTable['swimlane'];
+            const headerNodeId: string = swimlane.id + (swimlane.shape as any).header.id;
+            const headerNode = diagram.nameTable[headerNodeId];
+            expect(headerNode).toBeDefined();
+            // Capture the original content and link BEFORE the hyperlink is applied
+            const contentBefore: string = headerNode.annotations[0].content || '';
+            const linkBefore: string = (headerNode.annotations[0].hyperlink && headerNode.annotations[0].hyperlink.link)
+                ? headerNode.annotations[0].hyperlink.link : '';
+            // Setting hyperlink: content will be replaced by hyperlink display text
+            (headerNode.annotations[0] as any).hyperlink = { link: 'https://www.syncfusion.com', content: 'Syncfusion' };
+            diagram.dataBind();
+            expect(headerNode.annotations[0].hyperlink.link).toBe('https://www.syncfusion.com');
+            // Undo — hyperlink must clear AND original content must return
+            diagram.undo();
+            const linkUndo: string = (headerNode.annotations[0].hyperlink && headerNode.annotations[0].hyperlink.link)
+                ? headerNode.annotations[0].hyperlink.link : '';
+            expect(linkUndo).toBe(linkBefore);
+            // Original pre-hyperlink content must be restored (was previously missing after undo)
+            expect(headerNode.annotations[0].content).toBe(contentBefore);
+            // Redo — hyperlink link must reapply
+            diagram.redo();
+            expect(headerNode.annotations[0].hyperlink.link).toBe('https://www.syncfusion.com');
+            done();
+        });
+
+        it('Undo restores hyperlink AND original content after lane header hyperlink is updated', (done: Function) => {
+            const swimlane = diagram.nameTable['swimlane'];
+            const laneHeaderId: string = (swimlane.shape as any).lanes[0].header.id;
+            const laneHeaderNode = diagram.nameTable[laneHeaderId];
+            expect(laneHeaderNode).toBeDefined();
+            const contentBefore: string = laneHeaderNode.annotations[0].content || '';
+            const linkBefore: string = (laneHeaderNode.annotations[0].hyperlink && laneHeaderNode.annotations[0].hyperlink.link)
+                ? laneHeaderNode.annotations[0].hyperlink.link : '';
+            (laneHeaderNode.annotations[0] as any).hyperlink = { link: 'https://lane.example.com', content: 'Lane' };
+            diagram.dataBind();
+            expect(laneHeaderNode.annotations[0].hyperlink.link).toBe('https://lane.example.com');
+            diagram.undo();
+            const linkUndo: string = (laneHeaderNode.annotations[0].hyperlink && laneHeaderNode.annotations[0].hyperlink.link)
+                ? laneHeaderNode.annotations[0].hyperlink.link : '';
+            expect(linkUndo).toBe(linkBefore);
+            // Original pre-hyperlink content must be restored
+            expect(laneHeaderNode.annotations[0].content).toBe(contentBefore);
+            diagram.redo();
+            expect(laneHeaderNode.annotations[0].hyperlink.link).toBe('https://lane.example.com');
+            done();
+        });
+
+        it('Undo restores hyperlink AND original content after phase header hyperlink is updated', (done: Function) => {
+            const swimlane = diagram.nameTable['swimlane'];
+            const phaseHeaderId: string = (swimlane.shape as any).phases[0].header.id;
+            const phaseHeaderNode = diagram.nameTable[phaseHeaderId];
+            expect(phaseHeaderNode).toBeDefined();
+            const contentBefore: string = phaseHeaderNode.annotations[0].content || '';
+            const linkBefore: string = (phaseHeaderNode.annotations[0].hyperlink && phaseHeaderNode.annotations[0].hyperlink.link)
+                ? phaseHeaderNode.annotations[0].hyperlink.link : '';
+            (phaseHeaderNode.annotations[0] as any).hyperlink = { link: 'https://phase.example.com', content: 'Phase' };
+            diagram.dataBind();
+            expect(phaseHeaderNode.annotations[0].hyperlink.link).toBe('https://phase.example.com');
+            diagram.undo();
+            const linkUndo: string = (phaseHeaderNode.annotations[0].hyperlink && phaseHeaderNode.annotations[0].hyperlink.link)
+                ? phaseHeaderNode.annotations[0].hyperlink.link : '';
+            expect(linkUndo).toBe(linkBefore);
+            // Original pre-hyperlink content must be restored
+            expect(phaseHeaderNode.annotations[0].content).toBe(contentBefore);
+            diagram.redo();
+            expect(phaseHeaderNode.annotations[0].hyperlink.link).toBe('https://phase.example.com');
+            done();
+        });
+    });
+
+    // Bug: Resizing/Dragging Child Nodes then Undo throws console NaN exception
+    describe('Bug - Swimlane child node undo/redo with undefined dimensions', () => {
+        let diagram: Diagram;
+        let ele: HTMLElement;
+        let mouseEvents: MouseEvents = new MouseEvents();
+
+        beforeAll((): void => {
+            const isDef = (o: any) => o !== undefined && o !== null;
+            if (!isDef(window.performance)) {
+                console.log("Unsupported environment, window.performance.memory is unavailable");
+                this.skip();
+                return;
+            }
+            ele = createElement('div', { id: 'diagramSwimChildUndo' });
+            document.body.appendChild(ele);
+            let nodes: NodeModel[] = [
+                {
+                    id: 'swimlane',
+                    shape: {
+                        type: 'SwimLane',
+                        orientation: 'Vertical',
+                        header: { annotation: { content: 'Swimlane' }, height: 50 },
+                        phases: [
+                            { id: 'phase1', offset: 100, header: { annotation: { content: 'Phase 1' } } },
+                            { id: 'phase2', offset: 200, header: { annotation: { content: 'Phase 2' } } }
+                        ],
+                        lanes: [
+                            {
+                                id: 'lane1',
+                                header: { annotation: { content: 'Lane 1' } },
+                                children: [
+                                    {
+                                        id: 'child1',
+                                        margin: { left: 20, top: 20 },
+                                        annotations: [{ content: 'Child Node' }],
+                                        style: { fill: 'red' }
+                                        // Note: width and height intentionally omitted to reproduce bug
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    offsetX: 300,
+                    offsetY: 300,
+                    width: 400,
+                    height: 300
+                }
+            ];
+            diagram = new Diagram({
+                width: '900px',
+                height: '600px',
+                nodes: nodes,
+                snapSettings: { constraints: SnapConstraints.ShowLines }
+            });
+            diagram.appendTo('#diagramSwimChildUndo');
+        });
+
+        afterAll((): void => {
+            diagram.destroy();
+            diagram = null;
+            ele.remove();
+            ele = null;
+        });
+
+        it('Drag swimlane child node without width/height, then undo - should not produce NaN', (done: Function) => {
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            let childNode: NodeModel = diagram.getObject('child1');
+
+            // Store original position
+            let originalOffsetX: number = childNode.offsetX;
+            let originalOffsetY: number = childNode.offsetY;
+
+            // Select and drag the child node
+            mouseEvents.clickEvent(diagramCanvas, childNode.offsetX + diagram.element.offsetLeft, childNode.offsetY + diagram.element.offsetTop);
+            mouseEvents.dragAndDropEvent(
+                diagramCanvas,
+                childNode.offsetX + diagram.element.offsetLeft,
+                childNode.offsetY + diagram.element.offsetTop,
+                childNode.offsetX + 50 + diagram.element.offsetLeft,
+                childNode.offsetY + 50 + diagram.element.offsetTop
+            );
+
+            // Perform undo
+            diagram.undo();
+
+            // After undo, node should return to near original position
+            // Most importantly: offsetX, offsetY, margin.left, margin.top should NOT be NaN
+            expect(isNaN(childNode.offsetX)).toBe(false);
+            expect(isNaN(childNode.offsetY)).toBe(false);
+            expect(isNaN(childNode.margin.left || 0)).toBe(false);
+            expect(isNaN(childNode.margin.top || 0)).toBe(false);
+            
+            done();
+        });
+
+        it('Resize swimlane child node without width/height, then undo - should not produce NaN', (done: Function) => {
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            let childNode: NodeModel = diagram.getObject('child1');
+
+            // Store original dimensions
+            let originalWidth: number = childNode.width;
+            let originalHeight: number = childNode.height;
+            let originalOffsetX: number = childNode.offsetX;
+            let originalOffsetY: number = childNode.offsetY;
+
+            // Select the child node
+            mouseEvents.clickEvent(diagramCanvas, childNode.offsetX + diagram.element.offsetLeft, childNode.offsetY + diagram.element.offsetTop);
+
+            let bounds = childNode.wrapper.bounds;
+            let resizeHandle = bounds.bottomRight;
+
+            // Perform resize from bottom-right corner
+            mouseEvents.dragAndDropEvent(
+                diagramCanvas,
+                resizeHandle.x + diagram.element.offsetLeft,
+                resizeHandle.y + diagram.element.offsetTop,
+                resizeHandle.x + 30 + diagram.element.offsetLeft,
+                resizeHandle.y + 30 + diagram.element.offsetTop
+            );
+
+            // Perform undo
+            diagram.undo();
+
+            // After undo, dimensions should NOT be NaN
+            expect(isNaN(childNode.offsetX)).toBe(false);
+            expect(isNaN(childNode.offsetY)).toBe(false);
+            expect(isNaN(childNode.width || 0)).toBe(false);
+            expect(isNaN(childNode.height || 0)).toBe(false);
+
+            done();
+        });
+
+        it('Drag and undo swimlane child node twice - should maintain consistent NaN-free state', (done: Function) => {
+            let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+            let childNode: NodeModel = diagram.getObject('child1');
+
+            // First drag
+            mouseEvents.clickEvent(diagramCanvas, childNode.offsetX + diagram.element.offsetLeft, childNode.offsetY + diagram.element.offsetTop);
+            mouseEvents.dragAndDropEvent(
+                diagramCanvas,
+                childNode.offsetX + diagram.element.offsetLeft,
+                childNode.offsetY + diagram.element.offsetTop,
+                childNode.offsetX + 40 + diagram.element.offsetLeft,
+                childNode.offsetY + 40 + diagram.element.offsetTop
+            );
+            diagram.undo();
+
+            // Verify no NaN after first undo
+            expect(isNaN(childNode.offsetX)).toBe(false);
+            expect(isNaN(childNode.offsetY)).toBe(false);
+
+            // Second drag
+            mouseEvents.dragAndDropEvent(
+                diagramCanvas,
+                childNode.offsetX + diagram.element.offsetLeft,
+                childNode.offsetY + diagram.element.offsetTop,
+                childNode.offsetX + 60 + diagram.element.offsetLeft,
+                childNode.offsetY + 60 + diagram.element.offsetTop
+            );
+            diagram.undo();
+
+            // Final check: no NaN after second undo
+            expect(isNaN(childNode.offsetX)).toBe(false);
+            expect(isNaN(childNode.offsetY)).toBe(false);
+            expect(isNaN(childNode.margin.left || 0)).toBe(false);
+            expect(isNaN(childNode.margin.top || 0)).toBe(false);
+
+            done();
+        });
+    });
 });

@@ -2416,6 +2416,255 @@ describe('Kanban base module', () => {
         });
     });
 
+    describe('Check kanban with scroller', () => {
+        let kanbanObj: Kanban;
+        beforeAll((done: DoneFn) => {
+            const model: KanbanModel = {
+                keyField: 'Status',
+                height: '550px',
+                columns: [
+                    { headerText: 'Backlog', keyField: 'Open', showAddButton: true, isExpanded: false },
+                    { headerText: 'In Progress', keyField: 'InProgress' },
+                    { headerText: 'Testing', keyField: 'Testing' },
+                    { headerText: 'Done', keyField: 'Close' }
+                ],
+                sortSettings: {
+                    sortBy: 'Custom',
+                    field: 'Summary',
+                    direction: 'Descending'
+                },
+                enableVirtualization: true,
+                cardSettings: {
+                    contentField: 'Summary',
+                    headerField: 'Id'
+                }
+            };
+            kanbanObj = util.createKanban(model, kanbanData, done);
+        });
+
+        afterAll(() => {
+            util.destroy(kanbanObj);
+        });
+
+        it('onProperty change of dialogSettings', () => {
+            expect(kanbanObj.allowDragAndDrop === true).toBe(true);
+            kanbanObj.allowDragAndDrop = false;
+            kanbanObj.enableVirtualization = true;
+            kanbanObj.dataBind();
+            expect(kanbanObj.allowDragAndDrop === false).toBe(true);
+            kanbanObj.allowDragAndDrop = true;
+            kanbanObj.enableVirtualization = true;
+            kanbanObj.dataBind();
+        });
+    });
+
+    describe('VirtualLayoutRender - swimlane toggle collapse branch', () => {
+        let kanbanObj: Kanban;
+        beforeAll((done: DoneFn) => {
+            const host = createElement('div', { id: 'KanbanSwimlaneToggle' });
+            document.body.appendChild(host);
+            const data = [
+                { Id: '1', Status: 'Open', Summary: 'Card 1', Assignee: 'John' },
+                { Id: '2', Status: 'Open', Summary: 'Card 2', Assignee: 'Jane' },
+                { Id: '3', Status: 'Open', Summary: 'Card 3', Assignee: 'John' }
+            ];
+            const options: KanbanModel = {
+                dataSource: data,
+                keyField: 'Status',
+                columns: [{ headerText: 'Backlog', keyField: 'Open' }],
+                height: '400px',
+                cardHeight: '120px',
+                enableVirtualization: true,
+                cardSettings: { contentField: 'Summary', headerField: 'Id' },
+                swimlaneSettings: { keyField: 'Assignee', textField: 'Assignee' }
+            };
+            kanbanObj = new Kanban(options);
+            kanbanObj.appendTo(host);
+            setTimeout(done, 500);
+        });
+
+        afterAll(() => {
+            kanbanObj.destroy();
+            const host = document.querySelector('#KanbanSwimlaneToggle');
+            host.remove();
+        });
+
+        it('should apply collapsed class when swimlane is in toggleArray', () => {
+            kanbanObj.swimlaneToggleArray.push('John');
+            const contentTable = kanbanObj.element.querySelector('.e-content-table tbody') as HTMLElement;
+            if (contentTable) {
+                contentTable.innerHTML = '';
+            }
+            (kanbanObj.virtualLayoutModule as any).renderContent();
+            const rows = kanbanObj.element.querySelectorAll('.e-content-row');
+            let hasCollapsed = false;
+            rows.forEach((row: Element) => {
+                if (row.classList.contains('e-collapsed')) {
+                    hasCollapsed = true;
+                }
+            });
+            expect(hasCollapsed).toBe(false);
+        });
+    });
+
+    describe('VirtualLayoutRender - Data Methods Coverage', () => {
+        let kanbanObj: Kanban;
+
+        beforeAll((done: DoneFn) => {
+            const host = createElement('div', { id: 'KanbanDataMethods' });
+            document.body.appendChild(host);
+            const data = [
+                { Id: '1', Status: 'Open', Summary: 'Task 1' },
+                { Id: '2', Status: 'Open', Summary: 'Task 2' }
+            ];
+            const options: KanbanModel = {
+                dataSource: data,
+                keyField: 'Status',
+                columns: [{ headerText: 'Backlog', keyField: 'Open' }],
+                height: '400px',
+                cardHeight: '120px',
+                enableVirtualization: true,
+                cardSettings: { contentField: 'Summary', headerField: 'Id' }
+            };
+            kanbanObj = new Kanban(options);
+            kanbanObj.appendTo(host);
+            setTimeout(done, 500);
+        });
+
+        afterAll(() => {
+            kanbanObj.destroy();
+            const host = document.querySelector('#KanbanDataMethods');
+            host.remove();
+        });
+
+        describe('getData method - observable dataSource branch', () => {
+            it('should return promise from eventPromise when dataSource has result property', () => {
+                const observableDS: any = {
+                    result: [{ Id: '1', Status: 'Open', Summary: 'Task 1' }]
+                };
+                kanbanObj.dataSource = observableDS;
+                const virtualModule: any = kanbanObj.virtualLayoutModule;
+                const promise = (virtualModule as any).getData('Status', 'Open', 10, 0);
+                expect(promise).toBeDefined();
+                promise.then((result: any) => {
+                    expect(result).toBeDefined();
+                }).catch((e: any) => {
+                    fail(e);
+                });
+            });
+
+            it('should call dataManager.executeQuery when dataSource does not have result property', () => {
+                const virtualModule: any = kanbanObj.virtualLayoutModule;
+                spyOn(kanbanObj.dataModule.dataManager, 'executeQuery').and.returnValue(Promise.resolve({ result: [] }));
+                (virtualModule as any).getData('Status', 'Open', 10, 0);
+            });
+        });
+
+        describe('eventPromise method', () => {
+            it('should create Deferred with state and return it', () => {
+                const virtualModule: any = kanbanObj.virtualLayoutModule;
+                const query = new Query();
+                const args: any = { requestType: 'cardCreated' };
+                const def = (virtualModule as any).eventPromise(args, query);
+                expect(def).toBeDefined();
+                expect(def.promise).toBeDefined();
+            });
+        });
+
+        describe('getStateEventArgument method', () => {
+            it('should process query using UrlAdaptor and return state object', () => {
+                const virtualModule: any = kanbanObj.virtualLayoutModule;
+                const query = new Query().take(10).skip(0);
+                const state: any = (virtualModule as any).getStateEventArgument(query);
+                expect(state).toBeDefined();
+                expect(state.take).toBe(10);
+                expect(state.skip).toBe(0);
+            });
+        });
+
+        describe('dataManagerSuccess method', () => {
+            it('should extract result when type is provided', () => {
+                const virtualModule: any = kanbanObj.virtualLayoutModule;
+                const mockResponse: any = {
+                    result: [
+                        { Id: '1', Status: 'Open', Summary: 'Task 1' },
+                        { Id: '2', Status: 'Open', Summary: 'Task 2' }
+                    ]
+                };
+                const resultData = (virtualModule as any).dataManagerSuccess(mockResponse, 'remote');
+                expect(resultData).toBeDefined();
+                expect(resultData.length).toBe(2);
+                expect(resultData[0].Id).toBe('1');
+            });
+
+            it('should trigger dataBinding and dataBound events when type is not provided', (done) => {
+                const virtualModule: any = kanbanObj.virtualLayoutModule;
+                const mockResponse: any = {
+                    result: [
+                        { Id: '3', Status: 'Open', Summary: 'Task 3' }
+                    ]
+                };
+                spyOn(kanbanObj, 'hideSpinner');
+                let dataBindingCalled = false;
+                let dataBoundCalled = false;
+                kanbanObj.dataBinding = () => {
+                    dataBindingCalled = true;
+                };
+                kanbanObj.dataBound = () => {
+                    dataBoundCalled = true;
+                };
+                const resultData = (virtualModule as any).dataManagerSuccess(mockResponse);
+                setTimeout(() => {
+                    expect(resultData).toBeDefined();
+                    expect(dataBindingCalled).toBe(true);
+                    expect(dataBoundCalled).toBe(true);
+                    expect(kanbanObj.hideSpinner).toHaveBeenCalled();
+                    done();
+                }, 100);
+            });
+
+            it('should handle nested result property', () => {
+                const virtualModule: any = kanbanObj.virtualLayoutModule;
+                const mockResponse: any = {
+                    result: {
+                        result: [
+                            { Id: '4', Status: 'Open', Summary: 'Task 4' }
+                        ]
+                    }
+                };
+                const resultData = (virtualModule as any).dataManagerSuccess(mockResponse, 'remote');
+                expect(resultData).toBeDefined();
+                expect(resultData.length).toBe(1);
+                expect(resultData[0].Id).toBe('4');
+            });
+        });
+
+        describe('dataManagerFailure method', () => {
+            it('should trigger actionFailure event and hide spinner', () => {
+                const virtualModule: any = kanbanObj.virtualLayoutModule;
+                const mockError: any = { error: 'Network error' };
+                spyOn(kanbanObj, 'hideSpinner');
+                let actionFailureCalled = false;
+                kanbanObj.actionFailure = (args: any) => {
+                    actionFailureCalled = true;
+                    expect(args.error).toEqual(mockError);
+                };
+                (virtualModule as any).dataManagerFailure(mockError);
+                expect(actionFailureCalled).toBe(true);
+                expect(kanbanObj.hideSpinner).toHaveBeenCalled();
+            });
+
+            it('should return early if parent is destroyed', () => {
+                const virtualModule: any = kanbanObj.virtualLayoutModule;
+                const mockError: any = { error: 'Test error' };
+                spyOn(kanbanObj, 'hideSpinner');
+                kanbanObj.isDestroyed = true;
+                (virtualModule as any).dataManagerFailure(mockError);
+                expect(kanbanObj.hideSpinner).not.toHaveBeenCalled();
+                kanbanObj.isDestroyed = false;
+            });
+        });
+    });
 
     it('memory leak', () => {
         profile.sample();

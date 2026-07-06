@@ -214,14 +214,41 @@ export class LinkModule {
         this.syncButtonsByUrlField();
     }
 
-    private handleLinkInsertDeletion(e: Event, isRemove?: boolean): void {
+    private selectLinkNode(linkElement?: HTMLAnchorElement): void {
+        this.selectionManager.restoreSelection();
+        const target: Node = linkElement || this.selectionManager.getNodeFromSelection('a');
+        if (target) {
+            const range: Range = document.createRange();
+            range.selectNodeContents(target);
+            const selection: Selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
+    }
+
+    /**
+     * Handles link insertion and deletion from the link popup dialog
+     *
+     * @param {Event} e - The event that triggered the action
+     * @param {boolean} isRemove - Whether to remove the link
+     * @param {HTMLAnchorElement} linkElement - Optional anchor element to select directly (e.g. when called from context menu)
+     * @returns {void}
+     * @hidden
+     */
+    public handleLinkInsertDeletion(e: Event, isRemove?: boolean, linkElement?: HTMLAnchorElement): void {
         const contentElement: HTMLElement = getBlockContentElement(this.parent.currentFocusedBlock);
         const linkDialog: HTMLElement = this.parent.rootEditorElement.querySelector('#' + this.parent.rootEditorElement.id + constants.LINKDIALOG_ID) as HTMLElement;
         if (!contentElement) { return; }
 
-        this.selectionManager.restoreSelection();
+        if (isRemove || linkElement) {
+            this.selectLinkNode(linkElement);
+        } else {
+            this.selectionManager.restoreSelection();
+        }
+
         if (isRemove) {
             this.parent.formattingAction.execCommand({ subCommand: 'link', value: null });
+            contentElement.focus();
             return;
         }
 
@@ -241,7 +268,14 @@ export class LinkModule {
         });
     }
 
-    private handleLinkClick(link: HTMLAnchorElement): void {
+    /**
+     * Opens the link URL in a new window or the target specified on the anchor element
+     *
+     * @param {HTMLAnchorElement} link - The anchor element to open
+     * @returns {void}
+     * @hidden
+     */
+    public handleLinkClick(link: HTMLAnchorElement): void {
         const url: string = link.getAttribute('href');
         if (url) {
             window.open(url, link.getAttribute('target') || '_self');

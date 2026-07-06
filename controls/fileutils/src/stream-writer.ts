@@ -39,7 +39,7 @@ export class StreamWriter {
         this.bufferBlob = new Blob(['']);
         this.bufferText = '';
         this.init(encoding);
-        Save.isMicrosoftBrowser = !(!navigator.msSaveBlob);
+        Save.isMicrosoftBrowser = !(!(navigator as any).msSaveBlob);
     }
 
     private init(encoding: Encoding): void {

@@ -1372,6 +1372,7 @@ function inflateRaw(data: Uint8Array): Uint8Array {
 type XmlNodeObject = {
     $?: Record<string, string>;
     value?: string | XmlNodeObject | (string | XmlNodeObject)[];
+    xmlShapeData?: Node;
     [key: string]: any;
 };
 
@@ -1384,7 +1385,7 @@ type XmlNodeObject = {
  *
  * @interface OrderedElement
  * @property {string} name - Element tag name
- * @property {XmlNodeObject  | string | undefined} value - Element value or content
+ * @property {XmlNodeObject | string | undefined} value - Element value or content
  *
  * @private
  */
@@ -1533,10 +1534,18 @@ export function xmlToJsObject(
     // Process child nodes recursively
     for (let i: number = 0; i < node.childNodes.length; i++) {
         const child: Node = node.childNodes[parseInt(i.toString(), 10)];
+        //Store xmlStylesheets data in rootDocument
+        if (node.nodeName === 'VisioDocument' && child.nodeName === 'StyleSheets') {
+            obj['xmlStyleSheet'] = child;
+        }
 
         // Recursively convert child node
         const childObj: XmlNodeObject | string | undefined = xmlToJsObject(child, shouldTrackOrder);
 
+        //Store xmlShape data in each Shapes
+        if (node.nodeName === 'Shapes' && childObj && typeof childObj !== 'string') {
+            childObj.xmlShapeData = child;
+        }
         // Skip empty text nodes
         if (child.nodeType === Node.TEXT_NODE && childObj === undefined) {
             continue;

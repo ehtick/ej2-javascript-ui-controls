@@ -617,9 +617,9 @@ export function locateElem(
     if (isNullOrUndefined(cls)) {
         const attrs: { [key: string]: string } = {
             'top': (swapRange[0] === startIndex[0] ? cellPosition.top : cellPosition.top - getDPRValue(1)) + 'px',
-            'height': height && height + (swapRange[0] === startIndex[0] ? 0 : getDPRValue(1)) + 'px',
-            'width': width && width + (swapRange[1] === startIndex[1] ? 0 : getDPRValue(1)) + (isActiveCell
-                && frozenColumn && swapRange[1] < frozenColumn && swapRange[3] >= frozenColumn ? 1 : 0) + 'px'
+            'height': height && (height + (swapRange[0] === startIndex[0] ? 0 : getDPRValue(1))) + 'px',
+            'width': width && (width + (swapRange[1] === startIndex[1] ? 0 : getDPRValue(1)) + (isActiveCell
+                && frozenColumn && swapRange[1] < frozenColumn && swapRange[3] >= frozenColumn ? 1 : 0)) + 'px'
         };
         attrs[isRtl ? 'right' : 'left'] = (swapRange[1] === startIndex[1] ? cellPosition.left : cellPosition.left - 1) + 'px';
         if (ele) {
@@ -654,9 +654,9 @@ export function locateElem(
             top = freezeFillOpt && freezeFillOpt.top ? freezeFillOpt.top : top;
             left = freezeFillOpt && freezeFillOpt.left ? freezeFillOpt.left : left;
             attrs = {
-                'top': top + otdiff + 'px'
+                'top': (top + otdiff) + 'px'
             };
-            attrs[isRtl ? 'right' : 'left'] = left + oldiff + 'px';
+            attrs[isRtl ? 'right' : 'left'] = (left + oldiff) + 'px';
             if (ele) { setStyleAttribute([{ element: ele, attrs: attrs }], preventAnimation); }
         } else {
             attrs = {
@@ -1394,8 +1394,10 @@ export function updateAction(
         cellEvtArgs = options.eventArgs as CellSaveEventArgs;
         cellSaveArgs = { element: cellEvtArgs.element, value: cellEvtArgs.value,
             oldValue: cellEvtArgs.oldValue, address: cellEvtArgs.address, displayText: cellEvtArgs.displayText,
-            formula: cellEvtArgs.formula, originalEvent: cellEvtArgs.originalEvent, format: cellEvtArgs.format };
-        cellValue = cellSaveArgs.formula ? { formula: cellSaveArgs.formula } : { value: cellSaveArgs.value };
+            formula: cellEvtArgs.formula, originalEvent: cellEvtArgs.originalEvent, format: cellEvtArgs.format,
+            richText: cellEvtArgs.richText } as CellSaveEventArgs;
+        cellValue = cellSaveArgs.formula ? { formula: cellSaveArgs.formula, richText: cellSaveArgs.richText } :
+            { value: cellSaveArgs.value, richText: cellSaveArgs.richText };
         spreadsheet.updateCellInfo(cellValue, cellSaveArgs.address, false, options.eventArgs, isRedo);
         if (isRedo === true) {
             spreadsheet.trigger('cellSave', cellSaveArgs);
@@ -2457,10 +2459,11 @@ export function setColMinWidth(spreadsheet: Spreadsheet, minWidth: number): void
  * @param {Spreadsheet} context - Specifies the spreadsheet instance.
  * @param {string[]} keys - Specifies keys to include only the specific properties from the sheet.
  * @param {number} sheetIdx - Specifies the sheet index number.
+ * @param {string[]} cellKeys - Specifies needed data to extract.
  * @returns {string} - It returns sheet property of the given key and context.
  * @hidden
  */
-export function getSheetProperties(context: Spreadsheet, keys?: string[], sheetIdx?: number): string {
+export function getSheetProperties(context: Spreadsheet, keys?: string[], sheetIdx?: number, cellKeys?: string[]): string {
     const skipProps: string[] = [];
     if (keys) {
         /* eslint-disable */
@@ -2488,6 +2491,13 @@ export function getSheetProperties(context: Spreadsheet, keys?: string[], sheetI
         }
         if (keys.indexOf('cells') === -1) {
             skipProps.push(...cellProps);
+        } else if (cellKeys && cellKeys.length) {
+            // Only include specified cell properties — skip all others
+            cellProps.forEach((prop: string) => {
+                if (cellKeys.indexOf(prop) === -1) {
+                    skipProps.push(prop);
+                }
+            });
         }
         let idx: number;
         keys.forEach((key: string) => {

@@ -25,7 +25,8 @@ function expectPointClose(
     expect(Math.abs(pt.x - x)).toBeLessThanOrEqual(tolerance);
     expect(Math.abs(pt.y - y)).toBeLessThanOrEqual(tolerance);
 }
-describe('Diagram Control', () => {  
+describe('Diagram Control', () => {
+       
     describe('Hide segment thumb-1', () => {
         let diagram: Diagram;
         let ele: HTMLElement;

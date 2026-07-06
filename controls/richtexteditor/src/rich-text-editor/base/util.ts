@@ -15,6 +15,7 @@ import { IRichTextEditor } from '../base/interface';
 import { ISetToolbarStatusArgs } from './interface';
 import { IToolbarItems, IDropDownItemModel, IToolbarItemModel, BeforeSanitizeHtmlArgs, IToolsItemConfigs } from '../../common/interface';
 import { swapCaptionClassName, swapImageClassName, layoutMap } from './../../common/util';
+import { Button } from '@syncfusion/ej2-buttons';
 
 const undoRedoItems: string[] = ['Undo', 'Redo'];
 const inlineNode: string[] = ['a', 'abbr', 'acronym', 'audio', 'b', 'bdi', 'bdo', 'big', 'br', 'button',
@@ -22,6 +23,29 @@ const inlineNode: string[] = ['a', 'abbr', 'acronym', 'audio', 'b', 'bdi', 'bdo'
     'ins', 'kbd', 'label', 'map', 'mark', 'meter', 'noscript', 'object', 'output', 'picture', 'progress',
     'q', 'ruby', 's', 'samp', 'script', 'select', 'slot', 'small', 'span', 'strong', 'strike', 'sub', 'sup', 'svg',
     'template', 'textarea', 'time', 'u', 'tt', 'var', 'video', 'wbr'];
+
+/**
+ * @param {any} colorPicker - specifies the color picker instance
+ * @param {string} colorPickerValue - specifies the range color style
+ * @returns {boolean} - returns true if color exists in presets, false otherwise
+ * @hidden
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function isColorExistsInPresets(colorPicker: any, colorPickerValue: string): boolean {
+    const colorPickerPresets: { [key: string]: string[] } = colorPicker.presetColors;
+    if (!colorPickerPresets) {
+        return false;
+    }
+    for (const group of Object.keys(colorPickerPresets)) {
+        for (const preset of colorPickerPresets[group as string]) {
+            if (preset.toLowerCase() === colorPickerValue.toLowerCase()) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 /**
  * @param {string} val - specifies the string value
  * @param {string} items - specifies the value
@@ -167,6 +191,7 @@ export function setToolbarStatus(e: ISetToolbarStatusArgs, isPopToolbar: boolean
                     getIndex(key, e.parent.toolbarSettings.items) >= -1) {
                     const value: string = ((data[`${key}`]) ? data[`${key}`] : '') as string;
                     let result: string = '';
+                    let dropdownBtnText: HTMLElement;
                     switch (key) {
                     case 'formats': {
                         if (isNOU(dropDown.formatDropDown) ||
@@ -183,6 +208,58 @@ export function setToolbarStatus(e: ISetToolbarStatusArgs, isPopToolbar: boolean
                                 + (isNOU(result) ? formatContent : result) +
                                 '</span></span>');
                         dropDown.formatDropDown.dataBind();
+                        break;
+                    }
+                    case 'fontcolor': {
+                        // Check if the selection range has inline color style applied - FIRST
+                        const currentFontColor: string = e.args.fontcolor;
+                        // Break early if range does NOT have valid inline color style
+                        if (!currentFontColor || currentFontColor === '' || !currentFontColor.startsWith('rgb')) {
+                            break;
+                        }
+                        // Check if the color value exists in the font color picker presets
+                        if (!isNOU(e.fontColorPicker) && !e.fontColorPicker.isDestroyed) {
+                            const colorPickerValue: string = e.fontColorPicker.getValue(currentFontColor);
+                            if (!isColorExistsInPresets(e.fontColorPicker, colorPickerValue)) {
+                                break;
+                            }
+                            // Update UI ONLY if range has valid inline color style and color exists in presets
+                            dropdownBtnText = e.tbElements[j as number].querySelector('.e-selected-color .e-split-preview') as HTMLElement;
+                            if (dropdownBtnText) {
+                                dropdownBtnText.style.backgroundColor = currentFontColor;
+                            }
+                            // Update ColorPicker with the range color style
+                            e.fontColorPicker.setProperties({ value: colorPickerValue + 'ff' }, true);
+                            e.fontColorPicker.dataBind();
+                        }
+                        break;
+                    }
+                    case 'backgroundcolor': {
+                        // Check if the selection range has inline background-color style applied - FIRST
+                        const currentBackgroundColor: string = e.args.backgroundcolor;
+                        // Break early if range does NOT have valid inline background-color style
+                        if (!currentBackgroundColor || currentBackgroundColor === '' || (!currentBackgroundColor.startsWith('rgb') && currentBackgroundColor !== 'transparent')) {
+                            break;
+                        }
+                        // Check if the background color value exists in the background color picker presets
+                        if (!isNOU(e.backgroundColorPicker) && !e.backgroundColorPicker.isDestroyed) {
+                            const bgColorPickerValue: string = e.backgroundColorPicker.getValue(currentBackgroundColor);
+                            if (currentBackgroundColor !== 'transparent' && !isColorExistsInPresets(e.backgroundColorPicker, bgColorPickerValue)) {
+                                break;
+                            }
+                            // Update UI ONLY if range has valid inline background-color style and color exists in presets
+                            dropdownBtnText = e.tbElements[j as number].querySelector('.e-selected-color .e-split-preview') as HTMLElement;
+                            if (dropdownBtnText) {
+                                dropdownBtnText.style.backgroundColor = currentBackgroundColor;
+                            }
+                            // Update ColorPicker with the range background-color style
+                            if (currentBackgroundColor === 'transparent') {
+                                e.backgroundColorPicker.setProperties({ value: '' }, true);
+                            } else {
+                                e.backgroundColorPicker.setProperties({ value: bgColorPickerValue + 'ff' }, true);
+                            }
+                            e.backgroundColorPicker.dataBind();
+                        }
                         break;
                     }
                     case 'alignments': {
@@ -690,4 +767,16 @@ export function isElementContainsAllowedClass(imgElem: HTMLElement): string {
         'e-img-right', 'e-img-center', 'e-img-left-wrap', 'e-img-right-wrap']
         .find((c: string) => imgElem.classList.contains(c));
     return matchedClass || '';
+}
+
+/**
+ * @param {Button} buttonInstance - button component instance
+ * @param {boolean} state - property should be true or false
+ * @returns {void}
+ * @hidden
+ */
+export function toggleButtonDisableState(buttonInstance: Button, state: boolean): void {
+    if (isNOU(buttonInstance)) { return; }
+    buttonInstance.disabled = state;
+    buttonInstance.dataBind();
 }

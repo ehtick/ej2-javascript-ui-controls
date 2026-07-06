@@ -1,4 +1,4 @@
-import { addClass, attributes, Browser, closest, detach, isNullOrUndefined as isNOU, isNullOrUndefined, KeyboardEventArgs, L10n, MouseEventArgs, removeClass, createElement } from '@syncfusion/ej2-base';
+import { addClass, attributes, Browser, closest, createElement, detach, isNullOrUndefined as isNOU, isNullOrUndefined, KeyboardEventArgs, L10n, MouseEventArgs, removeClass } from '@syncfusion/ej2-base';
 import { ClickEventArgs } from '@syncfusion/ej2-navigations';
 import { hasAnyFormatting, isIDevice, removeClassWithAttr, scrollToCursor, convertFontSize, isBlockNode } from '../../common/util';
 import { EditorManager } from '../../editor-manager';
@@ -238,15 +238,12 @@ export class HtmlEditor {
 
     /* Handles deletion of an entire table when all cells are selected. Prevents default deletion and triggers the table removal action. */
     private handleEntireTableBackspace(e: NotifyArgs, args: KeyboardEvent): boolean {
-        const range: Range = this.parent.formatter.editorManager.nodeSelection.getRange(
-            this.parent.contentModule.getDocument());
-        if (this.isEntireTableSelected(range) && (args.keyCode === 8) &&
-            !isNOU(this.parent.tableModule)) {
+        const range: Range = this.parent.formatter.editorManager.nodeSelection.getRange(this.parent.contentModule.getDocument());
+        if (this.isEntireTableSelected(range) && (args.keyCode === 8) && !isNOU(this.parent.tableModule)) {
             args.preventDefault();
             const save: NodeSelection = this.parent.formatter.editorManager.nodeSelection.save(
                 range, this.parent.contentModule.getDocument());
-            const selectParentEle: Node[] = this.parent.formatter.editorManager.nodeSelection
-                .getParentNodeCollection(range);
+            const selectParentEle: Node[] = this.parent.formatter.editorManager.nodeSelection.getParentNodeCollection(range);
             this.parent.notify(events.tableToolbarAction, {
                 member: 'table',
                 args: { item: { command: 'Table', subCommand: 'TableRemove' }, originalEvent: e.args },
@@ -420,7 +417,7 @@ export class HtmlEditor {
                 isAllowed = true;
             }
         }
-        if (currentText && isCursor && currentText.textContent[range.startOffset] === ' ' && isAllowed && !this.isContainsEmptySpace) {
+        if (currentText && isCursor && currentText.textContent && currentText.textContent.startsWith(' ') && isAllowed && !this.isContainsEmptySpace) {
             const textContentArray: string[] = Array.from(currentText.textContent);
             textContentArray[range.startOffset] = textContentArray[range.startOffset].replace(/^\s/, '\u00A0');
             currentText.textContent = textContentArray.join('');
@@ -637,6 +634,7 @@ export class HtmlEditor {
         const selectionLength: number = this.parent.getSelection().length;
         return maxLength === -1 || (currentLength - selectionLength + tabSpaceLength) <= maxLength;
     }
+
     private isEntireTableSelected(range: Range): boolean {
         const rangeNode: Node = range.startContainer.nodeName === '#text' ? range.startContainer.parentElement : range.startContainer;
         const currentSelectedTable: HTMLElement = closest(rangeNode, 'table') as HTMLElement;
@@ -645,6 +643,7 @@ export class HtmlEditor {
         const isEntireTableSelcted: boolean = cells && selectedCells ? cells.length === selectedCells.length : false;
         return isEntireTableSelcted;
     }
+
     private isOrderedList(editorValue: string): boolean {
         editorValue = editorValue.replace(/\u200B/g, '');
         const olListStartRegex: RegExp[] = [/^[1]+[.]+$/, /^[i]+[.]+$/, /^[a]+[.]+$/];
@@ -978,20 +977,20 @@ export class HtmlEditor {
         }
         if (((e as NotifyArgs).args as KeyboardEventArgs).code === 'Backspace' && ((e as NotifyArgs).args as KeyboardEventArgs).keyCode === 8 &&
             currentRange.startContainer.nodeType !== Node.TEXT_NODE) {
-            const childNode: HTMLElement = !isNOU(currentRange.startContainer.childNodes[currentRange.startOffset - 1]) &&
+            const ChildNode: HTMLElement = !isNOU(currentRange.startContainer.childNodes[currentRange.startOffset - 1]) &&
                 !isNOU((currentRange.startContainer.childNodes[currentRange.startOffset - 1] as HTMLElement).isContentEditable) &&
                 !(currentRange.startContainer.childNodes[currentRange.startOffset - 1] as HTMLElement).isContentEditable ?
                 currentRange.startContainer.childNodes[currentRange.startOffset - 1] as HTMLElement : null;
             const index: number = currentRange.startOffset > 1 ? currentRange.startOffset - 1 : 0;
-            const isMentionEle: boolean = !isNOU(childNode) && childNode.nodeType !== Node.TEXT_NODE && childNode.classList.contains('e-mention-chip');
+            const isMentionEle: boolean = !isNOU(ChildNode) && ChildNode.nodeType !== Node.TEXT_NODE && ChildNode.classList.contains('e-mention-chip');
             if (isMentionEle) {
                 const rootBlockEle: HTMLElement =
-                    this.parent.formatter.editorManager.domNode.getImmediateBlockNode(childNode) as HTMLElement;
-                if ((childNode.previousSibling && childNode.previousSibling.nodeName === 'BR') ||
-                    (rootBlockEle.textContent.length - childNode.textContent.length) === 0) {
-                    childNode.parentElement.replaceChild(createElement('br'), childNode);
+                    this.parent.formatter.editorManager.domNode.getImmediateBlockNode(ChildNode) as HTMLElement;
+                if ((ChildNode.previousSibling && ChildNode.previousSibling.nodeName === 'BR') ||
+                    (rootBlockEle.textContent.length - ChildNode.textContent.length) === 0) {
+                    ChildNode.parentElement.replaceChild(createElement('br'), ChildNode);
                 } else {
-                    childNode.remove();
+                    ChildNode.remove();
                 }
                 (e.args as KeyboardEventArgs).preventDefault();
             } else if ((checkNode && checkNode.textContent.trim() === '') ||

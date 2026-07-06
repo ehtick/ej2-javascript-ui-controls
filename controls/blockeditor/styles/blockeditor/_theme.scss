@@ -1,4 +1,4 @@
-@use 'ej2-base/styles/common/mixin' as *;
+@use 'variables' as *;
 @include export-module('blockeditor-theme') {
 
   /* ======== Main Editor ======== */
@@ -237,6 +237,9 @@
     .e-image-placeholder {
       border: $be-image-placeholder-border-width solid $be-image-placeholder-border-color;
       background-color: $be-image-placeholder-bg-color;
+      @if $theme-name == 'Material3' or $theme-name == 'Material3-dark' {
+        background: $be-image-placeholder-bg-color;
+      }
 
       .e-placeholder-icon-container {
         .e-icons {
@@ -608,6 +611,9 @@
     border: $be-image-upload-popup-boder-width solid $be-image-upload-popup-boder-color;
     background-color: $be-image-upload-popup-bg-color;
     box-shadow: $be-image-upload-popup-box-shadow;
+    @if $theme-name == 'Material3' or $theme-name == 'Material3-dark' {
+      background: $be-image-upload-popup-bg-color;
+    }
 
     .e-tab .e-content {
       border-top: 1px solid $be-upload-popup-tab-content-border-top-color;

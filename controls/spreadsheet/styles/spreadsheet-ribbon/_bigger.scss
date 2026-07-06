@@ -1,4 +1,4 @@
-@use 'ej2-base/styles/common/mixin' as *;
+@use 'variables' as *;
 @mixin bigger-tab-header-layout {
   & .e-tab .e-tab-header {
     height: $bigger-spread-ribbon-tab-text-wrap-height;
@@ -104,6 +104,28 @@
       margin: $bigger-drop-icon-margin;
       @if $skin-name == 'tailwind' or $skin-name == 'tailwind-dark' {
         line-height: 8px;
+      }
+    }
+
+    & .e-ribbon-action {
+      height: $bigger-spreadsheet-ribbon-action-height;
+      width: $bigger-spreadsheet-ribbon-action-width;
+    }
+
+    &.e-ribbon-ai-assist .e-tab .e-tab-header {
+      width: calc(100% - $bigger-spreadsheet-ribbon-action-width) !important; /* stylelint-disable-line declaration-no-important */
+    }
+
+    & .e-spreadsheet-ai-btn {
+      top: $bigger-spreadsheet-ai-btn-top;
+      right: $bigger-spreadsheet-ai-btn-right;
+      height: $bigger-spreadsheet-ai-btn-height;
+    }
+
+    &.e-rtl {
+      & .e-spreadsheet-ai-btn {
+        right: auto;
+        left: $bigger-spreadsheet-ai-btn-left;
       }
     }
     @if $skin-name == 'material' {

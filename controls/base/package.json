@@ -1,6 +1,6 @@
 {
 	"name": "@syncfusion/ej2-base",
-	"version": "33.2.3",
+	"version": "33.1.44",
 	"description": "A common package of Essential JS 2 base libraries, methods and class definitions",
 	"author": "Syncfusion Inc.",
 	"license": "SEE LICENSE IN license",
@@ -45,7 +45,7 @@
 		"@syncfusion/ej2-icons": "*"
 	},
 	"devDependencies": {
-		"@syncfusion/ej2-staging": "^1.0.4",
+		"@syncfusion/ej2-staging": "^1.0.14",
 		"@types/chai": "^3.4.28",
 		"@types/jasmine": "2.8.22",
 		"@types/jasmine-ajax": "^3.1.27",

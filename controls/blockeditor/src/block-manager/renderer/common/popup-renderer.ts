@@ -36,7 +36,7 @@ export class PopupRenderer {
             relateTo: args.relateTo || this.editorElement,
             content: args.content,
             collision: { X: 'fit', Y: 'fit' },
-            actionOnScroll: 'hide',
+            actionOnScroll: args.actionOnScroll || 'hide',
             showAnimation: {
                 name: 'FadeIn'
             },

@@ -2,7 +2,7 @@ import { PdfPage } from '../src/pdf/core/pdf-page';
 import * as utils from '../src/pdf/core/utils';
 import { _PdfContentStream } from '../src/pdf/core/base-stream';
 import * as Pg from '../src/pdf/core/graphics/pdf-graphics';
-import { _PdfDictionary, _PdfReference } from "../src/pdf/core/pdf-primitives";
+import { _PdfDictionary, _PdfName, _PdfReference } from "../src/pdf/core/pdf-primitives";
 import { _PdfDestinationHelper, PdfDestination } from "../src/pdf/core/pdf-page";
 import { PdfDocument, PdfPageSettings } from "../src/pdf/core/pdf-document";
 import { PdfDestinationMode, PdfFormFieldsTabOrder, PdfPageOrientation, PdfRotationAngle } from "../src/pdf/core/enumerator";
@@ -266,6 +266,53 @@ describe('PdfPage size getter branches', () => {
         expect(saveSpy).toHaveBeenCalled();
         expect(initCoordsSpy).toHaveBeenCalled();
     });
+    it('_initializeGraphics - MediaBox negative flips negatives when width/height non-positive', () => {
+        // Arrange
+        const document = new PdfDocument();
+        const fakeDict: any = { has: (k: string) => k === 'MediaBox', update: () => { }, set: () => { }, getRaw: () => { }, get: () => { } };
+        const fakeCrossRef: any = new _PdfCrossReference(document);
+        const page: PdfPage = new PdfPage(fakeCrossRef, 0, fakeDict, null);
+        // simulate MediaBox with negative coords that produce non-positive width/height
+        (page as any)._mBox = [-50, -100, -50, -100];
+        // ensure cached size matches expected absolute values used in the branch check
+        (page as any)._size = { width: 50, height: 100 };
+        (page as any)._isNew = true;
+        spyOn(Pg.PdfGraphics.prototype, 'save').and.returnValue({});
+        spyOn(Pg.PdfGraphics.prototype, '_initializeCoordinates').and.callFake(() => { });
+
+        // Act
+        (page as any)._initializeGraphics(new _PdfContentStream([]));
+
+        // Assert
+        expect((page as any)._g).toBeDefined();
+        expect((page as any)._g._size.width).toBe(50);
+        expect((page as any)._g._size.height).toBe(100);
+        expect((page as any)._g._mediaBoxUpperRightBound).toBe(-100);
+    });
+
+    it('_initializeGraphics - MediaBox negative with positive extents uses computed sizes and upper bound', () => {
+        // Arrange
+        const document = new PdfDocument();
+        const fakeDict: any = { has: (k: string) => k === 'MediaBox', update: () => { }, set: () => { }, getRaw: () => { }, get: () => { } };
+        const fakeCrossRef: any = new _PdfCrossReference(document);
+        const page: PdfPage = new PdfPage(fakeCrossRef, 0, fakeDict, null);
+        // MediaBox with mixed signs but computed width/height are positive
+        (page as any)._mBox = [-10, -10, 200, 200];
+        // size.height must match abs(lly) (10) and size.width match abs(urx) (200) for branch
+        (page as any)._size = { width: 200, height: 10 };
+        (page as any)._isNew = true;
+        spyOn(Pg.PdfGraphics.prototype, 'save').and.returnValue({});
+        spyOn(Pg.PdfGraphics.prototype, '_initializeCoordinates').and.callFake(() => { });
+
+        // Act
+        (page as any)._initializeGraphics(new _PdfContentStream([]));
+
+        // Assert
+        expect((page as any)._g).toBeDefined();
+        expect((page as any)._g._size.width).toBe(200);
+        expect((page as any)._g._size.height).toBe(200);
+        expect((page as any)._g._mediaBoxUpperRightBound).toBe(200);
+    });
     it('Pdf page taborder in structure', () => {
         let document: PdfDocument = new PdfDocument();
         let page1 = document.addPage();
@@ -285,6 +332,46 @@ describe('PdfPage size getter branches', () => {
 
         expect(page1.tabOrder).toEqual(PdfFormFieldsTabOrder.structure);
         document.destroy();
+    });
+
+    it('_beginSave - when graphicsState defined restores and marks need init', () => {
+        // Arrange
+        const document = new PdfDocument();
+        const fakeDict: any = { has: () => false, update: () => { }, set: () => { }, getRaw: () => { }, get: () => { } };
+        const fakeCrossRef: any = new _PdfCrossReference(document);
+        const page: PdfPage = new PdfPage(fakeCrossRef, 0, fakeDict, null);
+        const fakeGraphics: any = jasmine.createSpyObj('g', ['restore']);
+        (page as any)._g = fakeGraphics;
+        (page as any)._graphicsState = { id: 1 };
+        (page as any)._needInitializeGraphics = false;
+
+        // Act
+        (page as any)._beginSave();
+
+        // Assert
+        expect(fakeGraphics.restore).toHaveBeenCalledWith({ id: 1 });
+        expect((page as any)._graphicsState).toBeNull();
+        expect((page as any)._needInitializeGraphics).toBe(true);
+    });
+
+    it('_beginSave - when graphicsState undefined does nothing', () => {
+        // Arrange
+        const document = new PdfDocument();
+        const fakeDict: any = { has: () => false, update: () => { }, set: () => { }, getRaw: () => { }, get: () => { } };
+        const fakeCrossRef: any = new _PdfCrossReference(document);
+        const page: PdfPage = new PdfPage(fakeCrossRef, 0, fakeDict, null);
+        const fakeGraphics: any = jasmine.createSpyObj('g', ['restore']);
+        (page as any)._g = fakeGraphics;
+        (page as any)._graphicsState = undefined;
+        (page as any)._needInitializeGraphics = false;
+
+        // Act
+        (page as any)._beginSave();
+
+        // Assert
+        expect(fakeGraphics.restore).not.toHaveBeenCalled();
+        expect((page as any)._graphicsState).toBeUndefined();
+        expect((page as any)._needInitializeGraphics).toBe(false);
     });
 });
 describe('_PdfDestinationHelper behavior tests', () => {
@@ -982,6 +1069,291 @@ describe('_PdfDestinationHelper behavior tests - 2', () => {
 
         // Assert
         expect(result).toBeUndefined();
+    });
+
+});
+
+describe('_PdfDestinationHelper extra named-destination tests', () => {
+    it('_getNamedDestination - returns undefined when catalog is null', () => {
+        const mockDocument: any = { _catalog: null };
+        const dict = new _PdfDictionary()
+        const helper: _PdfDestinationHelper = new _PdfDestinationHelper(dict, 'Dest');
+
+        const result: any[] = helper._getNamedDestination(mockDocument, 'AnyName');
+
+        expect(result).toBeUndefined();
+    });
+
+    it('_getNamedDestination - string path invokes tree lookup and extraction', () => {
+        const kidsObj: any = { some: 'kids' };
+        const namesDict: any = {
+            has: (k: string) => k === 'Dests',
+            get: (_: string) => kidsObj
+        };
+        const catalogDict: any = {
+            has: (k: string) => k === 'Names',
+            get: (k: string) => namesDict
+        };
+        const mockDocument: any = { _catalog: { _catalogDictionary: catalogDict } , _dictionary: new _PdfDictionary()};
+        const helper: _PdfDestinationHelper = new _PdfDestinationHelper(mockDocument._dictionary, 'Dest');
+
+        const namedSpy = spyOn(helper as any, '_getNamedObjectFromTree').and.returnValue('REF');
+        const extractSpy = spyOn(helper as any, '_extractDestination').and.returnValue(['X', 'Y']);
+
+        const result: any[] = helper._getNamedDestination(mockDocument, 'MyName');
+
+        expect(namedSpy).toHaveBeenCalledWith(kidsObj, 'MyName');
+        expect(extractSpy).toHaveBeenCalledWith('REF', mockDocument);
+        expect(result).toEqual(['X', 'Y']);
+    });
+
+    it('_getNamedDestination - _PdfName path returns value from Dests dictionary', () => {
+        const destsDict: any = {
+            get: (name: string) => ['DESTVALUE']
+        };
+        const catalogDict: any = {
+            _catalogDictionary: {
+                get: (k: string) => destsDict
+            }
+        };
+        const mockDocument: any = { _catalog: catalogDict,  _dictionary: new _PdfDictionary() };
+        const helper: _PdfDestinationHelper = new _PdfDestinationHelper(mockDocument._dictionary, 'Dest');
+
+        const pdfName: any = _PdfName.get('Foo');
+        const result: any[] = helper._getNamedDestination(mockDocument, pdfName);
+
+        expect(result).toEqual(['DESTVALUE']);
+    });
+
+    it('_getNamedObjectFromTree - traverses to Names and uses _findName', () => {
+        const kids: any = { has: (k: string) => true };
+        const dict = new _PdfDictionary();
+        const helper: _PdfDestinationHelper = new _PdfDestinationHelper(dict, 'Dest');
+
+        const properKid: any = { has: (k: string) => k === 'Names' };
+        const getProperSpy = spyOn(helper as any, '_getProperKid').and.returnValue(properKid);
+        const findSpy = spyOn(helper as any, '_findName').and.returnValue('FOUND_REF');
+
+        const result = helper._getNamedObjectFromTree(kids, 'Target');
+
+        expect(getProperSpy).toHaveBeenCalledWith(kids, 'Target');
+        expect(findSpy).toHaveBeenCalledWith(properKid, 'Target');
+    });
+
+    it('_findName - finds reference when exact string key exists', () => {
+        const mockRef: any = { id: 1 };
+        const namesArray: any[] = ['MatchName', mockRef];
+        const current: any = {
+            get: (_: string) => namesArray,
+            _crossReference: { _fetch: (_: any) => 'MatchName' }
+        };
+        const dict = new _PdfDictionary();
+
+        const helper: _PdfDestinationHelper = new _PdfDestinationHelper(dict, 'Dest');
+
+        const result = helper._findName(current as any, 'MatchName');
+
+        expect(result).toBe(mockRef);
+    });
+
+    it('_checkLimits - returns true when name inside Limits and false otherwise', () => {
+        const kid: any = {
+            has: (k: string) => k === 'Limits',
+            get: (_: string) => ['A', 'Z']
+        };
+        const dict = new _PdfDictionary();
+
+        const helper: _PdfDestinationHelper = new _PdfDestinationHelper(dict, 'Dest');
+
+        expect(helper._checkLimits(kid, 'M')).toBeTruthy();
+        expect(helper._checkLimits(kid, 'Z')).toBeTruthy();
+        expect(helper._checkLimits(kid, 'a')).toBeFalsy();
+    });
+
+    it('_stringCompare - negative, zero and positive results', () => {
+        const dict = new _PdfDictionary();
+        const helper: _PdfDestinationHelper = new _PdfDestinationHelper(dict, 'Dest');
+
+        expect(helper._stringCompare('Apple', 'Zebra')).toBeLessThan(0);
+        expect(helper._stringCompare('Apple', 'Apple')).toBe(0);
+        expect(helper._stringCompare('Zebra', 'Apple')).toBeGreaterThan(0);
+    });
+});
+describe('PdfPage _getCropOrMediaBox branches (additional)', () => {
+    it('returns undefined when pageDictionary is undefined', () => {
+        const document = new PdfDocument();
+        const fakeCrossRef: any = new _PdfCrossReference(document);
+        const page: PdfPage = new PdfPage(fakeCrossRef, 0, null, null);
+
+        const box = page._getCropOrMediaBox();
+
+        expect(box).toBeUndefined();
+        document.destroy();
+    });
+
+    it('returns CropBox when CropBox present', () => {
+        const document = new PdfDocument();
+        const crop = [1, 2, 3, 4];
+        const fakeDict: any = { has: (k: string) => k === 'CropBox', getArray: (k: string) => crop };
+        const fakeCrossRef: any = new _PdfCrossReference(document);
+        const page: PdfPage = new PdfPage(fakeCrossRef, 0, fakeDict, null);
+
+        const box = page._getCropOrMediaBox();
+
+        expect(box).toBe(crop);
+        document.destroy();
+    });
+
+    it('returns MediaBox when CropBox absent and MediaBox present', () => {
+        const document = new PdfDocument();
+        const media = [5, 6, 7, 8];
+        const fakeDict: any = { has: (k: string) => k === 'MediaBox', getArray: (k: string) => media };
+        const fakeCrossRef: any = new _PdfCrossReference(document);
+        const page: PdfPage = new PdfPage(fakeCrossRef, 0, fakeDict, null);
+
+        const box = page._getCropOrMediaBox();
+
+        expect(box).toBe(media);
+        document.destroy();
+    });
+
+    it('prefers CropBox when both CropBox and MediaBox are present', () => {
+        const document = new PdfDocument();
+        const crop = [9, 9, 9, 9];
+        const media = [0, 0, 0, 0];
+        const fakeDict: any = {
+            has: (k: string) => k === 'CropBox' || k === 'MediaBox',
+            getArray: (k: string) => k === 'CropBox' ? crop : media
+        };
+        const fakeCrossRef: any = new _PdfCrossReference(document);
+        const page: PdfPage = new PdfPage(fakeCrossRef, 0, fakeDict, null);
+
+        const box = page._getCropOrMediaBox();
+
+        expect(box).toBe(crop);
+        document.destroy();
+    });
+});
+
+describe('PdfDestination _initializePrimitive branches (added)', () => {
+
+    it('location mode with page sets ref, XYZ and numeric coords and updates parent with D', () => {
+        // Arrange
+        const fakePage: any = { _ref: { id: 123 }, _pageIndex: 1, _pageDictionary: {}, graphics: { _size: { height: 800 } } };
+        const dest: any = new PdfDestination();
+        dest._page = fakePage;
+        dest._destinationMode = PdfDestinationMode.location;
+        dest._location = { x: 10, y: 20 };
+        dest._zoom = 5;
+        const parent: any = { _dictionary: { set: jasmine.createSpy('set'), _updated: false } };
+        dest._parent = parent;
+        dest._isBookmark = false;
+
+        // Act
+        dest._initializePrimitive();
+
+        // Assert
+        expect(dest._array[0]).toBe(fakePage._ref);
+        expect(dest._array[1].name).toBe('XYZ');
+        expect(dest._array[2]).toBe(10);
+        expect(dest._array[3]).toBe(800 - 20);
+        expect(dest._array[4]).toBe(5);
+        expect(parent._dictionary.set).toHaveBeenCalledWith('D', dest._array);
+        expect(parent._dictionary._updated).toBe(true);
+    });
+
+    it('location mode without page uses zeros for coords and still records zoom', () => {
+        // Arrange
+        const dest: any = new PdfDestination();
+        dest._page = undefined;
+        dest._destinationMode = PdfDestinationMode.location;
+        dest._location = { x: 0, y: 0 };
+        dest._zoom = 7;
+
+        // Act
+        dest._initializePrimitive();
+
+        // Assert
+        expect(dest._array[1]).toBeUndefined();
+        expect(dest._array[2]).toBeUndefined();
+        expect(dest._array[3]).toBeUndefined();
+    });
+
+    it('fitToPage and fitR and fitH branches produce expected array values and honor parent Dest key', () => {
+        // Arrange - fitToPage with parent bookmark
+        const fakePage: any = { _ref: { id: 9 }, _pageIndex: 0, _pageDictionary: {}, size: { height: 600 } };
+        const destFit: any = new PdfDestination();
+        destFit._page = fakePage;
+        destFit._destinationMode = PdfDestinationMode.fitToPage;
+        const parentBookmark: any = { _dictionary: { set: jasmine.createSpy('set2'), _updated: false } };
+        destFit._parent = parentBookmark;
+        destFit._isBookmark = true;
+
+        // Act - fitToPage
+        destFit._initializePrimitive();
+
+        // Assert - Fit name and parent Dest key
+        expect(parentBookmark._dictionary.set).toHaveBeenCalledWith('Dest', destFit._array);
+        expect(parentBookmark._dictionary._updated).toBe(true);
+
+        // Arrange - fitR
+        const destR: any = new PdfDestination();
+        destR._page = fakePage;
+        destR._destinationMode = PdfDestinationMode.fitR;
+        destR._destinationBounds = { x: 1, y: 2, width: 3, height: 4 };
+        destR._parent = { _dictionary: { set: jasmine.createSpy('set3'), _updated: false } };
+
+        // Act - fitR
+        destR._initializePrimitive();
+
+        // Assert - FitR and bounds
+        expect(destR._array[2]).toBe(1);
+        expect(destR._array[3]).toBe(2);
+        expect(destR._array[4]).toBe(3);
+
+        // Arrange - fitH with page present
+        const destH: any = new PdfDestination();
+        destH._page = fakePage;
+        destH._destinationMode = PdfDestinationMode.fitH;
+        destH._location = { x: 0, y: 100 };
+        destH._parent = { _dictionary: { set: jasmine.createSpy('set4'), _updated: false } };
+
+        // Act - fitH
+        destH._initializePrimitive();
+
+        // Assert - FitH computes height - y
+        expect(destH._array[1].name).toBe('FitH');
+        expect(destH._array[2]).toBe(600 - 100);
+
+        // Arrange - fitH without page
+        const destH2: any = new PdfDestination();
+        destH2._page = undefined;
+        destH2._destinationMode = PdfDestinationMode.fitH;
+
+
+    });
+
+    it('_addWidget - creates Annots array when none present', () => {
+        // Arrange
+        const document = new PdfDocument();
+        const fakeDict: any = {
+            has: () => false,
+            update: jasmine.createSpy('update'),
+            set: () => { },
+            getRaw: () => undefined as any,
+            get: () => { }
+        };
+        const fakeCrossRef: any = new _PdfCrossReference(document);
+        spyOn(utils as any, '_getInheritableProperty').and.returnValue(undefined);
+        const page: PdfPage = new PdfPage(fakeCrossRef, 0, fakeDict, null);
+
+        // Act
+        const newRef = fakeCrossRef._getNextReference();
+        (page as any)._addWidget(newRef);
+
+        // Assert
+        expect(fakeDict.update).toHaveBeenCalledWith('Annots', [newRef]);
+        expect(fakeDict._updated).toBe(true);
     });
 
 });

@@ -13,7 +13,7 @@ import { ViewSource } from '../renderer/view-source';
 import { IFormatter, IBaseQuickToolbar, SlashMenuItemSelectArgs, ImageFailedEventArgs, IRenderer, AIAssistantPromptRequestArgs, AIAssistantStopRespondingArgs, BeforePopupOpenCloseEventArgs, AIAssitantToolbarClickEventArgs } from './interface';
 import { executeGroup, ToolbarStatusEventArgs } from './interface';
 import { ChangeEventArgs, AfterImageDeleteEventArgs, AfterMediaDeleteEventArgs, PasteCleanupArgs } from './interface';
-import { ILinkCommandsArgs, ImageDropEventArgs, IImageCommandsArgs, IAudioCommandsArgs, IVideoCommandsArgs, BeforeSanitizeHtmlArgs, ITableCommandsArgs, ExecuteCommandOption, ICodeBlockCommandsArgs, IListCommandArgs, IToolbarItems, MediaDropEventArgs, IToolbarItemModel, NotifyArgs, ToolbarClickEventArgs, ExportingEventArgs } from '../../common/interface';
+import { ILinkCommandsArgs, ImageDropEventArgs, IImageCommandsArgs, IAudioCommandsArgs, IVideoCommandsArgs, BeforeSanitizeHtmlArgs, ITableCommandsArgs, ExecuteCommandOption, ICodeBlockCommandsArgs, IListCommandArgs, IToolbarItems, MediaDropEventArgs, IToolbarItemModel, NotifyArgs, ToolbarClickEventArgs, ExportingEventArgs, IDropDownItemModel, IToolbarStatus } from '../../common/interface';
 import { PrintEventArgs, ActionCompleteEventArgs, ActionBeginEventArgs, ClipboardWriteEventArgs, IFormatPainterArgs, CleanupResizeElemArgs, ImageSuccessEventArgs, IExecutionGroup, ResizeArgs, StatusArgs, BeforeQuickToolbarOpenArgs, SelectionChangedEventArgs } from '../../common/interface';
 import { ServiceLocator } from '../services/service-locator';
 import { RendererFactory } from '../services/renderer-factory';
@@ -77,6 +77,7 @@ import { PromptModel } from '@syncfusion/ej2-interactive-chat';
 import { PopupUploader } from '../renderer/popup-uploader-renderer';
 import { AutoFormat } from '../actions';
 import { sanitizeHelper } from '../base/util';
+import { ToolbarStatus } from '../../editor-manager/plugin/toolbar-status';
 
 /**
  * Represents the Rich Text Editor component.
@@ -447,7 +448,7 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
      * 'margin-right', 'margin-bottom', 'max-height', 'max-width', 'min-height', 'min-width',
      * 'overflow', 'overflow-x', 'overflow-y', 'padding', 'padding-bottom', 'padding-left', 'padding-right',
      * 'padding-top', 'position', 'right', 'table-layout', 'text-align', 'text-decoration', 'text-transform', 'text-indent',
-     * 'top', 'vertical-align', 'visibility', 'white-space', 'width', 'flex-direction'],
+     * 'top', 'vertical-align', 'visibility', 'white-space', 'width', 'flex-direction', 'border-collapse', 'border-spacing'],
      * deniedTags: null,
      * keepFormat: true,
      * plainText:  false
@@ -2235,6 +2236,38 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
         return divNode.innerHTML.replace(/<br\s*[\/]?>/gi, '\n');
     }
 
+    private toolbarStatusUpdateOnLoad(): void {
+        if (this.editorMode !== 'HTML') {
+            return;
+        }
+        const fontsize: string[] = [];
+        const fontName: string[] = [];
+        const formats: string[] = [];
+        this.fontSize.items.forEach((item: IDropDownItemModel): void => {
+            fontsize.push(item.value);
+        });
+        this.fontFamily.items.forEach((item: IDropDownItemModel): void => {
+            fontName.push(item.value);
+        });
+        this.format.types.forEach((item: IDropDownItemModel): void => {
+            formats.push(item.value.toLocaleLowerCase());
+        });
+        const firstTextNode: Node = this.formatter.editorManager.domTree.getFirstTextNode(this.contentModule.getEditPanel());
+        if (isNOU(firstTextNode)) {
+            return;
+        }
+        const toolbarStatus: IToolbarStatus = ToolbarStatus.get(
+            this.contentModule.getDocument(),
+            this.contentModule.getEditPanel(),
+            formats,
+            fontsize,
+            fontName,
+            firstTextNode
+        );
+        const tbStatusString: string = JSON.stringify(toolbarStatus);
+        this.notify(events.toolbarUpdated, toolbarStatus);
+    }
+
     /**
      * For internal use only - To Initialize the component rendering.
      *
@@ -2279,6 +2312,7 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
         this.addAudioVideoWrapper();
         this.notify(events.tableclass, {});
         this.autoResize();
+        this.toolbarStatusUpdateOnLoad();
         this.renderComplete();
     }
 
@@ -2774,7 +2808,7 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
         const allowedKeys: boolean = e.which === 32 || e.which === 13 || e.which === 8 || e.which === 46 || e.which === 9 && isMention;
         const formatPainterCopy: boolean = e.key === 'C' && e.altKey && e.shiftKey;
         const formatPainterPaste: boolean = e.key === 'V' && e.altKey && e.shiftKey;
-        if ((!formatPainterCopy && !formatPainterPaste) && !this.isFullTableDeleted  && ((e.key !== 'shift' && !e.ctrlKey) && e.key && e.key.length === 1 || allowedKeys) || (this.editorMode === 'Markdown'
+        if ((!formatPainterCopy && !formatPainterPaste) && !this.isFullTableDeleted && ((e.key !== 'shift' && !e.ctrlKey) && e.key && e.key.length === 1 || allowedKeys) || (this.editorMode === 'Markdown'
             && ((e.key !== 'shift' && !e.ctrlKey) && e.key && e.key.length === 1 || allowedKeys)) || (this.autoSaveOnIdle && Browser.isDevice) && !this.inlineMode.enable) {
             this.formatter.onKeyHandler(this, e);
         }
@@ -3124,12 +3158,35 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
                             }
                         }
                         if (value !== null && isNOU(codeBlockPasteAction)) {
-                            this.notify(events.paste, {
-                                file: files,
-                                args: e,
-                                text: value,
-                                isWordPaste: htmlValue
-                            });
+                            const images: File[] = [];
+                            const videos: File[] = [];
+                            const audios: File[] = [];
+                            const audioAllowedTypes: string[] = this.insertAudioSettings && this.insertAudioSettings.allowedTypes ?
+                                this.insertAudioSettings.allowedTypes : [];
+                            const videoAllowedTypes: string[] = this.insertVideoSettings && this.insertVideoSettings.allowedTypes ?
+                                this.insertVideoSettings.allowedTypes : [];
+                            for (const f of files) {
+                                if (!f) { continue; }
+                                const mime: string = (f.type || '').toLowerCase();
+                                if (mime.indexOf('image/') === 0) {
+                                    images.push(f);
+                                } else if (mime.indexOf('video/') === 0 &&
+                                    videoAllowedTypes.some((ext : string) => mime.endsWith(ext.replace('.', '')))) {
+                                    videos.push(f);
+                                } else if (mime.indexOf('audio/') === 0 &&
+                                    audioAllowedTypes.some((ext : string) => mime.endsWith(ext.replace('.', '')))) {
+                                    audios.push(f);
+                                }
+                            }
+                            if (images.length > 0) {
+                                this.notify(events.paste, { file: images, args: e, text: value, isWordPaste: htmlValue });
+                            }
+                            if (videos.length > 0) {
+                                this.notify(events.videoPaste, { file: videos, args: e, text: value, isWordPaste: htmlValue });
+                            }
+                            if (audios.length > 0) {
+                                this.notify(events.audioPaste, { file: audios, args: e, text: value, isWordPaste: htmlValue });
+                            }
                         } else if (value !== null && !isNOU(codeBlockPasteAction) && !isNOU(this.codeBlockModule)) {
                             this.notify(events.codeBlockPaste, {
                                 file: file,
@@ -3278,8 +3335,8 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
         this.selectionTimeout = null;
         this.previousRange = null;
         this.isRTEFocused = false;
-        this.isModalDialog = false;
         this.isFullTableDeleted = false;
+        this.isModalDialog = false;
         this.isLastCharInline = false;
         super.destroy();
     }
@@ -4519,7 +4576,7 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
         const isImageCaption: boolean = target && (target.classList.contains('e-img-caption-text') || (target.parentElement && target.parentElement.classList.contains('e-img-wrap')));
         if (active === this.element || active === toolbarElement || active === this.contentModule.getEditPanel() ||
             (isIframePanel && target && !isImageCaption) || (!isNOU(toolbarElement) && closest(active, '.e-rte-toolbar') === toolbarElement)) {
-            if (active.closest('.e-ai-commands-tbar-btn') && !this.inputElement.contains(this.getRange().startContainer)) {
+            if ((active.closest('.e-ai-commands-tbar-btn') || active.closest('.e-progress-btn')) && !this.inputElement.contains(this.getRange().startContainer)) {
                 isRTEFocusedOnTBClick = true;
             }
             if (!isRTEFocusedOnTBClick) {
@@ -4883,16 +4940,18 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
             if (this.editorMode === 'Markdown') {
                 const textArea: HTMLTextAreaElement = this.inputElement as HTMLTextAreaElement;
                 const otherElemHeight: number = (this.enableResize || this.showCharCount) ? 20 : 0;
+                const toolbarHeight: number = this.toolbarModule ? this.toolbarModule.getToolbarHeight() : 0;
                 // Three added because of border top of the e-rte-container, bottom of the toolbar wrapper and then bottom of the e-rte-container.
                 if (textArea) {
-                    textArea.style.height = this.element.clientHeight - (this.toolbarModule.getToolbarHeight() + otherElemHeight + 3) + 'px';
+                    textArea.style.height = this.element.clientHeight - (toolbarHeight + otherElemHeight + 3) + 'px';
                 }
             } else if (this.iframeSettings.enable) {
                 const iframe: HTMLIFrameElement = this.element.querySelector('#' + this.getID() + '_rte-view');
                 const otherElemHeight: number = (this.enableResize || this.showCharCount) ? 20 : 0;
+                const toolbarHeight: number = this.toolbarModule ? this.toolbarModule.getToolbarHeight() : 0;
                 // Three added because of border top of the e-rte-container, bottom of the toolbar wrapper and then bottom of the e-rte-container.
                 if (iframe && this.toolbarModule) {
-                    iframe.style.height = this.element.clientHeight - (this.toolbarModule.getToolbarHeight() + otherElemHeight + 3) + 'px';
+                    iframe.style.height = this.element.clientHeight - (toolbarHeight + otherElemHeight + 3) + 'px';
                 }
             }
         }

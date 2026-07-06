@@ -9,14 +9,14 @@ import { NodeSelection } from '../../../src/selection/index';
 import { DialogType, ToolbarType } from "../../../src/common/enum";
 import { renderRTE, destroy, setCursorPoint, androidUA, iPhoneUA, currentBrowserUA, ieUA, setSelection } from './../render.spec';
 import { getLastTextNode, convertPixelToPercentage, getCorrespondingIndex } from "../../../src/common/util";
-import { ARROW_DOWN_EVENT_INIT, ARROW_LEFT_EVENT_INIT, ARROW_UP_EVENT_INIT, ARROWRIGHT_EVENT_INIT, BACKSPACE_EVENT_INIT, BASIC_CONTEXT_MENU_EVENT_INIT, BASIC_MOUSE_EVENT_INIT, ENTERKEY_EVENT_INIT, ESCAPE_KEY_EVENT_INIT, INSRT_TABLE_EVENT_INIT, SHIFT_ARROW_DOWN_EVENT_INIT, SHIFT_ARROW_LEFT_EVENT_INIT, SHIFT_ARROW_RIGHT_EVENT_INIT, SHIFT_ARROW_UP_EVENT_INIT, TAB_KEY_EVENT_INIT, CONTROL_A_EVENT_INIT } from "../../constant.spec";
+import { ARROW_DOWN_EVENT_INIT, ARROW_LEFT_EVENT_INIT, ARROW_UP_EVENT_INIT, ARROWRIGHT_EVENT_INIT, BACKSPACE_EVENT_INIT, BASIC_CONTEXT_MENU_EVENT_INIT, BASIC_MOUSE_EVENT_INIT, ENTERKEY_EVENT_INIT, ESCAPE_KEY_EVENT_INIT, INSRT_TABLE_EVENT_INIT, SHIFT_ARROW_DOWN_EVENT_INIT, SHIFT_ARROW_LEFT_EVENT_INIT, SHIFT_ARROW_RIGHT_EVENT_INIT, SHIFT_ARROW_UP_EVENT_INIT, TAB_KEY_EVENT_INIT, SHIFT_TAB_KEY_EVENT_INIT, CONTROL_A_EVENT_INIT } from "../../constant.spec";
 import { MACOS_USER_AGENT } from "../user-agent.spec";
 
 const MOUSEUP_EVENT: MouseEvent = new MouseEvent('mouseup', BASIC_MOUSE_EVENT_INIT);
 
-const INIT_MOUSEDOWN_EVENT: MouseEvent = new MouseEvent('mousedown', BASIC_MOUSE_EVENT_INIT);
-
 const INIT_MOUSE_OVER_EVENT = new MouseEvent('mouseover', { 'view': window, 'bubbles': true, 'cancelable': true });
+
+const INIT_MOUSEDOWN_EVENT: MouseEvent = new MouseEvent('mousedown', BASIC_MOUSE_EVENT_INIT);
 
 describe('Table Module', () => {
 
@@ -6319,6 +6319,55 @@ the tool bar support, it�s also customiza</p><table class="e-rte-table" style=
         });
     });
 
+    describe('1032485: Quick toolbar - TableCell split operations', () => {
+        let rteObj: RichTextEditor;
+        let rteEle: HTMLElement;
+        beforeEach(() => {
+            rteObj = renderRTE({
+                quickToolbarSettings: { table: ['TableCell'] },
+                value: `<table class="e-rte-table" style="width: 100%;"><tbody><tr><td><br></td><td><br></td><td><br></td></tr><tr><td><br></td><td><br></td><td><br></td></tr></tbody></table>`
+            });
+            rteEle = rteObj.element;
+        });
+        afterEach(() => {
+            destroy(rteObj);
+        });
+
+        it('should split selected cell horizontally using quick toolbar TableCell -> Split Horizontal', (done: Function) => {
+            const target = rteEle.querySelector('.e-rte-table td') as HTMLElement;
+            const eventsArg = { pageX: 50, pageY: 300, target: target, which: 1 };
+            const domSelection = new NodeSelection();
+            (rteObj as any).mouseDownHandler(eventsArg);
+            (rteObj as any).mouseUp(eventsArg);
+            setTimeout(() => {
+                const tableCell = document.querySelectorAll('tr')[1].querySelectorAll('td')[1];
+                domSelection.setSelectionText(rteObj.contentModule.getDocument(), tableCell, tableCell, 0, 0);
+                (document.querySelectorAll('.e-rte-quick-popup .e-toolbar-item button')[0] as HTMLElement).click();
+                (document.querySelectorAll('.e-rte-dropdown-items.e-dropdown-popup ul .e-item')[1] as HTMLElement).click();
+                const table = rteEle.querySelector('table');
+                expect(table.rows.length).toBe(3);
+                done();
+            }, 400);
+        });
+
+        it('should split selected cell vertically using quick toolbar TableCell -> Split Vertical', (done: Function) => {
+            const target = rteEle.querySelector('.e-rte-table td') as HTMLElement;
+            const eventsArg = { pageX: 50, pageY: 300, target: target, which: 1 };
+            const domSelection = new NodeSelection();
+            (rteObj as any).mouseDownHandler(eventsArg);
+            (rteObj as any).mouseUp(eventsArg);
+            setTimeout(() => {
+                const tableCell = document.querySelectorAll('tr')[1].querySelectorAll('td')[1];
+                domSelection.setSelectionText(rteObj.contentModule.getDocument(), tableCell, tableCell, 0, 0);
+                (document.querySelectorAll('.e-rte-quick-popup .e-toolbar-item button')[0] as HTMLElement).click();
+                (document.querySelectorAll('.e-rte-dropdown-items.e-dropdown-popup ul .e-item')[2] as HTMLElement).click();
+                const table = rteEle.querySelector('table');
+                expect(table.querySelectorAll('col').length).toBe(4);
+                done();
+            }, 400);
+        });
+    });
+
     describe("Delete Row with single row", () => {
         let rteObj: RichTextEditor;
         let rteEle: HTMLElement;
@@ -9524,6 +9573,47 @@ the tool bar support, it�s also customiza</p><table class="e-rte-table" style=
             }, 100);
         });
     });
+    describe('1029300: Insert Table Dialog Fails to Reopen After Closing with Keyboard Navigation', () => {
+        let rteEle: HTMLElement;
+        let rteObj: RichTextEditor;
+        beforeAll(() => {
+            rteObj = renderRTE({
+                placeholder: 'Insert table here',
+                toolbarSettings: {
+                    items: ['Bold', 'CreateTable']
+                },
+                value: `<p>Testing</p>`
+            });
+            rteEle = rteObj.element;
+        });
+        afterAll(() => {
+            destroy(rteObj);
+        });
+        it('Should retain the selction while closing the table dialog', (done: DoneFn) => {
+            rteObj.focusIn();
+            const textNode = rteObj.contentModule.getEditPanel().querySelector('p').firstChild;
+            setCursorPoint(textNode, 0);
+            const keyEvent = new KeyboardEvent("keydown", {
+                key: "E",
+                code: "KeyE",
+                which: 69,
+                keyCode: 69,
+                ctrlKey: true,
+                shiftKey: true,
+                bubbles: true,
+                cancelable: true
+            } as KeyboardEventInit);
+            rteObj.inputElement.dispatchEvent(keyEvent);
+            setTimeout(() => {
+                const cancelBtn = document.querySelector('.e-cancel') as HTMLElement;
+                cancelBtn.click();
+                setTimeout(() => {
+                    expect(window.getSelection().getRangeAt(0).startContainer).toBe(textNode);
+                    done();
+                }, 100);
+            }, 100);
+        });
+    });
     describe('937247: Keyboard shortcut for creating tables in the Markdown editor is not functioning', () => {
         let rteEle: HTMLElement;
         let rteObj: RichTextEditor;
@@ -9770,7 +9860,7 @@ the tool bar support, it�s also customiza</p><table class="e-rte-table" style=
             rteObj.focusIn();
             const blockquote = rteObj.contentModule.getDocument().querySelector('blockquote');
             const selection = new NodeSelection();
-            selection.setSelectionText(rteObj.contentModule.getDocument(), blockquote.firstChild, blockquote.firstChild, 0, 7);
+            selection.setSelectionText(rteObj.contentModule.getDocument(), blockquote.firstChild.firstChild, blockquote.firstChild.firstChild, 0, 7);
             const createTableButton = rteEle.querySelector('.e-toolbar-item button') as HTMLElement;
             createTableButton.click();
             const insertTableButton = document.querySelector('.e-insert-table-btn') as HTMLElement;
@@ -13826,6 +13916,82 @@ the tool bar support, it�s also customiza</p><table class="e-rte-table" style=
         });
     });
 
+    describe('1021173: Table cell keyboard selection code coverage', () => {
+        let editor: RichTextEditor;
+        beforeEach(() => {
+            editor = renderRTE({
+                value: '<table class="e-rte-table" style="width: 100%; min-width: 0px;"><tbody><tr><td style="width: 50%;"><br/></td><td style="width: 50%;"><br/></td></tr><tr><td style="width: 50%;"><br/></td><td style="width: 50%;"><br/></td></tr></tbody></table><p><br/></p>'
+            })
+        });
+        afterEach(() => {
+            destroy(editor);
+        });
+        it('Should select the next row with Down arrow key press.', (done: DoneFn) => {
+            editor.inputElement.innerHTML = `<table class="e-rte-table" style="width: 100%; min-width: 0px;">
+   <tbody>
+      <tr>
+         <td>cell1</td>
+         <td>cell2</td>
+         <td>cell3</td>
+      </tr>
+   </tbody>
+</table>
+<p class="e-rte-last-paragraph"><br/></p>`;
+            editor.focusIn();
+            const firstTD: HTMLElement = editor.inputElement.querySelectorAll('td')[1];
+            setCursorPoint(firstTD, 0);
+            const mouseDownEvent: MouseEvent = new MouseEvent('mousedown', BASIC_MOUSE_EVENT_INIT);
+            firstTD.dispatchEvent(mouseDownEvent);
+            const mouseUpEvent: MouseEvent = new MouseEvent('mouseup', BASIC_MOUSE_EVENT_INIT);
+            firstTD.dispatchEvent(mouseUpEvent);
+            setTimeout(() => {
+                const shiftKeyDown: KeyboardEvent = new KeyboardEvent('keydown', SHIFT_ARROW_DOWN_EVENT_INIT);
+                editor.inputElement.dispatchEvent(shiftKeyDown);
+                const secondTD: HTMLElement = editor.inputElement.querySelectorAll('td')[2];
+                const range: Range = new Range();
+                range.setStart(firstTD.firstChild, 5);
+                range.setEnd(secondTD, 0);
+                editor.selectRange(range);
+                setTimeout(() => {
+                    expect(editor.inputElement.querySelectorAll('.e-cell-select').length === 0).toBe(true);
+                    done();
+                }, 100);
+            }, 100);
+        });
+        it('Should select the previous cell with Up arrow key press.', (done: DoneFn) => {
+            editor.inputElement.innerHTML = `<table class="e-rte-table" style="width: 100%; min-width: 0px;">
+   <tbody>
+      <tr>
+         <td>cell1</td>
+         <td>cell2</td>
+         <td>cell3</td>
+      </tr>
+   </tbody>
+</table>
+<p class="e-rte-last-paragraph"><br/></p>`;
+            editor.focusIn();
+            const firstTD: HTMLElement = editor.inputElement.querySelectorAll('td')[1];
+            setCursorPoint(firstTD, 0);
+            const mouseDownEvent: MouseEvent = new MouseEvent('mousedown', BASIC_MOUSE_EVENT_INIT);
+            firstTD.dispatchEvent(mouseDownEvent);
+            const mouseUpEvent: MouseEvent = new MouseEvent('mouseup', BASIC_MOUSE_EVENT_INIT);
+            firstTD.dispatchEvent(mouseUpEvent);
+            setTimeout(() => {
+                const shiftKeyDown: KeyboardEvent = new KeyboardEvent('keydown', SHIFT_ARROW_UP_EVENT_INIT);
+                editor.inputElement.dispatchEvent(shiftKeyDown);
+                const secondTD: HTMLElement = editor.inputElement.querySelectorAll('td')[0];
+                const range: Range = new Range();
+                range.setStart(secondTD.firstChild, 5);
+                range.setEnd(firstTD.firstChild, 5);
+                editor.selectRange(range);
+                setTimeout(() => {
+                    expect(editor.inputElement.querySelectorAll('.e-cell-select').length === 0).toBe(true);
+                    done();
+                }, 100);
+            }, 100);
+        });
+    });
+
     describe('1020469: Undo triggers on keyup instead of keydown after deleting entire table with Backspace.', () => {
         let editor: RichTextEditor;
         const allCellsSelectedValue: string = `<table class="e-rte-table" style="width: 100%; min-width: 0px;"><tbody><tr><td class="e-cell-select e-multi-cells-select" style="width: 50%;"><br></td><td class="e-cell-select e-multi-cells-select e-cell-select-end" style="width: 50%;"><br></td></tr><tr><td class="e-cell-select e-multi-cells-select" style="width: 50%;"><br></td><td class="e-cell-select e-multi-cells-select e-cell-select-end" style="width: 50%;"><br></td></tr></tbody></table><p><br></p>`;
@@ -13849,6 +14015,97 @@ the tool bar support, it�s also customiza</p><table class="e-rte-table" style=
                 expect(undoBtn.classList.contains('e-overlay')).toBe(false);
                 done();
             }, 100);
+        });
+    });
+
+    describe('Bug 1026300: Pressing Tab key does not indent table when enableTabKey is true', () => {
+        let editor: RichTextEditor;
+        beforeAll(() => {
+            editor = renderRTE({
+                enableTabKey: true
+            });
+        });
+        afterAll(() => {
+            destroy(editor);
+        });
+        it('Scenario 1: after fake selection, Tab sets table marginLeft to 20px', (done: DoneFn) => {
+            editor.inputElement.innerHTML = `<table class="e-rte-table" style="width: 35.5256%; min-width: 0px; height: 66px;"><colgroup><col style="width: 33.3333%;"><col style="width: 33.3333%;"><col style="width: 33.3333%;"></colgroup><tbody><tr><td><br></td><td><br></td><td><br></td></tr><tr><td><br></td><td><br></td><td><br></td></tr><tr><td><br></td><td><br></td><td><br></td></tr></tbody></table><p><br></p>`;
+            editor.focusIn();
+            editor.inputElement.dispatchEvent(new MouseEvent('mousedown', BASIC_MOUSE_EVENT_INIT));
+            const target: HTMLElement = editor.inputElement.querySelector('p');
+            setCursorPoint(target, 0);
+            editor.inputElement.dispatchEvent(new KeyboardEvent('keydown', BACKSPACE_EVENT_INIT));
+            editor.inputElement.dispatchEvent(new KeyboardEvent('keyup', BACKSPACE_EVENT_INIT));
+            setTimeout(() => {
+                editor.inputElement.dispatchEvent(new KeyboardEvent('keydown', TAB_KEY_EVENT_INIT));
+                editor.inputElement.dispatchEvent(new KeyboardEvent('keyup', TAB_KEY_EVENT_INIT));
+                setTimeout(() => {
+                    const tableEl: HTMLElement = editor.inputElement.querySelector('table') as HTMLElement;
+                    expect(tableEl.style.marginLeft === '20px').toBe(true);
+                    done();
+                }, 100);
+            });
+        });
+
+        it('Scenario 2: Tab twice and Shift+Tab keep table marginLeft as 20px', (done: DoneFn) => {
+            editor.inputElement.innerHTML = `<table class="e-rte-table" style="width: 35.5256%; min-width: 0px; height: 66px;"><colgroup><col style="width: 33.3333%;"><col style="width: 33.3333%;"><col style="width: 33.3333%;"></colgroup><tbody><tr><td><br></td><td><br></td><td><br></td></tr><tr><td><br></td><td><br></td><td><br></td></tr><tr><td><br></td><td><br></td><td><br></td></tr></tbody></table><p><br></p>`;
+            editor.focusIn();
+            editor.inputElement.dispatchEvent(new MouseEvent('mousedown', BASIC_MOUSE_EVENT_INIT));
+            const target: HTMLElement = editor.inputElement.querySelector('p');
+            setCursorPoint(target, 0);
+            editor.inputElement.dispatchEvent(new KeyboardEvent('keydown', BACKSPACE_EVENT_INIT));
+            editor.inputElement.dispatchEvent(new KeyboardEvent('keyup', BACKSPACE_EVENT_INIT));
+            setTimeout(() => {
+                // First Tab
+                editor.inputElement.dispatchEvent(new KeyboardEvent('keydown', TAB_KEY_EVENT_INIT));
+                editor.inputElement.dispatchEvent(new KeyboardEvent('keyup', TAB_KEY_EVENT_INIT));
+                setTimeout(() => {
+                    // Second Tab
+                    editor.inputElement.dispatchEvent(new KeyboardEvent('keydown', TAB_KEY_EVENT_INIT));
+                    editor.inputElement.dispatchEvent(new KeyboardEvent('keyup', TAB_KEY_EVENT_INIT));
+                    const tableEl: HTMLElement = editor.inputElement.querySelector('table') as HTMLElement;
+                    expect(tableEl.style.marginLeft === '40px').toBe(true);
+                    setTimeout(() => {
+                        // Shift+Tab
+                        editor.inputElement.dispatchEvent(new KeyboardEvent('keydown', SHIFT_TAB_KEY_EVENT_INIT));
+                        editor.inputElement.dispatchEvent(new KeyboardEvent('keyup', SHIFT_TAB_KEY_EVENT_INIT));
+                        setTimeout(() => {
+                            const tableEl: HTMLElement = editor.inputElement.querySelector('table') as HTMLElement;
+                            expect(tableEl.style.marginLeft === '20px').toBe(true);
+                            done();
+                        }, 100);
+                    }, 100);
+                }, 100);
+            });
+        });
+    });
+    describe('Bug 1026300: Pressing Tab key does not indent table when enableTabKey is false', () => {
+        let editor: RichTextEditor;
+        beforeAll(() => {
+            editor = renderRTE({
+                enableTabKey: false
+            });
+        });
+        afterAll(() => {
+            destroy(editor);
+        });
+        it('Scenario 3: after fake selection, Tab leaves table marginLeft empty string', (done: DoneFn) => {
+            editor.inputElement.innerHTML = `<table class="e-rte-table" style="width: 35.5256%; min-width: 0px; height: 66px;"><colgroup><col style="width: 33.3333%;"><col style="width: 33.3333%;"><col style="width: 33.3333%;"></colgroup><tbody><tr><td><br></td><td><br></td><td><br></td></tr><tr><td><br></td><td><br></td><td><br></td></tr><tr><td><br></td><td><br></td><td><br></td></tr></tbody></table><p><br></p>`;
+            editor.focusIn();
+            editor.inputElement.dispatchEvent(new MouseEvent('mousedown', BASIC_MOUSE_EVENT_INIT));
+            const target: HTMLElement = editor.inputElement.querySelector('p');
+            setCursorPoint(target, 0);
+            editor.inputElement.dispatchEvent(new KeyboardEvent('keydown', BACKSPACE_EVENT_INIT));
+            editor.inputElement.dispatchEvent(new KeyboardEvent('keyup', BACKSPACE_EVENT_INIT));
+            setTimeout(() => {
+                editor.inputElement.dispatchEvent(new KeyboardEvent('keydown', TAB_KEY_EVENT_INIT));
+                editor.inputElement.dispatchEvent(new KeyboardEvent('keyup', TAB_KEY_EVENT_INIT));
+                setTimeout(() => {
+                    const tableEl: HTMLElement = editor.inputElement.querySelector('table') as HTMLElement;
+                    expect(tableEl.style.marginLeft === '').toBe(true);
+                    done();
+                }, 100);
+            });
         });
     });
 

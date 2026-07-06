@@ -307,9 +307,9 @@ function updateTileAreaHeightForSecondaryToolbar(show: boolean): void {
  */
 function updateExtractOkButtonState(): void {
     const inputValue: string = this.extractPagesInput ? this.extractPagesInput.value.trim() : '';
-    const createBtn: HTMLButtonElement = document.getElementsByClassName('e-pv-extractbtn')[0] as HTMLButtonElement;
-    if (createBtn) {
-        createBtn.disabled = inputValue === '';
+    const createBtn: any = document.getElementsByClassName('e-pv-extractbtn')[0] as HTMLButtonElement;
+    if (createBtn && createBtn.ej2_instances && createBtn.ej2_instances.length && createBtn.ej2_instances[0]) {
+        createBtn.ej2_instances[0].disabled = inputValue === '';
     }
 }
 

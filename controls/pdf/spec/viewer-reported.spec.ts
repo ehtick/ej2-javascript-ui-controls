@@ -3541,7 +3541,7 @@ describe('Viewer Reported Issues', () => {
         expect(crossRef._offsets.indexOf(17) >= 0).toBeTruthy();
         document.destroy();
     });
-    it('1027849 - URI Export Import issue', () => {
+	it('1027849 - URI Export Import issue', () => {
         let document = new PdfDocument(crossReferenceTable);
         let page = document.getPage(0) as PdfPage;
         const uri = new PdfUriAnnotation(

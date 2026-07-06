@@ -311,6 +311,20 @@ describe('Breadcrumb', () => {
             breadcrumb.dataBind();
             //expect(breadcrumb.element.firstChild.querySelectorAll('.e-breadcrumb-item').length).toEqual(7);
         });
+        it('maxItems Checking with overflow mode Wrap', () => {
+            document.body.appendChild(nav);
+            breadcrumb = new Breadcrumb({items: overflowItems, maxItems: 2, overflowMode: 'Wrap'}, '#breadcrumb');
+            breadcrumb.maxItems = 4;
+            breadcrumb.overflowMode = 'Scroll';
+            breadcrumb.dataBind();
+        });
+        it('maxItems Checking with overflow mode Scroll', () => {
+            document.body.appendChild(nav);
+            breadcrumb = new Breadcrumb({items: overflowItems, maxItems: 2, overflowMode: 'Scroll'}, '#breadcrumb');
+            breadcrumb.maxItems = 4;
+            breadcrumb.overflowMode = 'Wrap';
+            breadcrumb.dataBind();
+        });
         it('url Checking', () => {
             document.body.appendChild(nav);
             breadcrumb = new Breadcrumb({ url: "https://ej2.syncfusion.com/demos/breadcrumb/bind-to-location" }, '#breadcrumb');
@@ -372,6 +386,54 @@ describe('Breadcrumb', () => {
             breadcrumb.enableRtl = false;
             breadcrumb.dataBind();
             expect(breadcrumb.element.classList.contains('e-rtl')).toEqual(false);
+        });
+
+        it('cssClass ICONRIGHT transitions should trigger reRenderItems appropriately', () => {
+            document.body.appendChild(nav);
+            breadcrumb = new Breadcrumb({items: items, cssClass: 'e-custom'}, '#breadcrumb');
+            const br: any = breadcrumb as any;
+            let called: boolean = false;
+            br.reRenderItems = () => { called = true; };
+            // Add ICONRIGHT
+            called = false;
+            breadcrumb.cssClass = 'e-custom e-icon-right';
+            breadcrumb.dataBind();
+            expect(called).toEqual(true);
+
+            // Remove ICONRIGHT
+            breadcrumb.cssClass = 'e-icon-right';
+            breadcrumb.dataBind();
+            called = false;
+            breadcrumb.cssClass = 'e-custom';
+            breadcrumb.dataBind();
+            expect(called).toEqual(true);
+
+            // Both old and new have ICONRIGHT -> should NOT trigger for ICONRIGHT change
+            breadcrumb.cssClass = 'e-icon-right e-one';
+            breadcrumb.dataBind();
+            called = false;
+            breadcrumb.cssClass = 'e-icon-right e-two';
+            breadcrumb.dataBind();
+            expect(called).toEqual(false);
+
+            // Neither old nor new have ICONRIGHT -> should NOT trigger for ICONRIGHT reason
+            breadcrumb.cssClass = 'a-class';
+            breadcrumb.dataBind();
+            called = false;
+            breadcrumb.cssClass = 'another-class';
+            breadcrumb.dataBind();
+            expect(called).toEqual(false);
+
+            // undefined -> ICONRIGHT addition
+            breadcrumb.destroy();
+            document.body.appendChild(nav);
+            breadcrumb = new Breadcrumb({items: items}, '#breadcrumb');
+            const br2: any = breadcrumb as any;
+            let called2: boolean = false;
+            br2.reRenderItems = () => { called2 = true; };
+            breadcrumb.cssClass = 'e-icon-right';
+            breadcrumb.dataBind();
+            expect(called2).toEqual(true);
         });
     });
 
@@ -479,6 +541,208 @@ describe('Breadcrumb', () => {
             element.click();
             mouseEventArs.target = breadcrumb.element.firstChild;
             breadcrumb.documentClickHandler(mouseEventArs);
+        });
+        it('clickHandler sets activeItem to text when URL is empty or falsy', () => {
+            const items: BreadcrumbItemModel[] = [
+                {
+                    text: 'Home',
+                },
+                {
+                    text: 'Demos',
+                },
+                {
+                    text: 'Breadcrumb',
+                }
+            ];
+            document.body.appendChild(nav);
+            breadcrumb = new Breadcrumb({ items: items, activeItem: 'Demos' }, '#breadcrumb');
+            mouseEventArs.target = breadcrumb.element.querySelector('.e-breadcrumb-text');
+            breadcrumb.clickHandler(mouseEventArs);
+        });
+        it('clickHandler setting breadcrumb item as a target for mouse event', () => {
+            document.body.appendChild(nav);
+            breadcrumb = new Breadcrumb({ items: items, activeItem: 'Demos' }, '#breadcrumb');
+            mouseEventArs.target = breadcrumb.element.querySelector('.e-breadcrumb-item');
+            breadcrumb.clickHandler(mouseEventArs);
+        });
+        it('clickHandler setting breadcrumb text in popup as a target for mouse event', () => {
+            document.body.appendChild(nav);
+            let itemsWithProps: any[] = [
+                { properties: { text: 'PropItem', url: '/p', iconCss: 'e-bicons e-file'}},
+                { text: 'Home'}, { text: 'Demos'}, { text: 'Breadcrumb'}
+            ];
+            breadcrumb = new Breadcrumb({ items: itemsWithProps, overflowMode: 'Menu', maxItems: 2  }, '#breadcrumb');
+            breadcrumb.renderPopup();
+            mouseEventArs.target = (breadcrumb.popupObj && breadcrumb.popupObj.element.querySelector('.e-breadcrumb-text')) || document.querySelector('.e-breadcrumb-popup .e-breadcrumb-text');
+            mouseEventArs.type = 'keydown';
+            breadcrumb.clickHandler(mouseEventArs);
+            breadcrumb.destroy();
+        });
+    });
+
+    describe('Popup State Interaction', () => {
+        afterEach(() => {
+            try { breadcrumb.destroy(); } catch (e) { /* ignore */ }
+        });
+
+        it('popup exists but is not open should not destroy popup', () => {
+            document.body.appendChild(nav);
+            breadcrumb = new Breadcrumb({items: iconItems, overflowMode: 'Menu', maxItems: 3}, '#breadcrumb');
+            const br: any = breadcrumb as any;
+            const wrapper: HTMLElement = document.createElement('div');
+            wrapper.className = 'e-popup-wrapper';
+            const edit = document.createElement('div');
+            edit.className = 'e-edit-template';
+            wrapper.appendChild(edit);
+            document.body.appendChild(wrapper);
+            let hid = false; let destr = false;
+            br.popupObj = { element: wrapper, hide: () => { hid = true; }, destroy: () => { destr = true; } };
+            // popup not open (no e-popup-open class)
+            br.reRenderItems();
+            expect(hid).toEqual(false);
+            expect(destr).toEqual(false);
+            if (wrapper.parentNode) { wrapper.parentNode.removeChild(wrapper); }
+        });
+
+        it('popup open but no edit template should not destroy popup', () => {
+            document.body.appendChild(nav);
+            breadcrumb = new Breadcrumb({items: iconItems, overflowMode: 'Menu', maxItems: 3}, '#breadcrumb');
+            const br: any = breadcrumb as any;
+            const wrapper: HTMLElement = document.createElement('div');
+            wrapper.className = 'e-popup-wrapper e-popup-open';
+            document.body.appendChild(wrapper);
+            let hid = false; let destr = false;
+            br.popupObj = { element: wrapper, hide: () => { hid = true; }, destroy: () => { destr = true; } };
+            br.reRenderItems();
+            expect(hid).toEqual(false);
+            expect(destr).toEqual(false);
+            if (wrapper.parentNode) { wrapper.parentNode.removeChild(wrapper); }
+        });
+
+        it('popup open with edit template should hide and destroy popup', () => {
+            document.body.appendChild(nav);
+            breadcrumb = new Breadcrumb({items: iconItems, overflowMode: 'Menu', maxItems: 3}, '#breadcrumb');
+            const br: any = breadcrumb as any;
+            const wrapper: HTMLElement = document.createElement('div');
+            wrapper.className = 'e-popup-wrapper e-popup-open';
+            const edit = document.createElement('div');
+            edit.className = 'e-edit-template';
+            wrapper.appendChild(edit);
+            document.body.appendChild(wrapper);
+            let hid = false; let destr = false;
+            br.popupObj = { element: wrapper, hide: () => { hid = true; }, destroy: () => { destr = true; } };
+            br.isPopupCreated = true;
+            br.reRenderItems();
+            expect(hid).toEqual(true);
+            expect(destr).toEqual(true);
+            expect(br.isPopupCreated).toEqual(false);
+            if (wrapper.parentNode) { wrapper.parentNode.removeChild(wrapper); }
+        });
+
+        it('non-Menu overflow mode should skip popup cleanup', () => {
+            document.body.appendChild(nav);
+            breadcrumb = new Breadcrumb({items: iconItems, overflowMode: 'Collapsed', maxItems: 3}, '#breadcrumb');
+            const br: any = breadcrumb as any;
+            const wrapper: HTMLElement = document.createElement('div');
+            wrapper.className = 'e-popup-wrapper e-popup-open';
+            const edit = document.createElement('div');
+            edit.className = 'e-edit-template';
+            wrapper.appendChild(edit);
+            document.body.appendChild(wrapper);
+            let hid = false; let destr = false;
+            br.popupObj = { element: wrapper, hide: () => { hid = true; }, destroy: () => { destr = true; } };
+            br.isPopupCreated = true;
+            br.reRenderItems();
+            expect(hid).toEqual(false);
+            expect(destr).toEqual(false);
+            if (wrapper.parentNode) { wrapper.parentNode.removeChild(wrapper); }
+        });
+
+        it('null popupObj should be handled safely', () => {
+            document.body.appendChild(nav);
+            breadcrumb = new Breadcrumb({items: iconItems, overflowMode: 'Menu', maxItems: 3}, '#breadcrumb');
+            const br: any = breadcrumb as any;
+            br.popupObj = null;
+            expect(() => { br.reRenderItems(); }).not.toThrow();
+        });
+
+        it('renderPopup should add e-rtl when enableRtl true and focus popupUl', () => {
+            document.body.appendChild(nav);
+            breadcrumb = new Breadcrumb({
+                items: iconItems,
+                overflowMode: 'Menu',
+                maxItems: 3,
+                cssClass: 'custom-class',
+                enableRtl: true
+            }, '#breadcrumb');
+            const br: any = breadcrumb as any;
+            br.renderPopup();
+            const wrapper: HTMLElement = (br.popupObj && br.popupObj.element) || document.body.querySelector('.e-breadcrumb-popup') as HTMLElement;
+            expect(wrapper).toBeTruthy();
+            expect(wrapper.classList.contains('e-rtl')).toEqual(true);
+            breadcrumb.destroy();
+        });
+
+        it('renderPopup should add e-rtl when enableRtl true and focus popupUl with timeout', (done) => {
+            document.body.appendChild(nav);
+            breadcrumb = new Breadcrumb({
+                items: iconItems,
+                overflowMode: 'Menu',
+                maxItems: 3,
+                cssClass: 'custom-class',
+                enableRtl: true
+            }, '#breadcrumb');
+            const br: any = breadcrumb as any;
+            br.renderPopup();
+            setTimeout(function () {
+                const wrapper: HTMLElement = (br.popupObj && br.popupObj.element) || document.body.querySelector('.e-breadcrumb-popup') as HTMLElement;
+                expect(wrapper).toBeTruthy();
+                expect(wrapper.classList.contains('e-rtl')).toEqual(true);
+                breadcrumb.destroy();
+                done();
+            }, 100)
+        });
+
+        it('initial render uses args.curData.properties and appends right icon when cssClass ICONRIGHT present', () => {
+            document.body.appendChild(nav);
+            const itemsWithProps: any[] = [
+                { properties: { text: 'PropItem', url: '/p', iconCss: 'e-bicons e-file', properties: { text: 'PropItem', url: '/p', iconCss: 'e-bicons e-file' } } }
+            ];
+            breadcrumb = new Breadcrumb({ items: itemsWithProps, cssClass: 'e-icon-right' }, '#breadcrumb');
+            const anchorWrap: HTMLElement = breadcrumb.element.querySelector('.e-anchor-wrap') as HTMLElement;
+            expect(anchorWrap).toBeTruthy();
+            const icon: HTMLElement = anchorWrap.querySelector('.e-breadcrumb-icon') as HTMLElement;
+            expect(icon).toBeTruthy();
+            expect(icon.classList.contains('e-bicons')).toEqual(true);
+            breadcrumb.destroy();
+        });
+        it('icon change testing in beforeItemsRender method', () => {
+            document.body.appendChild(nav);
+            const itemsWithProps: any[] = [
+                { properties: { text: 'PropItem', url: '/p', iconCss: 'e-bicons e-file', properties: { text: 'PropItem', url: '/p', iconCss: 'e-bicons e-file1' } } }
+            ];
+            breadcrumb = new Breadcrumb({ items: itemsWithProps, cssClass: 'e-icon-right' }, '#breadcrumb');
+            const anchorWrap: HTMLElement = breadcrumb.element.querySelector('.e-anchor-wrap') as HTMLElement;
+            expect(anchorWrap).toBeTruthy();
+            const icon: HTMLElement = anchorWrap.querySelector('.e-breadcrumb-icon') as HTMLElement;
+            expect(icon).toBeTruthy();
+            expect(icon.classList.contains('e-bicons')).toEqual(true);
+            breadcrumb.destroy();
+        });
+    });
+
+    describe('Additional Branch Coverage', () => {
+        afterEach(() => {
+            try { breadcrumb.destroy(); } catch (e) { /* ignore */ }
+            const navElem = document.getElementById('breadcrumb');
+            if (navElem && navElem.parentNode) { navElem.parentNode.removeChild(navElem); }
+        });
+
+        it('Constructor initializes isPopupCreated to false', () => {
+            document.body.appendChild(nav);
+            breadcrumb = new Breadcrumb({ items: items }, '#breadcrumb');
+            const br: any = breadcrumb as any;
+            expect(br.isPopupCreated).toEqual(false);
         });
     });
 

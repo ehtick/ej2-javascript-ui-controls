@@ -493,6 +493,65 @@ describe('FileManager module', () => {
         });
     });
 
+    describe('1029053: Replaced and Original Images Displayed After Replacing Image with Caption', () => {
+        let editor: RichTextEditor;
+        function onActionBegin(e: ActionBeginEventArgs) {
+            if (e.requestType === 'File' || e.requestType === 'Replace') {
+                const url: string = e.itemCollection.url;
+                if (url.indexOf('?path') > -1) {
+                    const newURL: string = url.replace('?path=', '');
+                    e.itemCollection.url = newURL;
+                }
+            }
+        }
+        beforeAll(() => {
+            editor = renderRTE({
+                toolbarSettings: {
+                    items: ['FileManager']
+                },
+                iframeSettings: {
+                    enable: true
+                },
+                value : `<p>Testing</p><p><span class="e-img-caption-container e-img-inline" contenteditable="false" draggable="false" style="width: 300px"><span class="e-img-wrap"><img alt="Logo" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 300px;" class="e-rte-image"><span class="e-img-caption-text" contenteditable="true">Caption</span></span></span></p>`,
+                fileManagerSettings: {
+                    enable: true,
+                    path: '/Employees',
+                    ajaxSettings: {
+                        url: hostURL + 'api/RichTextEditor/FileOperations',
+                        getImageUrl: hostURL + 'api/RichTextEditor/GetImage',
+                        uploadUrl: hostURL + 'api/RichTextEditor/Upload'
+                    }
+                },
+                actionBegin: onActionBegin,
+            });
+        });
+        afterAll(() => {
+            destroy(editor);
+        });
+        it('Check the image count when replace image in iframe mode', (done: Function) => {
+            const INIT_MOUSEDOWN_EVENT: MouseEvent = new MouseEvent('mousedown', BASIC_MOUSE_EVENT_INIT);
+            editor.inputElement.dispatchEvent(INIT_MOUSEDOWN_EVENT);
+            const target: HTMLElement = editor.inputElement.querySelector('img');
+            const MOUSEUP_EVENT: MouseEvent = new MouseEvent('mouseup', BASIC_MOUSE_EVENT_INIT);
+            setCursorPoint(target, 0);
+            target.dispatchEvent(MOUSEUP_EVENT);
+            setTimeout(() => {
+                let pop: Element = document.body.querySelector('.e-rte-quick-popup');
+                (pop.querySelectorAll('.e-toolbar-item')[13] as HTMLElement).click();
+                setTimeout(() => {
+                    (editor.fileManagerModule as any).fileObj.trigger('fileSelect', { fileDetails: { filterPath: '\\Employees\\', name: 'Andrew.png', isFile: true, type: '.png' } });
+                    let insertBtn: HTMLButtonElement = document.body.querySelector('.e-rte-file-manager-dialog button.e-primary');
+                    insertBtn.click();
+                    setTimeout(() => {
+                        let imageElementCount: number = editor.inputElement.querySelectorAll('.e-rte-image').length;
+                        expect(imageElementCount).toBe(1);
+                        done();
+                    }, 100);
+                }, 100);
+            }, 500);
+        });
+    });
+
     describe('1014616: Replacing an image resets its display from “Break” to “Inline”', () => {
         let editor: RichTextEditor;
         function onActionBegin(e: ActionBeginEventArgs) {

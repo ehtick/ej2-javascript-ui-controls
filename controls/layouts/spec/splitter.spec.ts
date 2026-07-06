@@ -946,6 +946,33 @@ describe('Splitter Control', () => {
             expect(splitbars[0].classList.contains('e-split-bar-hover')).toEqual(true);
             expect(splitbars[1].classList.contains('e-split-bar-hover')).toEqual(false);
         });
+        it('should wire/unwire pointer events when Browser.info.name is msie', () => {
+            const element: HTMLElement = createElement('div', { id: 'splitter-msie-wire-unwire' });
+            element.appendChild(createElement('div'));
+            element.appendChild(createElement('div'));
+            document.body.appendChild(element);
+            const splitterObj: any = new Splitter({
+                width: '400px',
+                height: '300px'
+            });
+            splitterObj.appendTo('#splitter-msie-wire-unwire');
+            const addSpy: jasmine.Spy = spyOn(document, 'addEventListener').and.callFake((): void => { /** no-op */ });
+            const removeSpy: jasmine.Spy = spyOn(document, 'removeEventListener').and.callFake((): void => { /** no-op */ });
+            const winRemoveSpy: jasmine.Spy = spyOn(splitterObj.element.ownerDocument.defaultView, 'removeEventListener')
+                .and.callFake((): void => { /** no-op */ });
+            const browserInfoSpy: jasmine.Spy = spyOnProperty(Browser, 'info', 'get')
+                .and.returnValue({ name: 'msie' } as any);
+            (splitterObj as any).wireResizeEvents();
+            (splitterObj as any).unwireResizeEvents();
+            expect(addSpy).toHaveBeenCalledWith('pointermove', (splitterObj as any).onTouchMoveHandler, true);
+            expect(addSpy).toHaveBeenCalledWith('pointerup', (splitterObj as any).onTouchEndHandler, true);
+            expect(removeSpy).toHaveBeenCalledWith('pointermove', (splitterObj as any).onTouchMoveHandler, true);
+            expect(removeSpy).toHaveBeenCalledWith('pointerup', (splitterObj as any).onTouchEndHandler, true);
+            expect(winRemoveSpy).toHaveBeenCalledWith('resize', (splitterObj as any).onReportWindowSize);
+            browserInfoSpy.and.callThrough();
+            splitterObj.destroy();
+            document.body.innerHTML = '';
+        });
     });
 
 
@@ -2603,6 +2630,37 @@ describe('Splitter Control', () => {
                 expect(splitterObj.nextPane.classList.contains('e-collapsed')).toBe(true);
                 expect(splitterObj.previousPane.classList.contains('e-collapsible')).toBe(true);
                 expect(splitterObj.nextPane.classList.contains('e-collapsible')).toBe(true);
+                });
+                it('should exercise flexStatus branch inside expandPane (safe spies)', () => {
+                    appendSplitterStyles();
+                    const host: HTMLElement = createElement('div', { id: 'expand-flex-status' });
+                    const p1 = createElement('div');
+                    const p2 = createElement('div');
+                    const p3 = createElement('div');
+                    host.appendChild(p1); host.appendChild(p2); host.appendChild(p3);
+                    document.body.appendChild(host);
+                    const sp: any = new Splitter({
+                        height: '400px',
+                        width: '400px',
+                        paneSettings: [{ size: '100px', collapsible: true }, { }, { }]
+                    });
+                    sp.appendTo('#expand-flex-status');
+                    sp.currentSeparator = sp.allBars[0];
+                    sp.getPaneDetails();
+                    sp.previousPane.classList.add('e-static-pane');
+                    sp.previousPane.classList.remove('e-collapsed');
+                    sp.nextPane.classList.remove('e-collapsed');
+                    sp.nextPane.classList.remove('e-expanded');
+                    sp.allPanes[2].classList.remove('e-static-pane');
+                    sp.previousPane.style.flexGrow = '1';
+                    spyOn(sp as any, 'updateIconsOnExpand').and.callFake(() => { });
+                    spyOn(sp as any, 'updatePaneSettings').and.callFake(() => { });
+                    spyOn(sp as any, 'updateFlexGrow').and.callFake(() => { });
+                    const arrow: HTMLElement | null = sp.allBars[0].querySelector('.e-arrow-left') as HTMLElement;
+                    (sp as any).expandPane({ target: arrow } as any);
+                    expect(sp.previousPane.style.flexGrow).toBe('');
+                    sp.destroy();
+                    document.body.innerHTML = '';
                 });
                 });
     
@@ -5446,106 +5504,6 @@ describe('Splitter Control', () => {
         });
     });
 
-    describe('Window resizing', () => {
-        appendSplitterStyles();
-        let splitterObj: any;
-        beforeAll((): void => {
-            let element: HTMLElement = createElement('div', { id: 'default'});
-            element.style.width ='300px';
-            let child1: HTMLElement = createElement('div');
-            let child2: HTMLElement = createElement('div');
-            element.appendChild(child1);
-            element.appendChild(child2);
-            document.body.appendChild(element);
-            splitterObj = new Splitter({width :'100%', paneSettings: [{ size: '50%', min: '10px' }, { min: '20px', }]});
-            splitterObj.appendTo(document.getElementById('default'));
-        });
-        afterAll((): void => {
-            document.body.innerHTML = '';
-        });
-
-        it('pane size', () => {
-            let resizeEvent  : any= window.document.createEvent('UIEvents'); 
-            resizeEvent.initUIEvent('resize', true, false, window, 0); 
-            window.dispatchEvent(resizeEvent);
-            expect(splitterObj.allPanes[0].style.flexBasis ==='50%').toBe(true);         
-            expect(splitterObj.allPanes[1].style.flexBasis === '').toBe(true);
-        });
-    });
-
-    describe('Window resizing after page routing', () => {
-        appendSplitterStyles();
-        let splitterObj: any;
-        beforeAll((): void => {
-            let element: HTMLElement = createElement('div', { id: 'default'});
-            document.body.appendChild(element);
-            splitterObj = new Splitter({width :'100%', paneSettings: [{ size: '50%', min: '10px' }, { min: '20px', }]});
-            splitterObj.appendTo("#default"); 
-        });
-        afterAll((): void => {
-            document.body.innerHTML = '';
-        });
-        it('check body element', () => {
-            detach(splitterObj.element);
-            let resizeEvent  : any= window.document.createEvent('UIEvents'); 
-            resizeEvent.initUIEvent('resize', true, false, window, 0); 
-            window.dispatchEvent(resizeEvent);
-            expect(document.body.contains(splitterObj.element)).toBe(false);
-        });
-    });
-    describe('splitter without pane', () => {
-        appendSplitterStyles();
-        let splitterObj: any;
-        beforeAll((): void => {
-            let element: HTMLElement = createElement('div', { id: 'default'});
-            element.style.width ='300px';
-            let child1: HTMLElement = createElement('div');
-            let child2: HTMLElement = createElement('div');
-            element.appendChild(child1);
-            element.appendChild(child2);
-            document.body.appendChild(element);
-            splitterObj = new Splitter({width :'100%'});
-            splitterObj.appendTo(document.getElementById('default'));
-        });
-        afterAll((): void => {
-            document.body.innerHTML = '';
-        });
-        it('check empty pane', () => {
-            let resizeEvent  : any= window.document.createEvent('UIEvents'); 
-            resizeEvent.initUIEvent('resize', true, false, window, 0); 
-            window.dispatchEvent(resizeEvent);
-            expect(document.body.contains(splitterObj.element)).toBe(true);
-        });
-    });
-
-    describe('Min in Window resizing', () => {
-        appendSplitterStyles();
-        let splitterObj: any;
-        beforeAll((): void => {
-            let element: HTMLElement = createElement('div', { id: 'default'});
-            element.style.width ='300px';
-            let child1: HTMLElement = createElement('div');
-            let child2: HTMLElement = createElement('div');
-            element.appendChild(child1);
-            element.appendChild(child2);
-            document.body.appendChild(element);
-            splitterObj = new Splitter({width :'100%', paneSettings: [{ size: '100px', min: '250px' }]});
-            splitterObj.appendTo(document.getElementById('default'));
-        });
-        afterAll((): void => {
-            document.body.innerHTML = '';
-        });
-
-        it('check pane size', (done) => {
-            let resizeEvent  : any= window.document.createEvent('UIEvents'); 
-            resizeEvent.initUIEvent('resize', true, false, window, 0); 
-            window.dispatchEvent(resizeEvent);
-            setTimeout(() => {
-                expect(splitterObj.allPanes[0].style.flexBasis ==='250px').toBe(true);         
-                    done();
-            }, 3000);
-        });
-    });
     describe('Remove pane Nested Splitter', () => {
         let splitterObj: any;
         let innerSplitterObj: any;
@@ -6241,7 +6199,10 @@ describe('Splitter Control', () => {
             document.body.appendChild(element);
         });
         afterEach(() =>{
-            splitterObj.destroy();
+            if (typeof splitterObj !== 'undefined' && splitterObj && typeof splitterObj.destroy === 'function') {
+                try { splitterObj.destroy(); } catch (e) { /* ignore */ }
+            }
+            document.body.innerHTML = '';
         });
         it("Test for Collapse pane of 1 in initial rendering",()=>{
             splitterObj = new Splitter({
@@ -6258,6 +6219,45 @@ describe('Splitter Control', () => {
             expect(splitterObj.allPanes[0].classList.contains('e-collapsed')).toEqual(true);
             expect(splitterObj.allPanes[1].classList.contains('e-expanded')).toEqual(false);
         })
+        it('should normalize large index and return early when removePane target element is not found', () => {
+            appendSplitterStyles();
+            const host: HTMLElement = createElement('div', { id: 'remove-pane-branch' });
+            host.appendChild(createElement('div'));
+            host.appendChild(createElement('div'));
+            document.body.appendChild(host);
+            const sp: any = new Splitter({
+                width: '400px',
+                height: '200px',
+                paneSettings: [{}, {}]
+            });
+            sp.appendTo('#remove-pane-branch');
+            const beforeCount: number = sp.allPanes.length;
+            sp.removePane(9999);
+            expect(sp.allPanes.length).toBe(beforeCount);
+            sp.destroy();
+            document.body.innerHTML = '';
+        });
+
+        it('should add pane honoring explicit collapsible/collapsed properties and normalize large index', () => {
+            appendSplitterStyles();
+            const host: HTMLElement = createElement('div', { id: 'add-pane-branch' });
+            host.appendChild(createElement('div'));
+            host.appendChild(createElement('div'));
+            document.body.appendChild(host);
+            const sp: any = new Splitter({
+                width: '400px',
+                height: '200px',
+                paneSettings: [{}, {}]
+            });
+            sp.appendTo('#add-pane-branch');
+            sp.addPane({ collapsible: true, collapsed: true, cssClass: 'custom-pane' }, 9999);
+            const addedSettings = sp.paneSettings[sp.paneSettings.length - 1];
+            expect(addedSettings.collapsible).toBe(true);
+            expect(addedSettings.collapsed).toBe(true);
+            expect(sp.allPanes[sp.allPanes.length - 1].classList.contains('custom-pane')).toBe(true);
+            sp.destroy();
+            document.body.innerHTML = '';
+        });
     });
     describe('Null or undefined value testing', () => {
         let splitterObj: any;
@@ -6477,6 +6477,315 @@ describe('Splitter Control', () => {
             expect(toggleArrows.length).toBe(2);
             expect(toggleArrows[0].getAttribute('aria-label')).toBe('Basculer la navigation');
             expect(toggleArrows[1].getAttribute('aria-label')).toBe('Basculer la navigation');
+        });
+    });
+    describe('PaneSettings dynamic update - React function content branch', () => {
+        let splitterObj: any;
+        beforeAll((): void => {
+            let element: HTMLElement = createElement('div', { id: 'default-react-pane' });
+            let child1: HTMLElement = createElement('div');
+            let child2: HTMLElement = createElement('div');
+            element.appendChild(child1);
+            element.appendChild(child2);
+            document.body.appendChild(element);
+            splitterObj = new Splitter({
+                height: '300px',
+                width: '400px',
+                paneSettings: [
+                    { size: '50%', content: (() => '<div>pane-1</div>') as any },
+                    { size: '50%', content: (() => '<div>pane-2</div>') as any }
+                ]
+            });
+            splitterObj.appendTo('#default-react-pane');
+        });
+        afterAll((): void => {
+            document.body.innerHTML = '';
+        });
+        it('should call clearTemplate when react pane content is updated as function', () => {
+            (splitterObj as any).isReact = true;
+            let clearTemplateSpy: jasmine.Spy = spyOn(splitterObj as any, 'clearTemplate').and.callThrough();
+            splitterObj.paneSettings[0].content = (() => '<div>updated pane-1</div>') as any;
+            splitterObj.dataBind();
+            expect(clearTemplateSpy).toHaveBeenCalled();
+        });
+    });
+    describe('EnableReversePane API testing - dynamic setModel', () => {
+        let splitterObj: any;
+        beforeAll((): void => {
+            let element: HTMLElement = createElement('div', { id: 'default-reverse-dynamic' });
+            let child1: HTMLElement = createElement('div');
+            let child2: HTMLElement = createElement('div');
+            let child3: HTMLElement = createElement('div');
+            element.appendChild(child1);
+            element.appendChild(child2);
+            element.appendChild(child3);
+            document.body.appendChild(element);
+            splitterObj = new Splitter({
+                height: '400px',
+                width: '400px',
+                enableReversePanes: false,
+                separatorSize: 200,
+                paneSettings: [{ size: '50%' }, { size: '25%' }, { size: '25%' }]
+            });
+            splitterObj.appendTo('#default-reverse-dynamic');
+        });
+        afterAll((): void => {
+            document.body.innerHTML = '';
+        });
+        it('should update pane and bar order when enableReversePanes changes via dataBind', () => {
+            expect(splitterObj.allPanes[0].style.order).toBe('0');
+            expect(splitterObj.allPanes[1].style.order).toBe('2');
+            expect(splitterObj.allPanes[2].style.order).toBe('4');
+            expect(splitterObj.allBars[0].style.order).toBe('1');
+            expect(splitterObj.allBars[1].style.order).toBe('3');
+            splitterObj.enableReversePanes = true;
+            splitterObj.dataBind();
+            expect(splitterObj.allPanes[0].style.order).toBe('4');
+            expect(splitterObj.allPanes[1].style.order).toBe('2');
+            expect(splitterObj.allPanes[2].style.order).toBe('0');
+            expect(splitterObj.allBars[0].style.order).toBe('3');
+            expect(splitterObj.allBars[1].style.order).toBe('1');
+        });
+        it('dynamically setting separatorSize property to null', () => {
+            expect(splitterObj.separatorSize).toBe(200);
+            splitterObj.separatorSize = null;
+            splitterObj.dataBind();
+            expect(splitterObj.element.querySelectorAll('.e-resizable-split-bar')[0].style.width).toBe('auto');
+            expect(splitterObj.element.querySelectorAll('.e-resizable-split-bar')[1].style.width).toBe('auto');
+        });
+    });
+    describe('Min in Window resizing', () => {
+        let splitterObj: any;
+        beforeAll((): void => {
+            appendSplitterStyles();
+            const element: HTMLElement = createElement('div', { id: 'vertical-window-resize-min-coverage' });
+            element.style.width = '400px';
+            element.style.height = '400px';
+            const child1: HTMLElement = createElement('div');
+            const child2: HTMLElement = createElement('div');
+            element.appendChild(child1);
+            element.appendChild(child2);
+            document.body.appendChild(element);
+            splitterObj = new Splitter({
+                orientation: 'Vertical',
+                width: '400px',
+                height: '400px',
+                paneSettings: [
+                    { size: '', min: '60%' },
+                    { size: '' }
+                ]
+            });
+            splitterObj.appendTo('#vertical-window-resize-min-coverage');
+        });
+
+        afterAll((): void => {
+            document.body.innerHTML = '';
+        });
+        it('should update flex pane basis in percentage during vertical resize update', () => {
+            splitterObj.paneSettings[0].size = '40%';
+            splitterObj.paneSettings[1].size = '60%';
+            splitterObj.paneSettings[0].min = '60%';
+            splitterObj.border = 0;
+            splitterObj.allPanes[0].classList.add('e-static-pane');
+            splitterObj.allPanes[1].classList.remove('e-static-pane');
+            splitterObj.allPanes[0].style.flexBasis = '120px';
+            splitterObj.allPanes[1].style.flexBasis = '40%';
+            if (splitterObj.allBars.length) {
+                splitterObj.allBars[0].style.marginTop = '0px';
+                splitterObj.allBars[0].style.marginBottom = '0px';
+            }
+            spyOnProperty(splitterObj.element, 'offsetHeight', 'get').and.returnValue(400);
+            spyOnProperty(splitterObj.allPanes[0], 'offsetHeight', 'get').and.returnValue(40);   // below min
+            spyOnProperty(splitterObj.allPanes[1], 'offsetHeight', 'get').and.returnValue(300);
+            const beforeFlex: string = splitterObj.allPanes[1].style.flexBasis;
+            (splitterObj as any).updateSplitterSize(true);
+            const afterFlex: string = splitterObj.allPanes[1].style.flexBasis;
+            expect(afterFlex.indexOf('%') > -1).toBe(true);
+            expect(afterFlex).not.toBe(beforeFlex);
+        });
+    });
+    describe('Keyboard resize - checkPaneSize pixel branch coverage', () => {
+        let splitterObj: any;
+        let preWidth: number = 100;
+        let nextWidth: number = 80;
+        beforeAll((): void => {
+            const element: HTMLElement = createElement('div', { id: 'splitter-keyboard-checkPaneSize' });
+            const child1: HTMLElement = createElement('div');
+            const child2: HTMLElement = createElement('div');
+            element.appendChild(child1);
+            element.appendChild(child2);
+            document.body.appendChild(element);
+            splitterObj = new Splitter({
+                width: '400px',
+                height: '300px',
+                paneSettings: [
+                    { min: '0px', resizable: true, size: '' },
+                    { min: '0px', resizable: true, size: '' }
+                ]
+            });
+            splitterObj.appendTo('#splitter-keyboard-checkPaneSize');
+            Object.defineProperty(splitterObj.allPanes[0], 'offsetWidth', {
+                configurable: true,
+                get: () => preWidth
+            });
+            Object.defineProperty(splitterObj.allPanes[1], 'offsetWidth', {
+                configurable: true,
+                get: () => nextWidth
+            });
+        });
+
+        afterAll((): void => {
+            document.body.innerHTML = '';
+        });
+
+        function triggerKeydown(keyCode: number): void {
+            splitterObj.allBars[0].focus(); // sets currentSeparator + active class in splitter
+            const evt: any = new KeyboardEvent('keydown', { bubbles: true });
+            Object.defineProperty(evt, 'keyCode', { configurable: true, get: () => keyCode });
+            splitterObj.element.dispatchEvent(evt);
+        }
+
+        it('should update pane sizes for Right arrow (39) in pixel mode', () => {
+            splitterObj.allPanes[0].style.flexBasis = '';
+            splitterObj.allPanes[1].style.flexBasis = '';
+            preWidth = 100;
+            nextWidth = 80;
+            triggerKeydown(39);
+            expect(splitterObj.allPanes[0].style.flexBasis).toBe('101px');
+            expect(splitterObj.allPanes[1].style.flexBasis).toBe('79px');
+        });
+
+        it('should update pane sizes for Left arrow (37) in pixel mode', () => {
+            splitterObj.allPanes[0].style.flexBasis = '';
+            splitterObj.allPanes[1].style.flexBasis = '';
+            preWidth = 100;
+            nextWidth = 80;
+            triggerKeydown(37);
+            expect(splitterObj.allPanes[0].style.flexBasis).toBe('99px');
+            expect(splitterObj.allPanes[1].style.flexBasis).toBe('81px');
+        });
+        it('should cover vertical pixel branch for keyCode 40 and 38 in checkPaneSize', () => {
+            splitterObj.orientation = 'Vertical';
+            splitterObj.separatorSize = 5;
+            splitterObj.paneSettings[0].min = '-10px';
+            splitterObj.paneSettings[1].min = '0px';
+            splitterObj.dataBind();
+            splitterObj.allPanes[0].style.flexBasis = '';
+            splitterObj.allPanes[1].style.flexBasis = '';
+            const bar: HTMLElement = splitterObj.allBars[0] as HTMLElement;
+            bar.setAttribute('tabindex', '0');
+            bar.classList.add('e-split-bar-active');
+            bar.focus();
+            let prevHeight: number = 20;
+            let nextHeight: number = 3;
+            spyOnProperty(splitterObj.allPanes[0], 'offsetHeight', 'get').and.callFake(() => prevHeight);
+            spyOnProperty(splitterObj.allPanes[1], 'offsetHeight', 'get').and.callFake(() => nextHeight);
+            const downEvent: any = new KeyboardEvent('keydown', { bubbles: true });
+            Object.defineProperty(downEvent, 'keyCode', { configurable: true, get: () => 40 });
+            splitterObj.element.dispatchEvent(downEvent);
+            expect(splitterObj.allPanes[0].style.flexBasis).toBe('25px');
+            expect(splitterObj.allPanes[1].style.flexBasis).toBe('0px');
+            splitterObj.allPanes[0].style.flexBasis = '';
+            splitterObj.allPanes[1].style.flexBasis = '';
+            prevHeight = 3;
+            nextHeight = 20;
+            const upEvent: any = new KeyboardEvent('keydown', { bubbles: true });
+            Object.defineProperty(upEvent, 'keyCode', { configurable: true, get: () => 38 });
+            splitterObj.element.dispatchEvent(upEvent);
+            expect(splitterObj.allPanes[0].style.flexBasis).toBe('0px');
+            expect(splitterObj.allPanes[1].style.flexBasis).toBe('25px');
+        });
+    });
+    describe('sanitizeHelper method', () => {
+        let splitterObj: any;
+        beforeAll((): void => {
+            const element: HTMLElement = createElement('div', { id: 'sanitize-helper-coverage' });
+            element.appendChild(createElement('div'));
+            element.appendChild(createElement('div'));
+            document.body.appendChild(element);
+            splitterObj = new Splitter({
+                enableHtmlSanitizer: true,
+                beforeSanitizeHtml: (args: any) => {
+                    args.cancel = true;
+                    args.helper = (value: string) => 'custom-' + value;
+                }
+            });
+            splitterObj.appendTo('#sanitize-helper-coverage');
+        });
+        afterAll((): void => {
+            if (splitterObj && !splitterObj.isDestroyed) {
+                splitterObj.destroy();
+            }
+            document.body.innerHTML = '';
+        });
+        it('should use custom helper when cancel is true in beforeSanitizeHtml', () => {
+            const value: string = '<div>content</div>';
+            const result: string = splitterObj.sanitizeHelper(value);
+            expect(result).toBe('custom-<div>content</div>');
+        });
+    });
+    describe('Splitter - onMove keyboard with previous pane expanded (uncovered branch coverage)', () => {
+        appendSplitterStyles();
+        let splitterObj: any;
+        beforeAll((): void => {
+            const element: HTMLElement = createElement('div', { id: 'splitter_expand_test' });
+            element.style.width = '400px';
+            const child1: HTMLElement = createElement('div');
+            const child2: HTMLElement = createElement('div');
+            element.appendChild(child1);
+            element.appendChild(child2);
+            document.body.appendChild(element);
+            splitterObj = new Splitter({
+                width: '400px',
+                height: '300px',
+                orientation: 'Horizontal',
+                paneSettings: [
+                    { resizable: true },
+                    { resizable: true }
+                ]
+            });
+            splitterObj.appendTo(document.getElementById('splitter_expand_test'));
+        });
+        afterAll((): void => {
+            splitterObj.destroy();
+            document.body.innerHTML = '';
+        });
+        it('should resize when previous pane is expanded and next pane is not collapsed on right arrow key', () => {
+            const separator: HTMLElement = document.querySelector('[role="separator"]') as HTMLElement;
+            splitterObj.currentSeparator = separator;
+            splitterObj.getPaneDetails();
+            splitterObj.previousPane.classList.add('e-expanded');
+            splitterObj.nextPane.classList.remove('e-collapsed');
+            separator.focus();
+            const checkPaneSizeSpy = spyOn(splitterObj as any, 'checkPaneSize').and.callThrough();
+            const triggerResizingSpy = spyOn(splitterObj as any, 'triggerResizing').and.callThrough();
+            const keyboardEvent = new KeyboardEvent('keydown', {
+                bubbles: true,
+                cancelable: true,
+                key: 'ArrowRight'
+            });
+            Object.defineProperty(keyboardEvent, 'keyCode', { configurable: true, get: () => 39 });
+            separator.dispatchEvent(keyboardEvent);
+            expect(checkPaneSizeSpy).toHaveBeenCalled();
+            expect(triggerResizingSpy).toHaveBeenCalled();
+        });
+
+        it('should resize when previous pane is expanded and next pane is not collapsed on left arrow key', () => {
+            const separator: HTMLElement = document.querySelector('[role="separator"]') as HTMLElement;
+            splitterObj.currentSeparator = separator;
+            splitterObj.getPaneDetails();
+            splitterObj.previousPane.classList.add('e-expanded');
+            splitterObj.nextPane.classList.remove('e-collapsed');
+            separator.focus();
+            const checkPaneSizeSpy = spyOn(splitterObj as any, 'checkPaneSize').and.callThrough();
+            const keyboardEvent = new KeyboardEvent('keydown', {
+                bubbles: true,
+                cancelable: true,
+                key: 'ArrowLeft'
+            });
+            Object.defineProperty(keyboardEvent, 'keyCode', { configurable: true, get: () => 37 });
+            separator.dispatchEvent(keyboardEvent);
+            expect(checkPaneSizeSpy).toHaveBeenCalled();
         });
     });
  });

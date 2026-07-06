@@ -1,6 +1,5 @@
 @use 'sass:math';
-@use 'ej2-base/styles/definition/tailwind' as *;
-@forward 'ej2-base/styles/definition/tailwind';
+@use '../../node_modules/@syncfusion/ej2-base/styles/common/base-variables' as *;
 
 $grid-chart-border-color: $border-light !default;
 $grid-chart-list-hover-bg-color: $content-bg-color-hover !default;
@@ -9,3 +8,4 @@ $grid-chart-list-hover-icon-color: $content-text-color-hover !default;
 $grid-chart-list-selected-bg-color: $content-bg-color-selected !default;
 $grid-chart-list-selected-content-font-color: $primary !default;
 $grid-chart-list-selected-icon-color: $primary !default;
+$grid-chart-skin: 'tailwind' !default;

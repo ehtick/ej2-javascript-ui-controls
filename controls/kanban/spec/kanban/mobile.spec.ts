@@ -398,4 +398,82 @@ describe('Kanban mobile testing', () => {
             expect(tapHoldVal).toBe(400);
         });
     });
+
+     describe('Swimlane kanban in mobile device', () => {
+        let kanbanObj: Kanban;
+        const uA: string = Browser.userAgent;
+        const androidUserAgent: string = 'Mozilla/5.0 (Linux; Android 9; Pixel XL Build/PPP3.180510.008) ' +
+            'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.81 Mobile Safari/537.36';
+        beforeAll((done: DoneFn) => {
+            Browser.userAgent = androidUserAgent;
+            const model: KanbanModel = {
+                width: 300, height: 500,
+                swimlaneSettings: {
+                    keyField: 'Assignee'
+                },
+                keyField: 'Status',
+                columns: [
+                    { headerText: 'Backlog', keyField: 'Open' },
+                    { headerText: 'In Progress', keyField: 'InProgress' },
+                    { headerText: 'Review', keyField: 'Review' },
+                    { headerText: 'Testing', keyField: 'Testing' },
+                    { headerText: 'Done', keyField: 'Close' }
+                ],
+                cardSettings: {
+                    contentField: 'Summary',
+                    headerField: 'Id'
+                }
+            };
+            kanbanObj = util.createKanban(model, kanbanData, done);
+        });
+        afterAll(() => {
+            util.destroy(kanbanObj);
+            Browser.userAgent = uA;
+        });
+
+        it('swimlane toolbar testing', (done) => {
+            setTimeout(() => {
+                expect(kanbanObj.element.querySelectorAll('.e-swimlane-header')).toBeTruthy();
+                done();
+            }, 100);
+        });
+
+        it('swimlane treeview testing', (done) => {
+            setTimeout(() => {
+                expect(kanbanObj.element.querySelectorAll('.e-swimlane-header')).toBeTruthy();
+                done();
+            }, 100);
+        });
+    });
+    describe('MobileLayout#drawNode', () => {
+        let kanbanObj: Kanban;
+        beforeAll((done: DoneFn) => {
+            const model: KanbanModel = { width: 300, height: 500 };
+            kanbanObj = util.createKanban(model, [], done);
+        });
+
+        afterAll(() => {
+            util.destroy(kanbanObj);
+        });
+
+        it('should append template when swimlane template exists and parent is React', () => {
+            kanbanObj.swimlaneSettings = { template: 'tpl' } as any;
+            (kanbanObj as any).isReact = true;
+            kanbanObj.templateParser = (tpl: any) => {
+                return (_data: any) => {
+                    const el = document.createElement('div');
+                    el.textContent = 'rendered';
+                    return [el];
+                };
+            };
+            const li = document.createElement('li');
+            const textDiv = document.createElement('div');
+            textDiv.className = 'e-list-text';
+            li.appendChild(textDiv);
+            const args = { node: li, nodeData: {} };
+            (kanbanObj.layoutModule as any).drawNode(args);
+            expect(textDiv.childElementCount).toBeGreaterThan(0);
+            expect(textDiv.firstElementChild!.textContent).toBe('rendered');
+        });
+    });
 });

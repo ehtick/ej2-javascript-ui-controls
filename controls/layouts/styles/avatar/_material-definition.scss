@@ -1,5 +1,4 @@
-@use 'ej2-base/styles/definition/material' as *;
-@forward 'ej2-base/styles/definition/material';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 
 // Avatar Base
 $avatar-base-border-radius: 5px !default;

@@ -54,6 +54,7 @@ export class WorkbookFindAndReplace {
         const activeCell: number[] = getRangeIndexes(sheet.activeCell);
         const findArgs: FindArgs = { startRow: activeCell[0], startCol: activeCell[1],
             findVal: args.isCSen ? args.value : args.value.toLowerCase(), activeCell: activeCell };
+        const isModelOnly: boolean = this.parent.paintSuspendCount > 0;
         if (args.searchBy === 'By Row' ? findArgs.startRow > sheet.usedRange.rowIndex : findArgs.startCol > sheet.usedRange.colIndex) {
             if (args.findOpt === 'next') {
                 findArgs.startRow = findArgs.startCol = 0;
@@ -115,7 +116,14 @@ export class WorkbookFindAndReplace {
             this.findPrevious(args, findArgs);
         }
         if (args.showDialog) {
-            this.parent.notify(findToolDlg, { findValue: args.value, isPublic: true, headerHgt: headerHgt });
+            const findValue: string = args.value;
+            if (isModelOnly) {
+                this.parent.queuePaintAction('findToolDlg', (): void => {
+                    this.parent.notify(findToolDlg, { findValue: findValue, isPublic: true, headerHgt: headerHgt });
+                });
+            } else {
+                this.parent.notify(findToolDlg, { findValue: findValue, isPublic: true, headerHgt: headerHgt });
+            }
         }
     }
     private findNext(args: FindOptions, findArgs: FindArgs): void {
@@ -144,10 +152,23 @@ export class WorkbookFindAndReplace {
         if (!cellAddr) {
             cellAddr = findOnSheet(0, findArgs.sheetIdx);
         }
+        const isModelOnly: boolean = this.parent.paintSuspendCount > 0;
         if (cellAddr) {
-            this.parent.notify(goto, { address: cellAddr });
+            if (isModelOnly) {
+                this.parent.queuePaintAction('goto', (): void => {
+                    this.parent.notify(goto, { address: cellAddr });
+                });
+            } else {
+                this.parent.notify(goto, { address: cellAddr });
+            }
         } else {
-            this.parent.notify(showFindAlert, null);
+            if (isModelOnly) {
+                this.parent.queuePaintAction('showFindAlert', (): void => {
+                    this.parent.notify(showFindAlert, null);
+                });
+            } else {
+                this.parent.notify(showFindAlert, null);
+            }
         }
     }
     private findNextOnSheet(
@@ -229,10 +250,23 @@ export class WorkbookFindAndReplace {
         if (!cellAddr) {
             cellAddr = findOnSheet(findArgs.sheets.length - 1, findArgs.sheetIdx);
         }
+        const isModelOnly: boolean = this.parent.paintSuspendCount > 0;
         if (cellAddr) {
-            this.parent.notify(goto, { address: cellAddr });
+            if (isModelOnly) {
+                this.parent.queuePaintAction('goto', (): void => {
+                    this.parent.notify(goto, { address: cellAddr });
+                });
+            } else {
+                this.parent.notify(goto, { address: cellAddr });
+            }
         } else {
-            this.parent.notify(showFindAlert, null);
+            if (isModelOnly) {
+                this.parent.queuePaintAction('showFindAlert', (): void => {
+                    this.parent.notify(showFindAlert, null);
+                });
+            } else {
+                this.parent.notify(showFindAlert, null);
+            }
         }
     }
     private findPrevOnSheet(
@@ -311,6 +345,7 @@ export class WorkbookFindAndReplace {
     public replace(args: FindOptions): void {
         const sheetIndex: number = isUndefined(args.sheetIndex) ? this.parent.activeSheetIndex : args.sheetIndex;
         const sheet: SheetModel = getSheet(this.parent, args.sheetIndex);
+        const isModelOnly: boolean = this.parent.paintSuspendCount > 0;
         if (sheet.isProtected) {
             this.parent.notify(workBookeditAlert, null);
             return;
@@ -369,7 +404,7 @@ export class WorkbookFindAndReplace {
         }
         const eventArgs: BeforeReplaceEventArgs & { sheetIndex: number } = { address: `${sheet.name}!${getCellAddress(activeCell[0], activeCell[1])}`, cancel: false,
             compareValue: args.value, replaceValue: args.replaceValue, sheetIndex: sheetIndex };
-        if (args.isAction) {
+        if (args.isAction && !isModelOnly) {
             this.parent.notify(beginAction, { action: 'beforeReplace', eventArgs: eventArgs });
             if (eventArgs.cancel) {
                 return;
@@ -377,9 +412,9 @@ export class WorkbookFindAndReplace {
             delete eventArgs.cancel;
         }
         updateCell(
-            this.parent, sheet, { cell: { value: replacedValue }, rowIdx: activeCell[0], colIdx: activeCell[1], uiRefresh: true,
+            this.parent, sheet, { cell: { value: replacedValue }, rowIdx: activeCell[0], colIdx: activeCell[1], uiRefresh: !isModelOnly,
                 checkCF: true, valChange: true });
-        if (args.isAction) {
+        if (args.isAction && !isModelOnly) {
             this.parent.notify('actionComplete', { action: 'replace', eventArgs: eventArgs });
         }
     }
@@ -389,7 +424,8 @@ export class WorkbookFindAndReplace {
         let endRow: number = sheet.usedRange.rowIndex;
         let startRow: number = 0; let endColumn: number = sheet.usedRange.colIndex; let startColumn: number = 0;
         const addressCollection: string[] = [];
-        const triggerEvent: boolean = args.isAction;
+        const isModelOnly: boolean = this.parent.paintSuspendCount > 0;
+        const triggerEvent: boolean = args.isAction && !isModelOnly;
         const activeCellIdx: number[] = getCellIndexes(sheet.activeCell);
         const eventArgs: ReplaceAllEventArgs & FindOptions = { addressCollection: addressCollection, cancel: false, ...args };
         let replaceCount: number = 0; const isAnimationEnabled: boolean = animationMode !== 'Disable';
@@ -402,9 +438,9 @@ export class WorkbookFindAndReplace {
                         const sheetIndex: number = getSheetIndexFromAddress(this.parent, eventArgs.addressCollection[index as number]);
                         updateCell(
                             this.parent, this.parent.sheets[sheetIndex as number], { cell: { value: val }, rowIdx: indexes[0],
-                                uiRefresh: true, checkCF: true, colIdx: indexes[1], valChange: true,
+                                uiRefresh: !isModelOnly, checkCF: true, colIdx: indexes[1], valChange: true,
                                 skipFormatCheck: (<{ skipFormatCheck?: boolean }>args).skipFormatCheck });
-                        if (activeCellIdx[0] === indexes[0] && activeCellIdx[1] === indexes[1]) {
+                        if (!isModelOnly && activeCellIdx[0] === indexes[0] && activeCellIdx[1] === indexes[1]) {
                             this.parent.notify(
                                 'formulaBarOperation', { action: 'refreshFormulabar',
                                     cell: getCell(indexes[0], indexes[1], this.parent.sheets[sheetIndex as number], false, true) });
@@ -507,7 +543,11 @@ export class WorkbookFindAndReplace {
             if (!eventArgs.cancel) {
                 this.parent.notify(replaceAllDialog, { count: replaceCount, replaceValue: eventArgs.replaceValue });
             }
-        } else {
+        } else if (isModelOnly) {
+            this.parent.queuePaintAction('replaceAllDialog', (): void => {
+                this.parent.notify(replaceAllDialog, { count: replaceCount, replaceValue: eventArgs.replaceValue });
+            });
+        } else if (!isModelOnly) {
             this.parent.notify(replaceAllDialog, { count: replaceCount, replaceValue: eventArgs.replaceValue });
         }
     }

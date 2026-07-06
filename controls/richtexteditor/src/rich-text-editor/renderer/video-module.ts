@@ -1,4 +1,4 @@
-import { addClass, Ajax, Browser, closest, detach, EventHandler, formatUnit, isNullOrUndefined as isNOU, isNullOrUndefined, KeyboardEventArgs, L10n, MouseEventArgs, removeClass } from '@syncfusion/ej2-base';
+import { addClass, Browser, closest, detach, EventHandler, formatUnit, isNullOrUndefined as isNOU, isNullOrUndefined, KeyboardEventArgs, L10n, MouseEventArgs, removeClass } from '@syncfusion/ej2-base';
 import { Button, RadioButton } from '@syncfusion/ej2-buttons';
 import { BeforeUploadEventArgs, FileInfo, InputEventArgs, MetaData, ProgressEventArgs, RemovingEventArgs, SelectedEventArgs, TextBox, Uploader, UploadingEventArgs } from '@syncfusion/ej2-inputs';
 import { ClickEventArgs } from '@syncfusion/ej2-navigations';
@@ -11,7 +11,7 @@ import * as events from '../base/constant';
 import { RenderType } from '../base/enum';
 import { AfterMediaDeleteEventArgs, IImageNotifyArgs, IQuickToolbar, IRichTextEditor, SlashMenuItemSelectArgs, IRenderer} from '../base/interface';
 import { IDropDownItemModel, IShowPopupArgs, IToolbarItemModel, IVideoCommandsArgs, NotifyArgs, OffsetPosition, ResizeArgs, ActionBeginEventArgs } from '../../common/interface';
-import { dispatchEvent, hasClass, parseHtml } from '../base/util';
+import { dispatchEvent, hasClass, parseHtml, toggleButtonDisableState } from '../base/util';
 import { RendererFactory } from '../services/renderer-factory';
 import { ServiceLocator } from '../services/service-locator';
 import { DialogRenderer } from './dialog-renderer';
@@ -58,6 +58,12 @@ export class Video {
     private inputHeightValue: string;
     private removingVideoName: string;
     private showPopupTime: number;
+    // Batch-paste/drag suppression for quick toolbar (mirrors image-module behavior)
+    public isMultiVideoPaste: boolean = false;
+    public remainingPastedVideos: number = 0;
+    private pendingVideoQTArgs: IShowPopupArgs = null;
+    // Array to track timeouts for centralized cleanup
+    private timeoutIds: number[] = [];
     private isResizeBind: boolean = true;
     private isDestroyed: boolean;
     private webUrlBtn: RadioButton;
@@ -109,6 +115,7 @@ export class Video {
         this.parent.on(events.bindOnEnd, this.bindOnEnd, this);
         this.parent.on(events.modelChanged, this.onPropertyChanged, this);
         this.parent.on(events.resizeStart, this.resizeStart, this);
+        this.parent.on(events.videoPaste, this.videoPaste, this);
     }
 
     protected removeEventListener(): void {
@@ -132,6 +139,7 @@ export class Video {
         this.parent.off(events.bindOnEnd, this.bindOnEnd);
         this.parent.off(events.modelChanged, this.onPropertyChanged);
         this.parent.off(events.resizeStart, this.resizeStart);
+        this.parent.off(events.videoPaste, this.videoPaste);
         this.parent.off(EVENTS.touchEnd, this.videoClick);
         this.parent.off(EVENTS.dropEvent, this.dragDrop);
         this.parent.off(EVENTS.dragEnter, this.dragEnter);
@@ -245,12 +253,16 @@ export class Video {
     private onKeyUp(event: NotifyArgs): void {
         if (!isNOU(this.deletedVid) && this.deletedVid.length > 0) {
             for (let i: number = 0; i < this.deletedVid.length; i++) {
+                const videoElemSrc: string = (this.deletedVid[i as number] as HTMLVideoElement).querySelector('source') ?
+                    (this.deletedVid[i as number] as HTMLVideoElement).querySelector('source').getAttribute('src') : '';
                 const args: AfterMediaDeleteEventArgs = {
                     element: this.deletedVid[i as number],
-                    src: (this.deletedVid[i as number] as HTMLElement).tagName !== 'IFRAME' ? (this.deletedVid[i as number] as HTMLVideoElement).querySelector('source').getAttribute('src') :
+                    src: (this.deletedVid[i as number] as HTMLElement).tagName !== 'IFRAME' ? videoElemSrc :
                         (this.deletedVid[i as number] as HTMLIFrameElement).src
                 };
-                this.parent.trigger(events.afterMediaDelete, args);
+                if (args.src !== '') {
+                    this.parent.trigger(events.afterMediaDelete, args);
+                }
             }
         }
     }
@@ -547,10 +559,10 @@ export class Video {
         const left: number = pos.left;
         const vidWid: string | number = e.getBoundingClientRect().width;
         const vidHgt: string | number = e.getBoundingClientRect().height;
-        let borWid: number; //span border width + image outline width
+        let borWid: number; //span border width + video outline width
         // Special handling for Safari browser
         if (this.parent.userAgentData.isSafari()) {
-            // window getcomputed style might cause UI Lag, Janky animation and high cpu usage while it is called frequently in resize of image
+            // window getcomputed style might cause UI Lag, Janky animation and high cpu usage while it is called frequently in resize of video
             borWid = (Browser.isDevice) ?
                 (4 * parseInt(this.parent.inputElement.ownerDocument.defaultView.getComputedStyle(e).outlineWidth, 10)) + 2 :
                 (2 * parseInt(this.parent.inputElement.ownerDocument.defaultView.getComputedStyle(e).outlineWidth, 10)) + 2;
@@ -848,10 +860,6 @@ export class Video {
             break;
         case 'backspace':
         case 'delete':
-            for (let i: number = 0; i < this.deletedVid.length; i++) {
-                const src: string = (this.deletedVid[i as number] as HTMLVideoElement).src;
-                this.videoRemovePost(src as string);
-            }
             if (this.parent.editorMode !== 'Markdown' && range.startContainer === range.endContainer && range.startOffset === range.endOffset) {
                 if (range.startContainer.nodeType === 3) {
                     if (originalEvent.code === 'Backspace' && !this.parent.audioModule.isAudioRemoved) {
@@ -1030,7 +1038,6 @@ export class Video {
                 selectNode: e.selectNode,
                 subCommand: ((e.args as ClickEventArgs).item as IDropDownItemModel).subCommand
             });
-        this.videoRemovePost(args.src);
         if (this.quickToolObj && document.body.contains(this.quickToolObj.videoQTBar.element)) {
             this.quickToolObj.videoQTBar.hidePopup();
         }
@@ -1038,40 +1045,6 @@ export class Video {
         if (isNullOrUndefined(keyCode)) {
             this.parent.trigger(events.afterMediaDelete, args);
         }
-    }
-
-    private videoRemovePost(src: string): void {
-        // eslint-disable-next-line @typescript-eslint/no-this-alias
-        const proxy: Video = this;
-        let absoluteUrl: string = '';
-        if (isNOU(this.parent.insertVideoSettings.removeUrl) || this.parent.insertVideoSettings.removeUrl === '') { return; }
-        if (src.indexOf('http://') > -1 || src.indexOf('https://') > -1) {
-            absoluteUrl = src;
-        } else {
-            absoluteUrl = new URL(src, document.baseURI).href;
-        }
-        // eslint-disable-next-line no-useless-escape
-        this.removingVideoName = absoluteUrl.replace(/^.*[\\\/]/, '');
-        const xhr: XMLHttpRequest = new XMLHttpRequest();
-        // eslint-disable-next-line @typescript-eslint/tslint/config
-        xhr.addEventListener('readystatechange', function() {
-            if (this.readyState === 4 && this.status === 200) {
-                proxy.triggerPost(this.response);
-            }
-        });
-        xhr.open('GET', absoluteUrl);
-        xhr.responseType = 'blob';
-        xhr.send();
-    }
-
-    private triggerPost(response: Blob): void {
-        const removeUrl: string = this.parent.insertVideoSettings.removeUrl;
-        if (isNOU(removeUrl) || removeUrl === '') { return; }
-        const file: File = new File([response], this.removingVideoName);
-        const ajax: Ajax = new Ajax(removeUrl, 'POST', true, null);
-        const formData: FormData = new FormData();
-        formData.append('UploadFiles', file);
-        ajax.send(formData);
     }
 
     private onDocumentClick(e: MouseEvent): void {
@@ -1206,6 +1179,32 @@ export class Video {
             || isNullOrUndefined(this.parent.quickToolbarModule.videoQTBar) || isNullOrUndefined(e.args)) {
             return;
         }
+        if (!isNOU(this.parent.pasteCleanupModule) && !isNOU((e.args).type) && (((e.args).type as string) === 'paste')) {
+            return;
+        }
+        // Cancel any pending QT popup and hide currently visible QT to avoid racing
+        if (!isNullOrUndefined(this.showPopupTime)) {
+            clearTimeout(this.showPopupTime);
+            this.showPopupTime = null;
+        }
+        if (this.quickToolObj && this.quickToolObj.videoQTBar &&
+            (this.parent.contentModule.getDocument()).contains(this.quickToolObj.videoQTBar.element)) {
+            this.quickToolObj.videoQTBar.hidePopup();
+        }
+        // Batch-paste/drag suppression: postpone QT until final video in batch
+        if (this.isMultiVideoPaste) {
+            this.pendingVideoQTArgs = e;
+            if (this.remainingPastedVideos > 0) {
+                this.remainingPastedVideos--;
+            }
+            if (this.remainingPastedVideos > 0) {
+                return;
+            }
+            e = this.pendingVideoQTArgs || e;
+            this.isMultiVideoPaste = false;
+            this.pendingVideoQTArgs = null;
+            this.remainingPastedVideos = 0;
+        }
         this.quickToolObj = this.parent.quickToolbarModule;
         let target: HTMLElement = e.elements as HTMLElement;
         [].forEach.call(e.elements, (element: Element, index: number) => {
@@ -1228,14 +1227,28 @@ export class Video {
         }
         if (this.parent.quickToolbarModule.videoQTBar) {
             if (e.isNotify) {
-                this.showPopupTime = setTimeout(() => {
+                const id: number = setTimeout(() => {
                     this.parent.formatter.editorManager.nodeSelection.Clear(this.contentModule.getDocument());
                     this.parent.formatter.editorManager.nodeSelection.setSelectionContents(this.contentModule.getDocument(), target);
                     this.quickToolObj.videoQTBar.showPopup(target as Element, e.args as MouseEvent);
                     if (this.parent.insertVideoSettings.resize === true) {
+                        const focusedVideos: HTMLElement[] = Array.from(this.parent.element.querySelectorAll('.e-rte-video'));
+                        if (focusedVideos.length > 0) {
+                            for (let i: number = 0; i < focusedVideos.length; i++) {
+                                if (focusedVideos[i as number] !== target) {
+                                    removeClass([focusedVideos[i as number]], [CLS_VID_FOCUS]);
+                                    removeClass([focusedVideos[i as number]], ['e-resize']);
+                                    focusedVideos[i as number].style.outline = '';
+                                }
+                            }
+                        }
+                        const elements: Element[] = Array.prototype.slice.call(e.elements);
+                        target = elements[elements.length - 1] as HTMLElement;
                         this.resizeStart(e.args as PointerEvent, target);
                     }
-                }, 400);
+                }, 400) as unknown as number;
+                this.showPopupTime = id;
+                this.timeoutIds.push(id);
             } else {
                 this.quickToolObj.videoQTBar.showPopup(target as Element, e.args as MouseEvent);
                 // triggered the resizeStart method only for firefox browser (Since mousedown is not binding properly)
@@ -1349,6 +1362,7 @@ export class Video {
         if (e.selectNode && e.selectNode[0].nodeType === 1 && ((e.selectNode[0] as HTMLElement).tagName === 'VIDEO' || this.isEmbedVidElem((e.selectNode[0] as HTMLElement)))) {
             dialogModel.header = this.parent.localeObj.getConstant('editVideoHeader');
             dialogModel.content = dialogContent;
+            dialogModel.buttons[0].buttonModel.cssClass = dialogModel.buttons[0].buttonModel.cssClass + ' e-updateVideo';
         } else {
             dialogModel.content = dialogContent;
         }
@@ -1443,9 +1457,9 @@ export class Video {
     private onEmbedInput(): void {
         if (!isNOU(this.embedInputUrl)) {
             if ((this.embedInputUrl as HTMLInputElement).value.length === 0) {
-                (this.dialogObj.getButtons(0) as Button).element.disabled = true;
+                toggleButtonDisableState((this.dialogObj.getButtons(0) as Button), true);
             } else {
-                (this.dialogObj.getButtons(0) as Button).element.removeAttribute('disabled');
+                toggleButtonDisableState((this.dialogObj.getButtons(0) as Button), false);
             }
         }
     }
@@ -1453,9 +1467,9 @@ export class Video {
     private onInputUrl(): void {
         if (!isNOU(this.inputUrl)) {
             if ((this.inputUrl as HTMLInputElement).value.length === 0) {
-                (this.dialogObj.getButtons(0) as Button).element.disabled = true;
+                toggleButtonDisableState((this.dialogObj.getButtons(0) as Button), true);
             } else {
-                (this.dialogObj.getButtons(0) as Button).element.removeAttribute('disabled');
+                toggleButtonDisableState((this.dialogObj.getButtons(0) as Button), false);
             }
         }
     }
@@ -1537,7 +1551,7 @@ export class Video {
                                 }
                                 if (isNullOrUndefined(proxy.parent.insertVideoSettings.saveUrl) && this.isAllowedTypes
                                     && !isNullOrUndefined(this.dialogObj)) {
-                                    (this.dialogObj.getButtons(0) as Button).element.removeAttribute('disabled');
+                                    toggleButtonDisableState((this.dialogObj.getButtons(0) as Button), false);
                                 }
                             });
                             reader.readAsDataURL(selectArgs.filesData[0].rawFile as Blob);
@@ -1574,7 +1588,7 @@ export class Video {
                         proxy.embedInputUrl.setAttribute('disabled', 'true');
                     }
                     if ((e as ProgressEventArgs).operation === 'upload' && !isNullOrUndefined(this.dialogObj)) {
-                        (this.dialogObj.getButtons(0) as Button).element.removeAttribute('disabled');
+                        toggleButtonDisableState((this.dialogObj.getButtons(0) as Button), false);
                     }
                 });
             },
@@ -1585,7 +1599,7 @@ export class Video {
                 // eslint-disable-next-line
                 this.parent.trigger(events.fileRemoving, e, (e: RemovingEventArgs) => {
                     proxy.isVideoUploaded = false;
-                    (this.dialogObj.getButtons(0) as Button).element.disabled = true;
+                    toggleButtonDisableState((this.dialogObj.getButtons(0) as Button), true);
                     if (proxy.inputUrl.getAttribute('disabled')) {
                         proxy.inputUrl.removeAttribute('disabled');
                     }
@@ -1605,7 +1619,7 @@ export class Video {
     private checkExtension(e: FileInfo): void {
         if (this.uploadObj.allowedExtensions) {
             if (this.uploadObj.allowedExtensions.toLocaleLowerCase().indexOf(('.' + e.type).toLocaleLowerCase()) === -1) {
-                (this.dialogObj.getButtons(0) as Button).element.setAttribute('disabled', 'disabled');
+                toggleButtonDisableState((this.dialogObj.getButtons(0) as Button), true);
                 this.isAllowedTypes = false;
             } else {
                 this.isAllowedTypes = true;
@@ -1630,7 +1644,7 @@ export class Video {
         const dataTransfer: DataTransfer = e.dataTransfer;
         const items: DataTransferItemList = dataTransfer.items;
         const item: DataTransferItem | undefined = (items && items.length) ? items[0] : undefined;
-        const mimeType: string = (items && items.length) ? (items[0].type || '') : '';
+        const mimeType: string = (items && items.length) ? (items[0].type) : '';
         // Empty MIME: block with forbidden cursor and stop propagation
         if (!mimeType) {
             // preventDefault() marks this element as a valid drop target so dropEffect is applied.
@@ -1645,12 +1659,12 @@ export class Video {
             return;
         }
         // configured allowed extensions
-        const allowedTypes: string[] = (this.parent.insertVideoSettings.allowedTypes as string[]) || [];
-        const allowedExts: Set<string> = new Set<string>(allowedTypes.map((type: string) => (type || '').toLowerCase()));
+        const allowedTypes: string[] = (this.parent.insertVideoSettings.allowedTypes as string[]);
+        const allowedExts: Set<string> = new Set<string>(allowedTypes.map((type: string) => (type).toLowerCase()));
         //Decide acceptability for this drag
         let canAccept: boolean = false;
         if (item && item.kind === 'file') {
-            const mime: string = (item.type || '').toLowerCase();
+            const mime: string = (item.type).toLowerCase();
             if (mime && mime.startsWith('video/')) {
                 const extension: string | null = this.getExtensionFromMime(mime);
                 canAccept = !!(extension && allowedExts.has('.' + extension));
@@ -1798,84 +1812,142 @@ export class Video {
             cancel: false,
             originalEvent: e
         };
-        if (e.dataTransfer.files.length > 0) { // For external video drag and drop
-            if (e.dataTransfer.files.length > 1) {
-                return;
-            }
+        if (e.dataTransfer.files.length > 0) {
             const vidFiles: FileList = e.dataTransfer.files;
-            const fileName: string = vidFiles[0].name;
-            const vidType: string = fileName.substring(fileName.lastIndexOf('.'));
             const allowedTypes: string[] = this.parent.insertVideoSettings.allowedTypes;
-            for (let i: number = 0; i < allowedTypes.length; i++) {
-                if (vidType.toLocaleLowerCase() === allowedTypes[i as number].toLowerCase()) {
-                    if (this.parent.insertVideoSettings.saveUrl) {
-                        this.onSelect(e);
-                    } else {
-                        this.parent.trigger(events.actionBegin, actionBeginArgs, (actionBeginArgs: ActionBeginEventArgs) => {
-                            if (!actionBeginArgs.cancel) {
-                                const args: NotifyArgs = { args: e, text: '', file: vidFiles[0] };
-                                e.preventDefault();
-                                this.videoPaste(args);
-                            } else {
-                                actionBeginArgs.originalEvent.preventDefault();
-                            }
-                        });
+            // Collect all valid files (supports multiple file drop)
+            const validFiles: File[] = [];
+            for (let i: number = 0; i < vidFiles.length; i++) {
+                const fileName: string = vidFiles[i as number].name;
+                const vidType: string = fileName.substring(fileName.lastIndexOf('.')).toLowerCase();
+                let isAllowed: boolean = false;
+                for (let j: number = 0; j < allowedTypes.length; j++) {
+                    if (allowedTypes[j as number].toLowerCase() === vidType) {
+                        isAllowed = true;
+                        break;
                     }
                 }
+                if (isAllowed) {
+                    validFiles.push(vidFiles[i as number]);
+                }
+            }
+            if (validFiles.length === 0) {
+                return;
+            }
+            // Batch-paste handling (mirror src renderer behaviour)
+            if (validFiles.length > 1) {
+                this.isMultiVideoPaste = true;
+                this.remainingPastedVideos = validFiles.length;
+                this.pendingVideoQTArgs = null;
+                if (this.quickToolObj && this.quickToolObj.videoQTBar &&
+                    (this.parent.contentModule.getDocument()).contains(this.quickToolObj.videoQTBar.element)) {
+                    this.quickToolObj.videoQTBar.hidePopup();
+                }
+            }
+            // saveUrl flow — onSelect handles all valid files
+            if (this.parent.insertVideoSettings.saveUrl) {
+                this.onSelect(e, validFiles);
+            } else {
+                // Local blob/base64 flow — trigger actionBegin once and pass all files to videoPaste
+                this.parent.trigger(events.actionBegin, actionBeginArgs, (actionBeginArgs: ActionBeginEventArgs) => {
+                    if (!actionBeginArgs.cancel) {
+                        const args: NotifyArgs = { args: e, text: '', file: validFiles as any };
+                        e.preventDefault();
+                        this.videoPaste(args);
+                    } else {
+                        actionBeginArgs.originalEvent.preventDefault();
+                    }
+                });
             }
         }
     }
 
-    private onSelect(args: DragEvent): void {
-        const range: Range = this.parent.formatter.editorManager.nodeSelection.getRange(this.parent.contentModule.getDocument());
-        const selection: NodeSelection = this.parent.formatter.editorManager.nodeSelection.save(
-            range, this.parent.contentModule.getDocument());
-        const file: File = args.dataTransfer.files[0];
-        const videoCommand: IVideoCommandsArgs = {
-            cssClass: (this.parent.insertVideoSettings.layoutOption === 'Inline' ? classes.CLS_VIDEOINLINE : classes.CLS_VIDEOBREAK),
-            url: this.parent.insertVideoSettings.path + file.name,
-            selection: selection,
-            fileName: file.name,
-            width: {
-                width: this.parent.insertVideoSettings.width,
-                minWidth: this.parent.insertVideoSettings.minWidth,
-                maxWidth: this.parent.getInsertVidMaxWidth()
-            },
-            height: {
-                height: this.parent.insertVideoSettings.height,
-                minHeight: this.parent.insertVideoSettings.minHeight,
-                maxHeight: this.parent.insertVideoSettings.maxHeight
-            }
-        };
-
-        const actionBeginArgs: ActionBeginEventArgs = {
-            requestType: 'Videos',
-            name: 'VideoDragAndDrop',
-            cancel: false,
-            originalEvent: args,
-            itemCollection: videoCommand
-        };
-
-        this.parent.trigger(events.actionBegin, actionBeginArgs, (actionBeginArgs: ActionBeginEventArgs) => {
-            if (!actionBeginArgs.cancel) {
-                this.parent.formatter.process(
-                    this.parent,
-                    { item: { command: 'Videos', subCommand: 'Video' } },
-                    args,
-                    actionBeginArgs.itemCollection
-                );
-                // Find the inserted video and set opacity
-                const range: Range = this.parent.formatter.editorManager.nodeSelection.getRange(this.parent.contentModule.getDocument());
-                const videoElement : HTMLVideoElement = (range.commonAncestorContainer as HTMLElement).querySelector('video');
-                if (videoElement) {
-                    videoElement.style.opacity = '0.5';
-                    // Set up upload handler for the inserted video
-                    this.uploadMethod(args, videoElement);
+    private onSelect(args: DragEvent, files?: File[]): void {
+        const allowedTypes: string[] = this.parent.insertVideoSettings.allowedTypes;
+        // Use passed files or fall back to dataTransfer.files
+        const sourceFiles: File[] = files ? files : Array.from(args.dataTransfer.files);
+        // Collect valid files
+        const validFiles: File[] = sourceFiles.filter((file: File) => {
+            const vidType: string = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+            let isValid: boolean = false;
+            for (let j: number = 0; j < allowedTypes.length; j++) {
+                if (allowedTypes[j as number].toLowerCase() === vidType) {
+                    isValid = true;
+                    break;
                 }
-            } else {
-                actionBeginArgs.originalEvent.preventDefault();
             }
+            return isValid;
         });
+        if (validFiles.length === 0) {
+            return;
+        }
+        const doc: Document = this.parent.contentModule.getDocument();
+        // Process each valid file sequentially — get fresh range/selection per iteration
+        const processFile: (index: number) => void = (index: number): void => {
+            if (index >= validFiles.length) {
+                return;
+            }
+            // Get current range and save selection for THIS insert
+            const currentRange: Range = this.parent.formatter.editorManager.nodeSelection.getRange(doc);
+            const selection: NodeSelection = this.parent.formatter.editorManager.nodeSelection.save(currentRange, doc);
+            const file: File = validFiles[index as number];
+            const videoCommand: IVideoCommandsArgs = {
+                cssClass: (this.parent.insertVideoSettings.layoutOption === 'Inline' ?
+                    classes.CLS_VIDEOINLINE : classes.CLS_VIDEOBREAK),
+                url: this.parent.insertVideoSettings.path + file.name,
+                selection: selection,
+                fileName: file.name,
+                width: {
+                    width: this.parent.insertVideoSettings.width,
+                    minWidth: this.parent.insertVideoSettings.minWidth,
+                    maxWidth: this.parent.getInsertVidMaxWidth()
+                },
+                height: {
+                    height: this.parent.insertVideoSettings.height,
+                    minHeight: this.parent.insertVideoSettings.minHeight,
+                    maxHeight: this.parent.insertVideoSettings.maxHeight
+                }
+            };
+            const actionBeginArgs: ActionBeginEventArgs = {
+                requestType: 'Videos',
+                name: 'VideoDragAndDrop',
+                cancel: false,
+                originalEvent: args,
+                itemCollection: videoCommand
+            };
+            this.parent.trigger(events.actionBegin, actionBeginArgs, (actionBeginArgs: ActionBeginEventArgs) => {
+                if (!actionBeginArgs.cancel) {
+                    this.parent.formatter.process(
+                        this.parent,
+                        { item: { command: 'Videos', subCommand: 'Video' } },
+                        args,
+                        actionBeginArgs.itemCollection
+                    );
+                    // Find the inserted video for this iteration and set up upload
+                    const postRange: Range = this.parent.formatter.editorManager.nodeSelection.getRange(doc);
+                    const videoElement: HTMLVideoElement = (postRange.commonAncestorContainer as HTMLElement).querySelector('video');
+                    if (videoElement) {
+                        videoElement.style.opacity = '0.5';
+                        this.uploadMethod(args, videoElement, index);
+                    }
+                    // Move editor-managed cursor after last inserted wrap before processing next file
+                    const videoWraps: NodeListOf<HTMLElement> = doc.querySelectorAll('.' + classes.CLS_VIDEOWRAP);
+                    if (videoWraps && videoWraps.length > 0) {
+                        const lastWrap: HTMLElement = videoWraps[videoWraps.length - 1];
+                        const nextRange: Range = doc.createRange();
+                        nextRange.setStartAfter(lastWrap);
+                        nextRange.collapse(true);
+                        // setRange updates the editor-managed caret so next insert appends correctly
+                        this.parent.formatter.editorManager.nodeSelection.setRange(doc, nextRange);
+                    }
+                    // Process next file only after current one is fully inserted
+                    processFile(index + 1);
+                } else {
+                    actionBeginArgs.originalEvent.preventDefault();
+                }
+            });
+        };
+        processFile(0);
     }
 
     /**
@@ -1883,61 +1955,91 @@ export class Video {
      *
      * @param {DragEvent} dragEvent - specifies the event.
      * @param {HTMLVideoElement} videoElement - specifies the element.
+     * @param {number} [fileIndex] - Index of file to use from drag event (default: 0).
      * @returns {void}
      */
-    private uploadMethod(dragEvent: DragEvent, videoElement: HTMLVideoElement): void {
-        this.popupObj = this.popupUploaderObj.renderPopup('Videos', videoElement);
+    private uploadMethod(dragEvent: DragEvent, videoElement: HTMLVideoElement, fileIndex: number = 0): void {
+        const popupObj: Popup = this.popupUploaderObj.renderPopup('Audios', videoElement);
         const range: Range = this.parent.formatter.editorManager.nodeSelection.getRange(this.parent.contentModule.getDocument());
-        const timeOut: number = dragEvent.dataTransfer.files[0].size > 1000000 ? 300 : 100;
-        this.videoDragPopupTime = setTimeout(() => {
-            this.popupUploaderObj.refreshPopup(videoElement, this.popupObj);
-        }, timeOut);
-        this.uploadObj = this.popupUploaderObj.createUploader(
-            'Videos', dragEvent, videoElement, this.popupObj.element.childNodes[0] as HTMLElement, this.popupObj);
-        (this.popupObj.element.querySelector('.e-rte-dialog-upload .e-file-select-wrap') as HTMLElement).style.display = 'none';
+        const timeOut: number = dragEvent.dataTransfer.files[fileIndex as number].size > 1000000 ? 300 : 100;
+        const popupRefreshTimeout: number = setTimeout(() => {
+            this.popupUploaderObj.refreshPopup(videoElement, popupObj);
+        }, timeOut) as unknown as number;
+        // Store timeout id for centralized cleanup
+        this.timeoutIds.push(popupRefreshTimeout);
+        // Create a local uploader per audio, attached to this popup
+        const uploadObj: Uploader = this.popupUploaderObj.createUploader(
+            'Audios', dragEvent, videoElement, popupObj.element.childNodes[0] as HTMLElement, popupObj, fileIndex);
+        const fileSelectWrap: HTMLElement = popupObj.element.querySelector('.e-rte-dialog-upload .e-file-select-wrap') as HTMLElement;
+        if (fileSelectWrap) {
+            fileSelectWrap.style.display = 'none';
+        }
         range.selectNodeContents(videoElement);
         this.parent.formatter.editorManager.nodeSelection.setRange(this.contentModule.getDocument(), range);
     }
 
     private videoPaste(args: NotifyArgs): void {
-        if (args.text.length === 0 && !isNOU((args as NotifyArgs).file)) {
+        let files: File[] = [];
+        if (Array.isArray(args.file)) {
+            files = args.file as File[];
+        } else if (args.file instanceof File) {
+            files = [args.file as File];
+        }
+        if (args.text.length === 0 && files.length > 0) {
             // eslint-disable-next-line
             const proxy: Video = this;
-            const reader: FileReader = new FileReader();
-            (args.args as KeyboardEvent).preventDefault();
-            reader.addEventListener('load', (e: MouseEvent) => {
-                const file: File = (args as NotifyArgs).file as File;
-                const url: string = this.parent.insertVideoSettings.saveFormat === 'Base64' || !isNOU(args.callBack) ?
-                    reader.result as string : URL.createObjectURL(convertToBlob(reader.result as string));
-                const videoCommandArgs: IVideoCommandsArgs = {
-                    cssClass: (proxy.parent.insertVideoSettings.layoutOption === 'Inline' ?
-                        classes.CLS_VIDEOINLINE : classes.CLS_VIDEOBREAK),
-                    url: url,
-                    fileName: file.name,
-                    width: {
-                        width: proxy.parent.insertVideoSettings.width,
-                        minWidth: proxy.parent.insertVideoSettings.minWidth,
-                        maxWidth: proxy.parent.getInsertVidMaxWidth()
-                    },
-                    height: {
-                        height: proxy.parent.insertVideoSettings.height,
-                        minHeight: proxy.parent.insertVideoSettings.minHeight,
-                        maxHeight: proxy.parent.insertVideoSettings.maxHeight
+            if (args.args && (args.args as Event).preventDefault) {
+                (args.args as Event).preventDefault();
+            }
+            const doc: Document = proxy.parent.contentModule.getDocument();
+            for (let i: number = 0; i < files.length; i++) {
+                const file: File = files[i as number];
+                const reader: FileReader = new FileReader();
+                reader.addEventListener('load', (e: MouseEvent) => {
+                    const url: string = this.parent.insertVideoSettings.saveFormat === 'Base64' || !isNOU(args.callBack) ?
+                        reader.result as string : URL.createObjectURL(convertToBlob(reader.result as string));
+                    const videoCommandArgs: IVideoCommandsArgs = {
+                        cssClass: (proxy.parent.insertVideoSettings.layoutOption === 'Inline' ?
+                            classes.CLS_VIDEOINLINE : classes.CLS_VIDEOBREAK),
+                        url: url,
+                        fileName: file.name,
+                        width: {
+                            width: proxy.parent.insertVideoSettings.width,
+                            minWidth: proxy.parent.insertVideoSettings.minWidth,
+                            maxWidth: proxy.parent.getInsertVidMaxWidth()
+                        },
+                        height: {
+                            height: proxy.parent.insertVideoSettings.height,
+                            minHeight: proxy.parent.insertVideoSettings.minHeight,
+                            maxHeight: proxy.parent.insertVideoSettings.maxHeight
+                        }
+                    };
+                    if (!isNOU(args.callBack)) {
+                        args.callBack(videoCommandArgs);
+                        return;
+                    } else {
+                        proxy.parent.formatter.process(
+                            proxy.parent,
+                            { item: { command: 'Videos', subCommand: 'Video' } },
+                            args.args,
+                            videoCommandArgs
+                        );
+                        const videoWraps: NodeListOf<HTMLElement> = doc.querySelectorAll('.' + classes.CLS_VIDEOWRAP);
+                        if (videoWraps && videoWraps.length > 0) {
+                            const lastWrap: HTMLElement = videoWraps[videoWraps.length - 1];
+                            const range: Range = doc.createRange();
+                            range.setStartAfter(lastWrap);
+                            range.collapse(true);
+                            const sel: Selection | null = doc.getSelection();
+                            if (sel) {
+                                sel.removeAllRanges();
+                                sel.addRange(range);
+                            }
+                        }
                     }
-                };
-                if (!isNOU(args.callBack)) {
-                    args.callBack(videoCommandArgs);
-                    return;
-                } else {
-                    proxy.parent.formatter.process(
-                        proxy.parent,
-                        { item: { command: 'Videos', subCommand: 'Video' } },
-                        args.args,
-                        videoCommandArgs
-                    );
-                }
-            });
-            reader.readAsDataURL((args as NotifyArgs).file);
+                });
+                reader.readAsDataURL(file);
+            }
         }
     }
 
@@ -1956,6 +2058,17 @@ export class Video {
         //let audioSelectParent: Node = proxy.uploadUrl.selectParent[0];
         proxy.isVideoUploaded = false;
         const url: string = (proxy.inputUrl as HTMLInputElement).value;
+        if (e.target && (e.target as HTMLElement).nodeName === 'BUTTON' && (e.target as HTMLElement).classList.contains('e-updateVideo')) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const element: HTMLElement = (this as any).selectParent && (this as any).selectParent[0] && (this as any).selectParent[0].nodeName === 'VIDEO' ?
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (this as any).selectParent[0] as HTMLElement : null;
+            const args: AfterMediaDeleteEventArgs = {
+                element: element,
+                src: url
+            };
+            proxy.parent.trigger(events.afterMediaDelete, args);
+        }
         const embedUrl: string = (proxy.embedInputUrl as HTMLTextAreaElement).value;
         if (proxy.parent.formatter.getUndoRedoStack().length === 0) {
             proxy.parent.formatter.saveData();
@@ -2021,6 +2134,18 @@ export class Video {
             clearTimeout(this.showPopupTime);
             this.showPopupTime = null;
         }
+        if (!isNullOrUndefined(this.videoDragPopupTime)) {
+            clearTimeout(this.videoDragPopupTime);
+            this.videoDragPopupTime = null;
+        }
+        if (!isNullOrUndefined(this.showVideoQTbarTime)) {
+            clearTimeout(this.showVideoQTbarTime);
+            this.showVideoQTbarTime = null;
+        }
+        this.timeoutIds.forEach((id: number) => {
+            clearTimeout(id);
+        });
+        this.timeoutIds = [];
         this.clearDialogObj();
         this.isDestroyed = true;
         this.onDocumentClickBoundFn = null;

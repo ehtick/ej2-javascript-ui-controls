@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/common/mixin' as *;
-@use '../tailwind3-definition' as *;
+@use '../variables' as *;
+
 @include export-module('breadcrumb-tailwind3-icons') {
   .e-breadcrumb {
     .e-breadcrumb-collapsed::before,

@@ -11,6 +11,7 @@ export class PasteCleanupSettings extends ChildProperty<PasteCleanupSettings> {
      * This property holds an array of styles that can be applied to pasted content.
      *
      * @default ['font-weight', 'font-style', 'text-decoration', 'text-transform']
+     * @deprecated This property is deprecated
      */
     @Property(['font-weight', 'font-style', 'text-decoration', 'text-transform'])
     public allowedStyles: string[];

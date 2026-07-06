@@ -3132,7 +3132,7 @@ describe('Audio Module', () => {
             });
 
             const uploadMethodSpy = spyOn(rteObj.audioModule as any, 'uploadMethod');
-            spyOn(rteObj, 'trigger').and.callFake(function (_eventName: string, args: any, callback?: Function) {
+            spyOn(rteObj, 'trigger').and.callFake(function (_eventName: string, args: any, callback: Function) {
                 if (typeof callback === 'function') {
                     callback(Object.assign({}, args, {
                         cancel: false,
@@ -3321,6 +3321,38 @@ describe('Audio Module', () => {
             rteObj.isDestroyed = true;
             (rteObj as any).audioModule.addEventListener();
             rteObj.isDestroyed = false;
+        });
+    });
+    describe('1029000: Insert audio after Ctrl+A and toolbar click', () => {
+        let rteObj: RichTextEditor;
+        beforeAll(() => {
+            rteObj = renderRTE({
+                toolbarSettings: { items: ['Audio'] },
+                value: `<p>Rich Text Editor allows inserting video and audio from online sources and the local computers where you want to insert a video and audio into your content.</p><p><span class="e-audio-wrap" contenteditable="false" style="width: 300px; margin: 0px auto;"><span class="e-clickelem">
+    <audio controls="" class="e-rte-audio e-audio-inline"><source src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Audio.wav" type="audio/mp3"/></audio>
+    </span></span><br/></p>`
+            });
+        });
+        afterAll(() => {
+            destroy(rteObj);
+        });
+        it('should select all with Ctrl+A, open Audio dialog and insert audio', (done: Function) => {
+            (rteObj.contentModule.getEditPanel() as HTMLElement).focus();
+            let node: Node = rteObj.inputElement.querySelector('p').childNodes[0];
+            let node2: Node = rteObj.inputElement.querySelectorAll('p')[1].childNodes[0];
+            let sel = new NodeSelection().setSelectionText(document, node, node2, 0, node2.textContent.length);
+            (rteObj.element.querySelectorAll('.e-toolbar-item')[0] as HTMLElement).click();
+            setTimeout(() => {
+                const dialogEle: HTMLElement | null = rteObj.element.querySelector('.e-dialog');
+                (dialogEle.querySelector('.e-audio-url') as HTMLInputElement).value = window.origin + '/base/spec/content/audio/RTE-Audio.mp3';
+                (dialogEle.querySelector('.e-audio-url') as HTMLInputElement).dispatchEvent(new Event('input'));
+                (dialogEle.querySelector('.e-insertAudio.e-primary') as HTMLElement).click();
+                setTimeout(() => {
+                    const afterCount: number = rteObj.element.querySelectorAll('audio').length;
+                    expect(afterCount).toBe(1);
+                    done();
+                }, 100);
+            }, 100);
         });
     });
     describe('978382 - Audio element is not deleted when pressing the Delete key', () => {
@@ -3637,6 +3669,79 @@ describe('Audio Module', () => {
                 expect(rteObj.inputElement.querySelectorAll('.e-audio-wrap').length).toBe(0);
                 done();
             }, 100);
+        });
+    });
+
+    describe('1029299: Audio Quick Toolbar display dropdown does not highlight selected option', () => {
+        let rteObj: RichTextEditor;
+        beforeEach(() => {
+            rteObj = renderRTE({
+                toolbarSettings: {
+                    items: ['Audio']
+                },
+                value: '<p><span class=\"e-audio-wrap\" contenteditable=\"false\" title=\"horse.mp3\"><span class=\"e-clickelem\"><audio class=\"e-rte-audio e-audio-inline\" controls=\"\"><source src=\"/base/spec/content/audio/RTE-Audio.mp3\" type=\"audio/mp3\"></audio></span></span></p>'
+            });
+        });
+        afterEach(() => {
+            destroy(rteObj);
+        });
+
+        it('should highlight Inline option when audio has e-audio-inline class', (done: DoneFn) => {
+            let audioWrap: HTMLElement = rteObj.element.querySelector('.e-audio-wrap');
+            dispatchEvent(audioWrap, 'mousedown');
+            audioWrap.click();
+            dispatchEvent(audioWrap, 'mouseup');
+            setTimeout(() => {
+                let quickToolbar: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                expect(quickToolbar).not.toBeNull();
+                let displayBtn: HTMLElement = quickToolbar.querySelector('[title="Layout option"]');
+                expect(displayBtn).not.toBeNull();
+                (displayBtn.firstChild as HTMLElement).click();
+                setTimeout(() => {
+                    let popup: HTMLElement = document.querySelector('.e-dropdown-popup.e-rte-dropdown-menu');
+                    expect(popup).not.toBeNull();
+                    let inlineOption: HTMLElement = popup.querySelectorAll('li')[0];
+                    expect(inlineOption.classList.contains('e-active')).toBe(true);
+                    done();
+                }, 200);
+            }, 200);
+        });;
+    });
+
+    describe('1029299: Audio Quick Toolbar display dropdown does not highlight selected option', () => {
+        let rteObj: RichTextEditor;
+        beforeEach(() => {
+            rteObj = renderRTE({
+                toolbarSettings: {
+                    items: ['Audio']
+                },
+                value: '<p><span class=\"e-audio-wrap\" contenteditable=\"false\" title=\"horse.mp3\"><span class=\"e-clickelem\"><audio class=\"e-rte-audio e-audio-break\" controls=\"\"><source src=\"/base/spec/content/audio/RTE-Audio.mp3\" type=\"audio/mp3\"></audio></span></span></p>'
+
+            });
+        });
+        afterEach(() => {
+            destroy(rteObj);
+        });
+
+        it('should highlight Break option when audio has e-audio-break class', (done: DoneFn) => {
+            let audioWrap: HTMLElement = rteObj.element.querySelector('.e-audio-wrap');
+            dispatchEvent(audioWrap, 'mousedown');
+            audioWrap.click();
+            dispatchEvent(audioWrap, 'mouseup');
+            setTimeout(() => {
+                let quickToolbar: HTMLElement = document.querySelector('.e-rte-quick-popup');
+                expect(quickToolbar).not.toBeNull();
+                let displayBtn: HTMLElement = quickToolbar.querySelector('[title="Layout option"]');
+                expect(displayBtn).not.toBeNull();
+                (displayBtn.firstChild as HTMLElement).click();
+                setTimeout(() => {
+                    let popup: HTMLElement = document.querySelector('.e-dropdown-popup.e-rte-dropdown-menu');
+                    expect(popup).not.toBeNull();
+                    let breakOption: HTMLElement = popup.querySelectorAll('li')[1];
+                    expect(breakOption.classList.contains('e-active')).toBe(true);
+                    done();
+                }, 200);
+            }, 200);
         });
     });
 });

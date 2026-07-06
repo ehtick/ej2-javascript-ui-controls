@@ -6,7 +6,7 @@ import { IToolbarStatus } from '../../../src/common/interface';
 import { RichTextEditor, dispatchEvent, ToolbarStatusEventArgs } from "../../../src/rich-text-editor/index";
 import { NodeSelection } from '../../../src/selection/selection';
 import { renderRTE, destroy, setCursorPoint, setSelection } from "./../render.spec";
-import { BASIC_MOUSE_EVENT_INIT } from '../../constant.spec';
+import { BASIC_MOUSE_EVENT_INIT } from "./../../constant.spec";
 
 describe(' HTML editor update toolbar ', () => {
     let rteObj: RichTextEditor;
@@ -212,8 +212,8 @@ describe(' HTML editor update toolbar ', () => {
             (rteObj as any).mouseUp({ target: editNode });
             expect((rteObj.htmlEditorModule as any).toolbarUpdate.toolbarStatus.fontname).toEqual(null);
             expect(status.fontname).toEqual(null);
-            expect((rteObj.htmlEditorModule as any).toolbarUpdate.toolbarStatus.fontcolor).toEqual('rgb(0, 0, 0)');
-            expect(status.fontcolor).toEqual('rgb(0, 0, 0)');
+            expect((rteObj.htmlEditorModule as any).toolbarUpdate.toolbarStatus.fontcolor).toEqual(null);
+            expect(status.fontcolor).toEqual(null);
         });
         it('Check single font name tag with specfic correct family', () => {
             let node: Node = document.getElementById('name31');
@@ -250,8 +250,8 @@ describe(' HTML editor update toolbar ', () => {
             (rteObj as any).mouseUp({ target: editNode });
             expect((rteObj.htmlEditorModule as any).toolbarUpdate.toolbarStatus.fontsize).toEqual(null);
             expect(status.fontsize).toEqual(null);
-            expect((rteObj.htmlEditorModule as any).toolbarUpdate.toolbarStatus.fontcolor).toEqual('rgb(0, 0, 0)');
-            expect(status.fontcolor).toEqual('rgb(0, 0, 0)');
+            expect((rteObj.htmlEditorModule as any).toolbarUpdate.toolbarStatus.fontcolor).toEqual(null);
+            expect(status.fontcolor).toEqual(null);
         });
         it('Check single font size tag with specfic coorect size', () => {
             let node: Node = document.getElementById('size31');
@@ -508,7 +508,6 @@ describe(' HTML editor update toolbar ', () => {
                 toolbarSettings: {
                     items: ['Bold','FontColor', 'FullScreen'],
                 },
-                inlineMode: { enable: true },
                 value : "Rich Text Editor"
             });
         });

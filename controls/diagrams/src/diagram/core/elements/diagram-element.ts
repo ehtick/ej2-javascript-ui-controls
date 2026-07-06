@@ -300,6 +300,7 @@ export class DiagramElement {
         }
         return undefined;
     }
+
     //private variables
     private unitMode: UnitMode = undefined;
     /**   @private  */

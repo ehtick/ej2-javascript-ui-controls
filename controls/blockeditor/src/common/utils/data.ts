@@ -244,6 +244,54 @@ export function getContextMenuItems(): ContextMenuItemModel[] {
 }
 
 /**
+ * Returns the default table context menu items (Insert and Delete with submenus).
+ * Loads text from locale if provided, otherwise uses fallback English text.
+ *
+ * @param {Object} localeJson - Optional locale dictionary to load text from.
+ * @returns {Array} Returns the default table context menu items.
+ */
+export function getDefaultTableItems(localeJson: { [key: string]: string }): ContextMenuItemModel[] {
+    return [
+        {
+            id: 'table-insert',
+            text: localeJson['tableInsert'],
+            items: [
+                { id: 'table-insert-column-left', text: localeJson['insertColumnLeft'], iconCss: 'e-icons e-insert-left' },
+                { id: 'table-insert-column-right', text: localeJson['insertColumnRight'], iconCss: 'e-icons e-insert-right' },
+                { id: 'table-insert-row-above', text: localeJson['insertRowAbove'], iconCss: 'e-icons e-insert-above' },
+                { id: 'table-insert-row-below', text: localeJson['insertRowBelow'], iconCss: 'e-icons e-insert-below' }
+            ]
+        },
+        {
+            id: 'table-delete',
+            text: localeJson['tableDelete'],
+            items: [
+                { id: 'table-delete-row', text: localeJson['deleteRow'], iconCss: 'e-icons e-delete-row' },
+                { id: 'table-delete-column', text: localeJson['deleteColumn'], iconCss: 'e-icons e-delete-column' },
+                { id: 'table-delete-table', text: localeJson['deleteTable'], iconCss: 'e-icons e-table-delete' }
+            ]
+        }
+    ];
+}
+
+/**
+ * Returns the default link context menu items (Edit, Copy, Open, Remove).
+ * Loads text from locale if provided, otherwise uses fallback English text.
+ *
+ * @param {Object} localeJson - Optional locale dictionary to load text from.
+ * @returns {ContextMenuItemModel[]} - Returns the default link context menu items.
+ */
+export function getDefaultLinkItems(localeJson: { [key: string]: string }): ContextMenuItemModel[] {
+    const modifier: string = getModifierKey();
+    return [
+        { id: 'link-edit', text: localeJson['editLink'], iconCss: 'e-icons e-hyperlink-edit', shortcut: `${modifier}+K` },
+        { id: 'link-copy', text: localeJson['copyLink'], iconCss: 'e-icons e-link' },
+        { id: 'link-open', text: localeJson['openLink'], iconCss: 'e-icons e-open-link'},
+        { id: 'link-remove', text: localeJson['removeLink'], iconCss: 'e-icons e-link-remove' }
+    ];
+}
+
+/**
  * Returns the block action menu items.
  *
  * @returns {BlockActionItemModel[]} - Returns the block action menu items.
@@ -390,7 +438,20 @@ export function getLocaleItems(): { [key: string]: string } {
         imgPlaceholderAriaLabel: 'Insert image - press Enter or Space to open upload dialog',
         badgeSuccess: 'Success',
         badgeError: 'Error',
-        imageUrl: 'Image URL input'
+        imageUrl: 'Image URL input',
+        tableInsert: 'Insert',
+        tableDelete: 'Delete',
+        insertColumnLeft: '1 column to left',
+        insertColumnRight: '1 column to right',
+        insertRowAbove: '1 row above',
+        insertRowBelow: '1 row below',
+        deleteRow: 'Row',
+        deleteColumn: 'Column',
+        deleteTable: 'Table',
+        editLink: 'Edit link',
+        copyLink: 'Copy link',
+        openLink: 'Open link',
+        removeLink: 'Remove link'
     };
 }
 
@@ -434,7 +495,20 @@ export function getCurrentLocaleJson(localeInstance: L10n): { [key: string]: str
         imgPlaceholderAriaLabel: localeInstance.getConstant('imgPlaceholderAriaLabel'),
         badgeSuccess: localeInstance.getConstant('badgeSuccess'),
         badgeError: localeInstance.getConstant('badgeError'),
-        imageUrl: localeInstance.getConstant('imageUrl')
+        imageUrl: localeInstance.getConstant('imageUrl'),
+        tableInsert: localeInstance.getConstant('tableInsert'),
+        tableDelete: localeInstance.getConstant('tableDelete'),
+        insertColumnLeft: localeInstance.getConstant('insertColumnLeft'),
+        insertColumnRight: localeInstance.getConstant('insertColumnRight'),
+        insertRowAbove: localeInstance.getConstant('insertRowAbove'),
+        insertRowBelow: localeInstance.getConstant('insertRowBelow'),
+        deleteRow: localeInstance.getConstant('deleteRow'),
+        deleteColumn: localeInstance.getConstant('deleteColumn'),
+        deleteTable: localeInstance.getConstant('deleteTable'),
+        editLink: localeInstance.getConstant('editLink'),
+        copyLink: localeInstance.getConstant('copyLink'),
+        openLink: localeInstance.getConstant('openLink'),
+        removeLink: localeInstance.getConstant('removeLink')
     };
 }
 

@@ -169,6 +169,7 @@ export class NodeSelection {
             startOffset: this.currentRange.startOffset,
             endContainer: this.currentRange.endContainer,
             endOffset: this.currentRange.endOffset,
+            rangeString: this.currentRange.toString(),
             contentElement: findClosestParent(this.currentRange.startContainer, '.' + constants.CONTENT_CLS)
         };
     }

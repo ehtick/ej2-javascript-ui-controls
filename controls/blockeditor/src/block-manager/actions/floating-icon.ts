@@ -65,6 +65,8 @@ export class FloatingIcon {
             this.hideFloatingIcons();
             return;
         }
+        // Sync currentHoveredBlock to the block being shown to maintain active block selection
+        this.parent.currentHoveredBlock = target;
         updateCSSText(this.floatingIconContainer, 'display: flex;');
         blockElement = (isToggleBlock && !tableBlock)
             ? blockElement.querySelector('.e-toggle-header') as HTMLElement
@@ -86,8 +88,11 @@ export class FloatingIcon {
         const topOffset: number = hasHeading
             ? (baseTopOffset + floatingIconRect.height / 2 + paddingTop)
             : baseTopOffset + paddingTop;
-        const adjustedLeft: number = (blockElementRect.left - marginLeft) + paddingLeft - (floatingIconRect.width + 5) - editorRect.left;
-
+        const scrollbarWidth: number = this.parent.rootEditorElement.offsetWidth - this.parent.rootEditorElement.clientWidth;
+        let adjustedLeft: number = (blockElementRect.left - marginLeft) + paddingLeft - (floatingIconRect.width + 5) - editorRect.left;
+        if (this.parent.rootEditorElement.classList.contains('e-rtl') && scrollbarWidth > 0) {
+            adjustedLeft = adjustedLeft - scrollbarWidth + parseFloat(styles.paddingRight);
+        }
         const cssText: string = `top: ${topOffset}px; left: ${adjustedLeft}px; pointer-events: auto;`;
         updateCSSText(this.floatingIconContainer, cssText);
     }

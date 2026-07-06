@@ -1,6 +1,7 @@
 /**
  * Dialog renderer spec 
  */
+import { createElement, detach } from '@syncfusion/ej2-base';
 import { ENTERKEY_EVENT_INIT, TOOLBAR_FOCUS_SHORTCUT_EVENT_INIT, BASIC_MOUSE_EVENT_INIT } from '../../constant.spec';
 import { RichTextEditor } from './../../../src/index';
 import { renderRTE, destroy, setSelection, hostURL } from "./../render.spec";
@@ -411,5 +412,44 @@ describe('Text quicktoolbar should hide before dialog opens', () => {
                 done();
             }, 100);
         }, 100);
+    });
+});
+
+describe('1031002: Enter key does not insert link when Insert button is focused via keyboard navigation', () => {
+    let rteObj: RichTextEditor;
+    let element: HTMLElement;
+    beforeAll(() => {
+        element = createElement('form', {
+            id: "form-element", innerHTML:
+                ` <div class="form-group">
+                        <div id="defaultRTE" name="defaultRTE" required maxlength="100" minlength="20" data-msg-containerid="dateError">
+                        </div>
+                    </div>
+                    ` });
+        document.body.appendChild(element);
+        rteObj = new RichTextEditor({
+            insertImageSettings: {
+                saveUrl: 'http://aspnetmvc.syncfusion.com/services/api/uploadbox/Save',
+            },
+        });
+        rteObj.appendTo('#defaultRTE');
+    });
+    afterEach(() => {
+        destroy(rteObj);
+        detach(element);
+    });
+    it('Should insert the link when focused insert button using navigation tabkey and then press enter action', (done: Function) => {
+        let link = document.querySelector('#' + rteObj.element.id + '_toolbar_CreateLink') as HTMLElement;
+        link.click();
+        let input = rteObj.element.querySelector('.e-rte-linkurl') as HTMLInputElement;
+        input.value = 'https://www.syncfusion.com';
+        const enterKeyDownEvent: KeyboardEvent = new KeyboardEvent('keydown', ENTERKEY_EVENT_INIT);
+        input.dispatchEvent(enterKeyDownEvent);
+        const enterKeyUpEvent: KeyboardEvent = new KeyboardEvent('keyup', ENTERKEY_EVENT_INIT);
+        input.dispatchEvent(enterKeyUpEvent);
+        setTimeout(() => {
+            expect(document.querySelector('.e-rte-quick-popup')).not.toBe(null);
+            done();
+        }, 500);
     });
 });

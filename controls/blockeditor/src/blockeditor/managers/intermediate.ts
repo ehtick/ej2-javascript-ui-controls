@@ -4,7 +4,7 @@ import { events } from '../../common/constant';
 import * as constants from '../../common/constant';
 import { isNullOrUndefined } from '@syncfusion/ej2-base';
 import { cloneObject } from '../../common/utils/transform';
-import { BeforePasteEventProps, BlockActionMenuCloseEventProps, BlockActionMenuOpenEventProps, IDropDownListRenderOptions } from '../../common/interface';
+import { BeforePasteEventProps, BlockActionMenuCloseEventProps, BlockActionMenuOpenEventProps, IDropDownListRenderOptions, InternalBlockData } from '../../common/interface';
 
 export class Intermediate {
 
@@ -22,6 +22,7 @@ export class Intermediate {
      * @hidden
      */
     wireGlobalEvents(): void {
+        this.editor.blockManager.observer.on('updateEditorContext', this.handleEditorContextChanges, this);
         this.editor.blockManager.observer.on('updateEditorBlocks', this.handleModelChanges, this);
         this.editor.blockManager.observer.on('selectionChanged', this.handleSelectionChange, this);
         this.editor.blockManager.observer.on('beforePaste', this.triggerBeforePaste, this);
@@ -46,6 +47,7 @@ export class Intermediate {
      * @hidden
      */
     unWireGlobalEvents(): void {
+        this.editor.blockManager.observer.off('updateEditorContext', this.handleEditorContextChanges);
         this.editor.blockManager.observer.off('updateEditorBlocks', this.handleModelChanges);
         this.editor.blockManager.observer.off('selectionChanged', this.handleSelectionChange);
         this.editor.blockManager.observer.off('beforePaste', this.triggerBeforePaste);
@@ -73,6 +75,10 @@ export class Intermediate {
      */
     public processActions(action: string, args?: any): void {
         this.editor.blockManager.observer.notify(action, args);
+    }
+
+    private handleEditorContextChanges(options: { [key: string]: Object }): void {
+        this.editor.updateContext(options);
     }
 
     private handleModelChanges(state: any): void {
@@ -112,7 +118,12 @@ export class Intermediate {
         const validChanges: BlockChange[] = changes
             .filter((_: BlockChange, index: number) => Number.isInteger(index) && changes[index as number] !== undefined)
             .map((change: BlockChange) => {
-                const clonedData: BlockData = cloneObject(change.data, ['targetId', 'isAfter', 'isMovingUp']) as BlockData;
+
+                // Below keys are needed for internal use but not required for external event args.
+                const keysToExclude: (Exclude<keyof InternalBlockData, keyof BlockData>)[] = ['targetId', 'isAfter', 'isMovingUp',
+                    'fromBlockIds', 'toBlockId'];
+                const clonedData: BlockData = cloneObject(change.data, keysToExclude) as BlockData;
+
                 if (!isNullOrUndefined(change.data.currentParent)) {
                     clonedData.currentParent = change.data.currentParent;
                 }

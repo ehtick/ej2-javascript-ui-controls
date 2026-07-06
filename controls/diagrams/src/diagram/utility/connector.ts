@@ -80,11 +80,41 @@ function getSourcePoint(element: Connector): PointModel {
  * @param {End} source - provide the source value.
  * @param {End} target - provide the target value.
  * @param {LayoutOrientation} layoutOrientation - provide the layoutOrientation value.
+ * @param {boolean} isMindMapLayout - indicate if the layout is MindMap type.
  *
  * @private
  */
-function getDirection(source: End, target: End, layoutOrientation: LayoutOrientation): void {
-    if (layoutOrientation === 'LeftToRight') {
+function getDirection(source: End, target: End, layoutOrientation: LayoutOrientation, isMindMapLayout?: boolean): void {
+    // 1026705: MindMap Layout has Incorrect Connector Segment Appearance
+    // For MindMap, only Horizontal and Vertical orientations are supported
+    if (isMindMapLayout){
+        // MindMap uses position-based direction calculation for cleaner branch routing
+        if (layoutOrientation === 'Vertical') {
+            // Vertical MindMap: determine direction based on Y-axis position
+            const targetCenterY: number = target.corners ? target.corners.center.y : target.point.y;
+            const sourceCenterY: number = source.corners ? source.corners.center.y : source.point.y;
+            if (targetCenterY < sourceCenterY) {
+                source.direction = source.direction ? source.direction : 'Top';
+                target.direction = target.direction ? target.direction : 'Bottom';
+            } else {
+                source.direction = source.direction ? source.direction : 'Bottom';
+                target.direction = target.direction ? target.direction : 'Top';
+            }
+        } else {
+            // Horizontal MindMap: determine direction based on X-axis position (default for any non-Vertical)
+            const targetCenterX: number = target.corners ? target.corners.center.x : target.point.x;
+            const sourceCenterX: number = source.corners ? source.corners.center.x : source.point.x;
+            if (targetCenterX < sourceCenterX) {
+                source.direction = source.direction ? source.direction : 'Left';
+                target.direction = target.direction ? target.direction : 'Right';
+            } else {
+                source.direction = source.direction ? source.direction : 'Right';
+                target.direction = target.direction ? target.direction : 'Left';
+            }
+        }
+    }
+    // For other layout types (HierarchicalTree, ComplexHierarchicalTree), use orientation-based direction calculation
+    else if (layoutOrientation === 'LeftToRight') {
         source.direction = source.direction ? source.direction : 'Right';
         target.direction = target.direction ? target.direction : 'Left';
     } else if (layoutOrientation === 'RightToLeft') {
@@ -188,7 +218,11 @@ function terminateConnection(
     if (sourceNode !== undefined && targetNode !== undefined) {
         if (source.direction === undefined || target.direction === undefined) {
             if (layoutOrientation) {
-                getDirection(source, target, layoutOrientation);
+                const parentObj: any = (element as any).parentObj;
+                const layout: any = parentObj && parentObj.layout;
+                const layoutType: any = layout && layout.type;
+                const isMindMapLayout: boolean = layoutType === 'MindMap';
+                getDirection(source, target, layoutOrientation, isMindMapLayout);
             } else {
                 if (source.corners.top > target.corners.bottom &&
                     Math.abs(source.corners.top - target.corners.bottom) > minSpace ) {

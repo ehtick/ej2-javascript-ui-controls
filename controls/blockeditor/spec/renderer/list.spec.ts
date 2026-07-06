@@ -443,6 +443,75 @@ describe('List Blocks', () => {
             expect(checkContent.textContent).toBe('Checkl');
             expect(newListContent.textContent).toBe('ist item');
         });
+        
+        it('should handle continuous BACKSPACE on list items correctly', () => {
+            const bulletListBlock = editorElement.querySelector('#bulletlist') as HTMLElement;
+            const numberedListBlock = editorElement.querySelector('#numberedlist') as HTMLElement;
+            const checkListBlock = editorElement.querySelector('#checklist') as HTMLElement;
+
+            // Add second item to bullet list (simulate with Enter key)
+            const bulletContent = getBlockContentElement(bulletListBlock);
+            bulletContent.textContent = 'Ramesh';
+            editor.blockManager.setFocusToBlock(bulletListBlock);
+            setCursorPosition(bulletContent, bulletContent.textContent.length);
+            editorElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+            let newBulletBlock = bulletListBlock.nextElementSibling as HTMLElement;
+            let newBulletContent = getBlockContentElement(newBulletBlock);
+            newBulletContent.textContent = 'Suresh';
+            editor.blockManager.stateManager.updateContentOnUserTyping(newBulletBlock);
+            editorElement.dispatchEvent(new Event('input', { bubbles: true }));
+
+            // Add second item to numbered list
+            const numberedContent = getBlockContentElement(numberedListBlock);
+            numberedContent.textContent = 'Ramesh';
+            editor.blockManager.setFocusToBlock(numberedListBlock);
+            setCursorPosition(numberedContent, numberedContent.textContent.length);
+            editorElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+            let newNumberedBlock = numberedListBlock.nextElementSibling as HTMLElement;
+            let newNumberedContent = getBlockContentElement(newNumberedBlock);
+            newNumberedContent.textContent = 'Suresh';
+            editor.blockManager.stateManager.updateContentOnUserTyping(newNumberedBlock);
+            editorElement.dispatchEvent(new Event('input', { bubbles: true }));
+
+            // Add second item to checklist
+            const checkContent = getBlockContentElement(checkListBlock);
+            checkContent.textContent = 'Ramesh';
+            editor.blockManager.setFocusToBlock(checkListBlock);
+            setCursorPosition(checkContent, checkContent.textContent.length);
+            editorElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+            let newCheckBlock = checkListBlock.nextElementSibling as HTMLElement;
+            let newCheckContent = getBlockContentElement(newCheckBlock);
+            newCheckContent.textContent = 'Suresh';
+            editor.blockManager.stateManager.updateContentOnUserTyping(newCheckBlock);
+            editorElement.dispatchEvent(new Event('input', { bubbles: true }));
+
+            // Test bullet list BACKSPACE - place cursor at end of Suresh
+            editor.blockManager.setFocusToBlock(newBulletBlock);
+            setCursorPosition(newBulletContent, newBulletContent.textContent.length);
+            for (let i = 0; i < 7; i++) {
+                editorElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true }));
+            }
+            expect(bulletContent.textContent).toBe('Ramesh');
+            expect(bulletContent.textContent.includes('Suresh')).toBe(false);
+
+            // Test numbered list BACKSPACE - place cursor at end of Suresh
+            editor.blockManager.setFocusToBlock(newNumberedBlock);
+            setCursorPosition(newNumberedContent, newNumberedContent.textContent.length);
+            for (let i = 0; i < 7; i++) {
+                editorElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true }));
+            }
+            expect(numberedContent.textContent).toBe('Ramesh');
+            expect(numberedContent.textContent.includes('Suresh')).toBe(false);
+
+            // Test checklist BACKSPACE - place cursor at end of Suresh
+            editor.blockManager.setFocusToBlock(newCheckBlock);
+            setCursorPosition(newCheckContent, newCheckContent.textContent.length);
+            for (let i = 0; i < 7; i++) {
+                editorElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true }));
+            }
+            expect(checkContent.textContent).toBe('Ramesh');
+            expect(checkContent.textContent.includes('Suresh')).toBe(false);
+        });
     });
 
     describe('Edge cases testing', () => {

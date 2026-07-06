@@ -4,8 +4,9 @@ import { SuccessEventArgs, Uploader, UploadingEventArgs } from '@syncfusion/ej2-
 import { RichTextEditor } from '../base';
 import { NotifyArgs, ActionBeginEventArgs, ExportingEventArgs } from '../../common/interface';
 import { EXPORT_STYLES } from '../../common/export-styles';
-import { isNullOrUndefined } from '@syncfusion/ej2-base';
+import { getComponent, isNullOrUndefined } from '@syncfusion/ej2-base';
 import { ExportDocumentType } from '../../common/types';
+import { ProgressButton } from '@syncfusion/ej2-splitbuttons';
 /**
  * ImportExport module called when import and export content in RichTextEditor
  */
@@ -43,6 +44,7 @@ export class ImportExport {
                         success: (args: SuccessEventArgs) => {
                             (this.parent as RichTextEditor).executeCommand('importWord', ((args.e as MouseEvent).currentTarget as XMLHttpRequest).response, { undo: true });
                             this.parent.trigger(events.actionComplete, { requestType: 'Import' });
+                            this.parent.notify(events.count, {});
                         }
                     });
                 }
@@ -58,6 +60,16 @@ export class ImportExport {
             }
         });
 
+    }
+
+    private getExportProgressButton(member: string): ProgressButton {
+        const toolbarItem: HTMLElement = this.parent.element.querySelector(
+            `#${this.parent.element.id}_toolbar_${member}`
+        ) as HTMLElement;
+        if (!isNullOrUndefined(toolbarItem)) {
+            return getComponent(toolbarItem, ProgressButton) as ProgressButton;
+        }
+        return null;
     }
     private onExport(args: NotifyArgs): void {
         let filename: string;
@@ -114,13 +126,23 @@ export class ImportExport {
                         a.href = url;
                         a.download = filename;
                         document.body.appendChild(a);
+                        const btn: ProgressButton = this.getExportProgressButton(args.member);
+                        if (!isNullOrUndefined(btn)) {
+                            btn.progressComplete();
+                        }
                         a.click();
                         document.body.removeChild(a);
                         window.URL.revokeObjectURL(url);
                         this.parent.trigger(events.actionComplete, { requestType: args.member });
+                        (this.parent.contentModule.getEditPanel() as HTMLElement).focus();
                     })
                     .catch((error: Error) => {
+                        const btn: ProgressButton = this.getExportProgressButton(args.member);
+                        if (!isNullOrUndefined(btn)) {
+                            btn.progressComplete();
+                        }
                         console.error('Fetch error:', error);
+                        (this.parent.contentModule.getEditPanel() as HTMLElement).focus();
                     });
             }
         });

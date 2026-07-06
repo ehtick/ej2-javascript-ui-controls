@@ -1,4 +1,4 @@
-@use 'ej2-base/styles/common/mixin' as *;
+@use 'variables' as *;
 @include export-module('document-editor-container-theme') {
     /* stylelint-disable */
     .e-de-toolbar {
@@ -7,13 +7,13 @@
     .e-de-prop-pane .e-de-ctnr-group-btn.e-btn-group:not(.e-outline){
         box-shadow: none;
         height: $de-group-btn-hgt;
-        #{if(&, '&', '*')}:focus {
+        &:focus {
             box-shadow: none;
         }
-        #{if(&, '&', '*')}:active {
+        &:active {
             box-shadow: none;
         }
-        #{if(&, '&', '*')}:hover {
+        &:hover {
             box-shadow: none;
         }
     }
@@ -31,7 +31,7 @@
 
     .e-de-picture-label-container {
         align-content: center;
-	    width: auto;
+        width: auto;
         padding-right: 8px;
     }
 
@@ -152,13 +152,13 @@
     .e-de-ctn .e-de-status-bar button {
         box-shadow: none;
         height: $de-group-btn-hgt;
-        #{if(&, '&', '*')}:focus {
+        &:focus {
             box-shadow: none;
         }
-        #{if(&, '&', '*')}:active {
+        &:active {
             box-shadow: none;
         }
-        #{if(&, '&', '*')}:hover {
+        &:hover {
             box-shadow: none;
         }
     }
@@ -177,7 +177,7 @@
         @if $skin-name=='bootstrap5' {
             color: $icon-color;
         }
-        #{if(&, '&', '*')}:hover {
+        &:hover {
             @if $skin-name=='bootstrap5' {
                 color: $e-de-bzr-button-hover-font-color;
             }
@@ -397,7 +397,7 @@
         height:  $de-ribbon-simplified-ctnr-collapsed-editor-height;
         width: 100%;
     }
-    .e-de-ribbon-classic-ctnr-properties-pane-collapsed{
+    .e-de-ribbon-classic-ctnr-properties-pane-collapsed {
         height: $de-ribbon-classic-collapsed-editor-height;
         width: 100%;
     }
@@ -460,7 +460,9 @@
     .e-de-tool-ctnr-properties-pane,
     .e-de-ctnr-properties-pane,
     .e-de-ribbon-simplified-ctnr-properties-pane,
-    .e-de-ribbon-classic-ctnr-properties-pane {
+    .e-de-ribbon-classic-ctnr-properties-pane,
+    .e-de-ribbon-simplified-ctnr-properties-pane-collapsed,
+    .e-de-ribbon-classic-ctnr-properties-pane-collapsed {
         background: $de-ctnr-prop-bg-clr;
         border-bottom: $de-panel-border-bottom solid $de-panel-border;
         border-top: $de-panel-border-bottom solid $de-panel-border;
@@ -661,15 +663,15 @@
             height: $de-tlbr-btn-height;
             padding: 0 1px;
             padding-bottom: 5px;
-            #{if(&, '&', '*')}:focus {
+            &:focus {
                 padding: 0;
                 padding-bottom: 5px;
             }
-            #{if(&, '&', '*')}:active {
+            &:active {
                 padding: 0;
                 padding-bottom: 5px;
             }
-            #{if(&, '&', '*')}:hover {
+            &:hover {
                 padding: 0;
                 padding-bottom: 5px;
             }
@@ -687,15 +689,15 @@
                 padding-bottom: $de-toolbar-padding-bottom;
             }
             
-            #{if(&, '&', '*')}:focus {
+            &:focus {
                 padding: $de-toolbar-padding;
                 padding-bottom: $de-toolbar-padding-bottom;
             }
-            #{if(&, '&', '*')}:active {
+            &:active {
                 padding: $de-toolbar-padding;
                 padding-bottom: $de-toolbar-padding-bottom;
             }
-            #{if(&, '&', '*')}:hover {
+            &:hover {
                 padding: $de-toolbar-padding;
                 padding-bottom: $de-toolbar-padding-bottom;
             }
@@ -707,15 +709,15 @@
             height: $de-tlbr-btn-height;
             padding: 0 1px;
             padding-bottom: 5px;
-            #{if(&, '&', '*')}:focus {
+            &:focus {
                 padding: 0;
                 padding-bottom: 5px;
             }
-            #{if(&, '&', '*')}:active {
+            &:active {
                 padding: 0;
                 padding-bottom: 5px;
             }
-            #{if(&, '&', '*')}:hover {
+            &:hover {
                 padding: 0;
                 padding-bottom: 5px;
             }
@@ -804,7 +806,7 @@
             .e-btn {
                 background: $de-prop-btn-bg-color;
                 border-color: $de-prop-btn-border-color;
-                #{if(&, '&', '*')}:focus {
+                &:focus {
                     background-color: $de-toggle-border-hover-color;
                     @if $skin-name !='bootstrap4' and $skin-name!='bootstrap5' and $skin-name!='bootstrap5.3' {
                         border: 1px;
@@ -813,7 +815,7 @@
                     box-shadow: 0 0 0 0 $de-toggle-bg-color;
                     outline-color: $de-toggle-bg-color;
                 }
-                #{if(&, '&', '*')}:active,
+                &:active,
                 .e-btn-toggle {
                     background-color: $de-toggle-border-hover-color;
                     @if $skin-name !='bootstrap4' and $skin-name!='bootstrap5' and $skin-name!='bootstrap5.3' {
@@ -821,7 +823,7 @@
                     }
                     border-color: $de-toggle-border-color;
                 }
-                #{if(&, '&', '*')}:hover {
+                &:hover {
                     @if $skin-name !='tailwind' {
                         background-color: $de-toggle-hover-color;
                         @if $skin-name !='bootstrap4' and $skin-name!='bootstrap5' and $skin-name!='bootstrap5.3' {
@@ -941,13 +943,13 @@
             color: $de-pane-color-border;
             min-height: $e-de-ctnr-properties-pane-btn-min-height;
             min-width: 100%;
-            #{if(&, '&', '*')}:focus {
+            &:focus {
                 box-shadow: none;
             }
-            #{if(&, '&', '*')}:active {
+            &:active {
                 box-shadow: none;
             }
-            #{if(&, '&', '*')}:hover {
+            &:hover {
                 box-shadow: none;
             }
             @if $skin-name=='fluent2' {
@@ -1293,7 +1295,7 @@
         outline: $de-toggle-btn-outline;
         outline-offset: 0;
         box-shadow: $de-toggle-btn-border !important;
-        #{if(&, '&', '*')}:hover {
+        &:hover {
             @if $skin-name=='fluent2' {
                 background-color: var(--color-sf-content-bg-color-pressed) !important;
             }

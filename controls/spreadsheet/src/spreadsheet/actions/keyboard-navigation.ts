@@ -58,7 +58,7 @@ export class KeyboardNavigation {
         const textarea: HTMLTextAreaElement = e.target as HTMLTextAreaElement;
         if (!isNullOrUndefined(textarea)) {
             if ((e.key === 'Escape' || e.keyCode === 27)) {
-                if (textarea.classList.contains('e-comment-input')) {
+                if (textarea.classList.contains('e-comment-input') || textarea.classList.contains('e-assist-textarea')) {
                     textarea.blur();
                     return;
                 } else if (textarea.classList.contains('e-comment-container')) {
@@ -105,6 +105,9 @@ export class KeyboardNavigation {
             } else if (textarea.classList.contains('e-addNoteContainer')) {
                 return;
             }
+        }
+        if (closest(target, '.e-ai-assist-panel')) {
+            return;
         }
         const dlgInst: { element: Element } = this.parent.serviceLocator.getService<Dialog>(dialog).dialogInstance;
         const isNameBox: boolean = target.id === `${this.parent.element.id}_name_box`;
@@ -1169,8 +1172,8 @@ export class KeyboardNavigation {
                             threshold++;
                         }
                     }
-                    hCont.scrollLeft = (this.parent.scrollModule.offset.left.size + getColumnsWidth(
-                        sheet, scrollLeftIdx, actIdxes[1] - threshold, true)) * x;
+                    hCont.scrollLeft = (this.parent.scrollModule.offset.left.size + (getColumnsWidth(
+                        sheet, scrollLeftIdx, actIdxes[1], true) - threshold)) * x;
                 }
             }
         } else if (paneTopLeftIdxes[1] > actIdxes[1] && hCont) {

@@ -1,5 +1,5 @@
-import { Component, getUniqueID, INotifyPropertyChanged, NotifyPropertyChanges, Property, isNullOrUndefined as isNOU, formatUnit, Collection, EmitType, Complex, Event, append, L10n, addClass, updateCSSText } from '@syncfusion/ej2-base';
-import { UserModel, CommandMenuSettingsModel, InlineToolbarSettingsModel, PasteCleanupSettingsModel, BlockActionMenuSettingsModel, ContextMenuSettingsModel, LabelSettingsModel, ImageBlockSettingsModel, CodeBlockSettingsModel, TransformSettingsModel } from '../../models/index';
+import { Component, getUniqueID, INotifyPropertyChanged, NotifyPropertyChanges, Property, isNullOrUndefined as isNOU, formatUnit, Collection, EmitType, Complex, Event, append, L10n, addClass, updateCSSText, extend, ModuleDeclaration } from '@syncfusion/ej2-base';
+import { UserModel, CommandMenuSettingsModel, InlineToolbarSettingsModel, PasteCleanupSettingsModel, BlockActionMenuSettingsModel, ContextMenuSettingsModel, LabelSettingsModel, ImageBlockSettingsModel, CodeBlockSettingsModel, TransformSettingsModel, CollaborationSettingsModel, IVersionHistory } from '../../models/index';
 import { BlockEditorModel } from './blockeditor-model';
 import { BlockModel } from '../../models/block/block-model';
 import { User } from '../../models/common/user';
@@ -9,6 +9,7 @@ import { ContextMenuSettings } from '../../models/menus/context-menu-settings';
 import { BlockActionMenuSettings } from '../../models/menus/blockaction-menu-settings';
 import { PasteCleanupSettings } from '../../models/common/paste-settings';
 import { LabelSettings } from '../../models/common/label-settings';
+import { CollaborationSettings } from '../../models/collaboration/collaboration-settings';
 import { FocusEventArgs, BlurEventArgs, SelectionChangedEventArgs, BlockDragEventArgs, BlockDropEventArgs, BeforePasteCleanupEventArgs, AfterPasteCleanupEventArgs, BlockChangedEventArgs, FileUploadSuccessEventArgs } from '../../models/eventargs';
 import { getBlockModelById } from '../../common/utils/block';
 import { getTemplateFunction } from '../../common/utils/common';
@@ -24,6 +25,9 @@ import { BlockManager } from '../../block-manager/base/block-manager';
 import { ImageBlockSettings, CodeBlockSettings, FontColorSettingsModel, FontColorSettings, BackgroundColorSettingsModel, BackgroundColorSettings } from '../../models/common/index';
 import { TransformSettings } from '../../models/menus/transform-settings';
 import { BeforeUploadEventArgs, FailureEventArgs, UploadingEventArgs } from '@syncfusion/ej2-inputs';
+import { sanitizeUserModel } from '../../common/utils/transform';
+import { Collaboration } from '../../collaboration/y-blockeditor/base/collaboration';
+import { VersionHistory } from '../../collaboration/y-blockeditor/plugins/version-plugin';
 
 /**
  * Represents the root class for the Block Editor component.
@@ -157,6 +161,14 @@ export class BlockEditor extends Component<HTMLElement> implements INotifyProper
      */
     @Collection<UserModel>([], User)
     public users: UserModel[];
+
+    /**
+     * Specifies the unique identifier of the currently active user.
+     *
+     * @default ''
+     */
+    @Property('')
+    public currentUserId: string;
 
     /**
      * Specifies configuration options for editor commands.
@@ -301,6 +313,18 @@ export class BlockEditor extends Component<HTMLElement> implements INotifyProper
      */
     @Complex<BackgroundColorSettingsModel>({}, BackgroundColorSettings)
     public backgroundColorSettings: BackgroundColorSettingsModel;
+
+    /**
+     * Configures settings for collaborative editing using Yjs.
+     * When configured, enables multiplayer editing with selective undo/redo that only affects the local user's changes.
+     * The editor automatically manages Yjs bindings, undo managers, and synchronization.
+     *
+     * {% codeBlock src='blockeditor/collaboration-settings/index.md' %}{% endcodeBlock %}
+     *
+     * @default {}
+     */
+    @Complex<CollaborationSettingsModel>({}, CollaborationSettings)
+    public collaborationSettings: CollaborationSettingsModel;
 
     /* Events */
 
@@ -479,6 +503,12 @@ export class BlockEditor extends Component<HTMLElement> implements INotifyProper
     public blockManager: BlockManager;
     public intermediate: Intermediate;
 
+    /**
+     * Indicates whether the editor is in collaborative mode (using Yjs for undo/redo)
+     * @hidden
+     */
+    public isCollaborative: boolean = false;
+
     /* Plugins */
     /** @hidden */
     public inlineContentInsertionModule: InlineContentInsertionModule;
@@ -492,6 +522,12 @@ export class BlockEditor extends Component<HTMLElement> implements INotifyProper
     public blockActionMenuModule: BlockActionMenuModule;
     /** @hidden */
     public linkModule: LinkModule;
+
+    /* Injectable modules */
+    /** @hidden */
+    public collaborationModule: Collaboration;
+    /** @hidden */
+    public versionHistoryModule: VersionHistory;
 
     /* Variables */
 
@@ -549,6 +585,27 @@ export class BlockEditor extends Component<HTMLElement> implements INotifyProper
      */
     protected getPersistData(): string {
         return this.addOnPersist(['blocks']);
+    }
+
+    /**
+     * Specifies the required modules for the Blockeditor
+     *
+     * @returns {ModuleDeclaration[]} - Returns the required modules.
+     */
+    protected requiredModules(): ModuleDeclaration[] {
+        const modules: ModuleDeclaration[] = [];
+        if (this.collaborationSettings.adapter && this.collaborationSettings.adapter.yXmlFragment) {
+            modules.push(
+                { member: 'collaboration', args: [] }
+            );
+
+            if (this.collaborationSettings.versionHistory && this.collaborationSettings.versionHistory.storage) {
+                modules.push(
+                    { member: 'versionHistory', args: [] }
+                );
+            }
+        }
+        return modules;
     }
 
     /**
@@ -611,6 +668,17 @@ export class BlockEditor extends Component<HTMLElement> implements INotifyProper
     }
 
     /**
+     * Initializes locale values
+     *
+     * @param {any} BlockEditorObj - Editor level properties
+     * @returns {void}
+     * @hidden
+     */
+    public updateContext(BlockEditorObj: { [key: string]: Object }): void {
+        extend(this, this, BlockEditorObj);
+    }
+
+    /**
      * Initializes all manager classes
      *
      * @returns {void}
@@ -619,6 +687,7 @@ export class BlockEditor extends Component<HTMLElement> implements INotifyProper
         this.blockManager = new BlockManager();
         this.intermediate = new Intermediate(this);
         this.renderblockContainer();
+
         this.blockManager.updateContext({
             localeJson: this.localeJson,
             blocks: this.blocks,
@@ -628,7 +697,11 @@ export class BlockEditor extends Component<HTMLElement> implements INotifyProper
             imageBlockSettings: this.imageBlockSettings,
             codeBlockSettings: this.codeBlockSettings,
             labelSettings: this.labelSettings,
-            users: this.users,
+            users: sanitizeUserModel(this.users),
+            currentUserId: this.currentUserId,
+            collaborationSettings: this.collaborationSettings,
+            collaborationModule: this.collaborationModule,
+            versionHistoryModule: this.versionHistoryModule,
 
             blockActionMenuSettings: this.blockActionMenuSettings,
             contextMenuSettings: this.contextMenuSettings,
@@ -1059,6 +1132,17 @@ export class BlockEditor extends Component<HTMLElement> implements INotifyProper
         return this.blockManager.editorMethods.parseHtmlToBlocks(html);
     }
 
+    /**
+     * Returns the collaboration version plugin
+     *
+     * @returns {IVersionHistory} The version plugin instance
+     */
+    public getVersionHistory(): IVersionHistory {
+        return (this.blockManager.collaborationModule && this.blockManager.versionHistoryModule)
+            ? this.blockManager.collaborationModule.getVersionHistory()
+            : null;
+    }
+
     public destroy(): void {
         if (this.isDestroyed) {
             return;
@@ -1148,6 +1232,9 @@ export class BlockEditor extends Component<HTMLElement> implements INotifyProper
                 break;
             case 'labelSettings':
             case 'users':
+                if (prop === 'users') {
+                    this.blockManager.updateContext({ users: sanitizeUserModel(newProp.users) });
+                }
                 this.notify(events.moduleChanged, { module: 'inlineContent', newProp: newProp, oldProp: oldProp });
                 break;
             case 'commandMenuSettings':

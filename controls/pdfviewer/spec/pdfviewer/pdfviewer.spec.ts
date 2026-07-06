@@ -70,11 +70,12 @@ describe('PDF_Viewer', () => {
       }
       // Set annotation mode
       pdfviewer.annotation.setAnnotationMode('Rectangle');
+      const rect = target.getBoundingClientRect();
       // Coordinates and timing
-      const startX = 450;
-      const startY = 350;
-      const endX = 550;
-      const endY = 200;
+      const startX = rect.left + 260;
+      const startY = rect.top + 80;
+      const endX = rect.left + 360;
+      const endY = rect.top + 140;
       const steps = 20;
 
       // Move cursor to start (optional)

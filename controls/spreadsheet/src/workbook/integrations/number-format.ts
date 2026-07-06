@@ -36,6 +36,7 @@ export class WorkbookNumberFormat {
     private numberFormatting(args: { format: string, range?: string, cancel?: boolean, curSym?: string }): void {
         let sheetIdx: number = this.parent.activeSheetIndex;
         let activeSheet: boolean = true;
+        const isSuspended: boolean = this.parent.paintSuspendCount > 0;
         if (args.range && args.range.indexOf('!') > -1) {
             sheetIdx = getSheetIndex(this.parent, args.range.substring(0, args.range.lastIndexOf('!')));
             activeSheet = sheetIdx === this.parent.activeSheetIndex;
@@ -53,26 +54,34 @@ export class WorkbookNumberFormat {
                 cell = getCell(rowIdx, colIdx, sheet, false, true);
                 prevFormat = cell.format;
                 if (!isReadOnly(cell, sheet.columns[colIdx as number], row) &&
-                    !updateCell(this.parent, sheet, { cell: { format: args.format }, rowIdx: rowIdx, colIdx: colIdx })) {
+                    !updateCell(this.parent, sheet, {
+                        cell: { format: args.format }, rowIdx: rowIdx, colIdx: colIdx,
+                        preventEvt: isSuspended, uiRefresh: !isSuspended
+                    })) {
                     cell = getCell(rowIdx, colIdx, sheet);
                     if (!(cell.rowSpan < 0 || cell.colSpan < 0)) {
-                        fArgs = { value: (cell.value || <unknown>cell.value === 0) ? cell.value : (cell.hyperlink ? (typeof cell.hyperlink
-                            === 'string' ? cell.hyperlink : cell.hyperlink.address) : ''), format: cell.format, rowIndex: rowIdx,
-                        colIndex: colIdx, sheetIndex: sheetIdx, cell: cell, refresh: activeSheet, curSymbol: args.curSym };
-                        this.getFormattedCell(fArgs);
-                        if (isVisibleRow) {
-                            this.setCell(fArgs);
-                            if (fArgs.td) {
-                                this.parent.notify(refreshCellElement, fArgs);
-                                if (cell.wrap && (!row || !row.customHeight) && prevFormat !== args.format) {
-                                    this.parent.notify(
-                                        wrapEvent, { range: [rowIdx, colIdx, rowIdx, colIdx], wrap: true, sheet: sheet, initial: true,
-                                            td: fArgs.td, isOtherAction: true });
+                        if (!isSuspended) {
+                            fArgs = {
+                                value: (cell.value || <unknown>cell.value === 0) ? cell.value : (cell.hyperlink ?
+                                    (typeof cell.hyperlink === 'string' ? cell.hyperlink : cell.hyperlink.address) : ''),
+                                format: cell.format, rowIndex: rowIdx, colIndex: colIdx, sheetIndex: sheetIdx, cell: cell,
+                                refresh: activeSheet, curSymbol: args.curSym
+                            };
+                            this.getFormattedCell(fArgs);
+                            if (isVisibleRow) {
+                                this.setCell(fArgs);
+                                if (fArgs.td) {
+                                    this.parent.notify(refreshCellElement, fArgs);
+                                    if (cell.wrap && (!row || !row.customHeight) && prevFormat !== args.format) {
+                                        this.parent.notify(
+                                            wrapEvent, { range: [rowIdx, colIdx, rowIdx, colIdx], wrap: true, sheet: sheet, initial: true,
+                                                td: fArgs.td, isOtherAction: true });
+                                    }
                                 }
-                            }
-                            if (prevFormat && prevFormat !== args.format && prevFormat.includes('[') &&
-                                getCustomColors().indexOf(getColorCode(args.format)) === -1) {
-                                this.removeFormatColor(fArgs, { format: prevFormat, style: cell.style });
+                                if (prevFormat && prevFormat !== args.format && prevFormat.includes('[') &&
+                                    getCustomColors().indexOf(getColorCode(args.format)) === -1) {
+                                    this.removeFormatColor(fArgs, { format: prevFormat, style: cell.style });
+                                }
                             }
                         }
                     }
@@ -80,10 +89,10 @@ export class WorkbookNumberFormat {
                 }
             }
         }
-        if (sheet.conditionalFormats && sheet.conditionalFormats.length) {
+        if (!isSuspended && sheet.conditionalFormats && sheet.conditionalFormats.length) {
             this.parent.notify(applyCF, <ApplyCFArgs>{ indexes: selectedRange, isAction: true, isEdit: true });
         }
-        if (this.parent.chartColl && this.parent.chartColl.length) {
+        if (!isSuspended && this.parent.chartColl && this.parent.chartColl.length) {
             this.parent.notify(refreshChart, { range: selectedRange });
         }
     }
@@ -326,9 +335,6 @@ export class WorkbookNumberFormat {
         const cell: CellModel = args.cell || getCell(args.rowIndex, args.colIndex, sheet, false, true);
         let rightAlign: boolean = false;
         const intl: Internationalization = new Internationalization();
-        if (!numberFormatsCode) {
-            this.updateLocalizedFormats(IntlBase.getDependables(cldrData, this.parent.locale, null).dateObject);
-        }
         if (!args.curSymbol) {
             args.curSymbol = getNumberDependable(this.parent.locale, defaultCurrencyCode);
         }
@@ -385,7 +391,11 @@ export class WorkbookNumberFormat {
                         cell, this.parent.locale, this.localeObj.group, this.localeObj.decimal, args.curSymbol);
                     if (numObj.isNumber) {
                         cell.value = numObj.value;
-                        this.processCustomAccounting(cell, args, formats, formats[0]);
+                        const clonedCell: CellModel = Object.assign({}, cell);
+                        if (args.cell && args.cell.formula) {
+                            clonedCell.value = args.value = this.excelLikeRounding(<string>args.value);
+                        }
+                        this.processCustomAccounting(clonedCell, args, formats, formats[0]);
                         isCustomText = false;
                     } else {
                         args.result = this.processCustomText(cell, args, formats);
@@ -530,7 +540,9 @@ export class WorkbookNumberFormat {
                         cell.value = timeArr.join(':');
                     }
                 }
-                dateArgs = toDate(cell.value, new Internationalization(), this.parent.locale, custFormat, cell);
+                const props: { val: string, format: string, isDateTime?: boolean } = this.checkCustomDateFormat(
+                    args.value.toString(), cell, args.isEdit);
+                dateArgs = toDate(cell.value, new Internationalization(), this.parent.locale, custFormat, cell, props.isDateTime);
                 isValidDate = dateArgs.dateObj && dateArgs.dateObj.toString() !== 'Invalid Date';
                 if (isValidDate) {
                     if (dateArgs.dateObj.getFullYear() < 1900) {
@@ -976,6 +988,19 @@ export class WorkbookNumberFormat {
         return custFormat;
     }
 
+    private excelLikeRounding(cellVal: string): string {
+        const val: string = cellVal.toString();
+        if (val.length > 15) {
+            const valArr: string[] = val.split('.');
+            if (valArr[1] && valArr[0].length <= 11) {
+                const num: number = Number(val);
+                const trimmed: number = Number(num.toPrecision(15)); // emulate Excel's stored double precision
+                return (Math.round(trimmed * 100) / 100).toString();
+            }
+        }
+        return cellVal;
+    }
+
     private processFormats(
         args: NumberFormatArgs, fResult: string, isRightAlign: boolean, cell: CellModel, intl: Internationalization,
         sheet: SheetModel): { fResult: string, rightAlign: boolean } {
@@ -1003,6 +1028,9 @@ export class WorkbookNumberFormat {
                                                     args.curSymbol, true, true);
                 if (numArgs.isNumber) {
                     cell.value = args.value = numArgs.value;
+                    if (args.cell && args.cell.formula) {
+                        args.value = this.excelLikeRounding(args.value);
+                    }
                     fResult = this.applyNumberFormat(args, intl);
                     isRightAlign = true;
                 }
@@ -1013,6 +1041,9 @@ export class WorkbookNumberFormat {
                     args.curSymbol);
                 if (numArgs.isNumber) {
                     cell.value = args.value = numArgs.value;
+                    if (args.cell && args.cell.formula) {
+                        args.value = this.excelLikeRounding(args.value);
+                    }
                     fResult = this.currencyFormat(args, intl, cell);
                     isRightAlign = true;
                 }
@@ -1199,9 +1230,6 @@ export class WorkbookNumberFormat {
             }
             let format: string = '';
             if (res.includes(options.args.curSymbol)) { // Auto detect 1000 separator format with currency symbol
-                if (!numberFormatsCode) {
-                    this.updateLocalizedFormats(IntlBase.getDependables(cldrData, this.parent.locale, null).dateObject);
-                }
                 format = res.includes(this.localeObj.decimal) ? numberFormatsCode.currency[0] : numberFormatsCode.currency[1];
                 res = res.replace(options.args.curSymbol, '');
             }
@@ -1403,7 +1431,11 @@ export class WorkbookNumberFormat {
             { value: fResult }, this.parent.locale, this.localeObj.group, this.localeObj.decimal, args.curSymbol, false, true);
         if (numArgs.isNumber) {
             cell.value = args.value = numArgs.value;
-            if (this.processCustomAccounting(cell, args, formatArr, formatArr[0])) {
+            const clonedCell: CellModel = Object.assign({}, cell);
+            if (args.cell && args.cell.formula) {
+                clonedCell.value = args.value = this.excelLikeRounding(args.value);
+            }
+            if (this.processCustomAccounting(clonedCell, args, formatArr, formatArr[0])) {
                 args.formatApplied = true;
                 return args.result;
             }

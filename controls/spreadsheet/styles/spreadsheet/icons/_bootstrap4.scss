@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/common/mixin' as *;
-@use '../bootstrap4-definition' as *;
+@use '../variables' as *;
+
 @include export-module('spreadsheet-bootstrap4-icons') {
   .e-spreadsheet {
     & .e-findtool-dlg {
@@ -63,6 +63,18 @@
       & .e-fill-color {
         &::before {
           content: '\e754';
+        }
+      }
+
+      & .e-sub-icon {
+        &::before {
+          content: '\e707';
+        }
+      }
+
+      & .e-super-icon {
+        &::before {
+          content: '\e779';
         }
       }
 

@@ -398,12 +398,17 @@ describe('Code Blocks', () => {
                 editor.destroy();
             }
             document.body.removeChild(editorElement);
+            delete (document as any).activeElement;
         });
 
         it('should insert two newlines when pressing Enter on content line', () => {
             const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
             const blockElement = codeElement.closest('.e-block') as HTMLElement;
             editor.blockManager.setFocusToBlock(blockElement);
+            Object.defineProperty(document, 'activeElement', {
+                get: function() { return codeElement; },
+                configurable: true
+            });
             setCursorPosition(codeElement, codeElement.textContent.length);
             
             const enterEvent: KeyboardEvent = new KeyboardEvent('keydown', {
@@ -411,7 +416,7 @@ describe('Code Blocks', () => {
                 bubbles: true, 
                 cancelable: true 
             });
-            editor.element.dispatchEvent(enterEvent);
+            codeElement.dispatchEvent(enterEvent);
             
             expect(codeElement.textContent).toContain('\n\n');
             expect(editor.blocks[0].content[0].content).toBe('console.log("test");');
@@ -441,6 +446,10 @@ describe('Code Blocks', () => {
             codeElement.textContent = 'line1\n\n\n';
             const blockElement = codeElement.closest('.e-block') as HTMLElement;
             editor.blockManager.setFocusToBlock(blockElement);
+            Object.defineProperty(document, 'activeElement', {
+                get: function() { return codeElement; },
+                configurable: true
+            });
             setCursorPosition(codeElement, codeElement.textContent.length);
             
             const enterEvent: KeyboardEvent = new KeyboardEvent('keydown', { 
@@ -448,7 +457,7 @@ describe('Code Blocks', () => {
                 bubbles: true, 
                 cancelable: true 
             });
-            editor.element.dispatchEvent(enterEvent);
+            codeElement.dispatchEvent(enterEvent);
             setTimeout(() => {
                 // Model
                 expect(editor.blocks.length).toBe(2);
@@ -475,6 +484,10 @@ describe('Code Blocks', () => {
                 const blockElement = codeElement.closest('.e-block') as HTMLElement;
                 editor.blockManager.stateManager.updateContentOnUserTyping(blockElement);
                 editor.blockManager.setFocusToBlock(blockElement);
+                Object.defineProperty(document, 'activeElement', {
+                    get: function() { return codeElement; },
+                    configurable: true
+                });
                 setCursorPosition(codeElement, codeElement.textContent.length);
                 
                 const enterEvent: KeyboardEvent = new KeyboardEvent('keydown', {
@@ -482,7 +495,7 @@ describe('Code Blocks', () => {
                     bubbles: true, 
                     cancelable: true 
                 });
-                editorElement.dispatchEvent(enterEvent);
+                codeElement.dispatchEvent(enterEvent);
                 setTimeout(() => {
                     // Model and focus
                     expect(editor.blocks.length).toBe(2);
@@ -516,6 +529,57 @@ describe('Code Blocks', () => {
             expect(codeElement.textContent).toContain('    ');
             // expect(editor.blocks[0].content[0].content).toBe('    indented line    ');
         });
+
+        it('should return early when selection.rangeCount is 0', () => {
+            const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
+            const blockElement = codeElement.closest('.e-block') as HTMLElement;
+            editor.blockManager.setFocusToBlock(blockElement);
+            Object.defineProperty(document, 'activeElement', {
+                get: function() { return codeElement; },
+                configurable: true
+            });
+
+            const mockSelection = {
+                rangeCount: 0,
+                getRangeAt: jasmine.createSpy('getRangeAt')
+            };
+            spyOn(window, 'getSelection').and.returnValue(mockSelection as any);
+
+            const codeRenderer = (editor.blockManager.blockRenderer as any).codeRenderer;
+            codeRenderer.insertTextAtCursor('');
+
+            expect(mockSelection.getRangeAt).not.toHaveBeenCalled();
+            expect(codeElement.textContent).toBe('console.log("test");');
+        });
+
+        it('should return early when codeElement is not found in currentFocusedBlock', () => {
+            const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
+            const blockElement = codeElement.closest('.e-block') as HTMLElement;
+            editor.blockManager.setFocusToBlock(blockElement);
+
+            const originalquerySelector = blockElement.querySelector;
+            spyOn(blockElement, 'querySelector').and.callFake(function(selector: string) {
+                if (selector === 'code') {
+                    return null;
+                }
+                return originalquerySelector.call(this, selector);
+            });
+
+            const mockRange = {
+                deleteContents: jasmine.createSpy('deleteContents'),
+                insertNode: jasmine.createSpy('insertNode')
+            };
+            const mockSelection = {
+                rangeCount: 1,
+                getRangeAt: jasmine.createSpy('getRangeAt').and.returnValue(mockRange)
+            };
+            spyOn(window, 'getSelection').and.returnValue(mockSelection as any);
+
+            const codeRenderer = (editor.blockManager.blockRenderer as any).codeRenderer;
+            codeRenderer.insertTextAtCursor('');
+            expect(mockRange.insertNode).not.toHaveBeenCalled();
+            expect(codeElement.textContent).toBe('console.log("test");');
+        });
     });
 
     describe('Backspace Key Behavior', () => {
@@ -541,12 +605,17 @@ describe('Code Blocks', () => {
                 editor.destroy();
             }
             document.body.removeChild(editorElement);
+            delete (document as any).activeElement;
         });
 
         it('should prevent deletion when cursor is at start of block', () => {
             const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
             const blockElement = codeElement.closest('.e-block') as HTMLElement;
             editor.blockManager.setFocusToBlock(blockElement);
+            Object.defineProperty(document, 'activeElement', {
+                get: function() { return codeElement; },
+                configurable: true
+            });
             setCursorPosition(codeElement, 0);
             
             const backspaceEvent: KeyboardEvent = new KeyboardEvent('keydown', { 
@@ -567,6 +636,10 @@ describe('Code Blocks', () => {
             const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
             const blockElement = codeElement.closest('.e-block') as HTMLElement;
             editor.blockManager.setFocusToBlock(blockElement);
+            Object.defineProperty(document, 'activeElement', {
+                get: function() { return codeElement; },
+                configurable: true
+            });
             codeElement.textContent = 'a';
             editor.blockManager.stateManager.updateContentOnUserTyping(blockElement);
             setCursorPosition(codeElement, 1);
@@ -576,7 +649,7 @@ describe('Code Blocks', () => {
                 bubbles: true, 
                 cancelable: true 
             });
-            editorElement.dispatchEvent(backspaceEvent);
+            codeElement.dispatchEvent(backspaceEvent);
             
             expect(codeElement.textContent).toBe('\n');
             expect(editor.blocks[0].content[0].content).toBe('');
@@ -606,12 +679,17 @@ describe('Code Blocks', () => {
                 editor.destroy();
             }
             document.body.removeChild(editorElement);
+            delete (document as any).activeElement;
         });
 
         it('should prevent deletion when cursor is at end of block', () => {
             const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
             const blockElement = codeElement.closest('.e-block') as HTMLElement;
             editor.blockManager.setFocusToBlock(blockElement);
+            Object.defineProperty(document, 'activeElement', {
+                get: function() { return codeElement; },
+                configurable: true
+            });
             editor.blockManager.stateManager.updateContentOnUserTyping(blockElement);
             setCursorPosition(codeElement, codeElement.textContent.length);
             
@@ -633,6 +711,10 @@ describe('Code Blocks', () => {
             const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
             const blockElement = codeElement.closest('.e-block') as HTMLElement;
             editor.blockManager.setFocusToBlock(blockElement);
+            Object.defineProperty(document, 'activeElement', {
+                get: function() { return codeElement; },
+                configurable: true
+            });
             codeElement.textContent = 'a';
             editor.blockManager.stateManager.updateContentOnUserTyping(blockElement);
             setCursorPosition(codeElement, 0);
@@ -642,7 +724,7 @@ describe('Code Blocks', () => {
                 bubbles: true, 
                 cancelable: true 
             });
-            editorElement.dispatchEvent(deleteEvent);
+            codeElement.dispatchEvent(deleteEvent);
             
             expect(codeElement.textContent).toBe('\n');
             expect(editor.blocks[0].content[0].content).toBe('');
@@ -672,12 +754,17 @@ describe('Code Blocks', () => {
                 editor.destroy();
             }
             document.body.removeChild(editorElement);
+            delete (document as any).activeElement;
         });
 
         it('should insert indent (4 spaces) when Tab pressed', () => {
             const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
             const blockElement = codeElement.closest('.e-block') as HTMLElement;
             editor.blockManager.setFocusToBlock(blockElement);
+            Object.defineProperty(document, 'activeElement', {
+                get: function() { return codeElement; },
+                configurable: true
+            });
             setCursorPosition(codeElement, 0);
             
             const tabEvent: KeyboardEvent = new KeyboardEvent('keydown', { 
@@ -685,7 +772,7 @@ describe('Code Blocks', () => {
                 bubbles: true, 
                 cancelable: true 
             });
-            editorElement.dispatchEvent(tabEvent);
+            codeElement.dispatchEvent(tabEvent);
             
             expect(codeElement.textContent).toContain('    ');
             // expect(editor.blocks[0].content[0].content).toContain('    ');
@@ -696,6 +783,10 @@ describe('Code Blocks', () => {
             const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
             const blockElement = codeElement.closest('.e-block') as HTMLElement;
             editor.blockManager.setFocusToBlock(blockElement);
+            Object.defineProperty(document, 'activeElement', {
+                get: function() { return codeElement; },
+                configurable: true
+            });
             codeElement.textContent = '    indented code';
             editorElement.dispatchEvent(new Event('input', { bubbles: true }));
             setCursorPosition(codeElement, 4);
@@ -706,7 +797,7 @@ describe('Code Blocks', () => {
                 bubbles: true, 
                 cancelable: true 
             });
-            editorElement.dispatchEvent(shiftTabEvent);
+            codeElement.dispatchEvent(shiftTabEvent);
             
             expect(codeElement.textContent).toBe('indented code');
 
@@ -754,12 +845,17 @@ describe('Code Blocks', () => {
                 editor.destroy();
             }
             document.body.removeChild(editorElement);
+            delete (document as any).activeElement;
         });
 
         it('should select all content within code block on first Ctrl+A press', () => {
             const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
             const blockElement = codeElement.closest('.e-block') as HTMLElement;
             editor.blockManager.setFocusToBlock(blockElement);
+            Object.defineProperty(document, 'activeElement', {
+                get: function() { return codeElement; },
+                configurable: true
+            });
             setCursorPosition(codeElement, 0);
             
             const ctrlAEvent: KeyboardEvent = new KeyboardEvent('keydown', {
@@ -769,7 +865,7 @@ describe('Code Blocks', () => {
                 bubbles: true, 
                 cancelable: true 
             });
-            editorElement.dispatchEvent(ctrlAEvent);
+            codeElement.dispatchEvent(ctrlAEvent);
             
             const selection: Selection = window.getSelection();
             expect(selection.toString()).toBe('console.log("hello");');
@@ -996,6 +1092,7 @@ describe('Code Blocks', () => {
                 editor.destroy();
             }
             document.body.removeChild(editorElement);
+            delete (document as any).activeElement;
         });
 
         it('should undo typed content and restore cursor position', (done) => {
@@ -1060,10 +1157,14 @@ describe('Code Blocks', () => {
             const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
             const blockElement = codeElement.closest('.e-block') as HTMLElement;
             editor.blockManager.setFocusToBlock(blockElement);
+            Object.defineProperty(document, 'activeElement', {
+                get: function() { return codeElement; },
+                configurable: true
+            });
 
             // Initial content with one line
             codeElement.textContent = 'function test() {';
-            editorElement.dispatchEvent(new Event('input', { bubbles: true }));
+            codeElement.dispatchEvent(new Event('input', { bubbles: true }));
 
             setTimeout(() => {
                 const initialContent = codeElement.textContent;
@@ -1097,9 +1198,13 @@ describe('Code Blocks', () => {
             const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
             const blockElement = codeElement.closest('.e-block') as HTMLElement;
             editor.blockManager.setFocusToBlock(blockElement);
+            Object.defineProperty(document, 'activeElement', {
+                get: function() { return codeElement; },
+                configurable: true
+            });
 
             codeElement.textContent = 'code';
-            editorElement.dispatchEvent(new Event('input', { bubbles: true }));
+            codeElement.dispatchEvent(new Event('input', { bubbles: true }));
 
             setTimeout(() => {
                 const initialContent = codeElement.textContent;
@@ -1134,9 +1239,13 @@ describe('Code Blocks', () => {
             const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
             const blockElement = codeElement.closest('.e-block') as HTMLElement;
             editor.blockManager.setFocusToBlock(blockElement);
+            Object.defineProperty(document, 'activeElement', {
+                get: function() { return codeElement; },
+                configurable: true
+            });
 
             codeElement.textContent = 'myFunction();';
-            editorElement.dispatchEvent(new Event('input', { bubbles: true }));
+            codeElement.dispatchEvent(new Event('input', { bubbles: true }));
 
             setTimeout(() => {
                 setCursorPosition(codeElement, 0);
@@ -1174,9 +1283,13 @@ describe('Code Blocks', () => {
             const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
             const blockElement = codeElement.closest('.e-block') as HTMLElement;
             editor.blockManager.setFocusToBlock(blockElement);
+            Object.defineProperty(document, 'activeElement', {
+                get: function() { return codeElement; },
+                configurable: true
+            });
 
             codeElement.textContent = '    indented line';
-            editorElement.dispatchEvent(new Event('input', { bubbles: true }));
+            codeElement.dispatchEvent(new Event('input', { bubbles: true }));
 
             setTimeout(() => {
                 setCursorPosition(codeElement, 4);
@@ -1210,9 +1323,13 @@ describe('Code Blocks', () => {
             const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
             const blockElement = codeElement.closest('.e-block') as HTMLElement;
             editor.blockManager.setFocusToBlock(blockElement);
+            Object.defineProperty(document, 'activeElement', {
+                get: function() { return codeElement; },
+                configurable: true
+            });
 
             codeElement.textContent = '    const val = 5;';
-            editorElement.dispatchEvent(new Event('input', { bubbles: true }));
+            codeElement.dispatchEvent(new Event('input', { bubbles: true }));
 
             setTimeout(() => {
                 setCursorPosition(codeElement, 4);
@@ -1251,10 +1368,14 @@ describe('Code Blocks', () => {
             const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
             const blockElement = codeElement.closest('.e-block') as HTMLElement;
             editor.blockManager.setFocusToBlock(blockElement);
+            Object.defineProperty(document, 'activeElement', {
+                get: function() { return codeElement; },
+                configurable: true
+            });
 
             // Action 1: Type content
             codeElement.textContent = 'function test()';
-            editorElement.dispatchEvent(new Event('input', { bubbles: true }));
+            codeElement.dispatchEvent(new Event('input', { bubbles: true }));
 
             setTimeout(() => {
                 expect(codeElement.textContent).toBe('function test()');
@@ -1308,10 +1429,14 @@ describe('Code Blocks', () => {
             const codeElement: HTMLElement = editorElement.querySelector('.e-code-content');
             const blockElement = codeElement.closest('.e-block') as HTMLElement;
             editor.blockManager.setFocusToBlock(blockElement);
+            Object.defineProperty(document, 'activeElement', {
+                get: function() { return codeElement; },
+                configurable: true
+            });
 
             // Type first content
             codeElement.textContent = 'line1';
-            editorElement.dispatchEvent(new Event('input', { bubbles: true }));
+            codeElement.dispatchEvent(new Event('input', { bubbles: true }));
 
             setTimeout(() => {
                 expect(editor.blocks[0].content[0].content).toBe('line1');

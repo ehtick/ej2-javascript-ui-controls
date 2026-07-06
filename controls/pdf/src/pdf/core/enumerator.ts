@@ -2156,3 +2156,198 @@ export enum _PdfColorSpace {
     grayScale,
     indexed
 }
+/**
+ * Enum for supported XMP-Schema types.
+ * ```typescript
+ * // Load an existing PDF document
+ * let document: PdfDocument = new PdfDocument(data);
+ * // Access the document properties
+ * let documentProperties: PdfDocumentProperties = document.getDocumentInformation();
+ * // Gets XMP metadata
+ * let xmpMetadata: PdfXmpMetadata = documentProperties.xmpMetadata;
+ * // Gets the basic schema from the XMP metadata
+ * let basicSchema: PdfBasicSchema = xmpMetadata.basicSchema;
+ * // Gets the schema type
+ * let schemaType: PdfXmpSchemaType = basicSchema.schemaType;
+ * // Save the document
+ * document.save('output.pdf');
+ * // Destroy the document
+ * document.destroy();
+ * ```
+ */
+export enum PdfXmpSchemaType {
+    /**
+     * Specifies the type of `basic`.
+     */
+    basic = 'Basic',
+    /**
+     * Specifies the type of `dublinCore`.
+     */
+    dublinCore = 'DublinCore',
+    /**
+     * Specifies the type of `pdf`.
+     */
+    pdf = 'PDF',
+    /**
+     * Specifies the type of `pagedText`.
+     */
+    pagedText = 'PagedText',
+    /**
+     * Specifies the type of `basicJobTicket`.
+     */
+    basicJobTicket = 'BasicJobTicket',
+    /**
+     * Specifies the type of `rightsManagement`.
+     */
+    rightsManagement = 'RightsManagement',
+    /**
+     * Specifies the type of `custom`.
+     */
+    custom = 'Custom'
+}
+/**
+ * Public enum to define template layer rendering mode.
+ *
+ * ```typescript
+ * // Create new document
+ * let document: PdfDocument = new PdfDocument();
+ * // Create a header template
+ * let headerTemplate: PdfPageTemplateElement = new PdfPageTemplateElement({width: 595, height: 50});
+ * // Set template to render as background
+ * headerTemplate.templateLayerMode = PdfTemplateLayerMode.background;
+ * // Draw content on header
+ * headerTemplate.graphics.drawString('Header', font, {x: 10, y: 10, width: 575, height: 30}, brush);
+ * // Assign to the document template along with the template layer rendering mode
+ * document.template.top = {template: headerTemplate, templateLayerMode: PdfTemplateLayerMode.background, alignment: PdfHorizontalAlignment.center};
+ * // Save the document
+ * document.save('output.pdf');
+ * // Destroy the document
+ * document.destroy();
+ * ```
+ */
+export enum PdfTemplateLayerMode {
+    /**
+     * Specifies that the template renders behind page content (background layer).
+     */
+    background = 0,
+    /**
+     * Specifies that the template renders above page content (foreground layer).
+     */
+    foreground = 1
+}
+/**
+ * Public enum to define horizontal alignment options.
+ *
+ * ```typescript
+ * // Create new document
+ * let document: PdfDocument = new PdfDocument();
+ * // Create a header template
+ * let headerTemplate: PdfPageTemplateElement = new PdfPageTemplateElement({width: 595, height: 50});
+ * // Draw content on header
+ * headerTemplate.graphics.drawString('Header', font, {x: 10, y: 10, width: 575, height: 30}, brush);
+ * // Assign to document template with horizontal alignment
+ * document.template.top = {template: headerTemplate, alignment: PdfTemplateHorizontalAlignment.center};
+ * // Save the document
+ * document.save('output.pdf');
+ * // Destroy the document
+ * document.destroy();
+ */
+export enum PdfTemplateHorizontalAlignment {
+    /**
+     * No horizontal alignment is applied
+     */
+    none,
+    /**
+     * Aligns the template to the left side of the page
+     */
+    left,
+    /**
+     * Centers the template horizontally on the page
+     */
+    center,
+    /**
+     * Aligns the template to the right side of the page
+     */
+    right
+}
+/**
+ * Public enum to define vertical alignment options.
+ *
+ * ```typescript
+ * // Create new document
+ * let document: PdfDocument = new PdfDocument();
+ * // Create a header template
+ * let headerTemplate: PdfPageTemplateElement = new PdfPageTemplateElement({width: 595, height: 50});
+ * // Draw content on header
+ * headerTemplate.graphics.drawString('Header', font, {x: 10, y: 10, width: 575, height: 30}, brush);
+ * // Assign to document template with vertical alignment
+ * document.template.left = {template: headerTemplate, alignment: PdfTemplateVerticalAlignment.top};
+ * // Save the document
+ * document.save('output.pdf');
+ * // Destroy the document
+ * document.destroy();
+ */
+export enum PdfTemplateVerticalAlignment {
+    /**
+     * No vertical alignment is applied
+     */
+    none,
+    /**
+     * Aligns the content to the top
+     */
+    top,
+    /**
+     * Centers the content vertically
+     */
+    middle,
+    /**
+     * Aligns the content to the bottom
+     */
+    bottom
+}
+/**
+ * Internal enum for alignment styles used by templates and content placement.
+ *
+ * @private
+ */
+export enum _PdfAlignmentStyle {
+    topLeft = 0,
+    topCenter = 1,
+    topRight = 2,
+    middleLeft = 3,
+    middleCenter = 4,
+    middleRight = 5,
+    bottomLeft = 6,
+    bottomCenter = 7,
+    bottomRight = 8
+}
+/**
+ * Internal enum keys for document template sides/variants.
+ *
+ * @private
+ */
+export enum _PdfDocumentTemplateKey {
+    top = 0,
+    bottom = 1,
+    left = 2,
+    right = 3,
+    evenTop = 4,
+    evenBottom = 5,
+    evenLeft = 6,
+    evenRight = 7,
+    oddTop = 8,
+    oddBottom = 9,
+    oddLeft = 10,
+    oddRight = 11
+}
+/**
+ * Enum describing template sides (top/bottom/left/right) used internally.
+ *
+ * @private
+ */
+export enum _TemplateSide {
+    top = 0,
+    bottom = 1,
+    left = 2,
+    right = 3
+}

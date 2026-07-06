@@ -17,6 +17,13 @@ export const KEY_DOWN: string = 'keydown';
 export const ACTION: string = 'action';
 
 /**
+ * Table dialog open event trigger
+ *
+ * @hidden
+ */
+export const ON_TABLE_EDIT_DIALOG_OPEN: string = 'onTableEditDialogOpen';
+
+/**
  * Formats plugin events
  *
  * @hidden

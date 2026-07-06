@@ -2,30 +2,6 @@
 
 ## [Unreleased]
 
-## 33.2.4 (2026-04-28)
-
-### Spreadsheet
-
-#### Bug fixes
-
-- `#I829459` - Issue with "exception occurs when rendering charts with discontinuous data ranges containing empty cells" has been resolved.
-
-## 33.1.49 (2026-04-14)
-
-### Spreadsheet
-
-#### Bug fixes
-
-- `#I827842` - Issue with "applying a top border to a cell with font styles caused selection misalignment" has been resolved.
-
-## 33.1.47 (2026-04-07)
-
-### Spreadsheet
-
-#### Bug fixes
-
-- `#I805278` - Issue with "pie chart rendered empty when the data range contained both string and numeric columns" has been resolved.
-
 ## 32.1.20 (2025-12-23)
 
 ### Spreadsheet

@@ -3,7 +3,7 @@ import { Diagram } from '../../diagram';
 import { DiagramConstraints, DiagramEvent, SnapConstraints } from '../../enum/enum';
 import { bindVisioConnectors, VisioConnections, VisioConnector } from './visio-connectors';
 import { IMPORT_LIMITATIONS, UNIT_CONVERSION } from './visio-constants';
-import { ensureArray } from './visio-core';
+import { ensureArray, findCellValue } from './visio-core';
 import { exportToVsdxFile } from './visio-export';
 import { VisioMemoryStream } from './visio-memory-stream';
 import { parserVisioRelationship, parseVisioDocumentSettings, parseVisioMaster, parseVisioPage, parseVisioTheme, parseVisioWindow } from './visio-model-parsers';
@@ -11,9 +11,42 @@ import { VisioDiagramData, VisioLayer, VisioPage, VisioRelationship, VisioShape,
 import { parserVisioShape } from './visio-node-parser';
 import { convertVisioShapeToNode } from './visio-nodes';
 import { VisioPackageReader } from './visio-package-reader';
-import { BPMNActivityShape, BPMNShape, DiagramAddInfo, DocumentSettingsElement, MasterElement, OneOrMany, ParsedXmlObject, ShapeCache, ThemeElements, VisioCell, VisioDocumentStructure, VisioMedia, VisioNode, VisioPageContent, VisioShapeData, WindowRootElement, XmlRelationship } from './visio-types';
+import { BPMNActivityShape, BPMNShape, DiagramAddInfo, DocumentSettingsElement, MasterElement, OneOrMany, ParsedXmlObject, ShapeCache, ThemeElements, VisioCell, VisioDocumentStructure, VisioMedia, VisioNode, VisioPageContent, VisioShapeData, WindowRootElement, XmlRelationship, VisioShapeNode } from './visio-types';
 import { MinimalZipReader } from './zipReader';
 import { VisioPropertiesManager } from './visio-theme';
+
+
+/**
+ * Represents a single Visio style sheet entry parsed from XML.
+ * @interface VisioStyle
+ * @private
+ */
+export interface VisioStyle {
+    id: string;
+    shape: Element; // The <StyleSheet> XML element
+    cellElements: Record<string, Element>;
+    sections: Record<string, Element>;
+    parentStyles: ParentStyleMap;
+}
+
+/**
+ * Represents the parent-style references a style can inherit from.
+ * @interface VisioImportOptions
+ * @private
+ */
+export interface ParentStyleMap {
+    FillStyle: VisioStyle | null;
+    LineStyle: VisioStyle | null;
+    TextStyle: VisioStyle | null;
+    [key: string]: VisioStyle;
+}
+
+/**
+ * ParsingContext augmented locally with a strongly-typed parsedStyleSheets index.
+ */
+export type ContextWithParsedStyleSheets = ParsingContext & {
+    parsedStyleSheets: Record<string, VisioStyle>;
+};
 
 /**
  * Main class for importing and exporting Visio VSDX files.
@@ -178,6 +211,8 @@ export class ImportAndExportVisio {
 
             // Store parsed XML structure in context for use during parsing
             context.entries = visioObj;
+
+            initParsedStyleSheets(visioObj.RootDocument.xmlStyleSheet, context);
             // Store file in memory stream for use it in export
             VisioMemoryStream.set((file as File).name, arrayBuffer, pageIndex);
 
@@ -272,6 +307,162 @@ export class ImportAndExportVisio {
     public destroy(): void {
         if (this.context && this.context.propertyManager) {
             this.context.propertyManager.dispose();
+        }
+    }
+}
+
+/**
+ * Initializes the parsedStyleSheets index on the context from the given xmlStyleSheet root.
+ * Builds a dictionary of VisioStyle objects keyed by their sanitized ID.
+ * @param {Element} styleSheetsRoot - Root element containing <StyleSheet> children
+ * @param {ParsingContext} context - Parsing context with styles index
+ * @returns {void}
+ * @private
+ */
+function initParsedStyleSheets(styleSheetsRoot: Element, context: ParsingContext): void {
+    // Create an empty index for styles on context
+    (context as ContextWithParsedStyleSheets).parsedStyleSheets = {};
+
+    // Collect all <StyleSheet> elements under the root
+    const sheetList: HTMLCollectionOf<Element> | null = styleSheetsRoot ? styleSheetsRoot.getElementsByTagName('StyleSheet') : null;
+    if (sheetList && sheetList.length > 0) {
+        const totalSheets: number = sheetList.length;
+        // Parse each <StyleSheet> and register into the context index
+
+        for (let index: number = 0; index < totalSheets; index++) {
+            const sheetElementNode: Element | null = sheetList.item(parseInt(index.toString(), 10));
+            if (sheetElementNode === null) { continue; } // Skip empty slots
+            const sheetId: string = sheetElementNode.getAttribute('ID');
+            // Parse style and register by ID
+            const visioStyle: VisioStyle = buildVisioStyleFromElement(sheetElementNode, context as ContextWithParsedStyleSheets);
+            (context as ContextWithParsedStyleSheets).parsedStyleSheets[`${sheetId}`] = visioStyle;
+        }
+
+        // Link parent references for each collected style
+        for (const key in (context as ContextWithParsedStyleSheets).parsedStyleSheets) {
+            if (Object.prototype.hasOwnProperty.call((context as ContextWithParsedStyleSheets).parsedStyleSheets, key)) {
+                const currentStyle: VisioStyle = (context as ContextWithParsedStyleSheets).parsedStyleSheets[`${key}`];
+                getParentStyles(currentStyle.shape, (context as ContextWithParsedStyleSheets), currentStyle);
+            }
+        }
+    }
+
+}
+
+/**
+ * Parses a single <StyleSheet> element into a strongly-typed VisioStyle object.
+ * Adds its cell elements and resolves its parent references.
+ * @param {Element} sheetElement - The <StyleSheet> XML element
+ * @param {ContextWithParsedStyleSheets} context - Parsing context with styles index
+ * @returns {VisioStyle} The parsed VisioStyle
+ * @private
+ */
+export function buildVisioStyleFromElement(sheetElement: Element, context: ContextWithParsedStyleSheets): VisioStyle {
+    // Initialize style object with defaults
+    const style: VisioStyle = {
+        id: '',
+        shape: sheetElement,
+        cellElements: {},
+        sections: {},
+        parentStyles: { FillStyle: null, LineStyle: null, TextStyle: null }
+    };
+
+    // Populate ID from the attribute
+    style.id = sheetElement.getAttribute('ID');
+
+    // Collect child <Cell> elements for quick lookup
+    collectCellElements(style);
+
+    // Resolve parent style references now that context has (some) entries
+    getParentStyles(sheetElement, context, style);
+
+    return style;
+}
+
+/**
+ * Populates parentStyles for FillStyle, LineStyle, and TextStyle by looking up context.parsedStyleSheets.
+ * @param {Element} sheetElement - The <StyleSheet> element containing parent refs
+ * @param {ContextWithParsedStyleSheets} context - Parsing context with styles index
+ * @param {VisioStyle} style - The target style to populate
+ * @returns {void}
+ * @private
+ */
+function getParentStyles(sheetElement: Element, context: ContextWithParsedStyleSheets, style: VisioStyle): void {
+    // Resolve FillStyle parent
+    const fillId: string = sheetElement.getAttribute('FillStyle');
+    if (fillId && fillId.length > 0 && Object.prototype.hasOwnProperty.call(context.parsedStyleSheets, fillId)) {
+        style.parentStyles.FillStyle = context.parsedStyleSheets[`${fillId}`];
+    } else {
+        style.parentStyles.FillStyle = null;
+    }
+
+    // Resolve LineStyle parent
+    const lineId: string = sheetElement.getAttribute('LineStyle');
+    if (lineId && lineId.length > 0 && Object.prototype.hasOwnProperty.call(context.parsedStyleSheets, lineId)) {
+        style.parentStyles.LineStyle = context.parsedStyleSheets[`${lineId}`];
+    } else {
+        style.parentStyles.LineStyle = null;
+    }
+
+    // Resolve TextStyle parent
+    const textId: string = sheetElement.getAttribute('TextStyle');
+    if (textId && textId.length > 0 && Object.prototype.hasOwnProperty.call(context.parsedStyleSheets, textId)) {
+        style.parentStyles.TextStyle = context.parsedStyleSheets[`${textId}`];
+    } else {
+        style.parentStyles.TextStyle = null;
+    }
+}
+
+/**
+ * Scans child nodes of the style.shape and collects <Cell> elements into style.cellElements.
+ * @param {VisioStyle} style - The style to enrich with cell elements
+ * @returns {void}
+ * @private
+ */
+function collectCellElements(style: VisioStyle): void {
+    // Guard: ensure a valid element exists
+    if (!style || !(style.shape instanceof Element)) {
+        return;
+    }
+
+    const children: NodeListOf<ChildNode> = style.shape.childNodes;
+    if (!children) {
+        return;
+    }
+
+    // Iterate each child and parse <Cell> elements only
+    const totalChildren: number = children.length;
+    for (let index: number = 0; index < totalChildren; index++) {
+        const node: ChildNode | null = children.item(parseInt(index.toString(), 10));
+        if (node === null) {
+            continue;
+        }
+        if (node.nodeType === Node.ELEMENT_NODE) {
+            mapCellElement(style, node as Element);
+        }
+    }
+}
+
+/**
+ * Maps a <Cell> element of a <StyleSheet> and stores <Cell> by its name.
+ * @param {VisioStyle} style - Target style to receive the cell
+ * @param {Element} childElement - The child element under <StyleSheet>
+ * @returns {void}
+ * @private
+ */
+function mapCellElement(style: VisioStyle, childElement: Element): void {
+    // Identify <Cell> elements by tag name
+    let cellName: string;
+    if (childElement && childElement.nodeName === 'Cell') {
+        cellName = childElement.getAttribute('N');
+        if (cellName && cellName.length > 0) {
+            style.cellElements[`${cellName}`] = childElement;
+        }
+    }
+    if (childElement && childElement.nodeName === 'Section') {
+        cellName = childElement.getAttribute('N');
+        if (cellName && cellName.length > 0) {
+            style.sections[`${cellName}`] = childElement;
         }
     }
 }
@@ -686,6 +877,12 @@ export async function parseVisioData(visioObj: VisioDocumentStructure, context: 
             return pageRelId === visioObj.PageRelId;
         });
 
+        if (visioObj.__BackgroundPageFiles && visioObj.__BackgroundPageFiles.length) {
+            const backgroundXML: ParsedXmlObject = visioObj.__Extensions[visioObj.__BackgroundPageFiles[0]];
+            const backgroundShapes: Record<string, VisioShapeNode> = backgroundXML.Shapes as Record<string, VisioShapeNode>;
+            const backgroundShape: VisioShapeNode = backgroundShapes.Shape;
+            matchingPages[0].$.Background = findCellValue(ensureArray(backgroundShape.Cell), 'FillBkgnd');
+        }
         // Parse each matching page
         context.data.pages = ensureArray(matchingPages).map((pageEl: VisioPageContent) => {
             // Append essential attributes to PageSheet for easier access during parsing
@@ -952,14 +1149,20 @@ export async function loadVisioDataIntoDiagram(
     // Get window settings or use defaults
     const windowSettings: VisioWindow = diagramData.windows.find((w: VisioWindow) => w.windowType === 'Drawing') || defaultWindow;
 
+    let backgroundColor: string = 'transparent';
+    if (solidShape && solidShape.fillColor) {
+        backgroundColor = solidShape.fillColor;
+    } else if (currentPage.fillColor) {
+        backgroundColor = currentPage.fillColor;
+    }
     // Configure diagram dimensions and appearance
-    diagram.backgroundColor = solidShape ? solidShape.fillColor || 'transparent' : 'transparent';
+    diagram.backgroundColor = backgroundColor;
     diagram.enableConnectorSplit = true;
 
     // Configure page settings
     diagram.pageSettings.width = currentPage.pageWidth * DPI;
     diagram.pageSettings.height = currentPage.pageHeight * DPI;
-    diagram.pageSettings.background.color = solidShape ? solidShape.fillColor || 'transparent' : 'transparent';
+    diagram.pageSettings.background.color = backgroundColor;
     diagram.pageSettings.showPageBreaks = windowSettings.showPageBreaks;
     diagram.pageSettings.orientation = currentPage.printPageOrientation === 2 ? 'Landscape' : 'Portrait';
 

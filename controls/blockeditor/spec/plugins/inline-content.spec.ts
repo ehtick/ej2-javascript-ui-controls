@@ -4,7 +4,7 @@ import { setCursorPosition, getBlockContentElement, getSelectedRange } from '../
 import { findClosestParent } from '../../src/common/utils/dom';
 import { BlockType, ContentType } from '../../src/models/enums';
 import { BlockEditor } from '../../src/index';
-import { BaseChildrenProp, ILabelContentSettings, IMentionContentSettings } from '../../src/models/index';
+import { BaseChildrenProp, BlockModel, ILabelContentSettings, IMentionContentSettings, ITableBlockSettings } from '../../src/models/index';
 
 describe('Inline Content Module', () => {
     beforeAll(() => {
@@ -149,7 +149,7 @@ describe('Inline Content Module', () => {
 
                 editor.blockContainer.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
                 setTimeout(() => {
-                    const popup = document.querySelector('.e-blockeditor-user-menu.e-popup');
+                    const popup = document.querySelector('#editor_blockcontainer_popup.e-blockeditor-user-menu.e-popup');
                     expect(popup).not.toBeNull();
                     const li = popup.querySelector('li[data-value="user1"]') as HTMLElement;
                     li.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
@@ -555,6 +555,120 @@ describe('Inline Content Module', () => {
                     done();
                 }, 200);
             }, 200);
+        });
+
+        it('Type \'@\' in empty Paragraph in Table Block, select user and Check cursor position', (done) => {
+            const tableProps: ITableBlockSettings = {
+                columns: [{ id: 'col1', width: 100 }, { id: 'col2', width: 150 }],
+                rows: [
+                    {
+                        height: 50, cells: [
+                            { columnId: 'col1', blocks: [{ id: 'b1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: '' }] }] },
+                            { columnId: 'col2', blocks: [{ id: 'b2', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: '' }] }] }
+                        ]
+                    },
+                    {
+                        height: 60, cells: [
+                            { columnId: 'col1', blocks: [{ id: 'b3', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: '' }] }] },
+                            { columnId: 'col2', blocks: [{ id: 'b4', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: '' }] }] }
+                        ]
+                    }
+                ]
+            };
+            setupEditor([
+                { id: 'table_block', blockType: BlockType.Table, properties: tableProps }
+            ]);
+            const blockElement = editorElement.querySelector('#b1') as HTMLElement;
+            const contentElement = getBlockContentElement(blockElement) as HTMLElement;
+            editor.blockManager.setFocusToBlock(blockElement);
+            // Simulate typing '@'
+            contentElement.textContent = '@' + contentElement.textContent;
+            editor.blockManager.stateManager.updateContentOnUserTyping(blockElement);
+            setCursorPosition(contentElement, 1); // Cursor after new '@'
+
+            editor.blockContainer.dispatchEvent(new KeyboardEvent('keyup', { key: '', bubbles: true }));
+
+            setTimeout(() => {
+                const popup = document.querySelector('.e-blockeditor-user-menu.e-popup');
+                const li = popup.querySelector('li[data-value="user1"]') as HTMLElement;
+                li.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+
+                setTimeout(() => {
+                    // Assert model
+                    const editorBlocks = editor.blocks[0] as BlockModel;
+                    const tProps = (editorBlocks.properties as ITableBlockSettings);
+                    expect((tProps.rows[0].cells[0].blocks[0] as any).content.length).toBe(1); // Mention('John'), "" (empty text node at end)
+                    expect((tProps.rows[0].cells[0].blocks[0] as any).content[0].contentType).toBe(ContentType.Mention);
+                    expect(((tProps.rows[0].cells[0].blocks[0] as any).content[0].properties as IMentionContentSettings).userId).toBe('user1');
+                    expect((tProps.rows[0].cells[0].blocks[0] as any).content[0].content).toBe('JJohn');
+
+
+                    // Assert DOM
+                    expect(contentElement.childNodes.length).toBe(2);
+                    expect((contentElement.childNodes[0] as HTMLElement).classList.contains('e-user-chip')).toBe(true);
+                    expect(contentElement.childNodes[0].textContent).toContain('John');
+
+                    // Cursor after the chip
+                    expect(getSelectedRange().startContainer).toBe(contentElement.childNodes[1]);
+                    done();
+                }, 200);
+            }, 200);
+        });
+
+        it('Type \'@\' with existing text in Table Block, select user and Check cursor position', (done) => {
+            const tableProps: ITableBlockSettings = {
+                columns: [{ id: 'col1', width: 100 }, { id: 'col2', width: 150 }],
+                rows: [
+                    {
+                        height: 50, cells: [
+                            { columnId: 'col1', blocks: [{ id: 'b1', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Existing text @' }] }] },
+                            { columnId: 'col2', blocks: [{ id: 'b2', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Cell 2' }] }] }
+                        ]
+                    },
+                    {
+                        height: 60, cells: [
+                            { columnId: 'col1', blocks: [{ id: 'b3', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Cell 3' }] }] },
+                            { columnId: 'col2', blocks: [{ id: 'b4', blockType: BlockType.Paragraph, content: [{ contentType: ContentType.Text, content: 'Cell 4' }] }] }
+                        ]
+                    }
+                ]
+            };
+            setupEditor([
+                { id: 'table_block', blockType: BlockType.Table, properties: tableProps }
+            ]);
+            const blockElement = editorElement.querySelector('#b1') as HTMLElement;
+            const contentElement = getBlockContentElement(blockElement) as HTMLElement;
+            editor.blockManager.setFocusToBlock(blockElement);
+            setCursorPosition(contentElement, 15); // After 'Existing text @'
+
+            editor.blockContainer.dispatchEvent(new KeyboardEvent('keyup', { key: '', bubbles: true }));
+
+            setTimeout(() => {
+                const popup = document.querySelector('.e-blockeditor-user-menu.e-popup');
+                const li = popup.querySelector('li[data-value="user1"]') as HTMLElement;
+                li.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+
+                setTimeout(() => {
+                    // Assert model
+                    const editorBlocks = editor.blocks[0] as BlockModel;
+                    const tProps = (editorBlocks.properties as ITableBlockSettings);
+                    expect((tProps.rows[0].cells[0].blocks[0] as any).content.length).toBe(2); // "Existing text ", Mention('John'), "" (empty text node at end)
+                    expect((tProps.rows[0].cells[0].blocks[0] as any).content[0].content).toBe('Existing text ');
+                    expect((tProps.rows[0].cells[0].blocks[0] as any).content[1].contentType).toBe(ContentType.Mention);
+                    expect(((tProps.rows[0].cells[0].blocks[0] as any).content[1].properties as IMentionContentSettings).userId).toBe('user1');
+                    expect((tProps.rows[0].cells[0].blocks[0] as any).content[1].content).toBe('JJohn');
+
+                    // Assert DOM
+                    expect(contentElement.childNodes.length).toBe(3);
+                    expect(contentElement.childNodes[0].textContent).toBe('Existing text ');
+                    expect((contentElement.childNodes[1] as HTMLElement).classList.contains('e-user-chip')).toBe(true);
+                    expect(contentElement.childNodes[1].textContent).toContain('John');
+
+                    // Ensure Cursor after the chip
+                    expect(getSelectedRange().startContainer).toBe(contentElement.childNodes[2]);
+                    done();
+                }, 500);
+            }, 500);
         });
 
         it('Type \'@\' with existing text, select user, update JSON with ContentType.Mention after text', (done) => {

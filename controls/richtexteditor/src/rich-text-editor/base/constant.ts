@@ -455,6 +455,16 @@ export const paste: string = 'paste-content';
  * @hidden
  * @deprecated
  */
+export const videoPaste: string = 'video-paste-content';
+/**
+ * @hidden
+ * @deprecated
+ */
+export const audioPaste: string = 'audio-paste-content';
+/**
+ * @hidden
+ * @deprecated
+ */
 export const codeBlockPaste: string = 'code-block-paste-content';
 /**
  * @hidden

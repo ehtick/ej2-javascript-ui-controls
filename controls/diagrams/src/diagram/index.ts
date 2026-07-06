@@ -117,3 +117,8 @@ export * from './load-utility/nodeProperties';
 export * from './load-utility/portProperties';
 
 export * from './load-utility/visio-import-export/visio-import-export';
+
+//ER shapes
+export * from './objects/er-objects';
+export * from './objects/er-objects-model';
+export * from './entity-relationship/index';

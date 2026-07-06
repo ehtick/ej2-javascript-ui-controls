@@ -2,7 +2,7 @@ import { isNullOrUndefined } from '@syncfusion/ej2-base';
 import { PdfViewer, PdfViewerBase } from '../index';
 import {AnnotationRenderer, ShapeAnnotationBase, PopupAnnotationBase, FreeTextAnnotationBase, MeasureShapeAnnotationBase, TextMarkupAnnotationBase, SignatureAnnotationBase, InkSignatureAnnotation, ImageStructureBase, RedactionAnnotationBase  } from './index';
 import { PdfDocument, PdfPage, PdfRotationAngle, PdfSquareAnnotation, PdfAnnotationFlag, PdfPopupAnnotation, PdfFreeTextAnnotation, PdfRubberStampAnnotation, PdfTextMarkupAnnotation, PdfInkAnnotation, PdfLineAnnotation, PdfRectangleAnnotation, PdfCircleAnnotation, PdfEllipseAnnotation, PdfPolygonAnnotation, PdfPolyLineAnnotation , PdfAnnotation, PdfAnnotationCollection, PdfAngleMeasurementAnnotation, _PdfDictionary, PdfRubberStampAnnotationIcon, PdfAnnotationState, PdfAnnotationStateModel, _ContentParser, _stringToBytes, _PdfRecord, _encode, _PdfBaseStream, PdfPageSettings, PdfMargins, PdfTemplate, _annotationFlagsToString, PdfRedactionAnnotation } from '@syncfusion/ej2-pdf';
-import { Matrix, Rect, Size } from '@syncfusion/ej2-drawings';
+import { Matrix, Rect, Size } from './../ej2-drawings/index';
 import { TaskPriorityLevel } from '../base/pdfviewer-utlis';
 import { IPageAnnotations } from '../annotation';
 
@@ -175,8 +175,13 @@ export class PageRenderer{
                     const annotation: PdfAnnotation = loadedPage.annotations.at(i);
                     if (annotation instanceof PdfTextMarkupAnnotation) {
                         const textMarkup: TextMarkupAnnotationBase =
-                        annotRenderer.loadTextMarkupAnnotation((annotation as PdfTextMarkupAnnotation), height,
-                                                               width, pageRotation, loadedPage);
+                            annotRenderer.loadTextMarkupAnnotation((annotation as PdfTextMarkupAnnotation), height,
+                                                                   width, pageRotation, loadedPage, i);
+                        this.pdfViewerBase.pdfAnnotationList.push({
+                            annotationIndex: i,
+                            annotation: annotation,
+                            pageIndex: pageNumber
+                        });
                         this.textMarkupAnnotationList[this.textMarkupAnnotationList.length] = textMarkup;
                         this.annotationOrder[this.annotationOrder.length] = textMarkup;
                         const name: string = this.textMarkupAnnotationList[this.textMarkupAnnotationList.length - 1].AnnotName;
@@ -192,7 +197,22 @@ export class PageRenderer{
                             textLabelCollection.push(shapeLabel.name);
                         }
                         const shapes: ShapeAnnotationBase = annotRenderer.loadLineAnnotation(annotation as PdfLineAnnotation,
-                                                                                             height, width, pageRotation, shapeLabel);
+                                                                                             height, width, pageRotation, shapeLabel, i);
+                        if (!isNullOrUndefined(shapeLabel)) {
+                            this.pdfViewerBase.pdfAnnotationList.push({
+                                annotationIndex: i,
+                                annotation: annotation,
+                                pageIndex: pageNumber,
+                                shapeLabelName: shapeLabel.name
+                            });
+                        }
+                        else {
+                            this.pdfViewerBase.pdfAnnotationList.push({
+                                annotationIndex: i,
+                                annotation: annotation,
+                                pageIndex: pageNumber
+                            });
+                        }
                         const name: string = shapes.AnnotName;
                         if (isNullOrUndefined(name) || name === '') {
                             shapes.AnnotName = this.setAnnotationName(pageNumber);
@@ -216,7 +236,22 @@ export class PageRenderer{
                             textLabelCollection.push(shapeLabel.name);
                         }
                         const shapes: ShapeAnnotationBase = annotRenderer.loadSquareAnnotation(annotation as PdfSquareAnnotation,
-                                                                                               height, width, pageRotation, shapeLabel);
+                                                                                               height, width, pageRotation, shapeLabel, i);
+                        if (!isNullOrUndefined(shapeLabel)) {
+                            this.pdfViewerBase.pdfAnnotationList.push({
+                                annotationIndex: i,
+                                annotation: annotation,
+                                pageIndex: pageNumber,
+                                shapeLabelName: shapeLabel.name
+                            });
+                        }
+                        else {
+                            this.pdfViewerBase.pdfAnnotationList.push({
+                                annotationIndex: i,
+                                annotation: annotation,
+                                pageIndex: pageNumber
+                            });
+                        }
                         const name: string = shapes.AnnotName;
                         if (isNullOrUndefined(name) || name === '') {
                             shapes.AnnotName = this.setAnnotationName(pageNumber);
@@ -239,7 +274,22 @@ export class PageRenderer{
                             textLabelCollection.push(shapeLabel.name);
                         }
                         const shapes: ShapeAnnotationBase = annotRenderer.loadEllipseAnnotation(annotation as PdfCircleAnnotation,
-                                                                                                height, width, pageRotation, shapeLabel);
+                                                                                                height, width, pageRotation, shapeLabel, i);
+                        if (!isNullOrUndefined(shapeLabel)) {
+                            this.pdfViewerBase.pdfAnnotationList.push({
+                                annotationIndex: i,
+                                annotation: annotation,
+                                pageIndex: pageNumber,
+                                shapeLabelName: shapeLabel.name
+                            });
+                        }
+                        else {
+                            this.pdfViewerBase.pdfAnnotationList.push({
+                                annotationIndex: i,
+                                annotation: annotation,
+                                pageIndex: pageNumber
+                            });
+                        }
                         if (!isNullOrUndefined(shapes)) {
                             if (shapes instanceof MeasureShapeAnnotationBase) {
                                 this.measureAnnotationList[this.measureAnnotationList.length] = shapes;
@@ -258,7 +308,22 @@ export class PageRenderer{
                             textLabelCollection.push(shapeLabel.name);
                         }
                         const shapes: ShapeAnnotationBase = annotRenderer.loadEllipseAnnotation(annotation as PdfCircleAnnotation,
-                                                                                                height, width, pageRotation, shapeLabel);
+                                                                                                height, width, pageRotation, shapeLabel, i);
+                        if (!isNullOrUndefined(shapeLabel)) {
+                            this.pdfViewerBase.pdfAnnotationList.push({
+                                annotationIndex: i,
+                                annotation: annotation,
+                                pageIndex: pageNumber,
+                                shapeLabelName: shapeLabel.name
+                            });
+                        }
+                        else {
+                            this.pdfViewerBase.pdfAnnotationList.push({
+                                annotationIndex: i,
+                                annotation: annotation,
+                                pageIndex: pageNumber
+                            });
+                        }
                         if (!isNullOrUndefined(shapes)) {
                             if (shapes instanceof MeasureShapeAnnotationBase) {
                                 this.measureAnnotationList[this.measureAnnotationList.length] = shapes;
@@ -277,7 +342,22 @@ export class PageRenderer{
                             textLabelCollection.push(shapeLabel.name);
                         }
                         const shapes: ShapeAnnotationBase = annotRenderer.loadPolygonAnnotation(annotation as PdfPolygonAnnotation,
-                                                                                                height, width, pageRotation, shapeLabel);
+                                                                                                height, width, pageRotation, shapeLabel, i);
+                        if (!isNullOrUndefined(shapeLabel)) {
+                            this.pdfViewerBase.pdfAnnotationList.push({
+                                annotationIndex: i,
+                                annotation: annotation,
+                                pageIndex: pageNumber,
+                                shapeLabelName: shapeLabel.name
+                            });
+                        }
+                        else {
+                            this.pdfViewerBase.pdfAnnotationList.push({
+                                annotationIndex: i,
+                                annotation: annotation,
+                                pageIndex: pageNumber
+                            });
+                        }
                         const name: string = shapes.AnnotName;
                         if (isNullOrUndefined(name) || name === '') {
                             shapes.AnnotName = this.setAnnotationName(pageNumber);
@@ -300,7 +380,23 @@ export class PageRenderer{
                             textLabelCollection.push(shapeLabel.name);
                         }
                         const shapes: ShapeAnnotationBase = annotRenderer.loadPolylineAnnotation(annotation as PdfPolyLineAnnotation,
-                                                                                                 height, width, pageRotation, shapeLabel);
+                                                                                                 height, width,
+                                                                                                 pageRotation, shapeLabel, i);
+                        if (!isNullOrUndefined(shapeLabel)) {
+                            this.pdfViewerBase.pdfAnnotationList.push({
+                                annotationIndex: i,
+                                annotation: annotation,
+                                pageIndex: pageNumber,
+                                shapeLabelName: shapeLabel.name
+                            });
+                        }
+                        else {
+                            this.pdfViewerBase.pdfAnnotationList.push({
+                                annotationIndex: i,
+                                annotation: annotation,
+                                pageIndex: pageNumber
+                            });
+                        }
                         const name: string = shapes.AnnotName;
                         if (isNullOrUndefined(name) || name === '') {
                             shapes.AnnotName = this.setAnnotationName(pageNumber);
@@ -318,7 +414,12 @@ export class PageRenderer{
                     }
                     else if (annotation instanceof PdfRedactionAnnotation) {
                         const redaction: RedactionAnnotationBase = annotRenderer.loadRedactionAnnotation(
-                            annotation as PdfRedactionAnnotation, height, width, pageRotation, loadedPage);
+                            annotation as PdfRedactionAnnotation, height, width, pageRotation, loadedPage, i);
+                        this.pdfViewerBase.pdfAnnotationList.push({
+                            annotationIndex: i,
+                            annotation: annotation,
+                            pageIndex: pageNumber
+                        });
                         const name: string = redaction.AnnotName;
                         if (isNullOrUndefined(name) || name === '') {
                             redaction.AnnotName = this.setAnnotationName(pageNumber);
@@ -339,7 +440,12 @@ export class PageRenderer{
                             }
                         }
                         if (stampAnnotation._dictionary.has('T') && this.checkName(stampAnnotation)) {
-                            this.signatureAnnotationList.push(annotRenderer.loadSignatureImage(stampAnnotation, pageNumber));
+                            this.signatureAnnotationList.push(annotRenderer.loadSignatureImage(stampAnnotation, pageNumber, i));
+                            this.pdfViewerBase.pdfAnnotationList.push({
+                                annotationIndex: i,
+                                annotation: annotation,
+                                pageIndex: pageNumber
+                            });
                         }
                         else if (stampAnnotation._dictionary.has('M') || (stampAnnotation._dictionary.has('NM') ||
                             stampAnnotation._dictionary.has('Name') && !stampAnnotation._dictionary.has('F') ||
@@ -390,6 +496,7 @@ export class PageRenderer{
                             this.pdfViewerBase.pngData.push(stampAnnotation);
                             rubberStampAnnotation.IsDynamic = false;
                             rubberStampAnnotation.AnnotType = 'stamp';
+                            rubberStampAnnotation.AnnotationIndex = i;
                             if (Object.prototype.hasOwnProperty.call(stampAnnotation._dictionary, 'iconName')) {
                                 rubberStampAnnotation.IconName = stampAnnotation.getValues('iconName')[0];
                             } else if (stampAnnotation.subject !== null) {
@@ -428,7 +535,7 @@ export class PageRenderer{
                             rubberStampAnnotation.Comments = new Array<PopupAnnotationBase>();
                             for (let i: number = 0; i < stampAnnotation.comments.count; i++) {
                                 const annot: PopupAnnotationBase =
-                                annotRenderer.loadPopupAnnotation(stampAnnotation.comments.at(i), height, width, pageRotation);
+                                annotRenderer.loadPopupAnnotation(stampAnnotation.comments.at(i), height, width, pageRotation, null, i);
                                 rubberStampAnnotation.Comments.push(annot);
                             }
                             if (annotation._dictionary.has('Name')) {
@@ -480,13 +587,23 @@ export class PageRenderer{
                                 {this.findStampTemplate(annotation, rubberStampAnnotation, pageRotation,
                                                         this.annotationOrder.length - 1, template); }
                             }
+                            this.pdfViewerBase.pdfAnnotationList.push({
+                                annotationIndex: i,
+                                annotation: annotation,
+                                pageIndex: pageNumber
+                            });
                         }
 
                     }
                     if (annotation instanceof PdfPopupAnnotation) {
                         if (!annotation._dictionary.has('IRT')) {
                             const stickyNote: PopupAnnotationBase =
-                            annotRenderer.loadPopupAnnotation(annotation as PdfPopupAnnotation, height, width, pageRotation);
+                            annotRenderer.loadPopupAnnotation(annotation as PdfPopupAnnotation, height, width, pageRotation, i, null);
+                            this.pdfViewerBase.pdfAnnotationList.push({
+                                annotationIndex: i,
+                                annotation: annotation,
+                                pageIndex: pageNumber
+                            });
                             this.stickyAnnotationList[this.stickyAnnotationList.length] = stickyNote;
                             this.annotationOrder[this.annotationOrder.length] = stickyNote;
                             const name: string = stickyNote.AnnotName;
@@ -501,7 +618,12 @@ export class PageRenderer{
                         if (isFreeTextAnnotation) {
                             const isShapeLabelAnnot: boolean = textLabelCollection.some((s: string) => s === freeTextAnnot.name);
                             const freeText: FreeTextAnnotationBase =
-                            annotRenderer.loadFreeTextAnnotation(freeTextAnnot, height, width, pageRotation, loadedPage);
+                            annotRenderer.loadFreeTextAnnotation(freeTextAnnot, height, width, pageRotation, loadedPage, i);
+                            this.pdfViewerBase.pdfAnnotationList.push({
+                                annotationIndex: i,
+                                annotation: annotation,
+                                pageIndex: pageNumber
+                            });
                             if (!isShapeLabelAnnot) {
                                 this.freeTextAnnotationList[this.freeTextAnnotationList.length] = freeText;
                                 this.annotationOrder[this.annotationOrder.length] = freeText;
@@ -509,7 +631,12 @@ export class PageRenderer{
                         }
                         else {
                             const freeText: SignatureAnnotationBase =
-                            annotRenderer.loadSignatureText(freeTextAnnot, pageNumber, height, width, pageRotation);
+                            annotRenderer.loadSignatureText(freeTextAnnot, pageNumber, height, width, pageRotation, i);
+                            this.pdfViewerBase.pdfAnnotationList.push({
+                                annotationIndex: i,
+                                annotation: annotation,
+                                pageIndex: pageNumber
+                            });
                             if (!freeTextAnnot._dictionary.has('T')) {
                                 this.signatureAnnotationList[this.signatureAnnotationList.length] = freeText;
                                 this.annotationOrder[this.annotationOrder.length] = freeText;
@@ -519,9 +646,14 @@ export class PageRenderer{
                     if (annotation instanceof PdfInkAnnotation) {
                         const inkAnnotation: PdfInkAnnotation = annotation as PdfInkAnnotation;
                         const signatureData: SignatureAnnotationBase =
-                        annotRenderer.loadSignature(inkAnnotation, height, width, pageRotation, pageNumber, loadedPage);
+                        annotRenderer.loadSignature(inkAnnotation, height, width, pageRotation, pageNumber, loadedPage, i);
                         const inkSignatureData: InkSignatureAnnotation =
-                        annotRenderer.loadInkAnnotation(inkAnnotation, height, width, pageRotation, pageNumber, loadedPage);
+                        annotRenderer.loadInkAnnotation(inkAnnotation, height, width, pageRotation, pageNumber, loadedPage, i);
+                        this.pdfViewerBase.pdfAnnotationList.push({
+                            annotationIndex: i,
+                            annotation: annotation,
+                            pageIndex: pageNumber
+                        });
                         if (!inkAnnotation._dictionary.has('T')) {
                             this.signatureAnnotationList.push(signatureData);
                             this.annotationOrder.push(signatureData);
@@ -1095,6 +1227,7 @@ export class PageRenderer{
 export class StampAnnotationBase{
     public StampAnnotationtype: string;
     public Author: string;
+    public AnnotationIndex: number;
     public pageNumber: number;
     public AnnotationSelectorSettings: any;
     public Matrix: Matrix;

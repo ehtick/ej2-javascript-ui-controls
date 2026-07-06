@@ -1510,20 +1510,22 @@ describe('EJ2-70198 - The layout ConnectionPointOrigin DifferentPoint property i
             ele = null;
         }
     });
-    it('EJ2-70198 - The layout ConnectionPointOrigin DifferentPoint property is not working for bezier connector', (done: Function) => {
+    it('EJ2-70198 - The layout ConnectionPointOrigin DifferentPoint property is not working for bezier connector- 1', (done: Function) => {
         diagram.layout.connectionPointOrigin = ConnectionPointOrigin.SamePoint;
         diagram.dataBind();
         let connector0 = diagram.connectors[0].id;
         let pathElement = document.getElementById(connector0 + "_path_groupElement");
-        expect(pathElement.children[0].getAttribute("d") === "M0,0 C0,13.5,0,16.5,0,30 ").toBe(true);
+        console.log("connector- 1: ", pathElement.children[0].getAttribute("d"));
+       expect(pathElement.children[0].getAttribute("d") === "M0,0 C0,13.5,0,16.5,0,30 ").toBe(true);
         done();
     });
-    it('EJ2-70198 - The layout ConnectionPointOrigin DifferentPoint property is not working for bezier connector', (done: Function) => {
+    it('EJ2-70198 - The layout ConnectionPointOrigin DifferentPoint property is not working for bezier connector- 2', (done: Function) => {
         diagram.layout.connectionPointOrigin = ConnectionPointOrigin.DifferentPoint;
         diagram.dataBind();
         let connector0 = diagram.connectors[0].id;
         let pathElement = document.getElementById(connector0 + "_path_groupElement");
-        expect(pathElement.children[0].getAttribute("d") === "M0,0 C0,15,0,15,0,30 ").toBe(true);
+        console.log("connector- 2: ", pathElement.children[0].getAttribute("d"));
+         expect(pathElement.children[0].getAttribute("d") === "M0,0 C0,15,0,15,0,30 ").toBe(true);
         done();
     });
 });
@@ -4957,7 +4959,7 @@ describe('DataLoaded event do not gets trigger after data loaded', () => {
             const pathEl0 = document.getElementById(connector0Id + "_path_groupElement");
             console.log("pathEl0 ",pathEl0.children[0].getAttribute("d"));
             expect(
-                pathEl0.children[0].getAttribute("d") === "M181.99,30 L181.99,21 L0,21 L0,10.5 L0,10.5 L-0.19,0.3 " ||
+                 pathEl0.children[0].getAttribute("d") === "M181.99,30 L181.99,21 L0,21 L0,10.5 L0,10.5 L-0.19,0.3 " ||
                 pathEl0.children[0].getAttribute("d") === "M187,30 L187,15 L0,15 L0.31,0.3 "
             ).toBe(true);
 
@@ -4981,17 +4983,15 @@ describe('DataLoaded event do not gets trigger after data loaded', () => {
             const pathEl26 = document.getElementById(connector26Id + "_path_groupElement");
             console.log("pathEl0 ",pathEl26.children[0].getAttribute("d"));
             expect(
-                pathEl26.children[0].getAttribute("d") === "M0,30 L0,15 L0,15 L0.14,0.5 " ||
+               pathEl26.children[0].getAttribute("d") === "M0,30 L0,15 L0,15 L0.14,0.5 " ||
                 pathEl26.children[0].getAttribute("d") === "M0,30 L-0.04,0.5 "
             ).toBe(true);
 
             const connector27Id = diagram.connectors[27].id;
             const pathEl27 = document.getElementById(connector27Id + "_path_groupElement");
-            console.log("pathEl27 ",pathEl27.children[0].getAttribute("d"));
-            expect(
-                pathEl27.children[0].getAttribute("d") === "M0,30 L0,15 L0,15 L0.14,0.9 " ||
-                pathEl27.children[0].getAttribute("d") === "M0,30 L-0.04,0.9 "
-            ).toBe(true);
+            console.log("pathEl27 ", pathEl27.children[0].getAttribute("d"));
+            expect(pathEl27.children[0].getAttribute("d") === "M0,30 L0,15 L0,15 L0.14,0.9 " ||
+                pathEl27.children[0].getAttribute("d") === "M0,30 L-0.04,0.9 ").toBe(true);
 
             diagram.layout.connectionPointOrigin = ConnectionPointOrigin.SamePoint;
             diagram.dataBind();
@@ -5007,7 +5007,7 @@ describe('DataLoaded event do not gets trigger after data loaded', () => {
             const pathEl1After = document.getElementById(connector1IdAfter + "_path_groupElement");
             console.log("pathEl1 ",pathEl1After.children[0].getAttribute("d"));
             expect(
-                pathEl1After.children[0].getAttribute("d") === "M0,30 L0,15 L0,15 L-0.19,0.7 "
+                 pathEl1After.children[0].getAttribute("d") === "M0,30 L0,15 L0,15 L-0.19,0.7 "
             ).toBe(true);
 
             const connector11IdAfter = diagram.connectors[11].id;

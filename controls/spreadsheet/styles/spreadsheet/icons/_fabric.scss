@@ -1,4 +1,4 @@
-@use 'ej2-base/styles/common/mixin' as *;
+@use '../variables' as *;
 @use '../fabric-definition' as *;
 @include export-module('spreadsheet-fabric-icons') {
   .e-spreadsheet {
@@ -63,6 +63,18 @@
       & .e-fill-color {
         &::before {
           content: '\ebf2';
+        }
+      }
+
+      & .e-sub-icon {
+        &::before {
+          content: '\eb96';
+        }
+      }
+
+      & .e-super-icon {
+        &::before {
+          content: '\eb6f';
         }
       }
 

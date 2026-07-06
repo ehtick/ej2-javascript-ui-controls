@@ -926,6 +926,7 @@ export interface IPasteModel {
     getEditPanel?(): Element;
     updateValue?(): void;
     imageUpload?(): void;
+    mediaUpload?(): void;
     getCropImageData?(): CropImageDataItem[];
 }
 

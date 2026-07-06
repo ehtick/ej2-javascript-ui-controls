@@ -37,8 +37,8 @@ describe('PDF_Viewer_Annotation_InkTextMarkup', () => {
     });
 
     // ── Test Case 1: Direct Bug Replication ──────────────────────────────────
-    it('1021689 - Ink annotation persists when switching to Text Markup without deselecting', async () => {
-        const viewer = pdfviewer_ink_textmarkup!;
+    it('1021689- Ink annotation persists when switching to Text Markup without deselecting', async () => {
+        const viewer = pdfviewer_ink_textmarkup;
         const target = document.querySelector('#pdfviewer_ink_textmarkup_textLayer_0');
         const rect = target.getBoundingClientRect();
         const initialCount = viewer.annotationCollection.length;

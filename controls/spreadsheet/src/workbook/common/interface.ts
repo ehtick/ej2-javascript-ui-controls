@@ -352,6 +352,7 @@ export interface CellFormatArgs {
     isFromAutoFillOption?: boolean;
     rowHeight?: number;
     mergeBorderRows?: number[];
+    mergeBorderCols?: number[];
     prevCell?: HTMLElement;
     viewportTopIdx?: number;
 }
@@ -365,6 +366,7 @@ export interface SetCellFormatArgs {
     cancel?: boolean;
     borderType?: BorderType;
     isUndoRedo?: boolean;
+    modelUpdateOnly?: boolean;
 }
 
 /** @hidden */
@@ -1035,6 +1037,7 @@ export interface NumberFormatArgs {
     refresh?: boolean;
     isEdit?: boolean;
     onLoad?: boolean;
+    modelUpdateOnly?: boolean;
 }
 /** @hidden */
 export interface DateFormatCheckArgs {
@@ -1097,6 +1100,7 @@ export interface ApplyCFArgs {
     isEdit?: boolean;
     resizedRowHeight?: number;
     mergeArgs?: { range: number[] };
+    modelUpdateOnly?: boolean;
 }
 /** @hidden */
 export interface CFArgs {
@@ -1107,6 +1111,7 @@ export interface CFArgs {
     isClear?: boolean;
     isUndo?: boolean;
     isUndoRedo?: boolean;
+    modelUpdateOnly?: boolean;
     cfModel?: ConditionalFormatModel;
     oldCFModel?: ConditionalFormatModel[];
     updatedCFModel?: ConditionalFormatModel[];

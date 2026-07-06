@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/material' as *;
-@forward 'ej2-base/styles/definition/material';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $slider-bg-color: rgba($grey-black, .26) !default;
 $slider-disabled-bg-color: rgba($grey-black, .26) !default;
 $slider-disabled-opacity: 1 !default;

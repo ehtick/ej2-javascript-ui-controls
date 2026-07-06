@@ -1,53 +1,244 @@
 import { _grayToRgba, _readUnsignedInteger16, BaseException } from '@syncfusion/ej2-pdf';
 import { _PdfDeviceCmykCS } from './colorspace';
 import { _PdfColorSpaceUtils } from './colorspace-utils';
+/**
+ * Internal error used to indicate DNL marker conditions during progressive JPEG parsing.
+ *
+ * @private
+ */
 class _PdfDoNotLoadMarkerError extends BaseException {
     scanLines: number;
+    /**
+     * Initializes a new instance of the `_PdfDoNotLoadMarkerError` class.
+     *
+     * @private
+     * @param {string} message Error message.
+     * @param {number} scanLines Number of scan lines parsed from marker.
+     * @returns {void} nothing.
+     */
     constructor(message: string, scanLines: number) {
         super(message, 'PDF do not load marker error');
         this.scanLines = scanLines;
     }
 }
+/**
+ * Internal error used to indicate a premature end-of-image (EOI) condition.
+ *
+ * @private
+ */
 class _PdfEndOfImageMarkerError extends BaseException {
+    /**
+     * Initializes a new instance of the `_PdfEndOfImageMarkerError` class.
+     *
+     * @private
+     * @param {string} msg Error message text.
+     * @returns {void} nothing.
+     */
     constructor(msg: string) {
         super(msg, 'PDF end of image error');
     }
 }
+/**
+ * Internal JPEG image decoder that parses SOF/SOS markers and outputs buffers.
+ *
+ * @private
+ */
 export class _PdfJpegImage {
+    /**
+     * Zig-zag order lookup table for 8x8 DCT coefficients.
+     *
+     * @private
+     */
     _dctZigZag: Uint8Array = new Uint8Array([
         0, 1,  8, 16,  9,  2, 3, 10, 17, 24, 32, 25, 18, 11, 4, 5, 12, 19, 26, 33, 40, 48, 41,
         34, 27, 20, 13,  6, 7, 14, 21, 28, 35, 42, 49, 56, 57, 50, 43, 36, 29, 22, 15, 23, 30, 37, 44,
         51, 58, 59, 52, 45, 38, 31, 39, 46, 53, 60, 61, 54, 47, 55, 62, 63]);
+    /**
+     * Fixed-point cosine/sine constants for IDCT.
+     *
+     * @private
+     */
     _dctCos1: number = 4017;
+    /**
+     * Fixed-point cosine/sine constants for IDCT.
+     *
+     * @private
+     */
     _dctSin1: number = 799;
+    /**
+     * Fixed-point cosine/sine constants for IDCT.
+     *
+     * @private
+     */
     _dctCos3: number = 3406;
+    /**
+     * Fixed-point cosine/sine constants for IDCT.
+     *
+     * @private
+     */
     _dctSin3: number = 2276;
+    /**
+     * Fixed-point cosine/sine constants for IDCT.
+     *
+     * @private
+     */
     _dctCos6: number = 1567;
+    /**
+     * Fixed-point cosine/sine constants for IDCT.
+     *
+     * @private
+     */
     _dctSin6: number = 3784;
+    /**
+     * Fixed-point square root constants for IDCT.
+     *
+     * @private
+     */
     _dctSqrt2: number = 5793;
+    /**
+     * Fixed-point square root constants for IDCT.
+     *
+     * @private
+     */
     _dctSqrt: number = 2896;
+    /**
+     * Run of zeros across blocks in progressive AC decoding.
+     *
+     * @private
+     */
     _eobrun: number = 0;
+    /**
+     * Spectral start for progressive scans.
+     *
+     * @private
+     */
     _spectralStart: number;
+    /**
+     * Spectral end for progressive scans.
+     *
+     * @private
+     */
     _spectralEnd: number;
+    /**
+     * Current block offset during progressive AC updates.
+     *
+     * @private
+     */
     _blockOffset: number;
+    /**
+     * Progressive AC decoding FSM state.
+     *
+     * @private
+     */
     _successiveACState: number = 0;
+    /**
+     * Progressive AC next coefficient value in state machine.
+     *
+     * @private
+     */
     _successiveACNextValue: number = 0;
+    /**
+     * Current block row during decoding.
+     *
+     * @private
+     */
     _blockRow: number = 0;
+    /**
+     * Optional decode transform coefficients.
+     *
+     * @private
+     */
     _decodeTransform: unknown;
+    /**
+     * Color transform flag: -1 auto, 0 none, 1 YCbCr etc.
+     *
+     * @private
+     */
     _colorTransform: number;
+    /**
+     * Parsed image width in pixels.
+     *
+     * @private
+     */
     _width: number;
+    /**
+     * Parsed image height in pixels.
+     *
+     * @private
+     */
     _height: number;
+    /**
+     * Bit buffer length for bitstream reads.
+     *
+     * @private
+     */
     _bitsCount: number = 0;
+    /**
+     * Raw JPEG byte stream.
+     *
+     * @private
+     */
     _data: any; // eslint-disable-line
+    /**
+     * Current byte offset within the raw stream.
+     *
+     * @private
+     */
     _offset: number;
+    /**
+     * Current SOF frame descriptor.
+     *
+     * @private
+     */
     _frame: any; // eslint-disable-line
+    /**
+     * Indicates whether parsing should detect markers mid-scan.
+     *
+     * @private
+     */
     _parseMarker: boolean;
+    /**
+     * Bit buffer data for entropy decoding.
+     *
+     * @private
+     */
     _bitsData: any; // eslint-disable-line
+    /**
+     * JFIF metadata object .
+     *
+     * @private
+     */
     _jfif: any; // eslint-disable-line
+    /**
+     * Adobe metadata object.
+     *
+     * @private
+     */
     _adobe: any; // eslint-disable-line
+    /**
+     * Decoded component descriptors for the active frame.
+     *
+     * @private
+     */
     _components: any; // eslint-disable-line
+    /**
+     * Number of color components.
+     *
+     * @private
+     */
     _numComponents: number;
+    /**
+     * Color space utilities for CMYK conversions.
+     *
+     * @private
+     */
     _colorSpace: _PdfColorSpaceUtils = new _PdfColorSpaceUtils();
+    /**
+     * Initializes a new instance of the `_PdfJpegImage` class.
+     *
+     * @private
+     * @returns {void} nothing.
+     */
     constructor() {
         this._colorTransform = -1;
         this._width = 0;
@@ -57,6 +248,15 @@ export class _PdfJpegImage {
         this._components = [];
         this._numComponents = 0;
     }
+    /**
+     * Performs a quick scan to see if ImageDecoder-like fast paths can be used returns EXIF offsets or null.
+     *
+     * @private
+     * @param {Uint8Array} data Raw JPEG stream.
+     * @param {number} [colorTransform=-1] Color transform hint.
+     * @returns {any} EXIF offsets object, `{}` for none, or `null` when incompatible.
+     * @throws {Error} If SOI marker is missing.
+     */
     _canUseImageDecoder(data: Uint8Array, colorTransform: number = -1): any { // eslint-disable-line
         let exifOffsets: any; // eslint-disable-line
         let offset: number = 0;
@@ -381,6 +581,15 @@ export class _PdfJpegImage {
         }
         this._numComponents = this._components.length;
     }
+    /**
+     * Produces a linearized pixel buffer for the requested output size.
+     *
+     * @private
+     * @param {number} width Target width.
+     * @param {number} height Target height.
+     * @param {boolean} [isSourcePdf=false] Whether the source is a PDF-embedded JPEG.
+     * @returns {Uint8ClampedArray} Interleaved component buffer.
+     */
     private _getLinearizedBlockData(width: number, height: number, isSourcePdf: boolean = false): Uint8ClampedArray {
         const scaleX: number = this._width / width;
         const scaleY: number = this._height / height;
@@ -439,6 +648,12 @@ export class _PdfJpegImage {
         }
         return data;
     }
+    /**
+     * Determines whether YCbCr/transform color conversion is needed based on markers and component labels.
+     *
+     * @private
+     * @returns {boolean} `true` if conversion to RGB is required; otherwise, `false`.
+     */
     private get _isColorConversionNeeded(): boolean {
         if (this._adobe) {
             return !!this._adobe.transformCode;
@@ -460,6 +675,13 @@ export class _PdfJpegImage {
         }
         return false;
     }
+    /**
+     * Converts an interleaved YCbCr buffer to interleaved RGB in-place.
+     *
+     * @private
+     * @param {Uint8ClampedArray} data Interleaved YCbCr buffer.
+     * @returns {Uint8ClampedArray} Converted RGB buffer.
+     */
     private _convertYccToRgb(data: Uint8ClampedArray): Uint8ClampedArray {
         let Y: number;
         let Cb: number;
@@ -474,6 +696,14 @@ export class _PdfJpegImage {
         }
         return data;
     }
+    /**
+     * Converts YCbCr to RGBA into a new output buffer, leaving source intact.
+     *
+     * @private
+     * @param {Uint8ClampedArray} data Source interleaved YCbCr.
+     * @param {Uint8ClampedArray} out Destination RGBA buffer.
+     * @returns {Uint8ClampedArray} The destination RGBA buffer.
+     */
     private _convertYccToRgba(data: Uint8ClampedArray, out: Uint8ClampedArray): Uint8ClampedArray {
         for (let i: number = 0, j: number = 0, length: number = data.length; i < length; i += 3, j += 4) {
             const Y: number = data[<number>i];
@@ -486,14 +716,35 @@ export class _PdfJpegImage {
         }
         return out;
     }
+    /**
+     * Converts YCCK to RGB in-place.
+     *
+     * @private
+     * @param {Uint8ClampedArray} data Interleaved YCCK.
+     * @returns {Uint8ClampedArray} Interleaved RGB subarray.
+     */
     private _convertYcckToRgb(data: Uint8ClampedArray): Uint8ClampedArray {
         this._convertYcckToCmyk(data);
         return this._convertCmykToRgb(data);
     }
+    /**
+     * Converts YCCK to RGBA in-place  and sets opaque alpha.
+     *
+     * @private
+     * @param {Uint8ClampedArray} data Interleaved YCCK.
+     * @returns {Uint8ClampedArray} Interleaved RGBA buffer.
+     */
     private _convertYcckToRgba(data: Uint8ClampedArray): Uint8ClampedArray {
         this._convertYcckToCmyk(data);
         return this._convertCmykToRgba(data);
     }
+    /**
+     * Converts YCCK to CMYK in-place using standard approximations.
+     *
+     * @private
+     * @param {Uint8ClampedArray} data Interleaved YCCK.
+     * @returns {Uint8ClampedArray} The same buffer with CMYK values.
+     */
     private _convertYcckToCmyk(data: Uint8ClampedArray): Uint8ClampedArray {
         let Y: number;
         let Cb: number;
@@ -508,11 +759,25 @@ export class _PdfJpegImage {
         }
         return data;
     }
+    /**
+     * Converts CMYK to RGB using the internal color space converter.
+     *
+     * @private
+     * @param {Uint8ClampedArray} data Interleaved CMYK.
+     * @returns {Uint8ClampedArray} Interleaved RGB view .
+     */
     private _convertCmykToRgb(data: Uint8ClampedArray): Uint8ClampedArray {
         const count: number = data.length / 4;
         this._colorSpace.cmyk._getRgbBuffer(data, 0, count, data, 0, 8, 0);
         return data.subarray(0, count * 3);
     }
+    /**
+     * Converts CMYK to RGBA; sets alpha to 255 where suitable.
+     *
+     * @private
+     * @param {Uint8ClampedArray} data Interleaved CMYK.
+     * @returns {Uint8ClampedArray} Interleaved RGBA buffer.
+     */
     private _convertCmykToRgba(data: Uint8ClampedArray): Uint8ClampedArray {
         this._colorSpace.cmyk._getRgbBuffer(data, 0, data.length / 4, data, 0, 8, 1);
         if (this._colorSpace.cmyk instanceof _PdfDeviceCmykCS) {
@@ -522,6 +787,14 @@ export class _PdfJpegImage {
         }
         return data;
     }
+    /**
+     * Builds a Huffman decoding table from code lengths and values.
+     *
+     * @private
+     * @param {number[]} codeLengths Array with 16 code length counts.
+     * @param {number[]} values Symbol values in canonical order.
+     * @returns {any} Decoding tree structure.
+     */
     _buildHuffmanTable(codeLengths: number[], values: number[]): any { // eslint-disable-line
         let k: number = 0;
         let i: number;
@@ -557,11 +830,31 @@ export class _PdfJpegImage {
         }
         return code[0].children;
     }
+    /* eslint-disable */
+    /**
+     * Gets the byte offset for a block within a component's block buffer.
+     *
+     * @private
+     * @param {{ blocksPerLine: number }} component Component descriptor.
+     * @param {number} row Block row.
+     * @param {number} col Block column.
+     * @returns {number} Offset into the blockData array.
+     */
     _getBlockBufferOffset(component: {
         blocksPerLine: number;
     }, row: number, col: number): number {
         return 64 * ((component.blocksPerLine + 1) * row + col);
     }
+    /**
+     * Dequantizes and inverts a single 8x8 block.
+     *
+     * @private
+     * @param {any} component Component with tables and data.
+     * @param {number} blockBufferOffset Start offset into `blockData`.
+     * @param {Int16Array} p Temporary computation buffer.
+     * @returns {void} nothing.
+     * @throws {Error} If the quantization table is missing.
+     */
     _quantizeAndInverse(component: { quantizationTable: number[]; blockData: Int16Array; }, blockBufferOffset: number, p: Int16Array):
     void {
         const qt: number[] = component.quantizationTable;
@@ -780,6 +1073,15 @@ export class _PdfJpegImage {
             blockData[blockBufferOffset + col + 56] = p7;
         }
     }
+    /**
+     * Builds the final pixel component data for a component across all blocks in the frame.
+     *
+     * @private
+     * @param {any} frame SOF frame descriptor.
+     * @param {any} component Component descriptor.
+     * @returns {Int8Array} The component's block data buffer.
+     */
+    /* eslint-enable */
     _buildComponentData(frame: { blocksPerLine: number; blocksPerColumn: number; blockData: Int8Array; }, component: any): Int8Array { // eslint-disable-line
         const blocksPerLine: number = component.blocksPerLine;
         const blocksPerColumn: number = component.blocksPerColumn;
@@ -792,6 +1094,15 @@ export class _PdfJpegImage {
         }
         return component.blockData;
     }
+    /**
+     * Searches forward for the next valid JPEG marker, optionally starting earlier.
+     *
+     * @private
+     * @param {Uint8Array} data Raw JPEG bytes.
+     * @param {number} currentPos Position at which a marker was expected.
+     * @param {number} [startPos=currentPos] Backtrack start position.
+     * @returns {any} Marker info or null.
+     */
     _findNextFileMarker(data: Uint8Array, currentPos: number, startPos: number = currentPos): { invalid: string | null;
         marker: number; offset: number } | null {
         const maxPos: number = data.length - 1;
@@ -812,6 +1123,13 @@ export class _PdfJpegImage {
         }
         return {invalid: currentMarker.toString(16), marker: newMarker, offset: newPos};
     }
+    /**
+     * Prepares component buffers and MCU layout from the parsed SOF frame.
+     *
+     * @private
+     * @param {any} frame SOF frame descriptor to augment.
+     * @returns {void} nothing.
+     */
     _prepareComponents(frame: any): void { // eslint-disable-line
         const mcusPerLine: number = Math.ceil(frame.samplesPerLine / 8 / frame.maxH);
         const mcusPerColumn: number = Math.ceil(frame.scanLines / 8 / frame.maxV);
@@ -833,6 +1151,14 @@ export class _PdfJpegImage {
         frame.mcusPerLine = mcusPerLine;
         frame.mcusPerColumn = mcusPerColumn;
     }
+    /**
+     * Reads an APP/data block, adjusting for early markers if present.
+     *
+     * @private
+     * @param {Uint8Array} data JPEG stream.
+     * @param {number} offset Start offset.
+     * @returns {any} Block payload and offsets.
+     */
     _readDataBlock(data: Uint8Array, offset: number): { appData: Uint8Array; oldOffset: number; newOffset: number } {
         const length: number = _readUnsignedInteger16(data, offset);
         offset += 2;
@@ -844,6 +1170,14 @@ export class _PdfJpegImage {
         const array: Uint8Array = data.subarray(offset, endOffset);
         return {appData: array, oldOffset: offset, newOffset: offset + array.length};
     }
+    /**
+     * Skips over an APP/data segment, respecting early markers.
+     *
+     * @private
+     * @param {Uint8Array} data JPEG stream.
+     * @param {number} offset Start offset.
+     * @returns {number} New offset after skipping block.
+     */
     _skipData(data: Uint8Array, offset: number): number {
         const length: number = _readUnsignedInteger16(data, offset);
         offset += 2;
@@ -854,6 +1188,18 @@ export class _PdfJpegImage {
         }
         return endOffset;
     }
+    /**
+     * Returns decoded pixel data in the requested format, possibly converting from YCCK/CMYK.
+     *
+     * @private
+     * @param {number} width Target width.
+     * @param {number} height Target height.
+     * @param {boolean} forceRgba Force RGBA output.
+     * @param {boolean} forceRgb Force RGB output.
+     * @param {boolean} isSourcePdf Whether the source stream comes from a PDF (affects transform).
+     * @returns {Uint8ClampedArray | Uint8Array} Pixel buffer.
+     * @throws {Error} On unsupported color modes.
+     */
     _getData(width: number, height: number, forceRgba: boolean, forceRgb: boolean, isSourcePdf: boolean): Uint8ClampedArray | Uint8Array {
         if (this._numComponents > 4) {
             throw new Error('JPEG decoding error: Encountered an unsupported color mode in the image.');
@@ -896,6 +1242,14 @@ export class _PdfJpegImage {
         }
         return data;
     }
+    /**
+     * Decodes a Huffman symbol using the provided decoding tree.
+     *
+     * @private
+     * @param {any} tree Huffman decode tree.
+     * @returns {number} Decoded symbol value.
+     * @throws {Error} On invalid Huffman sequences.
+     */
     _decodeHuffman(tree: any): number { // eslint-disable-line
         let node: any = tree; // eslint-disable-line
         while (true) { // eslint-disable-line
@@ -909,6 +1263,13 @@ export class _PdfJpegImage {
             throw new Error('JPEG decoding error: The image contains an invalid Huffman sequence.');
         }
     }
+    /**
+     * Receives `length` bits from the bitstream as an unsigned integer.
+     *
+     * @private
+     * @param {number} length Number of bits to read.
+     * @returns {number} Unsigned integer value.
+     */
     _receive(length: number): number {
         let n: number = 0;
         while (length > 0) {
@@ -917,6 +1278,13 @@ export class _PdfJpegImage {
         }
         return n;
     }
+    /**
+     * Receives a signed integer with JPEG's extend coding for a given bit length.
+     *
+     * @private
+     * @param {number} length Bit length.
+     * @returns {number} Signed, extended value.
+     */
     _receiveAndExtend(length: number): number {
         if (length === 1) {
             return this._readBit() === 1 ? 1 : -1;
@@ -927,7 +1295,16 @@ export class _PdfJpegImage {
         }
         return n + (-1 << length) + 1;
     }
-    _decodeBaseline(component: any, blockOffset: number): any { // eslint-disable-line
+    /* eslint-disable */
+    /**
+     * Decodes a baseline 8x8 block for a component.
+     *
+     * @private
+     * @param {any} component Component with Huffman tables and block storage.
+     * @param {number} blockOffset Offset into blockData.
+     * @returns {any} decoded baseline component.
+     */
+    _decodeBaseline(component: any, blockOffset: number): any {
         const t: number = this._decodeHuffman(component.huffmanTableDC);
         const diff: number = t === 0 ? 0 : this._receiveAndExtend(t);
         component.blockData[<number>blockOffset] = component.pred += diff;
@@ -949,15 +1326,41 @@ export class _PdfJpegImage {
             k++;
         }
     }
-    _decodeDCFirst(component: { huffmanTableDC: any; blockData: number[]; pred: number; }, blockOffset: number, successive: any): any { // eslint-disable-line
+    /**
+     * Decodes progressive DC first pass for a component block.
+     *
+     * @private
+     * @param {any} component Component descriptor.
+     * @param {number} blockOffset Offset in blockData.
+     * @param {any} successive Successive approximation bit position.
+     * @returns {any} nothing.
+     */
+    _decodeDCFirst(component: { huffmanTableDC: any; blockData: number[]; pred: number; }, blockOffset: number, successive: any): any {
         const t: number = this._decodeHuffman(component.huffmanTableDC);
         const diff: number = t === 0 ? 0 : this._receiveAndExtend(t) << successive;
         component.blockData[<number>blockOffset] = component.pred += diff;
     }
-    _decodeDCSuccessive(component: { blockData: number[]; }, blockOffset: number, successive: any): void { // eslint-disable-line
+    /**
+     * Decodes progressive DC successive refinement.
+     *
+     * @private
+     * @param {any} component Component descriptor.
+     * @param {number} blockOffset Offset in blockData.
+     * @param {any} successive Successive approximation bit position.
+     * @returns {void} nothing.
+     */
+    _decodeDCSuccessive(component: { blockData: number[]; }, blockOffset: number, successive: any): void {
         component.blockData[<number>blockOffset] |= this._readBit() << successive;
     }
-    _decodeACFirst(component: { huffmanTableAC: any; blockData: number[]; }, blockOffset: number, successive: any): any { // eslint-disable-line
+    /**
+     * Decodes progressive AC first pass for spectral band.
+     *
+     * @private
+     * @param {any} component Component with AC table and storage.
+     * @param {number} blockOffset Block offset.
+     * @param {any} successive Successive bit position.
+     */
+    _decodeACFirst(component: { huffmanTableAC: any; blockData: number[]; }, blockOffset: number, successive: any): any {
         if (this._eobrun > 0) {
             this._eobrun--;
             return;
@@ -982,6 +1385,19 @@ export class _PdfJpegImage {
             k++;
         }
     }
+    /* eslint-enable */
+    /**
+     * Decodes one MCU by calling the appropriate block decode function.
+     *
+     * @private
+     * @param {any} component Component descriptor.
+     * @param {any} decode Decode function (baseline/progressive).
+     * @param {number} mcu MCU index.
+     * @param {number} row Row within MCU sampling grid.
+     * @param {number} col Column within MCU sampling grid.
+     * @param {any} mcusPerLine Number of MCUs per scanline.
+     * @returns {void} nothing.
+     */
     _decodeMcu(component: any, decode: (component: any, blockOffset: number) => void, mcu: number, row: number, col: number, mcusPerLine: any): void { // eslint-disable-line
         const mcuRow: number = (mcu / mcusPerLine) | 0;
         const mcuCol: number = mcu % mcusPerLine;
@@ -990,13 +1406,32 @@ export class _PdfJpegImage {
         const blockOffset: number = this._getBlockBufferOffset(component, this._blockRow, blockCol);
         decode(component, blockOffset);
     }
-    _decodeBlock(component: { blocksPerLine: number; }, _decode: (component: any, blockOffset: number) => void, mcu: number): void { // eslint-disable-line
+    /* eslint-disable */
+    /**
+     * Decodes one block using a provided decode function for single-component scans.
+     *
+     * @private
+     * @param {{ blocksPerLine: number; }} component Component descriptor.
+     * @param {any} _decode Decode function.
+     * @param {number} mcu Block index (as MCU).
+     * @returns {void} nothing.
+     */
+    _decodeBlock(component: { blocksPerLine: number; }, _decode: (component: any, blockOffset: number) => void, mcu: number): void {
         this._blockRow = (mcu / component.blocksPerLine) | 0;
         const blockCol: number = mcu % component.blocksPerLine;
         const blockOffset: number = this._getBlockBufferOffset(component, this._blockRow, blockCol);
         _decode(component, blockOffset);
     }
-    _decodeACSuccessive(component: { blockData: number[]; huffmanTableAC: any;}, blockOffset: number, successive: any): void { // eslint-disable-line
+    /**
+     * Decodes progressive AC successive refinement over a spectral band.
+     *
+     * @private
+     * @param {any} component Component descriptor.
+     * @param {number} blockOffset Block start offset.
+     * @param {any} successive Bit position to refine.
+     * @returns {void} nothing.
+     */
+    _decodeACSuccessive(component: { blockData: number[]; huffmanTableAC: any;}, blockOffset: number, successive: any): void {
         let k: number = this._spectralStart;
         const e: number = this._spectralEnd;
         let r: number = 0;
@@ -1060,6 +1495,23 @@ export class _PdfJpegImage {
             }
         }
     }
+    /* eslint-enable */
+    /**
+     * Decodes a scan, handling MCUs and restart markers.
+     *
+     * @private
+     * @param {Uint8Array} data JPEG stream.
+     * @param {number} offset Start offset of entropy-coded data.
+     * @param {any} frame SOF frame descriptor.
+     * @param {any} components Components participating in the scan.
+     * @param {any} resetInterval Restart interva or undefined.
+     * @param {number} spectralStart Start of spectral selection.
+     * @param {number} spectralEnd End of spectral selection.
+     * @param {any} successivePrev Previous successive approximation bit position.
+     * @param {any} successive Successive approximation bit position.
+     * @param {boolean} [parseMarker=false] If `true`, detect DNL/EOI within scan.
+     * @returns {number} Number of bytes consumed by the scan.
+     */
     _decodeScan(data: Uint8Array, offset: number, frame: any, components: any, resetInterval: any,  // eslint-disable-line
                 spectralStart: number, spectralEnd: number, successivePrev: any, successive: any, // eslint-disable-line
                 parseMarker: boolean = false): number {
@@ -1157,6 +1609,13 @@ export class _PdfJpegImage {
         }
         return this._offset - startOffset;
     }
+    /**
+     * Reads the next bit from the entropy-coded bitstream, handling stuffed bytes and in-scan markers.
+     *
+     * @private
+     * @returns {number} The next bit (0 or 1).
+     * @throws {_PdfDoNotLoadMarkerError | _PdfEndOfImageMarkerError | Error} On DNL/EOI or unexpected marker.
+     */
     _readBit(): number {
         if (this._bitsCount > 0) {
             this._bitsCount--;

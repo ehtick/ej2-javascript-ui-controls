@@ -140,7 +140,14 @@ export class InlineContentInsertionModule {
         }
 
         if (!isNullOrUndefined(e.newProp.users)) {
-            this.userMenuObj.dataSource = e.newProp.users as { [key: string]: Object }[];
+            const mentionDataSource: UserModel[] = this.editor.blockManager.users.map((user: UserModel) => ({
+                id: user.id,
+                user: user.user.trim(),
+                avatarUrl: user.avatarUrl,
+                avatarBgColor: user.avatarBgColor || getAutoAvatarColor(user.id),
+                initials: getUserInitials(user.user)
+            }));
+            this.userMenuObj.dataSource = mentionDataSource as { [key: string]: Object }[];
         }
     }
     /**

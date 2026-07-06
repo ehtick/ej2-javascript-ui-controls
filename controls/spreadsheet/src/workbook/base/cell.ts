@@ -1,12 +1,13 @@
 import { extend, Property, ChildProperty, Complex, Collection } from '@syncfusion/ej2-base';
 import { SheetModel } from './index';
 import { CellStyleModel, HyperlinkModel, CellStyle, wrapEvent, ValidationModel, Chart, ChartModel, ExtendedWorkbook, ThreadedComment } from '../common/index';
-import { ImageModel, Image, updateCell, ThreadedCommentModel, NoteModel } from '../common/index';
+import { ImageModel, Image, updateCell, ThreadedCommentModel, NoteModel, RichTextModel, RichText } from '../common/index';
 import { getRow } from './index';
 import { RowModel } from './row-model';
 import { CellModel, OpenSettingsModel } from './cell-model';
 import { Workbook } from './workbook';
 import { getSheet } from './sheet';
+import { positionAutoFillElement } from '../../spreadsheet/common/event';
 
 /**
  * Represents the cell.
@@ -186,6 +187,18 @@ export class Cell extends ChildProperty<RowModel> {
     public formattedText: string;
 
     /**
+     * Specifies the rich text segments for the cell text, allowing superscript and subscript formatting within the content.
+     * Uses the RichText model to apply formatting to specific text segments. The options are:
+     * - **text**: Specifies the text content for each segment.
+     * - **style**: Specifies the style for each segment; it supports superscript and subscript formatting.
+     * Set `verticalAlign` as `super` for superscript formatting and `sub` for subscript formatting.
+     *
+     * @default []
+     */
+    @Collection([], RichText)
+    public richText: RichTextModel[];
+
+    /**
      * It allows to set the cell row height.
      *
      * @default 20
@@ -282,12 +295,15 @@ export function wrap(address: string, wrap: boolean = true, context?: ExtendedWo
         for (let i: number = rng[0]; i <= rng[2]; i++) {
             for (let j: number = rng[1]; j <= rng[3]; j++) {
                 cancel = updateCell(context, sheet, { cell: { wrap: wrap }, rowIdx: i, colIdx: j, preventEvt: preventEvt });
-                if (!cancel && uiRefresh) {
+                if (!cancel && uiRefresh && !context.paintSuspendCount) {
                     context.notify(wrapEvent, { range: [i, j, i, j], wrap: wrap, sheet: sheet, initial: true, isPublic: isPublic });
                 }
             }
         }
         context.setProperties({ sheets: context.sheets }, true);
+        if (context.paintSuspendCount > 0) {
+            context.queuePaintAction('wrap_positionAutoFillElement', () => { context.notify(positionAutoFillElement, null); });
+        }
     }
 }
 

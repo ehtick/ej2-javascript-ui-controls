@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/bootstrap4' as *;
-@forward 'ej2-base/styles/definition/bootstrap4';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $navigation-arrow-background: $white !default;
 $navigation-icon-background-hover: $primary !default;
 $navigation-icon-border-hover: rgba(0, 123, 255, .5) !default;

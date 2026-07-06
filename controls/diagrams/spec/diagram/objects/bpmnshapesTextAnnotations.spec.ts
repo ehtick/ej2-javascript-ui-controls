@@ -1699,4 +1699,110 @@ describe('Diagram Control', () => {
         });
     });
 
+    describe('Text annotation drag', () => {
+        let diagram: Diagram;
+        let diagramElement: HTMLElement;
+        beforeAll((): void => {
+
+        });
+        afterAll((): void => {
+            diagram.destroy();
+            diagramElement.remove();
+            diagram = null;
+            diagramElement = null;
+        });
+        it('TextAnnotation connected via textAnnotationTarget should move with child node when dragging within subprocess', (done: Function) => {
+            diagramElement = createElement('div', { id: 'diagram_text_annotation_subprocess_drag' });
+            document.body.appendChild(diagramElement);
+
+            const nodes: NodeModel[] = [
+                {
+                    id: 'task1',
+                    width: 80,
+                    height: 60,
+                    margin: { left: 50, top: 50 },
+                    shape: { type: 'Bpmn', shape: 'Event' },
+                },
+                {
+                    id: 'textAnnotation1',
+                    width: 70,
+                    height: 70,
+                    margin: { left: 150, top: 50 },
+                    annotations: [{ content: 'Text Annotation' }],
+                    shape: {
+                        type: 'Bpmn',
+                        shape: 'TextAnnotation',
+                        textAnnotation: { textAnnotationDirection: 'Left', textAnnotationTarget: 'task1' }
+                    }
+                },
+                {
+                    id: 'subProcess',
+                    width: 400,
+                    height: 300,
+                    offsetX: 300,
+                    offsetY: 300,
+                    constraints: NodeConstraints.Default | NodeConstraints.AllowDrop,
+                    shape: {
+                        type: 'Bpmn',
+                        shape: 'Activity',
+                        activity: {
+                            activity: 'SubProcess',
+                            subProcess: {
+                                collapsed: false,
+                                processes: ['task1', 'textAnnotation1']
+                            }
+                        }
+                    }
+                }
+            ];
+
+            diagram = new Diagram({
+                width: 800,
+                height: 600,
+                nodes: nodes
+            });
+            diagram.appendTo('#diagram_text_annotation_subprocess_drag');
+
+            const canvasElement = document.getElementById(diagram.element.id + 'content');
+            const task = diagram.nameTable['task1'];
+            const annotation = diagram.nameTable['textAnnotation1'];
+
+            // Store initial margins (relative to subprocess)
+            const taskInitialMarginLeft = task.margin.left;
+            const taskInitialMarginTop = task.margin.top;
+            const annotationInitialMarginLeft = annotation.margin.left;
+            const annotationInitialMarginTop = annotation.margin.top;
+
+            // Store initial absolute offsets
+            const taskInitialOffsetX = task.offsetX;
+            const taskInitialOffsetY = task.offsetY;
+
+            // Drag task within subprocess: move 50px to the right
+            const mouseEvents = new MouseEvents();
+
+            mouseEvents.mouseDownEvent(canvasElement, taskInitialOffsetX, taskInitialOffsetY);
+            mouseEvents.mouseMoveEvent(canvasElement, taskInitialOffsetX + 50, taskInitialOffsetY + 50);
+            mouseEvents.mouseUpEvent(canvasElement, taskInitialOffsetX + 50, taskInitialOffsetY + 50);
+
+            const taskNewMarginLeft = task.margin.left;
+            const taskNewMarginTop = task.margin.top;
+            const annotationNewMarginLeft = annotation.margin.left;
+            const annotationNewMarginTop = annotation.margin.top;
+
+            const taskMarginDeltaLeft = taskNewMarginLeft - taskInitialMarginLeft;
+            const taskMarginDeltaTop = taskNewMarginTop - taskInitialMarginTop;
+            const annotationMarginDeltaLeft = annotationNewMarginLeft - annotationInitialMarginLeft;
+            const annotationMarginDeltaTop = annotationNewMarginTop - annotationInitialMarginTop;
+
+            // Both margins should update proportionally within subprocess
+            expect(Math.abs(annotationMarginDeltaLeft - taskMarginDeltaLeft) < 1).toBe(true);
+            expect(Math.abs(annotationMarginDeltaTop - taskMarginDeltaTop) < 1).toBe(true);
+
+            diagram.destroy();
+            diagramElement.remove();
+            done();
+
+        });
+    });
+
 });

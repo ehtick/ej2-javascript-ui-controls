@@ -69,7 +69,19 @@ export class RibbonComboBox {
             text: comboBoxSettings.text,
             value: comboBoxSettings.value,
             width: comboBoxSettings.width,
-            beforeOpen: comboBoxSettings.beforeOpen,
+            beforeOpen: (e: PopupEventArgs) => {
+                requestAnimationFrame(() => {
+                    if (!this.parent) { return; }
+                    const target: HTMLElement = this.parent.getAppendToElement();
+                    const popupEle: HTMLElement = document.getElementById(inputEle.id + '_popup');
+                    if (popupEle && !target.contains(popupEle)) {
+                        target.appendChild(popupEle);
+                    }
+                });
+                if (comboBoxSettings.beforeOpen) {
+                    comboBoxSettings.beforeOpen.call(this, e);
+                }
+            },
             open: comboBoxSettings.open,
             htmlAttributes: comboBoxSettings.htmlAttributes,
             close: (e: PopupEventArgs) => {
@@ -103,6 +115,19 @@ export class RibbonComboBox {
         const inputEle: HTMLElement = itemEle.querySelector('#' + item.id);
         inputEle.setAttribute('data-control', item.type.toString());
         const comboBoxObj: ComboBox = getComponent(inputEle, ComboBox);
+        comboBoxObj.beforeOpen = (e: PopupEventArgs) => {
+            requestAnimationFrame(() => {
+                if (!this.parent) { return; }
+                const target: HTMLElement = this.parent.getAppendToElement();
+                const popupEle: HTMLElement = document.getElementById(item.id + '_popup');
+                if (popupEle && !target.contains(popupEle)) {
+                    target.appendChild(popupEle);
+                }
+            });
+            if (item.comboBoxSettings.beforeOpen) {
+                item.comboBoxSettings.beforeOpen.call(this, e);
+            }
+        };
         comboBoxObj.setProperties({ cssClass: comboBoxObj.cssClass + SPACE + RIBBON_POPUP_CONTROL });
         comboBoxObj.close = (e: PopupEventArgs) => {
             const target: HTMLElement = (e.event as MouseEvent) ? (e.event as MouseEvent).target as HTMLElement : null;

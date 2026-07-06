@@ -1,6 +1,6 @@
-@use 'ej2-base/styles/definition/fabric-dark' as *;
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 @use '../context-menu/fabric-dark-definition' as *;
-@forward 'ej2-base/styles/definition/fabric-dark';
+
 @forward '../context-menu/fabric-dark-definition';
 $menu-bigger-icon-margin-right: 10px !default;
 $menu-caret-padding-left: 10px !default;

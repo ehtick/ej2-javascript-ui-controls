@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/bootstrap' as *;
-@forward 'ej2-base/styles/definition/bootstrap';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $treegrid-right-arrow-icon: '\e22f' !default;
 $treegrid-toolbar-expand-icon: '\e558' !default;
 $treegrid-toolbar-collapse-icon: '\e557' !default;
@@ -29,3 +29,5 @@ $treegrid-rowdd-boxshadow:  #317ab9 !default;
 $treegrid-rowdd-childborder-width: 1px 0 0 !default;
 $treegrid-lastrowdd-childborder-width: 1px 0 !default;
 $treegrid-rtl-rowdd-childborder-width: 1px 0 0 !default;
+$treegrid-cbox-height: 20px !default;
+$treegrid-cbox-width: 20px !default;

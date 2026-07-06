@@ -1,7 +1,7 @@
 import { detach, EventHandler, Browser, L10n, isNullOrUndefined, extend, isUndefined } from '@syncfusion/ej2-base';
 import { ClickEventArgs } from '@syncfusion/ej2-navigations';
 import { Spreadsheet } from '../base/index';
-import { SheetModel, getRangeIndexes, getCell, getSheet, CellModel, getSwapRange, inRange, Workbook, isReadOnlyCells, setCell, ValidationModel, checkColumnValidation, getRowHeight, getColumnWidth } from '../../workbook/index';
+import { SheetModel, getRangeIndexes, getCell, getSheet, CellModel, getSwapRange, inRange, Workbook, isReadOnlyCells, setCell, ValidationModel, checkColumnValidation, getRowHeight, getColumnWidth, RichTextModel } from '../../workbook/index';
 import { CellStyleModel, getRangeAddress, getSheetIndexFromId, getSheetName, NumberFormatArgs } from '../../workbook/index';
 import { RowModel, getFormattedCellObject, workbookFormulaOperation, checkIsFormula, Sheet, mergedRange } from '../../workbook/index';
 import { ExtendedSheet, Cell, setMerge, MergeArgs, getCellIndexes, ChartModel } from '../../workbook/index';
@@ -183,13 +183,14 @@ export class Clipboard {
     private paste(args?: {
         range: number[], sIdx: number, type: PasteSpecialType, isClick?: boolean,
         isAction?: boolean, isInternal?: boolean, isFromUpdateAction?: boolean, focus?: boolean, beforeActionData: BeforeActionData,
-        isUndo?: boolean
+        isUndo?: boolean, modelUpdateOnly?: boolean
     } & ClipboardEvent): void {
         if (this.parent.isEdit || this.parent.element.getElementsByClassName('e-dlg-overlay').length > 0) {
             const editEle: HTMLElement = this.parent.element.getElementsByClassName('e-spreadsheet-edit')[0] as HTMLElement;
             editEle.style.height = 'auto';
             return;
         }
+        const isModelOnly: boolean = !!(args && args.modelUpdateOnly);
         let rfshRange: number[];
         let isExternal: DataTransfer | boolean = ((args && args.clipboardData) || window['clipboardData']);
         if (isExternal && args.clipboardData && args.clipboardData.getData('isInternalCut').length && !this.copiedInfo) {
@@ -280,7 +281,7 @@ export class Clipboard {
                 this.parent.notify(editAlert, null);
                 return;
             }
-            if (args.isAction && !this.copiedShapeInfo) {
+            if (args.isAction && !this.copiedShapeInfo && !isModelOnly) {
                 const beginEventArgs: BeforePasteEventArgs = { requestType: 'paste', copiedInfo: this.copiedInfo,
                     copiedRange: getRangeAddress(cIdx), pastedRange: getRangeAddress(rfshRange), type: pasteType, cancel: false };
                 this.parent.notify(beginAction, { eventArgs: beginEventArgs, action: 'clipboard' });
@@ -419,7 +420,9 @@ export class Clipboard {
                             }
                             cell.validation = validation;
                         }
-                        if (cell && cell.isReadOnly) { delete cell.isReadOnly; }
+                        if (cell.isReadOnly) { delete cell.isReadOnly; }
+                        if (cell.chart) { delete cell.chart; }
+                        if (cell.image) { delete cell.image; }
                         if (isRowSelected || isColSelected) {
                             if (cell && cell.rowSpan) {
                                 if (cell.rowSpan > 0) {
@@ -668,10 +671,13 @@ export class Clipboard {
                 }
                 if (colValidationCollection.length) {
                     colValidationCollection.forEach((colIdx: number) => {
-                        this.parent.notify(cellValidation, { range: prevSheet.name + '!' + getRangeAddress([cIdx[0], colIdx, cIdx[2], colIdx]), isRemoveValidation: true });
+                        this.parent.notify(cellValidation, {
+                            range: prevSheet.name + '!' + getRangeAddress([cIdx[0], colIdx, cIdx[2], colIdx]),
+                            isRemoveValidation: true, modelUpdateOnly: isModelOnly
+                        });
                     });
                 }
-                if (uniqueCellColl.length) {
+                if (uniqueCellColl.length && !isModelOnly) {
                     for (let i: number = 0; i < uniqueCellColl.length; i++) {
                         this.parent.serviceLocator.getService<ICellRenderer>('cell').refresh(
                             uniqueCellColl[i as number][0], uniqueCellColl[i as number][1]);
@@ -686,31 +692,38 @@ export class Clipboard {
                 if (copyCellArgs.isRandFormula && this.parent.calculationMode === 'Automatic') {
                     this.parent.notify(workbookFormulaOperation, { action: 'refreshRandomFormula' });
                 }
-                this.parent.notify(refreshRibbonIcons, null);
-                this.parent.notify(refreshCommentsPane, { sheetIdx: this.parent.activeSheetIndex });
+                if (!isModelOnly) {
+                    this.parent.notify(refreshRibbonIcons, null);
+                    this.parent.notify(refreshCommentsPane, { sheetIdx: this.parent.activeSheetIndex });
+                }
                 const hiddenDiff: number = rfshRange[2] - hiddenCount;
                 const selHiddenDiff: number = selectionRange[2] - hiddenCount;
                 rfshRange[2] = hiddenDiff;
                 selectionRange[2] = selHiddenDiff;
                 this.parent.setUsedRange(rfshRange[2], rfshRange[3]);
                 const selRange: string = getRangeAddress(selectionRange);
-                if (cSIdx === this.parent.activeSheetIndex && !args.isFromUpdateAction) {
+                if (cSIdx === this.parent.activeSheetIndex && !args.isFromUpdateAction && !isModelOnly) {
                     this.parent.notify(selectRange, { address: selRange });
+                }
+                if (isModelOnly) {
+                    this.parent.queuePaintAction('paste', () => {
+                        this.parent.notify(selectRange, { address: selRange });
+                    });
                 }
                 if (!isExternal && this.copiedInfo.isCut) {
                     isCut = this.copiedInfo.isCut;
-                    if (copiedIdx === this.parent.activeSheetIndex) {
+                    if (!isModelOnly && copiedIdx === this.parent.activeSheetIndex) {
                         this.parent.serviceLocator.getService<ICellRenderer>('cell').refreshRange(cIdx);
                     }
-                    this.clearCopiedInfo();
+                    this.clearCopiedInfo(isModelOnly);
                 }
                 if ((isExternal || isInRange) && this.copiedInfo) {
-                    this.clearCopiedInfo();
+                    this.clearCopiedInfo(isModelOnly);
                 }
                 let clearCFArgs: CFArgs;
                 if (isCut) {
                     if (cfRule && cfRule.length && pasteType !== 'Values') {
-                        clearCFArgs = { range: cIdx, sheetIdx: pSheetIdx, isClear: true };
+                        clearCFArgs = { range: cIdx, sheetIdx: pSheetIdx, isClear: true, modelUpdateOnly: isModelOnly };
                         this.parent.notify(clearCFRule, clearCFArgs);
                     }
                     //this.updateFilter(copyInfo, rfshRange);
@@ -724,7 +737,7 @@ export class Clipboard {
                     setRowEleHeight(this.parent, prevSheet, hgt, cIdx[0], undefined, undefined, isActSheet, !isActSheet);
                 }
                 if (cf.length && cSIdx === this.parent.activeSheetIndex) {
-                    this.parent.notify(applyCF, <ApplyCFArgs>{ cfModel: cf, isAction: true });
+                    this.parent.notify(applyCF, <ApplyCFArgs>{ cfModel: cf, isAction: true, modelUpdateOnly: isModelOnly });
                 }
                 const copySheet: SheetModel = getSheet(this.parent as Workbook, copiedIdx);
                 if (!isExternal && cIdx[0] === cIdx[2] && cSheetSel === 'Row') {
@@ -737,7 +750,7 @@ export class Clipboard {
                         setRowEleHeight(this.parent, copySheet, defaultHeight, cIdx[0]);
                     }
                 }
-                if (args.isAction) {
+                if (args.isAction && !isModelOnly) {
                     const eventArgs: Object = {
                         requestType: 'paste',
                         copiedInfo: copyInfo,
@@ -757,12 +770,14 @@ export class Clipboard {
                     }
                     this.parent.notify(completeAction, { eventArgs: eventArgs, action: 'clipboard' });
                 }
-                if (args.focus) {
+                if (args.focus && !isModelOnly) {
                     focus(this.parent.element);
                 }
             }
         } else {
-            this.getClipboardEle().select();
+            if (!isModelOnly) {
+                this.getClipboardEle().select();
+            }
         }
     }
 
@@ -883,8 +898,8 @@ export class Clipboard {
             const cancel: boolean = updateCell(
                 this.parent, sheet, {
                     cell: cell, rowIdx: rIdx, colIdx: cIdx, pvtExtend: !isExtend, valChange: !isUniqueCell, lastCell: lastCell,
-                    uiRefresh: uiRefresh, requestType: 'paste', skipFormatCheck: !args.isExternal, isRandomFormula: args.isRandFormula,
-                    checkFormulaAdded: true
+                    uiRefresh: uiRefresh && !this.parent.paintSuspendCount, requestType: 'paste', skipFormatCheck: !args.isExternal,
+                    isRandomFormula: args.isRandFormula, checkFormulaAdded: true
                 }, actionData, isUndo);
             if (!cancel) {
                 if (cell && cell.style && args.isExternal) {
@@ -929,6 +944,7 @@ export class Clipboard {
 
     private setCopiedInfo(args?: ClipboardInfo & ClipboardEvent & { isFromUpdateAction?: boolean }, isCut?: boolean): void {
         if (this.parent.isEdit) { return; }
+        const isModelOnly: boolean = !!(args && args.modelUpdateOnly);
         const deferred: Deferred = new Deferred();
         args.promise = deferred.promise;
         const sheet: ExtendedSheet = this.parent.getActiveSheet() as Sheet;
@@ -948,7 +964,7 @@ export class Clipboard {
             this.parent.notify(readonlyAlert, null);
             return;
         }
-        if (args && !args.isPublic && !args.clipboardData) {
+        if (args && !args.isPublic && !args.clipboardData && !isModelOnly) {
             const eventArgs: { copiedRange: string, cancel: boolean, action: string } = { copiedRange:
                 `${sheet.name}!${getRangeAddress(range)}`, cancel: false, action: isCut ? 'cut' : 'copy' };
             this.parent.notify(beginAction, eventArgs);
@@ -960,7 +976,8 @@ export class Clipboard {
         };
         const pictureElements: HTMLCollection = document.getElementsByClassName('e-ss-overlay-active');
         const pictureLen: number = pictureElements.length;
-        if (sheet.isLocalData && !(args && args.clipboardData) && range[0] === 0 && range[2] === (sheet.rowCount - 1) && !pictureLen) {
+        if (sheet.isLocalData &&
+            !isModelOnly && !(args && args.clipboardData) && range[0] === 0 && range[2] === (sheet.rowCount - 1) && !pictureLen) {
             this.parent.showSpinner();
             this.parent.notify('updateSheetFromDataSource', option);
         }
@@ -988,7 +1005,9 @@ export class Clipboard {
                     const imgURL: string = window.getComputedStyle(pictureElements[0]).backgroundImage.slice(5, -2);
                     this.addImgToClipboard(imgURL, this.copiedShapeInfo.height, this.copiedShapeInfo.width);
                 }
-                this.hidePaste(true);
+                if (!isModelOnly) {
+                    this.hidePaste(true);
+                }
                 if (isCut) {
                     if (pictureElements[0].classList.contains('e-datavisualization-chart')) {
                         this.parent.deleteChart(this.copiedShapeInfo.chartInfo.id);
@@ -1001,22 +1020,32 @@ export class Clipboard {
                 }
             } else if (!(args && args.clipboardData)) {
                 if (this.copiedInfo) {
-                    this.clearCopiedInfo();
+                    this.clearCopiedInfo(isModelOnly);
                 }
                 this.copiedInfo = {
                     range: range, sId: (args && args.sId) ? args.sId : sheet.id, isCut: isCut
                 };
-                this.hidePaste(true);
-                if (!args.isFromUpdateAction) {
+                if (!isModelOnly) {
+                    this.hidePaste(true);
+                }
+                if (!args.isFromUpdateAction && !isModelOnly) {
                     this.initCopyIndicator();
                 }
-                if (!Browser.isIE) {
+                if (isModelOnly) {
+                    this.parent.queuePaintAction('Clipboard', () => {
+                        this.hidePaste(true);
+                        this.initCopyIndicator();
+                    });
+                }
+                if (!Browser.isIE && !isModelOnly) {
                     this.getClipboardEle().select();
                 }
-                if (args && args.invokeCopy) {
+                if (args && args.invokeCopy && !isModelOnly) {
                     document.execCommand(isCut ? 'cut' : 'copy');
                 }
-                this.parent.hideSpinner();
+                if (!isModelOnly) {
+                    this.parent.hideSpinner();
+                }
             }
             if (Browser.isIE) {
                 this.setExternalCells(args, isCut);
@@ -1025,9 +1054,11 @@ export class Clipboard {
         });
         if (args && args.clipboardData) {
             this.setExternalCells(args, isCut);
-            this.getClipboardEle().setAttribute(
-                'aria-label', `${sheet.selectedRange} ${this.parent.serviceLocator.getService<L10n>(locale).getConstant(
-                    isCut ? 'Cut' : 'Copy')}`);
+            if (!isModelOnly) {
+                this.getClipboardEle().setAttribute(
+                    'aria-label', `${sheet.selectedRange} ${this.parent.serviceLocator.getService<L10n>(locale).getConstant(
+                        isCut ? 'Cut' : 'Copy')}`);
+            }
         }
     }
 
@@ -1087,18 +1118,30 @@ export class Clipboard {
         return null;
     }
 
-    private clearCopiedInfo(): void {
+    private clearCopiedInfo(modelUpdateOnly?: boolean): void {
         if (this.copiedInfo) {
-            if (this.parent.getActiveSheet().id === this.copiedInfo.sId) {
+            if (this.parent.getActiveSheet().id === this.copiedInfo.sId && !modelUpdateOnly) {
                 this.removeIndicator(this.parent.getSelectAllContent()); this.removeIndicator(this.parent.getColumnHeaderContent());
                 this.removeIndicator(this.parent.getRowHeaderContent()); this.removeIndicator(this.parent.getMainContent());
             }
             this.copiedInfo = null;
-            this.hidePaste();
+            if (!modelUpdateOnly) {
+                this.hidePaste();
+            } else {
+                this.parent.queuePaintAction('pasteRibbon', () => {
+                    this.hidePaste();
+                });
+            }
         }
         if (this.copiedShapeInfo) {
             this.copiedShapeInfo = null;
-            this.hidePaste();
+            if (!modelUpdateOnly) {
+                this.hidePaste();
+            } else {
+                this.parent.queuePaintAction('pasteShapeRibbon', () => {
+                    this.hidePaste();
+                });
+            }
         }
     }
 
@@ -1142,11 +1185,12 @@ export class Clipboard {
         if (this.parent.getActiveSheet().isProtected) {
             isShow = false;
         }
-        this.parent.notify(enableToolbarItems, [{ items: [this.parent.element.id + '_paste'], enable: isShow || false }]);
+        const l10n: L10n = this.parent.serviceLocator.getService(locale);
+        this.parent.notify(enableToolbarItems, [{ tab: l10n.getConstant('Home'), items: [this.parent.element.id + '_paste'], enable: isShow || false }]);
     }
 
     private setExternalCells(args: ClipboardEvent, isCut?: boolean): void {
-        let cell: CellModel; let val: string; let text: string = ''; let cellStyle: string;
+        let cell: CellModel; let val: string; let text: string = ''; let cellStyle: string; let richTextVal: string = null;
         const sheet: SheetModel = this.parent.getActiveSheet();
         const range: number[] = getSwapRange(this.copiedInfo.range);
         const isRowSelected: boolean = range[1] === 0 && range[3] === sheet.colCount - 1;
@@ -1222,15 +1266,30 @@ export class Clipboard {
                     displayVal = typeof val === 'string' && val.includes('\n') ? val.split('\n').join('<br>') : val;
                 }
                 data += '>';
+                if (cell.richText && cell.richText.length) {
+                    richTextVal = this.getHtmlFromRichText(cell.richText);
+                }
                 if (cell.hyperlink) {
                     const address: string = typeof cell.hyperlink === 'string' ? cell.hyperlink : (cell.hyperlink.address || '');
                     if (address && ['http://', 'https://', 'ftp://'].some((url: string) => address.startsWith(url))) {
-                        data += `<a href="${address}" target="_blank">${displayVal}</a>`;
+                        if (cell.richText) {
+                            data += `<a href="${address}" target="_blank">${richTextVal}</a>`;
+                        } else {
+                            data += `<a href="${address}" target="_blank">${displayVal}</a>`;
+                        }
+                    } else {
+                        if (cell.richText) {
+                            data += richTextVal;
+                        } else {
+                            data += displayVal;
+                        }
+                    }
+                } else {
+                    if (cell.richText) {
+                        data += richTextVal;
                     } else {
                         data += displayVal;
                     }
-                } else {
-                    data += displayVal;
                 }
                 text += displayVal;
                 data += '</td>';
@@ -1253,6 +1312,23 @@ export class Clipboard {
             }
             args.preventDefault();
         }
+    }
+
+    private getHtmlFromRichText(runs: RichTextModel[]): string {
+        let html: string = '';
+        runs.forEach((run: RichTextModel) => {
+            const text: string = run.text;
+            const style: CellStyleModel = run.style || {};
+            const verticalAlign: string | undefined = style.verticalAlign && style.verticalAlign.toLowerCase();
+            if (verticalAlign === 'super') {
+                html += `<font><sup>${text}</sup></font>`;
+            } else if (verticalAlign === 'sub') {
+                html += `<font><sub>${text}</sub></font>`;
+            } else {
+                html += text;
+            }
+        });
+        return html;
     }
 
     private getExternalCells(args: ClipboardEvent): PasteModelArgs | { internal: boolean } | { file: File } {
@@ -1312,15 +1388,18 @@ export class Clipboard {
                         childArr.splice(childArr.indexOf(filteredChild), 1);
                     }
                 }
-                row.split('\t').forEach((col: string, j: number) => {
+                const splitCellArray: string[] = row.split('\t');
+                splitCellArray.forEach((col: string, j: number) => {
                     if (col || cellStyle) {
                         cells[j as number] = {};
                         if (cellStyle) {
                             if ((cellStyle as { whiteSpace: string }).whiteSpace &&
-                            (cellStyle as { whiteSpace: string }).whiteSpace !== 'nowrap') {
+                                (cellStyle as { whiteSpace: string }).whiteSpace !== 'nowrap') {
                                 cells[j as number].wrap = true;
                                 delete cellStyle['whiteSpace'];
-                                if (Object.keys(cellStyle).length) { cells[j as number].style = cellStyle; }
+                                if (Object.keys(cellStyle).length) {
+                                    cells[j as number].style = cellStyle;
+                                }
                             } else {
                                 cells[j as number].style = cellStyle;
                             }
@@ -1331,6 +1410,10 @@ export class Clipboard {
                             } else {
                                 cells[j as number].value = <string>parseIntValue(col.trim(), true, true);
                             }
+                        }
+                        if (splitArray.length === 1 && splitCellArray.length === 1 && (ele.querySelector('sub') ||
+                            ele.querySelector('sup') || ele.querySelector('.Subscript') || ele.querySelector('.Superscript'))) {
+                            cells[j as number] = { richText: this.getRichTextFromNode(ele as HTMLElement) };
                         }
                     }
                 });
@@ -1347,6 +1430,57 @@ export class Clipboard {
         }
         clearClipboard();
         return pasteModelArgs;
+    }
+
+    private getRichTextFromNode(root: HTMLElement): RichTextModel[] {
+        const runs: RichTextModel[] = [];
+        const traverse: (node: Node, parentStyle?: Partial<RichTextModel['style']>) => void = (
+            node: Node,
+            parentStyle?: Partial<RichTextModel['style']>
+        ): void => {
+            if (node.nodeType === Node.TEXT_NODE) {
+                const text: string | null = node.nodeValue;
+                if (text && text.length && !text.includes('\n')) {
+                    const parent: HTMLElement = node.parentNode as HTMLElement;
+                    if (parent && parent.tagName !== 'STYLE') {
+                        const model: RichTextModel = { text: text };
+                        if (parentStyle) {
+                            model.style = { ...parentStyle };
+                        }
+                        runs.push(model);
+                    }
+                }
+                return;
+            }
+            if (node.nodeType === Node.ELEMENT_NODE) {
+                const el: HTMLElement = node as HTMLElement;
+                const style: CellStyleModel = parentStyle ? { ...parentStyle } : {};
+                const tag: string = el.tagName;
+                const inlineStyle: string = el.getAttribute('style') || '';
+                if (tag === 'SUP') {
+                    style.verticalAlign = 'super';
+                } else if (tag === 'SUB') {
+                    style.verticalAlign = 'sub';
+                }
+                if (
+                    inlineStyle.includes('vertical-align: sub') ||
+                    el.classList.contains('Subscript')
+                ) {
+                    style.verticalAlign = 'sub';
+                }
+                if (
+                    inlineStyle.includes('vertical-align: super') ||
+                    el.classList.contains('Superscript')
+                ) {
+                    style.verticalAlign = 'super';
+                }
+                for (let i: number = 0; i < el.childNodes.length; i++) {
+                    traverse(el.childNodes[i as number], style);
+                }
+            }
+        };
+        traverse(root);
+        return runs;
     }
 
     private generateCells(ele: Element, pasteModelArgs: PasteModelArgs): void {
@@ -1406,6 +1540,13 @@ export class Clipboard {
                     const href: string = anchorElement[0].getAttribute('href');
                     if (href && isValidUrl(href)) {
                         cells[colIdx as number].hyperlink = { address: href };
+                    }
+                }
+                if (td.querySelector('sup') || td.querySelector('sub') ||
+                    td.querySelector('.Subscript') || td.querySelector('.Superscript')) {
+                    const richText: RichTextModel[] = this.getRichTextFromNode(td);
+                    if (richText && richText.length) {
+                        cells[colIdx as number].richText = richText;
                     }
                 }
                 td.textContent = td.textContent.replace(/(\r\n|\n|\r)/gm, '');
@@ -1678,6 +1819,7 @@ interface ClipboardInfo {
     invokeCopy?: boolean;
     isPublic?: boolean;
     promise?: Promise<Object>;
+    modelUpdateOnly?: boolean;
 }
 
 /**

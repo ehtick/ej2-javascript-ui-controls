@@ -95,6 +95,9 @@ export class SpreadsheetHyperlink {
                 const insertBut: HTMLElement = ftrEle.firstChild as HTMLElement;
                 if ((trgt as CellModel).value !== '') {
                     insertBut.removeAttribute('disabled');
+                    if (insertBut.classList.contains('e-disabled')) {
+                        insertBut.classList.remove('e-disabled');
+                    }
                 } else {
                     const linkDialog: Element = closest(trgt, '.e-link-dialog');
                     const webPage: Element = linkDialog.querySelector('.e-webpage');
@@ -455,6 +458,9 @@ export class SpreadsheetHyperlink {
                     insertBut.setAttribute('disabled', 'true');
                 } else if (!isEmpty && insertBut.hasAttribute('disabled')) {
                     insertBut.removeAttribute('disabled');
+                    if (insertBut.classList.contains('e-disabled')) {
+                        insertBut.classList.remove('e-disabled');
+                    }
                 }
             }
         }
@@ -525,6 +531,9 @@ export class SpreadsheetHyperlink {
             }
             if (cell.format && cell.format.includes('*')) {
                 hyperEle.innerHTML = td.innerHTML;
+            } else if (cell.richText && cell.richText.length > -1) {
+                const existingAnchor: HTMLElement = td.querySelector('.e-hyperlink') as HTMLElement;
+                hyperEle.innerHTML = existingAnchor ? existingAnchor.innerHTML : td.innerHTML;
             } else {
                 hyperEle.innerText = td.innerText !== '' ? td.innerText : address;
             }
@@ -890,12 +899,16 @@ export class SpreadsheetHyperlink {
                     }
                 }
             }
-            if (args.sheet === this.parent.getActiveSheet()) {
+            const isSuspended: boolean = this.parent.paintSuspendCount > 0;
+            if (args.sheet === this.parent.getActiveSheet() && !isSuspended) {
                 if (cell.style) { this.parent.notify(refreshRibbonIcons, null); }
                 if (!args.preventRefresh) {
                     this.parent.serviceLocator.getService<ICellRenderer>('cell').refresh(
                         args.rowIdx, args.colIdx, false, null, true, false, isImported(this.parent));
                 }
+            }
+            if (isSuspended) {
+                this.parent.queuePaintAction('deleteHyperlink', (): void => { this.parent.notify(refreshRibbonIcons, null); });
             }
         }
     }

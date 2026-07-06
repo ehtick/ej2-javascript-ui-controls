@@ -1,7 +1,7 @@
 import {
     PdfViewer, PdfViewerBase
 } from '../..';
-import { PointModel } from '@syncfusion/ej2-drawings';
+import { PointModel } from './../ej2-drawings/index';
 import { PdfAnnotationBaseModel } from '../drawing/pdf-annotation-model';
 
 
@@ -108,10 +108,14 @@ export class InputElement {
             // this.pdfViewer.annotation.modifyDynamicTextValue(this.inputBoxElement.value, this.selectedAnnotation.annotName);
             selectedAnnotation.labelContent = this.inputBoxElement.value;
             selectedAnnotation.notes = this.inputBoxElement.value;
+            const previousLabelContent: string = this.pdfViewer.annotationCollection.find((annotation: any) => {
+                return annotation.annotationId === selectedAnnotation.annotName;
+            }).labelContent;
             if (selectedAnnotation.shapeAnnotationType === 'Rectangle' || selectedAnnotation.shapeAnnotationType === 'Ellipse' || selectedAnnotation.shapeAnnotationType === 'Line'
-                || selectedAnnotation.shapeAnnotationType === 'LineWidthArrowHead') {
-                this.pdfViewer.annotation.shapeAnnotationModule.modifyInCollection('labelContent', pageIndex, selectedAnnotation, null);
-            } else if (selectedAnnotation.shapeAnnotationType === 'Radius' && selectedAnnotation.measureType) {
+                || ((selectedAnnotation.shapeAnnotationType === 'LineWidthArrowHead' || selectedAnnotation.shapeAnnotationType === 'Polygon') && selectedAnnotation.measureType === '')) {
+                this.pdfViewer.annotation.shapeAnnotationModule.modifyInCollection('labelContent', pageIndex, selectedAnnotation, previousLabelContent !== selectedAnnotation.labelContent);
+            } else if ((selectedAnnotation.shapeAnnotationType === 'Radius' || selectedAnnotation.shapeAnnotationType === 'Distance' ||
+                selectedAnnotation.shapeAnnotationType === 'Polygon' || selectedAnnotation.shapeAnnotationType === 'LineWidthArrowHead') && selectedAnnotation.measureType) {
                 this.pdfViewer.annotation.measureAnnotationModule.modifyInCollection('labelContent', pageIndex, selectedAnnotation);
             }
             this.pdfViewer.nodePropertyChange(selectedAnnotation, {});

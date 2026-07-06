@@ -257,6 +257,7 @@ export class HeaderFooterProperties {
             this.documentEditor.selectionModule.sectionFormat.differentFirstPage = this.firstPage.checked;
             setTimeout((): void => {
                 this.documentEditor.focusIn();
+                this.documentEditor.selectionModule.highlightSelection(false);
             }, 10);
         }
     }
@@ -265,6 +266,7 @@ export class HeaderFooterProperties {
             this.documentEditor.selectionModule.sectionFormat.differentOddAndEvenPages = this.oddOrEven.checked;
             setTimeout((): void => {
                 this.documentEditor.focusIn();
+                this.documentEditor.selectionModule.highlightSelection(false);
             }, 10);
         }
     }

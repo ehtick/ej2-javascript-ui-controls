@@ -1,6 +1,5 @@
 @use 'sass:math';
-@use 'ej2-base/styles/definition/fluent' as *;
-@forward 'ej2-base/styles/definition/fluent';
+@use '../../node_modules/@syncfusion/ej2-base/styles/common/base-variables' as *;
 
 $grid-checkmark-color: $primary-text-color !default;
 $grid-chart-border-color: $border-dark !default;
@@ -10,3 +9,4 @@ $grid-chart-list-hover-icon-color: $content-text-color-hover !default;
 $grid-chart-list-selected-bg-color: $content-bg-color-focus !default;
 $grid-chart-list-selected-content-font-color: $primary !default;
 $grid-chart-list-selected-icon-color: $primary !default;
+$grid-chart-skin: 'fluent' !default;

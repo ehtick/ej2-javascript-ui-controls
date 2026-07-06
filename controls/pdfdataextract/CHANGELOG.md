@@ -2,7 +2,7 @@
 
 ## [Unreleased]
 
-## 33.2.15 (2026-06-23)
+## 34.1.29 (2026-07-06)
 
 ### PDF Data Extract
 
@@ -10,7 +10,7 @@
 
 - Fixed an issue that caused corruption when applying redaction within the selected region.
 - Fixed an issue where the document gets corrupted during redaction for a specific document.
-- Fixed an issue where an invalid or unexpected token exception occurs while adding accented character.
+- Fixed an issue where an invalid or unexpected token exception occurs from custom resource generator script.
 
 ## 32.2.9 (2025-03-10)
 

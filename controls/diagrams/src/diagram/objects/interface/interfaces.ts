@@ -315,6 +315,7 @@ export interface ConnectorStyle {
     strokeWidth: number;
     strokeDashArray: string;
     opacity: number;
+    pathData?: string; // SVG path data for Custom decorator shapes (e.g., cross)
 }
 
 export interface MermaidStyle {

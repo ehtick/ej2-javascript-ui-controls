@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Diagram } from '../diagram';
 import { NodeModel, LaneModel, PhaseModel, SwimLaneModel, BpmnShapeModel } from '../objects/node-model';
-import { Node, Shape, SwimLane } from '../objects/node';
+import { Node, Shape, SwimLane, BpmnShape } from '../objects/node';
 import { GridPanel, GridCell, GridRow, RowDefinition, ColumnDefinition } from '../core/containers/grid';
 import { Lane, Phase } from '../objects/node';
 import { DiagramAction, NodeConstraints, DiagramConstraints, DiagramEvent, ElementAction, RealAction } from '../enum/enum';
@@ -91,16 +91,18 @@ export function initSwimLane(grid: GridPanel, diagram: Diagram, node: NodeModel)
  * @param {boolean} isPhase - provide the isPhase  value.
  * @param {boolean} isLane - provide the isLane  value.
  * @param {string} canvas - provide the canvas  value.
+ * @param {boolean} isLaneHeader - provide the isLaneHeader value.
  * @private
  */
 export function addObjectToGrid(
     diagram: Diagram, grid: GridPanel, parent: NodeModel, object: NodeModel,
-    isHeader?: boolean, isPhase?: boolean, isLane?: boolean, canvas?: string): GroupableView {
+    isHeader?: boolean, isPhase?: boolean, isLane?: boolean, canvas?: string, isLaneHeader?: boolean): GroupableView {
 
     const node: Node = new Node(diagram, 'nodes', object, true);
     node.parentId = parent.id;
     node.isHeader = (isHeader) ? true : false; node.isPhase = (isPhase) ? true : false;
     node.isLane = (isLane) ? true : false;
+    node.isLaneHeader = (isLaneHeader) ? true : false;
     node.pivot = parent.pivot;
     const id: string = (isPhase) ? 'PhaseHeaderParent' : 'LaneHeaderParent';
     if (canvas) { node[`${id}`] = canvas; }
@@ -274,7 +276,7 @@ export function laneCollection(
                 laneNode.constraints &= ~NodeConstraints.Select;
             }
             childWrapper = addObjectToGrid(
-                diagram, grid, object, laneNode, false, false, true, shape.lanes[parseInt(laneIndex.toString(), 10)].id);
+                diagram, grid, object, laneNode, false, false, true, shape.lanes[parseInt(laneIndex.toString(), 10)].id, true);
             if (orientation) {
                 childWrapper.children[0].elementActions = childWrapper.children[0].elementActions | ElementAction.HorizontalLaneHeader;
             }
@@ -840,10 +842,13 @@ export function laneInterChanged(diagram: Diagram, obj: NodeModel, target: NodeM
                     if (position && target.wrapper.offsetY > position.y) {
                         targetIndex += (targetLaneIndex > 0) ? -1 : 1;
                         targetLaneIndex += (targetLaneIndex > 0) ? -1 : 1;
+                        // Bug 959833: Updated the target lane index to retrieve the correct lane header during lane swapping, ensuring proper undo/redo behavior in both horizontal and vertical swimlanes.
+                        target = diagram.nameTable[lanes[parseInt(targetLaneIndex.toString(), 10)].header.id];
                     }
                 } else {
                     if (position && target.wrapper.offsetY < position.y) {
                         targetIndex += 1; targetLaneIndex += 1;
+                        target = diagram.nameTable[lanes[parseInt(targetLaneIndex.toString(), 10)].header.id];
                     }
                 }
                 if (sourceIndex !== targetIndex) {
@@ -865,10 +870,12 @@ export function laneInterChanged(diagram: Diagram, obj: NodeModel, target: NodeM
                     if (position && target.wrapper.offsetX > position.x) {
                         targetIndex += (targetLaneIndex > 0) ? -1 : 1;
                         targetLaneIndex += (targetLaneIndex > 0) ? -1 : 1;
+                        target = diagram.nameTable[lanes[parseInt(targetLaneIndex.toString(), 10)].header.id];
                     }
                 } else {
                     if (position && target.wrapper.offsetX < position.x) {
                         targetIndex += 1; targetLaneIndex += 1;
+                        target = diagram.nameTable[lanes[parseInt(targetLaneIndex.toString(), 10)].header.id];
                     }
                 }
                 if (sourceIndex !== targetIndex) {
@@ -1756,8 +1763,9 @@ export function pasteSwimLane(
         for (j = 0; lane.children && j < lane.children.length; j++) {
             node = lane.children[parseInt(j.toString(), 10)] as Node;
             childNodeIds.push(node.id);
-            childX = node.wrapper.offsetX - node.width / 2;
-            childY = node.wrapper.offsetY - node.height / 2;
+            //1020592 - Swimlane save/load drops child nodes after deserialization
+            childX = node.wrapper.offsetX - (node.width !== undefined ? node.width : node.wrapper.actualSize.width) / 2;
+            childY = node.wrapper.offsetY - (node.height !== undefined ? node.height : node.wrapper.actualSize.height) / 2;
             node.zIndex = Number.MIN_VALUE;
             node.inEdges = node.outEdges = [];
             if (isUndo || (clipboardData && (clipboardData.pasteIndex === 1 || clipboardData.pasteIndex === 0))) {
@@ -1960,7 +1968,37 @@ export function removeSwimLane(diagram: Diagram, obj: NodeModel): void {
                 for (k = child.children.length - 1; k >= 0; k--) {
                     if ((child.children[parseInt(k.toString(), 10)] as GroupableView).children) {
                         removeNode = diagram.nameTable[child.children[parseInt(k.toString(), 10)].id];
+
                         if (removeNode) {
+                            // EJ2-952444 Subprocess child node inside swimlane does not revert after undo.
+                            // Validates process node IDs belong to current subprocess before removal to prevent
+                            // deletion of unrelated top-level nodes due to corrupted references from duplication
+                            if (removeNode.shape && removeNode.shape.type === 'Bpmn' &&
+                                (removeNode.shape as BpmnShape).activity &&
+                                (removeNode.shape as BpmnShape).activity.subProcess &&
+                                diagram.bpmnModule) {
+
+                                // Extract subprocess processes array from BPMN shape
+                                const processes: string[] | undefined =
+                                    (removeNode.shape as BpmnShape).activity.subProcess.processes;
+
+                                // Validate process node IDs are not corrupted by duplication
+                                if (processes && processes.length > 0) {
+                                    for (let procIndex: number = processes.length - 1; procIndex >= 0; procIndex--) {
+                                        const procId: string = processes[parseInt(procIndex.toString(), 10)];
+                                        const processNode: Node | undefined = diagram.nameTable[`${procId}`];
+
+                                        // Remove corrupted references that don't belong to this subprocess
+                                        if (!processNode || (processNode as Node).processId !== removeNode.id) {
+                                            processes.splice(procIndex, 1);
+                                        }
+                                    }
+                                }
+
+                                // Call removeBpmnProcesses with validated processes array
+                                diagram.bpmnModule.removeBpmnProcesses(removeNode as Node, diagram);
+                            }
+
                             if (removeNode.isLane) {
                                 deleteNode(diagram, removeNode);
                             } else {
@@ -2361,6 +2399,82 @@ export function removeVerticalPhase(diagram: Diagram, grid: GridPanel, phase: No
         height += prevHeight;
         grid.updateRowHeight(phaseRowIndex - 1, height, true);
     }
+}
+
+/**
+ * getNodeBoundsWithPaddingConstraints - Calculate node bounds after padding constraints applied
+ * WITHOUT triggering swimlane wrapper recalculation. Used for accurate boundary detection only.
+ *
+ * @returns {Rect} Bounds of node after padding constraints (simulated, not actual wrapper bounds)
+ * @param {Diagram} diagram - Diagram instance
+ * @param {NodeModel} node - Node to calculate bounds for
+ * @param {number} padding - Padding value
+ * @private
+ */
+export function getNodeBoundsWithPaddingConstraints(diagram: Diagram, node: NodeModel, padding: number): Rect {
+    const lane: Node = diagram.nameTable[(node as Node).parentId];
+    if (lane && lane.isLane) {
+        const swimLane: NodeModel = diagram.nameTable[lane.parentId];
+        const canvas: Canvas = lane.wrapper as Canvas;
+        let laneHeader: Canvas;
+
+        // Simulate margin adjustments (same logic as considerSwimLanePadding, but no swimlane measure/arrange)
+        let simulatedMarginLeft: number = node.margin.left;
+        let simulatedMarginTop: number = node.margin.top;
+
+        // Apply diffX/diffY adjustments
+        (node as NodeDiff).diffX = (node as NodeDiff).diffX || 0;
+        (node as NodeDiff).diffY = (node as NodeDiff).diffY || 0;
+        if ((node as NodeDiff).diffX > 0) {
+            simulatedMarginLeft += ((node as NodeDiff).diffX + padding);
+        }
+        if ((node as NodeDiff).diffY > 0) {
+            simulatedMarginTop += ((node as NodeDiff).diffY + padding);
+        }
+
+        // Apply minimum padding constraints
+        if (simulatedMarginLeft < padding) {
+            simulatedMarginLeft = padding;
+        }
+        if (simulatedMarginTop < padding) {
+            simulatedMarginTop = padding;
+        }
+
+        // Apply lane header constraints
+        for (let i: number = 0; i < canvas.children.length; i++) {
+            const child: Canvas = canvas.children[parseInt(i.toString(), 10)] as Canvas;
+            if (child instanceof Canvas) {
+                const childNode: Node = diagram.nameTable[child.id];
+                if (childNode.isLane) {
+                    laneHeader = childNode.wrapper as Canvas;
+                    break;
+                }
+            }
+        }
+
+        if (laneHeader) {
+            if ((swimLane.shape as SwimLaneModel).orientation === 'Horizontal') {
+                if (simulatedMarginLeft < padding + laneHeader.actualSize.width) {
+                    simulatedMarginLeft = padding + laneHeader.actualSize.width;
+                }
+            } else {
+                if (simulatedMarginTop < padding + laneHeader.actualSize.height) {
+                    simulatedMarginTop = padding + laneHeader.actualSize.height;
+                }
+            }
+        }
+
+        // Create simulated bounds based on adjusted margins
+        const currentBounds: Rect = node.wrapper.bounds;
+        const simulatedBounds: Rect = new Rect(
+            currentBounds.x + (simulatedMarginLeft - node.margin.left),
+            currentBounds.y + (simulatedMarginTop - node.margin.top),
+            currentBounds.width,
+            currentBounds.height
+        );
+        return simulatedBounds;
+    }
+    return node.wrapper.bounds;
 }
 
 /**

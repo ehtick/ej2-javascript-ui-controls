@@ -2,6 +2,25 @@
 
 ## [Unreleased]
 
+## 34.1.29 (2026-07-06)
+
+### Common
+
+#### Bug Fixes
+
+- `#848714` - Resolved a command injection vulnerability in the syncfusion license validate CLI command.
+
+#### New Features
+
+- Upgraded Sass to the latest version `1.100.0`.
+- Enhanced Syncfusion [theme packages](https://ej2.syncfusion.com/documentation/appearance/theme#theme-packages) to support both consolidated and control-level styles. Each control now provides dedicated style files with an `index.css/index.scss` that includes required dependencies, enabling simpler and more modular style management.
+- Added support to cancel the drag action using the Escape key in the draggable component.
+- Enabled tree-shaking support in CRG, allowing unused code to be eliminated during bundling for better performance and reduced application size.
+
+#### Breaking Changes
+
+- SCSS files are no longer supported within control packages and [EJ2 package](https://www.npmjs.com/package/@syncfusion/ej2), and direct SCSS imports will not work. Use SCSS theming by importing styles from centralized [theme packages](https://ej2.syncfusion.com/documentation/appearance/theme#npm-packages).
+
 ## 33.2.3 (2026-04-21)
 
 ### Common
@@ -25,7 +44,7 @@
 
 #### Bug Fixes
 
-- `#768133` - Resolved a bug in the `processFraction` method that mishandled scientific notation which works fine for "5e-11" and improper for Decimal Cases like "5.7e-11".
+- `#768133` - Resolved a bug in the `processFraction` method that mishandled scientific notation which works fine for `5e-11` and improper for Decimal Cases like `5.7e-11`.
 
 ## 31.1.17 (2025-09-05)
 

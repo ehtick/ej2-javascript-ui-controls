@@ -288,12 +288,12 @@ export class AutoFill {
                         if ((scroller.scrollLeft + scroller.clientWidth - columnsOffset) < (left + autoFillDropDownRect.width)) {
                             left -= autoFillDropDownRect.width;
                         }
-                        this.autoFillDropDown.element.style.top = top + otdiff + 'px';
+                        this.autoFillDropDown.element.style.top = (top + otdiff) + 'px';
                         this.autoFillDropDown.element.style.width = parseFloat(autoFillDropDownRect.width.toFixed(2)) + 'px';
                         if (isRtl) {
-                            this.autoFillDropDown.element.style.right = left + oldiff + 'px';
+                            this.autoFillDropDown.element.style.right = (left + oldiff) + 'px';
                         } else {
-                            this.autoFillDropDown.element.style.left = left + oldiff + 'px';
+                            this.autoFillDropDown.element.style.left = (left + oldiff)  + 'px';
                         }
                     }
                 }

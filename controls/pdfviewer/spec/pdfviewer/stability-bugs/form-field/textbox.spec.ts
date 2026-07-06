@@ -74,11 +74,8 @@ describe('PDF_Viewer_TextBox', () => {
             mouseMoveEvent(target, endX, endY);
             mouseUpEvent(target, endX, endY);
 
-            // Exit designer mode and trigger save/download path
+            // Exit designer mode
             pdfviewer_textBox.designerMode = false;
-            if (typeof pdfviewer_textBox.download === 'function') {
-                pdfviewer_textBox.download();
-            }
             const collectionLen = Array.isArray(pdfviewer_textBox.formFieldCollection) ? pdfviewer_textBox.formFieldCollection.length : 0;
             try {
                 expect(collectionLen).toBe(1);

@@ -1,7 +1,7 @@
 import { PdfViewer, PdfViewerBase, AjaxHandler, ExtractTextOption } from '../index';
 import { createElement, isNullOrUndefined, Browser } from '@syncfusion/ej2-base';
 import { TaskPriorityLevel } from '../base/pdfviewer-utlis';
-import { Rect } from '@syncfusion/ej2-drawings';
+import { Rect } from './../ej2-drawings/index';
 import { PdfPage } from '@syncfusion/ej2-pdf';
 
 /**
@@ -304,6 +304,7 @@ export class ThumbnailView {
                     this.pdfViewer.extractTextOption === ExtractTextOption.TextOnly) ? true : false;
                 const imageSize: number = proxy.pdfViewer.pageOrganizer ?
                     proxy.pdfViewer.pageOrganizer.getImageZoomValue(true) : 1;
+
                 const currentPage: PdfPage = this.pdfViewer.pdfRenderer.loadedDocument.getPage(count);
                 const cropBoxRect: Rect = new Rect(0, 0, 0, 0);
                 const mediaBoxRect: Rect = new Rect(0, 0, 0, 0);
@@ -317,6 +318,7 @@ export class ThumbnailView {
                     [mediaBoxRect.x, mediaBoxRect.y, mediaBoxRect.width, mediaBoxRect.height] =
                         currentPage._pageDictionary._map.MediaBox;
                 }
+
                 if ((currentPageImage && currentPageImage.src === '') || (isNullOrUndefined(currentPageImage) && !isNullOrUndefined(this.pdfViewer.pageOrganizer))) {
                     this.pdfViewerBase.pdfViewerRunner.addTask({
                         pageIndex: count,
@@ -776,7 +778,12 @@ export class ThumbnailView {
      * @returns {void}
      */
     public clear(): void {
+        const shouldKeepThumbnailOpen: boolean = this.pdfViewer.isThumbnailViewOpen;
         this.closeThumbnailPane();
+        if (shouldKeepThumbnailOpen) {
+            this.pdfViewerBase.isSkipThumbnailRender = true;
+            this.pdfViewer.isThumbnailViewOpen = true;
+        }
         if (!Browser.isDevice || this.pdfViewer.enableDesktopMode) {
             if (this.pdfViewer.bookmark) {
                 this.pdfViewer.bookmark.closeBookmarkPane();

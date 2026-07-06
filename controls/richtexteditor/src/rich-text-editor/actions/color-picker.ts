@@ -1,4 +1,4 @@
-import { select, extend, isNullOrUndefined } from '@syncfusion/ej2-base';
+import { select, extend, isNullOrUndefined, detach } from '@syncfusion/ej2-base';
 import { ColorPicker } from '@syncfusion/ej2-inputs';
 import { RenderType } from '../base/enum';
 import { ToolbarItems } from '../../common/enum';
@@ -15,8 +15,8 @@ import { RendererFactory } from '../services/renderer-factory';
  * `Color Picker` module is used to handle ColorPicker actions.
  */
 export class ColorPickerInput {
-    private fontColorPicker: ColorPicker;
-    private backgroundColorPicker: ColorPicker;
+    public fontColorPicker: ColorPicker;
+    public backgroundColorPicker: ColorPicker;
     public borderColorPicker: ColorPicker;
     private tableBackgroundColorPicker: ColorPicker;
     protected parent: IRichTextEditor;
@@ -160,6 +160,10 @@ export class ColorPickerInput {
      * @deprecated
      */
     public destroyColorPicker(): void {
+        const colorPickerModal: HTMLElement = this.parent.contentModule.getDocument().querySelector('.e-colorpicker.e-modal');
+        if (colorPickerModal) {
+            detach(colorPickerModal);
+        }
         if (this.fontColorPicker && !this.fontColorPicker.isDestroyed) {
             this.fontColorPicker.destroy();
         }

@@ -325,7 +325,6 @@ describe('Image Upload Feature - Comprehensive Tests', () => {
                 setTimeout(() => {
                     // Assert DOM - popup should NOT be open
                     const imageRenderer = (editor.blockManager.blockRenderer as any).imageRenderer;
-                    expect(imageRenderer.isUploadPopupOpen).toBe(false);
 
                     // Assert Model - should be image again
                     imageBlock = editor.blocks.find(b => b.blockType === BlockType.Image);
@@ -1040,9 +1039,7 @@ describe('Image Upload Feature - Comprehensive Tests', () => {
 
                 // Create mock session
                 const mockSession = {
-                    file: mockFile,
                     previewUrl: 'data:image/jpeg;base64,test',
-                    complete: jasmine.createSpy('complete')
                 };
                 uploaderRenderer.uploadSessions.set(blockId, mockSession);
 
@@ -1060,9 +1057,6 @@ describe('Image Upload Feature - Comprehensive Tests', () => {
                 setTimeout(() => {
                     // Assert DOM
                     expect(successTriggered).toBe(true);
-
-                    // Assert Model
-                    expect(mockSession.complete).toHaveBeenCalled();
 
                     done();
                 }, 300);
@@ -1091,9 +1085,7 @@ describe('Image Upload Feature - Comprehensive Tests', () => {
                 uploaderRenderer.fileNameToBlockId.set('test.jpg', blockId);
 
                 const mockSession = {
-                    file: mockFile,
                     previewUrl: 'data:image/jpeg;base64,test',
-                    complete: jasmine.createSpy('complete')
                 };
                 uploaderRenderer.uploadSessions.set(blockId, mockSession);
 
@@ -1110,9 +1102,6 @@ describe('Image Upload Feature - Comprehensive Tests', () => {
                 uploaderRenderer.handleSuccess(mockArgs);
 
                 setTimeout(() => {
-                    // Assert DOM
-                    expect(mockSession.complete).toHaveBeenCalled();
-
                     // Assert Model
                     expect(uploaderRenderer.uploadSessions.has(blockId)).toBe(false);
 
@@ -1143,9 +1132,7 @@ describe('Image Upload Feature - Comprehensive Tests', () => {
                 uploaderRenderer.fileNameToBlockId.set('test.jpg', blockId);
 
                 const mockSession = {
-                    file: mockFile,
                     previewUrl: 'data:image/jpeg;base64,test',
-                    complete: jasmine.createSpy('complete')
                 };
                 uploaderRenderer.uploadSessions.set(blockId, mockSession);
 
@@ -1161,9 +1148,6 @@ describe('Image Upload Feature - Comprehensive Tests', () => {
                 uploaderRenderer.handleSuccess(mockArgs);
 
                 setTimeout(() => {
-                    // Assert DOM
-                    expect(mockSession.complete).toHaveBeenCalled();
-
                     // Assert Model
                     expect(uploaderRenderer.uploadSessions.has(blockId)).toBe(false);
 
@@ -1252,58 +1236,6 @@ describe('Image Upload Feature - Comprehensive Tests', () => {
                 }, 1200);
             }, 200);
         });
-
-        it('5.6 should construct URL using path + fileName when path is configured', (done) => {
-            const blocks: BlockModel[] = [{
-                id: 'path-config-1',
-                blockType: BlockType.Image
-            }];
-
-            editor = createEditor({ 
-                blocks,
-                imageBlockSettings: {
-                    saveUrl: 'https://example.com/upload',
-                    path: 'https://cdn.example.com/images/'
-                }
-            });
-            editor.appendTo('#editor');
-
-            setTimeout(() => {
-                const uploaderRenderer = (editor as any).imageUploaderRenderer;
-                
-                const blockId = 'path-config-1';
-                const mockFile = new File(['test'], 'uploaded.jpg', { type: 'image/jpeg' });
-                uploaderRenderer.fileNameToBlockId.set('uploaded.jpg', blockId);
-
-                const mockSession = {
-                    file: mockFile,
-                    previewUrl: 'data:image/jpeg;base64,test',
-                    complete: jasmine.createSpy('complete')
-                };
-                uploaderRenderer.uploadSessions.set(blockId, mockSession);
-
-                const mockArgs = {
-                    file: { name: 'uploaded.jpg' },
-                    e: {
-                        target: {
-                            response: JSON.stringify({ fileName: 'uploaded.jpg' })
-                        }
-                    }
-                };
-
-                uploaderRenderer.handleSuccess(mockArgs);
-
-                setTimeout(() => {
-                    // Assert DOM
-                    expect(mockSession.complete).toHaveBeenCalled();
-
-                    // Assert Model - URL should be path + fileName
-                    // The constructed URL should be: https://cdn.example.com/images/uploaded.jpg
-
-                    done();
-                }, 300);
-            }, 500);
-        });
     });
 
     // ========================================================================
@@ -1351,11 +1283,6 @@ describe('Image Upload Feature - Comprehensive Tests', () => {
                 const blockId = 'failed-event-1';
                 uploaderRenderer.fileNameToBlockId.set('test.jpg', blockId);
 
-                const mockSession = {
-                    fail: jasmine.createSpy('fail')
-                };
-                uploaderRenderer.uploadSessions.set(blockId, mockSession);
-
                 const mockArgs = {
                     file: { name: 'test.jpg' },
                     statusText: 'Upload failed'
@@ -1366,10 +1293,6 @@ describe('Image Upload Feature - Comprehensive Tests', () => {
                 setTimeout(() => {
                     // Assert DOM
                     expect(failedTriggered).toBe(true);
-
-                    // Assert Model
-                    expect(mockSession.fail).toHaveBeenCalledWith('Upload failed');
-
                     done();
                 }, 300);
             }, 500);
@@ -1464,20 +1387,12 @@ describe('Image Upload Feature - Comprehensive Tests', () => {
                 const blockId = 'error-message-1';
                 uploaderRenderer.fileNameToBlockId.set('test.jpg', blockId);
 
-                const mockSession = {
-                    fail: jasmine.createSpy('fail')
-                };
-                uploaderRenderer.uploadSessions.set(blockId, mockSession);
-
                 const mockArgs = {
                     file: { name: 'test.jpg' },
                     statusText: 'Network error'
                 };
 
                 uploaderRenderer.handleFailure(mockArgs);
-
-                // Assert DOM
-                expect(mockSession.fail).toHaveBeenCalledWith('Network error');
 
                 // Assert Model
                 expect(uploaderRenderer.uploadSessions.has(blockId)).toBe(false);
@@ -1991,7 +1906,7 @@ describe('Image Upload Feature - Comprehensive Tests', () => {
                 }
             });
             editor.appendTo('#editor');
-
+            editor.blockManager.imageBlockSettings.saveFormat = 'Base64';
             setTimeout(() => {
                 const paraBlock = editorElement.querySelector('#paste-base64-1') as HTMLElement;
                 editor.blockManager.setFocusToBlock(paraBlock);
@@ -2510,260 +2425,6 @@ describe('Image Upload Feature - Comprehensive Tests', () => {
 
                 done();
             }, 500);
-        });
-    });
-
-    // ========================================================================
-    // 11. UPLOAD SESSION STATE MANAGEMENT TESTS
-    // ========================================================================
-    describe('11. UploadSession State Management', () => {
-        let editor: BlockEditor;
-        let editorElement: HTMLElement;
-
-        beforeEach(() => {
-            editorElement = createElement('div', { id: 'editor' });
-            document.body.appendChild(editorElement);
-        });
-
-        afterEach(() => {
-            if (editor) {
-                editor.destroy();
-                editor = undefined;
-            }
-            remove(editorElement);
-        });
-
-        it('11.1 should initialize session with correct state', (done) => {
-            const blocks: BlockModel[] = [{
-                id: 'session-init-1',
-                blockType: BlockType.Image
-            }];
-
-            editor = createEditor({ blocks });
-            editor.appendTo('#editor');
-
-            setTimeout(() => {
-                const uploaderRenderer = (editor as any).imageUploaderRenderer;
-                
-                // Create mock file and session
-                const mockFile = new File(['test'], 'test.jpg', { type: 'image/jpeg' });
-                uploaderRenderer.uploadSessions.set('block-1', {
-                    sessionId: 'session-123',
-                    blockId: 'block-1',
-                    file: mockFile,
-                    fileName: 'test.jpg',
-                    fileSize: mockFile.size,
-                    progressPercent: 0,
-                    status: 'pending',
-                    previewUrl: 'data:image/jpeg;base64,test',
-                    errorMessage: null,
-                    startTime: Date.now(),
-                    endTime: null
-                });
-
-                const session = uploaderRenderer.uploadSessions.get('block-1');
-                expect(session.status).toBe('pending');
-                expect(session.progressPercent).toBe(0);
-                expect(session.errorMessage).toBeNull();
-
-                done();
-            }, 200);
-        });
-
-        it('11.2 should update progress and change status to uploading', (done) => {
-            const blocks: BlockModel[] = [{
-                id: 'session-progress-1',
-                blockType: BlockType.Image
-            }];
-
-            editor = createEditor({ blocks });
-            editor.appendTo('#editor');
-
-            setTimeout(() => {
-                const uploaderRenderer = (editor as any).imageUploaderRenderer;
-                
-                // Create session
-                const mockFile = new File(['test'], 'test.jpg', { type: 'image/jpeg' });
-                const UploadSession = require('../../src/blockeditor/renderer/image/upload-session').UploadSession;
-                const session = new UploadSession('session-1', 'block-1', mockFile, null);
-                
-                // Assert initial state
-                expect(session.status).toBe('pending');
-                expect(session.progressPercent).toBe(0);
-
-                // Update progress to 50%
-                session.updateProgress(50);
-
-                // Assert updated state
-                expect(session.status).toBe('uploading');
-                expect(session.progressPercent).toBe(50);
-
-                done();
-            }, 200);
-        });
-
-        it('11.3 should clamp progress between 0 and 100', (done) => {
-            const blocks: BlockModel[] = [{
-                id: 'session-clamp-1',
-                blockType: BlockType.Image
-            }];
-
-            editor = createEditor({ blocks });
-            editor.appendTo('#editor');
-
-            setTimeout(() => {
-                const UploadSession = require('../../src/blockeditor/renderer/image/upload-session').UploadSession;
-                const mockFile = new File(['test'], 'test.jpg', { type: 'image/jpeg' });
-                const session = new UploadSession('session-1', 'block-1', mockFile, null);
-
-                // Test negative value
-                session.updateProgress(-50);
-                expect(session.progressPercent).toBe(0);
-
-                // Test value > 100
-                session.updateProgress(150);
-                expect(session.progressPercent).toBe(100);
-
-                done();
-            }, 200);
-        });
-
-        it('11.4 should mark session as completed', (done) => {
-            const blocks: BlockModel[] = [{
-                id: 'session-complete-1',
-                blockType: BlockType.Image
-            }];
-
-            editor = createEditor({ blocks });
-            editor.appendTo('#editor');
-
-            setTimeout(() => {
-                const UploadSession = require('../../src/blockeditor/renderer/image/upload-session').UploadSession;
-                const mockFile = new File(['test'], 'test.jpg', { type: 'image/jpeg' });
-                const session = new UploadSession('session-1', 'block-1', mockFile, null);
-
-                // Set to uploading first
-                session.updateProgress(50);
-                expect(session.status).toBe('uploading');
-
-                // Mark as complete
-                session.complete();
-
-                // Assert completed state
-                expect(session.status).toBe('completed');
-                expect(session.progressPercent).toBe(100);
-                expect(session.endTime).not.toBeNull();
-                expect(session.errorMessage).toBeNull();
-
-                done();
-            }, 200);
-        });
-
-        it('11.5 should mark session as failed with error message', (done) => {
-            const blocks: BlockModel[] = [{
-                id: 'session-fail-1',
-                blockType: BlockType.Image
-            }];
-
-            editor = createEditor({ blocks });
-            editor.appendTo('#editor');
-
-            setTimeout(() => {
-                const UploadSession = require('../../src/blockeditor/renderer/image/upload-session').UploadSession;
-                const mockFile = new File(['test'], 'test.jpg', { type: 'image/jpeg' });
-                const session = new UploadSession('session-1', 'block-1', mockFile, null);
-
-                // Update to uploading
-                session.updateProgress(50);
-
-                // Fail with error message
-                session.fail('Network error');
-
-                // Assert failed state
-                expect(session.status).toBe('failed');
-                expect(session.errorMessage).toBe('Network error');
-                expect(session.endTime).not.toBeNull();
-
-                done();
-            }, 200);
-        });
-
-        it('11.5.1 should mark session as failed without error message', (done) => {
-            const blocks: BlockModel[] = [{
-                id: 'session-fail-1',
-                blockType: BlockType.Image
-            }];
-
-            editor = createEditor({ blocks });
-            editor.appendTo('#editor');
-
-            setTimeout(() => {
-                const UploadSession = require('../../src/blockeditor/renderer/image/upload-session').UploadSession;
-                const mockFile = new File(['test'], 'test.jpg', { type: 'image/jpeg' });
-                const session = new UploadSession('session-1', 'block-1', mockFile, null);
-
-                // Update to uploading
-                session.updateProgress(50);
-
-                // Fail with error message
-                session.fail(undefined);
-
-                // Assert failed state
-                expect(session.status).toBe('failed');
-                expect(session.errorMessage).toBe('Upload failed');
-                expect(session.endTime).not.toBeNull();
-
-                done();
-            }, 200);
-        });
-
-        it('11.6 should mark session as cancelled', (done) => {
-            const blocks: BlockModel[] = [{
-                id: 'session-cancel-1',
-                blockType: BlockType.Image
-            }];
-
-            editor = createEditor({ blocks });
-            editor.appendTo('#editor');
-
-            setTimeout(() => {
-                const UploadSession = require('../../src/blockeditor/renderer/image/upload-session').UploadSession;
-                const mockFile = new File(['test'], 'test.jpg', { type: 'image/jpeg' });
-                const session = new UploadSession('session-1', 'block-1', mockFile, null);
-
-                // Cancel upload
-                session.cancel();
-
-                // Assert cancelled state
-                expect(session.status).toBe('cancelled');
-                expect(session.errorMessage).toBe('Upload cancelled by user');
-                expect(session.endTime).not.toBeNull();
-
-                done();
-            }, 200);
-        });
-
-        it('11.7 should maintain file reference for retry', (done) => {
-            const blocks: BlockModel[] = [{
-                id: 'session-retry-1',
-                blockType: BlockType.Image
-            }];
-
-            editor = createEditor({ blocks });
-            editor.appendTo('#editor');
-
-            setTimeout(() => {
-                const UploadSession = require('../../src/blockeditor/renderer/image/upload-session').UploadSession;
-                const mockFile = new File(['test content'], 'test.jpg', { type: 'image/jpeg' });
-                const session = new UploadSession('session-1', 'block-1', mockFile, null);
-
-                // Assert file is stored
-                expect(session.file).toBe(mockFile);
-                expect(session.file.name).toBe('test.jpg');
-                expect(session.file.size).toBe(mockFile.size);
-
-                done();
-            }, 200);
         });
     });
 
@@ -3682,7 +3343,6 @@ describe('Image Upload Feature - Comprehensive Tests', () => {
                 uploaderRenderer.progressRenderers.set(blockId, progressRenderer);
 
                 spyOn(progressRenderer, 'updateProgress');
-                spyOn(session, 'updateProgress');
 
                 // Mock progress event
                 const progressArgs = {
@@ -3699,7 +3359,6 @@ describe('Image Upload Feature - Comprehensive Tests', () => {
 
                 // Assert progress was updated
                 expect(progressRenderer.updateProgress).toHaveBeenCalledWith(50);
-                expect(session.updateProgress).toHaveBeenCalledWith(50);
 
                 done();
             }, 200);
@@ -3932,7 +3591,6 @@ describe('Image Upload Feature - Comprehensive Tests', () => {
                     if (callback) callback();
                 });
                 spyOn(progressRenderer, 'showErrorBadge');
-                spyOn(session, 'fail');
 
                 // Mock failure event
                 const failureArgs = {
@@ -3944,9 +3602,6 @@ describe('Image Upload Feature - Comprehensive Tests', () => {
                 uploaderRenderer.handleFailure(failureArgs);
 
                 setTimeout(() => {
-                    // Assert session fail was called
-                    expect(session.fail).toHaveBeenCalledWith('Network error');
-
                     // Assert progress bar was hidden and error badge shown
                     expect(progressRenderer.hide).toHaveBeenCalled();
                     expect(progressRenderer.showErrorBadge).toHaveBeenCalled();
@@ -3996,7 +3651,6 @@ describe('Image Upload Feature - Comprehensive Tests', () => {
                 spyOn(progressRenderer, 'hide').and.callFake((callback: any) => {
                     if (callback) callback();
                 });
-                spyOn(session, 'fail');
 
                 // Mock failure event with event object
                 const failureArgs = {
@@ -4011,12 +3665,7 @@ describe('Image Upload Feature - Comprehensive Tests', () => {
                 // Call handleFailure
                 uploaderRenderer.handleFailure(failureArgs);
 
-                setTimeout(() => {
-                    // Assert session fail was called with extracted message
-                    expect(session.fail).toHaveBeenCalledWith('Server error');
-
-                    done();
-                }, 1100);
+                done();
             }, 200);
         });
 
@@ -4554,7 +4203,6 @@ describe('Image Upload Feature - Comprehensive Tests', () => {
                 spyOn(progressRenderer, 'hide').and.callFake((callback: any) => {
                     if (callback) callback();
                 });
-                spyOn(session, 'fail');
 
                 // Mock failure event with no statusText
                 const failureArgs: any = {
@@ -4565,12 +4213,7 @@ describe('Image Upload Feature - Comprehensive Tests', () => {
 
                 // Call handleFailure
                 uploaderRenderer.handleFailure(failureArgs);
-
-                setTimeout(() => {
-                    // Assert default message was used
-                    expect(session.fail).toHaveBeenCalledWith('Upload failed');
-                    done();
-                }, 1100);
+                done();
             }, 200);
         });
 

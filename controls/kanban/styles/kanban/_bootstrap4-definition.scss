@@ -1,6 +1,5 @@
 @use 'sass:color';
-@use 'ej2-base/styles/definition/bootstrap4' as *;
-@forward 'ej2-base/styles/definition/bootstrap4';
+@use '../../node_modules/@syncfusion/ej2-base/styles/common/base-variables' as *;
 
 /*! Kanban component's bootstrap4 theme definitions and variables */
 $kanban-column-bg-color: color.adjust($gray-100, $lightness: -2%) !default;

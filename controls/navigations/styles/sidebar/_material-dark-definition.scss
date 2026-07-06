@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/material-dark' as *;
-@forward 'ej2-base/styles/definition/material-dark';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $sidebar-background: $grey-800 !default;
 $sidebar-border: $grey-700 !default;
 $sidebar-box-shadow: 0 0 20px rgba(0, 0, 0, .2) !default;

@@ -1,4 +1,4 @@
-@use 'ej2-base/styles/common/mixin' as *;
+@use 'variables' as *;
 @include export-module('accordion-layout') {
   .e-accordion {
     display: block;
@@ -240,6 +240,7 @@
       }
     }
   }
+
   .e-accordion:not(.e-acrdn-ctrl) > .e-acrdn-item > .e-acrdn-panel.e-nested > .e-acrdn-content > .e-accordion > .e-acrdn-item > .e-acrdn-header {
     &:focus {
       box-shadow: $acrdn-nested-item-header-focus-box-shadow;

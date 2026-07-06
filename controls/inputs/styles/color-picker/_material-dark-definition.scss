@@ -1,7 +1,5 @@
-@use 'ej2-base/styles/definition/material-dark' as *;
-@use 'ej2-buttons/styles/button/material-dark-definition' as *;
-@forward 'ej2-base/styles/definition/material-dark';
-@forward 'ej2-buttons/styles/button/material-dark-definition';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $cpicker-split-btn-padding: 0 4px !default;
 $cpicker-bigger-split-btn-padding: 0 6px !default;
 $cpicker-split-line-height: 14px !default;

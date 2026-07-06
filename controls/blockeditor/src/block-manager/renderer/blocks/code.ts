@@ -10,6 +10,8 @@ import { events } from '../../../common/constant';
 import { BlockFactory } from '../../services/index';
 import { BlockManager } from '../../base/block-manager';
 import { createElement } from '@syncfusion/ej2-base';
+import { findClosestParent } from '../../../common/utils/dom';
+import * as constants from '../../../common/constant';
 
 export class CodeRenderer {
     private parent: BlockManager;
@@ -128,11 +130,19 @@ export class CodeRenderer {
             change: (e: ChangeEventArgs) => {
                 const newLanguage: string = e.value as string;
                 if (codeElement && preElement) {
+                    const blockElement: HTMLElement = findClosestParent(codeElement, `.${constants.BLOCK_CLS}`);
+                    const block: BlockModel = getBlockModelById(blockElement.id, this.parent.getEditorBlocks());
+                    const oldBlockModel: BlockModel = decoupleReference(block);
                     codeElement.className = `e-code-content e-block-content language-${newLanguage}`;
                     preElement.setAttribute('data-language', newLanguage);
 
                     // Update in Model
                     codeBlockSettings.language = newLanguage;
+
+                    // Track for undo redo and notify block change event
+                    this.parent.blockService.updateBlock(block.id, { properties: codeBlockSettings });
+                    const updatedBlockModel: BlockModel = getBlockModelById(block.id, this.parent.getEditorBlocks());
+                    this.trackAndNotifyChange(updatedBlockModel, oldBlockModel);
                 }
             }
         });
@@ -193,6 +203,9 @@ export class CodeRenderer {
     private handleEnterKey(e: KeyboardEvent, codeElement: HTMLElement, block: BlockModel): void {
         e.preventDefault();
         this.parent.previousSelection = captureSelectionState();
+        /* Collaboration Start */
+        this.parent.preCaptureSelection(this.parent.previousSelection);
+        /* Collaboration End */
         const action: { shouldExit: boolean; indentation: string } = this.determineEnterAction(codeElement);
         if (action.shouldExit) {
             this.exitCodeBlock(codeElement, block);
@@ -208,9 +221,8 @@ export class CodeRenderer {
         // Update the block model after inserting line breaks
         this.updateBlockModel(codeElement, block);
 
-        // Track the change for undo/redo
-        const clonedBlock: BlockModel = decoupleReference(block);
-        this.parent.undoRedoAction.trackContentChangedForUndoRedo(oldBlockModel, clonedBlock);
+        // Track for undo redo and notify the block change event
+        this.trackAndNotifyChange(block, oldBlockModel);
     }
 
     private determineEnterAction(codeElement: HTMLElement): { shouldExit: boolean; indentation: string } {
@@ -238,9 +250,8 @@ export class CodeRenderer {
             setCursorPosition(codeElement, 0);
             this.updateBlockModel(codeElement, block);
 
-            // Track the change for undo/redo
-            const clonedBlock: BlockModel = decoupleReference(block);
-            this.parent.undoRedoAction.trackContentChangedForUndoRedo(oldBlockModel, clonedBlock);
+            // Track for undo redo and notify the block change event
+            this.trackAndNotifyChange(block, oldBlockModel);
         }
         if (shouldPreventDefault) {
             e.preventDefault();
@@ -251,6 +262,9 @@ export class CodeRenderer {
     private handleTabKey(e: KeyboardEvent, codeElement: HTMLElement): void {
         e.preventDefault();
         this.parent.previousSelection = captureSelectionState();
+        /* Collaboration Start */
+        this.parent.preCaptureSelection(this.parent.previousSelection);
+        /* Collaboration End */
         const block: BlockModel = getBlockModelById(this.parent.currentFocusedBlock.id, this.parent.getEditorBlocks());
         if (!block) { return; }
 
@@ -266,9 +280,8 @@ export class CodeRenderer {
         // Update block model after indentation change
         this.updateBlockModel(codeElement, block);
 
-        // Track the change for undo/redo
-        const clonedBlock: BlockModel = decoupleReference(block);
-        this.parent.undoRedoAction.trackContentChangedForUndoRedo(oldBlockModel, clonedBlock);
+        // Track for undo redo and notify the block change event
+        this.trackAndNotifyChange(block, oldBlockModel);
     }
 
     private handleCodeBlockInput(e: Event): void {
@@ -286,17 +299,8 @@ export class CodeRenderer {
         }
         this.updateBlockModel(codeElement, block);
 
-        // Track the change for undo/redo and notify block change event
-        const clonedBlock: BlockModel = decoupleReference(block);
-        this.parent.undoRedoAction.trackContentChangedForUndoRedo(oldBlockModel, clonedBlock);
-        this.parent.eventService.addChange({
-            action: 'Update',
-            data: {
-                block: clonedBlock,
-                prevBlock: oldBlockModel
-            }
-        });
-        this.parent.observer.notify('triggerBlockChange', this.parent.eventService.getChanges());
+        // Track for undo redo and notify the block change event
+        this.trackAndNotifyChange(block, oldBlockModel);
     }
 
     private handleCtrlASelection(e: KeyboardEvent, codeElement: HTMLElement): void {
@@ -314,6 +318,8 @@ export class CodeRenderer {
 
     private getCursorPosition(element: HTMLElement): number {
         const range: Range = this.parent.nodeSelection.getRange();
+        if (!range) { return 0; }
+
         const preCaretRange: Range = range.cloneRange();
         preCaretRange.selectNodeContents(element);
         preCaretRange.setEnd(range.endContainer, range.endOffset);
@@ -449,6 +455,20 @@ export class CodeRenderer {
             block.content[0].content = textContent;
         }
         this.parent.stateManager.updateManagerBlocks();
+    }
+
+    private trackAndNotifyChange(newBlockModel: BlockModel, oldBlockModel: BlockModel): void {
+        // Track the change for undo/redo and notify block change event
+        const clonedBlock: BlockModel = decoupleReference(newBlockModel);
+        this.parent.undoRedoAction.trackContentChangedForUndoRedo(oldBlockModel, clonedBlock);
+        this.parent.eventService.addChange({
+            action: 'Update',
+            data: {
+                block: clonedBlock,
+                prevBlock: oldBlockModel
+            }
+        });
+        this.parent.observer.notify('triggerBlockChange', this.parent.eventService.getChanges());
     }
 
     private handleLocaleChange(): void {

@@ -12,9 +12,9 @@ export class CommandMenuSettings  extends ChildProperty<CommandMenuSettings> {
      * Specifies the width of the command menu popup.
      * Accepts valid CSS width values such as px, %, auto, etc.
      *
-     * @default '280px'
+     * @default '300px'
      */
-    @Property('280px')
+    @Property('300px')
     public popupWidth: string;
 
     /**

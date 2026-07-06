@@ -1,3 +1,8 @@
+/**
+ * Adobe Expert encoding table (glyph names for expert fonts).
+ *
+ * @private
+ */
 export const _expertEncoding: string[] = [
     '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',
     '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',
@@ -41,6 +46,11 @@ export const _expertEncoding: string[] = [
     'Ucircumflexsmall', 'Udieresissmall', 'Yacutesmall', 'Thornsmall',
     'Ydieresissmall'
 ];
+/**
+ * Mac OS Expert encoding table.
+ *
+ * @private
+ */
 export const _macExpertEncoding: string[] = [
     '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',
     'space', 'exclamsmall', 'Hungarumlautsmall', 'centoldstyle', 'dollaroldstyle', 'dollarsuperior', 'ampersandsmall', 'Acutesmall',
@@ -66,6 +76,11 @@ export const _macExpertEncoding: string[] = [
     'Ogoneksmall', 'Brevesmall', 'Macronsmall', 'bsuperior', 'nsuperior', 'msuperior', 'commasuperior', 'periodsuperior',
     'Dotaccentsmall', 'Ringsmall', '', '', '', ''
 ];
+/**
+ * Mac Roman encoding table.
+ *
+ * @private
+ */
 export const _macRomanEncoding: string[] = [
     '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',
     'space', 'exclam', 'quotedbl', 'numbersign', 'dollar', 'percent', 'ampersand', 'quotesingle', 'parenleft', 'parenright',
@@ -88,6 +103,11 @@ export const _macRomanEncoding: string[] = [
     'Idieresis', 'Igrave', 'Oacute', 'Ocircumflex', 'apple', 'Ograve', 'Uacute', 'Ucircumflex', 'Ugrave', 'dotlessi',
     'circumflex', 'tilde', 'macron', 'breve', 'dotaccent', 'ring', 'cedilla', 'hungarumlaut', 'ogonek', 'caron'
 ];
+/**
+ * Standard PostScript encoding table.
+ *
+ * @private
+ */
 export const _standardEncoding: string[] = [
     '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',
     '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',
@@ -116,6 +136,11 @@ export const _standardEncoding: string[] = [
     '', '', '', 'dotlessi', '', '', 'lslash', 'oslash', 'oe', 'germandbls', '',
     '', '', ''
 ];
+/**
+ * Windows ANSI encoding table.
+ *
+ * @private
+ */
 export const _winAnsiEncoding: string[] = [
     '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',
     'space', 'exclam', 'quotedbl', 'numbersign', 'dollar', 'percent', 'ampersand', 'quotesingle', 'parenleft', 'parenright',
@@ -138,6 +163,11 @@ export const _winAnsiEncoding: string[] = [
     'iacute', 'icircumflex', 'idieresis', 'eth', 'ntilde', 'ograve', 'oacute', 'ocircumflex', 'otilde', 'odieresis', 'divide',
     'oslash', 'ugrave', 'uacute', 'ucircumflex', 'udieresis', 'yacute', 'thorn', 'ydieresis'
 ];
+/**
+ * Adobe Symbol encoding table.
+ *
+ * @private
+ */
 export const _symbolSetEncoding: string[] = [
     '', '', '', '', '', '', '', '', '', '', '', '', '', '',
     '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',
@@ -176,6 +206,11 @@ export const _symbolSetEncoding: string[] = [
     'bracketrightex', 'bracketrightbt', 'bracerighttp', 'bracerightmid',
     'bracerightbt', ''
 ];
+/**
+ * Zapf Dingbats encoding table.
+ *
+ * @private
+ */
 export const _zapfDingbatsEncoding: string[] = [
     '', '', '', '', '', '', '', '', '', '', '', '', '', '',
     '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',
@@ -204,10 +239,11 @@ export const _zapfDingbatsEncoding: string[] = [
     'a190', 'a191', ''
 ];
 /**
- * Get Font Encoding
+ * Returns a predefined encoding table by name.
  *
- * @param {string} encodingName encoding name.
- * @returns {string[]} Page index.
+ * @private
+ * @param {string} encodingName The encoding name (for example 'WinAnsiEncoding').
+ * @returns {string[] | null} An array mapping character codes to glyph names, or `null` when unknown.
  */
 export function _getEncoding(encodingName: string): string[] {
     switch (encodingName) {
@@ -230,12 +266,10 @@ export function _getEncoding(encodingName: string): string[] {
     }
 }
 /**
- * Get Glyphs Unicode
+ * Returns a mapping of glyph names to Unicode codepoints.
  *
- * This function returns an object mapping glyph names (strings) to their respective Unicode values (numbers).
- * The returned object can be used to look up the Unicode values for various glyphs.
- *
- * @returns {Object<string, number>} An object where the keys are the glyph names (strings) and the values are their corresponding unicode values (numbers).
+ * @private
+ * @returns {{any}} Object mapping glyph names to Unicode code points.
  */
 export function _getGlyphsUnicode(): { [key: string]: number } {
     const glyphsUnicode: { [key: string]: number } = {
@@ -4573,6 +4607,7 @@ export function _getGlyphsUnicode(): { [key: string]: number } {
 /**
  * Get serif Fonts
  *
+ * @private
  * @returns {object} serifiFont Encoding values
  */
 export function _getSerifFonts(): { [key: string]: boolean } {
@@ -4717,6 +4752,7 @@ export function _getSerifFonts(): { [key: string]: boolean } {
 /**
  * Get Std Font Map
  *
+ * @private
  * @returns {object} StdFont Encoding values
  */
 export function _getStdFontMap(): { [key: string]: string } {
@@ -4799,6 +4835,7 @@ export function _getStdFontMap(): { [key: string]: string } {
 /**
  * Get glyph Map for standard fonts
  *
+ * @private
  * @returns {object} standardFont Encoding values
  */
 export function _getGlyphMapForStandardFonts(): { [key: number]: number} {
@@ -5241,6 +5278,7 @@ export function _getGlyphMapForStandardFonts(): { [key: number]: number} {
 /**
  * Get Supplemental Glyph Map For ArialBlack
  *
+ * @private
  * @returns {object} StdFont Encoding values
  */
 export function _getSupplementalGlyphMapForArialBlack(): { [key: number]: number} {
@@ -5254,6 +5292,7 @@ export function _getSupplementalGlyphMapForArialBlack(): { [key: number]: number
 /**
  * Get Supplemental Glyph for font
  *
+ * @private
  * @returns {object} A map where keys are the character codes and values are the
  *                   corresponding supplemental glyph codes.
  */
@@ -5385,6 +5424,7 @@ export function _getFontGlyphMap(): { [key: number]: number} {
  * It maps each non-standard font to a standard font name, making it easier to work with fonts
  * in contexts where non-standard fonts need to be substituted with their standard equivalents.
  *
+ * @private
  * @returns {object} A map where the keys are non-standard font names and the values are the corresponding standard font names.
  */
 export function _getNonStdFontMap(): { [key: string]: string} {
@@ -5440,6 +5480,7 @@ export function _getNonStdFontMap(): { [key: string]: string} {
  * This function returns a mapping of Dingbats glyph names to their corresponding Unicode values.
  * The mapping helps in converting Dingbats symbols to their Unicode equivalents.
  *
+ * @private
  * @returns {object} A map where the keys are Dingbats glyph names and the values are their corresponding Unicode values.
  */
 export function _getDingbatsGlyphsUnicode(): { [key: string]: number} {
@@ -5650,6 +5691,12 @@ export function _getDingbatsGlyphsUnicode(): { [key: string]: number} {
     };
     return glyphUnicode;
 }
+/**
+ * Returns basic ascent/descent/cap height metrics for standard 14 PDF fonts.
+ *
+ * @private
+ * @returns {any} give font metrics.
+ */
 export function _getFontBasicMetrics(): any { //eslint-disable-line
     const fontBasicMetrics: {[key: string]: any} = { //eslint-disable-line
         Courier : {
@@ -5745,6 +5792,7 @@ export function _getFontBasicMetrics(): any { //eslint-disable-line
  * This function returns a mapping of font names that are considered symbol fonts.
  * The value `true` indicates that the corresponding font is a symbol font, such as Dingbats or Wingdings.
  *
+ * @private
  * @returns {object} A map where the keys are font names and the values are boolean values (`true`), indicating that the font is a symbol font.
  */
 export function _getSymbolsFonts(): { [key: string]: boolean} {
@@ -5758,6 +5806,12 @@ export function _getSymbolsFonts(): { [key: string]: boolean} {
     };
     return symbolFonts;
 }
+/**
+ * Maps standard font names to internal font file names.
+ *
+ * @private
+ * @returns {any} returns fontname.
+ */
 export const _getFontNameToFileMap: any = {  // eslint-disable-line
     'Courier' : 'SyncfusionFixed',
     'Courier-Bold' : 'SyncfusionFixedBold',

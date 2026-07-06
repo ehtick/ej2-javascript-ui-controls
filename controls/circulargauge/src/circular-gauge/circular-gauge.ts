@@ -662,7 +662,7 @@ export class CircularGauge extends Component<HTMLElement> implements INotifyProp
         this.trigger('gaugeMouseMove', args, (observedArgs: IMouseEventArgs) => {
             let dragArgs: IPointerDragEventArgs;
             let pointerDrag: boolean = false;
-            if ((!isNullOrUndefined(this.activePointer) ? this.activePointer.pathElement[0].id === args.target.id : true)) {
+            if ((!isNullOrUndefined(this.activePointer) ? this.activePointer.pathElement.some((el: Element) => el.id === args.target.id) : true)) {
                 const pointerIndex: number = args.target.id.indexOf('_Pointer_') > -1 ? parseInt(args.target.id.slice(-1), 10) : null;
                 const axisIndex: number = args.target.id.indexOf('_Axis_') > -1 ? parseInt(args.target.id.split('_Axis_')[1], 10) : null;
                 pointerDrag = (this.allowPointerDrag && !isNullOrUndefined(axisIndex) && !isNullOrUndefined(pointerIndex))
@@ -1685,7 +1685,7 @@ export class CircularGauge extends Component<HTMLElement> implements INotifyProp
             modules.push({
                 member: 'Tooltip',
                 args: [this, GaugeTooltip],
-                name: 'Tooltip'
+                name: 'GaugeTooltip'
             });
         }
         if (this.allowPrint) {

@@ -203,6 +203,17 @@ describe('Menu', () => {
             triggerMouseEvent(document.body, 'mouseover');
             expect(menu.getPopups().length).toBe(0);
         });
+        it('unique id generation when element id is not provided', () => {
+            const menuElement: HTMLElement = createElement('ul');
+            document.body.appendChild(menuElement);
+            menu = new Menu({ items: items }, menuElement as any);
+            expect(menuElement.id).toBeTruthy();
+            expect(menuElement.id.indexOf('ej2-menu')).toBeGreaterThanOrEqual(0);
+            const wrap: HTMLElement = menu.getWrapper();
+            expect(wrap.classList.contains('e-menu-wrapper')).toBeTruthy();
+            expect(wrap.children[0].classList.contains('e-menu')).toBeTruthy();
+            expect(wrap.children[0].getAttribute('role')).toEqual('menubar');
+        });
         it('Menu with scroll enabled', () => {
             appendStyles('#menu { width: 400px; } .e-menu-wrapper { width: 250px; } #cookbooks-ej2menu-menu-popup.e-menu-popup, #book-ej2menu-menu-popup.e-menu-popup{ height: 200px; } #cookbooks-ej2menu-menu-popup.e-menu-popup .e-ul, #book-ej2menu-menu-popup.e-menu-popup .e-ul{ height: 250px; }');
             document.body.appendChild(ul);
@@ -332,9 +343,42 @@ describe('Menu', () => {
             menu.dataBind();
             expect(wrap.classList.contains('e-hamburger')).toEqual(false);
         });
+        it('Hamburger mode Checking with Orientation to vertical', () => {
+            document.body.appendChild(ul);
+            menu = new Menu({ items: items, hamburgerMode: true, orientation: 'Vertical' }, '#menu');
+            const wrap: HTMLElement = menu.getWrapper();
+            expect(wrap.classList.contains('e-hamburger')).toEqual(true);
+            menu.hamburgerMode = false;
+            menu.dataBind();
+            expect(wrap.classList.contains('e-hamburger')).toEqual(false);
+        });
+        it('Hamburger mode Checking with Orientation to vertical with RTL', () => {
+            const items: { [key: string]: Object }[] = [
+                { title: "Option1", iconCss: "e-icons e-home" },
+                { title: "Option2" },
+                { title: "Option3" },
+                { title: "Option4" },
+                { title: "Option5" }
+            ];
+            document.body.appendChild(ul);
+            menu = new Menu({ items: items, hamburgerMode: false, enableRtl: true }, '#menu');
+            const wrap: HTMLElement = menu.getWrapper();
+            expect(wrap.classList.contains('e-hamburger')).toEqual(false);
+            menu.hamburgerMode = true;
+            menu.dataBind();
+            expect(wrap.classList.contains('e-hamburger')).toEqual(true);
+        });
         it('title Checking', () => {
             document.body.appendChild(ul);
             menu = new Menu({ items: items, hamburgerMode: true }, '#menu');
+            menu.title = 'Hamburger Menu';
+            menu.dataBind();
+            const wrap: HTMLElement = menu.getWrapper();
+            expect(wrap.getElementsByClassName('e-menu-title')[0].innerHTML).toEqual('Hamburger Menu');
+        });
+        it('title Checking with enable sanitized as false', () => {
+            document.body.appendChild(ul);
+            menu = new Menu({ items: items, hamburgerMode: true, enableHtmlSanitizer: false }, '#menu');
             menu.title = 'Hamburger Menu';
             menu.dataBind();
             const wrap: HTMLElement = menu.getWrapper();
@@ -352,6 +396,10 @@ describe('Menu', () => {
             menu = new Menu({ items: templateDatasource, fields: { text: 'title' }, template: "#menuTemplate" }, '#menu');
             const wrap: HTMLElement = menu.getWrapper();
             expect(wrap.children[0].children[0].textContent).toEqual('Option1');
+            menu.template = '<div>new title</div>';
+            menu.dataBind();
+            const newWrap: HTMLElement = menu.getWrapper();
+            expect(newWrap.children[0].children[0].textContent).toEqual('new title');
         });
         it('enableScrolling Checking', () => {
             document.body.appendChild(ul);

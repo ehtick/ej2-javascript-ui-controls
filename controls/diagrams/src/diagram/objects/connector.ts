@@ -52,6 +52,10 @@ import { ConnectorFixedUserHandleModel } from './fixed-user-handle-model';
 import { ResizeTool } from '../interaction/tool';
 import { PathPort, Port } from './port';
 import { PathPortModel } from './port-model';
+import { ErConnectorShapeModel } from './connector-model';
+import { ErMultiplicity, ErRelationshipTypes } from './er-objects';
+import { ErMultiplicityModel } from './er-objects-model';
+
 const getConnectorType: Function = (obj: ConnectorShape): Object => {
     //Removed isBlazor code
     if (obj) {
@@ -62,6 +66,8 @@ const getConnectorType: Function = (obj: ConnectorShape): Object => {
             return ActivityFlow;
         case 'UmlClassifier':
             return RelationShip;
+        case 'Er':
+            return ErConnectorShape;
         default:
             return ConnectorShape;
         }
@@ -966,6 +972,70 @@ export class RelationShip extends ConnectorShape {
 }
 
 /**
+ * Defines the shape configuration for an Entity Relationship connector.
+ *
+ * Supports relationship type semantics and Crow's Foot multiplicity
+ * notation at both connector ends.
+ */
+export class ErConnectorShape extends ConnectorShape {
+    /**
+     * Defines the connector shape type.
+     *
+     * @default 'Er'
+     */
+    @Property('Er')
+    public type: ConnectionShapes;
+    /**
+     * Defines whether the relationship is identifying or non-identifying.
+     *
+     * Identifying relationships are typically rendered as solid lines.
+     * Non-identifying relationships are typically rendered as dashed lines.
+     *
+     * @default 'NonIdentifying'
+     */
+    @Property('NonIdentifying')
+    public relationship: ErRelationshipTypes;
+
+    /**
+     * Defines the Crow's Foot multiplicity rendered at the source end of the ER
+     * connector.
+     *
+     * This property uses an object model to support future extensibility, such
+     * as end-specific styling, visibility, sizing, labels, or metadata, without
+     * changing the public connector shape contract.
+     *
+     * @default { type: 'One' }
+     */
+    @Complex<ErMultiplicityModel>({ type: 'One' }, ErMultiplicity)
+    public sourceMultiplicity: ErMultiplicityModel;
+
+
+    /**
+     * Defines the Crow's Foot multiplicity rendered at the target end of the ER
+     * connector.
+     *
+     * This property uses an object model to support future extensibility, such
+     * as end-specific styling, visibility, sizing, labels, or metadata, without
+     * changing the public connector shape contract.
+     *
+     * @default { type: 'One' }
+     */
+    @Complex<ErMultiplicityModel>({ type: 'One' }, ErMultiplicity)
+    public targetMultiplicity: ErMultiplicityModel;
+
+    /**
+     * getClassName method
+     *
+     * @returns { string } getClassName method.
+     *
+     * @private
+     */
+    public getClassName(): string {
+        return 'ErConnectorShape';
+    }
+}
+
+/**
  * Connector shape for blazor
  */
 export class DiagramConnectorShape extends ChildProperty<DiagramConnectorShape> {
@@ -1107,7 +1177,7 @@ export class Connector extends NodeBase implements IElement {
      * @aspType object
      */
     @ComplexFactory(getConnectorType)
-    public shape: ConnectorShapeModel | BpmnFlowModel | RelationShipModel | DiagramConnectorShapeModel;
+    public shape: ConnectorShapeModel | BpmnFlowModel | RelationShipModel | DiagramConnectorShapeModel | ErConnectorShapeModel;
 
     /**
      * Defines the constraints of connector
@@ -1440,6 +1510,10 @@ export class Connector extends NodeBase implements IElement {
     public outEdges: string[] = [];
     /** @private */
     public inEdges: string[] = [];
+    /** @private */
+    public sourceCentralConnection: boolean = false;
+    /** @private */
+    public targetCentralConnection: boolean = false;
 
     // tslint:disable-next-line:no-any
     constructor(parent: any, propName: string, defaultValue: Object, isArray?: boolean) {
@@ -1529,11 +1603,16 @@ export class Connector extends NodeBase implements IElement {
             }
             break;
         case 'UmlClassifier':
-            // Preserve UML relationship labels without overriding the runtime changes.
+            // Preserve UML relationship labels without overriding the runtime changes on save and load.
             if (!diagram.isLoading) {
                 this.getConnectorRelation();
-                break;
             }
+            break;
+        case 'Er':
+            if (diagram && diagram.erDiagramsModule) {
+                diagram.erDiagramsModule.initErConnector(this, diagram);
+            }
+            break;
         }
         let anglePoints: PointModel[] = this.intermediatePoints as PointModel[];
         if (this.type === 'Bezier') {

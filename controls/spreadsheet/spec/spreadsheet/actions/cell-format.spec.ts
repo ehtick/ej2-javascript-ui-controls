@@ -3,6 +3,7 @@ import { defaultData } from '../util/datasource.spec';
 import { SheetModel, getRangeAddress, Spreadsheet, getCell, CellModel, setCellFormat} from '../../../src/index';
 import { L10n, getComponent } from '@syncfusion/ej2-base';
 import { SpreadsheetModel, onContentScroll } from '../../../src/spreadsheet/index';
+import { RichText } from '../../../src/index';
 
 describe('Cell Format ->', () => {
     let helper: SpreadsheetHelper = new SpreadsheetHelper('spreadsheet');
@@ -691,6 +692,47 @@ describe('Cell Format ->', () => {
             expect(helper.getInstance().sheets[0].rows[6].cells[3].style.borderTop).toBe('1px solid #000000');
             expect(helper.getInstance().sheets[0].rows[6].cells[3].style.borderBottom).toBe('1px solid #000000');
             done();
+        });
+    });
+
+    describe('Dependent feature use case', () => {
+        beforeAll((done: Function) => {
+            helper.initializeSpreadsheet({
+                sheets: [{ ranges: [{ dataSource: defaultData }] }]
+            }, done);
+        });
+        afterAll(() => {
+            helper.invoke('destroy');
+        });
+        it('EJ2-942153: Text-formatted numeric values not excluded when filtering specific number like 0.000', (done: Function) => {
+            let spreadsheet: any = helper.getInstance();
+            helper.invoke('selectRange', ['A1:A11']);
+            helper.getElement('#' + helper.id + '_number_format').click();
+            helper.getElement('#' + helper.id + '_Text').click();
+            helper.edit('A3', '1000.00');
+            expect(spreadsheet.sheets[0].rows[2].cells[0].value).toBe('1000.00');
+            expect(spreadsheet.sheets[0].rows[2].cells[0].format).toBe('@');
+            helper.getElement('#' + helper.id + '_sorting').click();
+            helper.getElement('#' + helper.id + '_applyfilter').click();
+            const td: HTMLTableCellElement = helper.invoke('getCell', [0, 0]);
+            helper.invoke('selectRange', ['A1']);
+            helper.invoke('getCell', [0, 0]).focus();
+            helper.getInstance().keyboardNavigationModule.keyDownHandler({ preventDefault: function () { }, target: td, altKey: true, keyCode: 40 });
+            setTimeout(() => {
+                const cbox: HTMLElement = helper.getElement('.e-checkboxlist').children[1].querySelector('.e-checkbox-wrapper');
+                (cbox.querySelector('.e-chk-hidden') as HTMLInputElement).checked = false;
+                const frame = cbox.querySelector('.e-frame') as HTMLElement;
+                frame.classList.add('e-uncheck'); frame.classList.remove('e-check');
+                helper.getElement('.e-filter-popup .e-btn.e-primary').click();
+                setTimeout(() => {
+                    expect(spreadsheet.sheets[0].rows[2].hidden).toBeTruthy();
+                    expect(spreadsheet.filterModule.filterCollection.size).toBeGreaterThan(0);
+                    expect(spreadsheet.filterModule.filterCollection.get(0).length).toBe(1);
+                    expect(spreadsheet.filterModule.filterCollection.get(0)[0].value).toBe('1000.00');
+                    expect((spreadsheet.sheets[0].rows[2] as any).isFiltered).toBeTruthy();
+                    done();
+                });
+            }, 20);
         });
     });
 
@@ -2449,6 +2491,13 @@ describe('Cell Format ->', () => {
             expect(helper.getInstance().sheets[0].rows[3].cells[0].style.lineHeight).toBe(undefined);
             done();
         });
+        it('Programmatic `updateCell` with thick border should adjust row height', (done: Function) => {
+            const spreadsheet: Spreadsheet = helper.getInstance();
+            expect(spreadsheet.sheets[0].rows[2].height).toBe(17);
+            helper.invoke('updateCell', [{ style: { border: '3px solid rgb(0, 0, 0)' } }, 'B3']);
+            expect(spreadsheet.sheets[0].rows[2].height).toBe(22);
+            done();
+        });
     });
     describe('EJ2- 1020492: Applying top border removes previous cells lineHeight causing alignment issues on import in Spreadsheet ->', () => {
         beforeAll((done: Function) => {
@@ -2489,6 +2538,54 @@ describe('Cell Format ->', () => {
             td = helper.invoke('getCell', [2, 0]);
             expect(td.style.lineHeight).toBeDefined();
             done();
+        });
+    });
+
+    describe('EJ2-1002840, 1002858: Merge adjacent border tests cases ->', () => {
+        beforeAll((done: Function) => {
+            helper.initializeSpreadsheet({ sheets: [{ ranges: [{ dataSource: defaultData }] }] }, done);
+        });
+        afterAll(() => {
+            helper.invoke('destroy');
+        });
+        it('Merge D5:F5 and apply border on G3:G8 (no misalignment)', (done: Function) => {
+            helper.invoke('merge', ['D5:F5']);
+            expect(helper.getInstance().sheets[0].rows[4].cells[3].colSpan).toBe(3);
+            helper.invoke('cellFormat', [{ border: '1px solid rgb(255, 0, 0)' }, 'G3:G8']);
+            helper.invoke('goTo', ['A60']);
+            setTimeout(() => {
+                helper.invoke('goTo', ['A1']);
+                setTimeout(() => {
+                    expect(helper.invoke('getCell', [4, 6]).style.borderLeft).toBe('1px solid rgb(255, 0, 0)');
+                    expect(helper.invoke('getCell', [4, 3]).style.borderRight).toBe('');
+                    done();
+                });
+            });
+        });
+        it('Apply Left Border adjacent to merged range (G3:G8)', (done: Function) => {
+            helper.invoke('setBorder', [{ borderLeft: '2px solid rgb(0, 255, 0)' }, 'G3:G8']);
+            helper.invoke('goTo', ['AJ1']);
+            setTimeout(() => {
+                helper.invoke('goTo', ['A1']);
+                setTimeout(() => {
+                    expect(helper.invoke('getCell', [2, 6]).style.borderLeft).toBe('2px solid rgb(0, 255, 0)');
+                    expect(helper.invoke('getCell', [4, 3]).style.borderRight).toBe('');
+                    done();
+                });
+            });
+        });
+        it('Apply Outer border type to adjacent range should not misalign merged cell', (done: Function) => {
+            helper.invoke('setBorder', [{ border: '3px solid #0000ff' }, 'G3:G8', 'Outer']);
+            helper.invoke('goTo', ['H100']);
+            setTimeout(() => {
+                helper.invoke('goTo', ['A1']);
+                setTimeout(() => {
+                    expect(helper.invoke('getCell', [7, 6]).style.borderBottom).toBe('3px solid rgb(0, 0, 255)');
+                    expect(helper.invoke('getCell', [4, 6]).style.borderLeft).toBe('3px solid rgb(0, 0, 255)');
+                    expect(helper.getInstance().sheets[0].rows[4].cells[3].colSpan).toBe(3);
+                    done();
+                });
+            });
         });
     });
     describe('EJ2-1021137: Values are not properly added to the cells while using updateRange method ->', () => {
@@ -2546,6 +2643,434 @@ describe('Cell Format ->', () => {
             expect(td.textContent).toBe('Data 5');
             td = helper.invoke('getCell', [2, 5]);
             expect(td.textContent).toBe('Data 6');
+            done();
+        });
+    });
+    describe('Superscript/Subscript run-level formatting ->', () => {
+        beforeAll((done: Function) => {
+            helper.initializeSpreadsheet({ sheets: [{ ranges: [{ dataSource: defaultData }] }] }, done);
+        });
+        afterAll(() => {
+            helper.invoke('destroy');
+        });
+        it('should persist superscript runs from editor into cell.richText', (done: Function) => {
+            const spreadsheet: Spreadsheet = helper.getInstance();
+            helper.invoke('selectRange', ['A1']);
+            helper.triggerKeyNativeEvent(113);
+            const editor: HTMLElement = helper.getElement('#' + helper.id + '_edit');
+            editor.focus();
+            editor.textContent = 'ab';
+            const range = document.createRange();
+            range.setStart(editor.firstChild, 1);
+            range.setEnd(editor.firstChild, 2);
+            const sel = document.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+            helper.getElement('#' + helper.id + '_super').click();
+            helper.triggerKeyNativeEvent(13);
+            setTimeout(() => {
+                const cell: CellModel = spreadsheet.sheets[0].rows[0].cells[0];
+                expect(cell.richText).toBeDefined();
+                expect(cell.richText.length).toBeGreaterThan(0);
+                const run = cell.richText.find(r => r.text && r.text.indexOf('b') > -1);
+                expect(run).toBeDefined();
+                expect(run.style && run.style.verticalAlign).toBe('super');
+                done();
+            });
+        });
+        it('should persist subscript runs from editor into cell.richText', (done: Function) => {
+            const spreadsheet: Spreadsheet = helper.getInstance();
+            helper.invoke('selectRange', ['A2']);
+            helper.triggerKeyNativeEvent(113);
+            const editor: HTMLElement = helper.getElement('#' + helper.id + '_edit');
+            editor.focus();
+            editor.textContent = 'xy';
+            const range = document.createRange();
+            range.setStart(editor.firstChild, 0);
+            range.setEnd(editor.firstChild, 1);
+            const sel = document.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+            helper.getElement('#' + helper.id + '_sub').click();
+            helper.triggerKeyNativeEvent(13);
+            setTimeout(() => {
+                const cell: CellModel = spreadsheet.sheets[0].rows[1].cells[0];
+                expect(cell.richText).toBeDefined();
+                expect(cell.richText.length).toBeGreaterThan(0);
+                const run = cell.richText.find(r => r.text && r.text.indexOf('x') > -1);
+                expect(run).toBeDefined();
+                expect(run.style && run.style.verticalAlign).toBe('sub');
+                done();
+            });
+        });
+        it('should keep wrap and persist runs when wrap is applied before formatting', (done: Function) => {
+            const spreadsheet: Spreadsheet = helper.getInstance();
+            helper.invoke('selectRange', ['A3']);
+            helper.getElement('#' + helper.id + '_wrap').click();
+            expect(spreadsheet.sheets[0].rows[2].cells[0].wrap).toBeTruthy();
+            helper.triggerKeyNativeEvent(113);
+            const editor: HTMLElement = helper.getElement('#' + helper.id + '_edit');
+            editor.focus();
+            editor.textContent = 'pq';
+            const range = document.createRange();
+            range.setStart(editor.firstChild, 0);
+            range.setEnd(editor.firstChild, 1);
+            const sel = document.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+            helper.getElement('#' + helper.id + '_super').click();
+            helper.triggerKeyNativeEvent(13);
+            setTimeout(() => {
+                const cell: CellModel = spreadsheet.sheets[0].rows[2].cells[0];
+                expect(cell.wrap).toBeTruthy();
+                expect(cell.richText).toBeDefined();
+                expect(cell.richText.length).toBeGreaterThan(0);
+                const run = cell.richText.find(r => r.text && r.text.indexOf('p') > -1);
+                expect(run).toBeDefined();
+                expect(run.style && run.style.verticalAlign).toBe('super');
+                const td: HTMLElement = helper.invoke('getCell', [2, 0]);
+                expect(td.classList).toContain('e-wraptext');
+                done();
+            });
+        });
+        it('should preserve hyperlink when applying cell format', (done: Function) => {
+            const spreadsheet: Spreadsheet = helper.getInstance();
+            helper.invoke('insertHyperlink', [{ address: 'www.example.com' }, 'Sheet1!A4', 'Link', false]);
+            setTimeout(() => {
+                const _link = spreadsheet.sheets[0].rows[3].cells[0].hyperlink;
+                const _addr = typeof _link === 'string' ? _link : (_link as any).address;
+                expect(_addr).toBe('http://www.example.com');
+                helper.invoke('cellFormat', [{ color: '#ff0000' }, 'A4']);
+                setTimeout(() => {
+                    const cell: CellModel = spreadsheet.sheets[0].rows[3].cells[0];
+                    expect(cell.hyperlink).toBeDefined();
+                    expect(cell.style && cell.style.color).toBe('#ff0000');
+                    const td: HTMLElement = helper.invoke('getCell', [3, 0]);
+                    expect(td.style.color).toBe('rgb(255, 0, 0)');
+                    done();
+                }, 10);
+            }, 10);
+        });
+        it('should preserve note when applying cell format', (done: Function) => {
+            const spreadsheet: Spreadsheet = helper.getInstance();
+            helper.invoke('selectRange', ['A5']);
+            helper.setAnimationToNone('#spreadsheet_contextmenu');
+            helper.openAndClickCMenuItem(4, 0, [10]);
+            setTimeout(() => {
+                helper.getElements('.e-addNoteContainer')[0].value = 'Note for A5';
+                const tdCommit = helper.invoke('getCell', [4, 4]);
+                const coords = tdCommit.getBoundingClientRect();
+                helper.triggerMouseAction('mousedown', { x: coords.left + 3, y: coords.top + 2 }, null, tdCommit);
+                helper.triggerMouseAction('mouseup', { x: coords.left + 3, y: coords.top + 2 }, document, tdCommit);
+                setTimeout(() => {
+                    const _note = spreadsheet.sheets[0].rows[4].cells[0].notes;
+                    const _noteText = typeof _note === 'string' ? _note : (_note as any).text;
+                    expect(_noteText).toBe('Note for A5');
+                    // Apply formatting to same cell
+                    helper.invoke('cellFormat', [{ fontWeight: 'bold' }, 'A5']);
+                    setTimeout(() => {
+                        const cell: CellModel = spreadsheet.sheets[0].rows[4].cells[0];
+                        expect(cell.notes).toBeDefined();
+                        expect(cell.style && cell.style.fontWeight).toBe('bold');
+                        const td: HTMLElement = helper.invoke('getCell', [4, 0]);
+                        expect(td.style.fontWeight === 'bold' || td.style.fontWeight === '700').toBeTruthy();
+                        done();
+                    }, 10);
+                }, 10);
+            }, 10);
+        });
+        it('should allow editing and clearing superscript runs by deleting text', (done: Function) => {
+            const spreadsheet: Spreadsheet = helper.getInstance();
+            helper.invoke('selectRange', ['A6']);
+            helper.triggerKeyNativeEvent(113);
+            const editor: HTMLElement = helper.getElement('#' + helper.id + '_edit');
+            editor.focus();
+            editor.textContent = 'ab';
+            const range = document.createRange();
+            range.setStart(editor.firstChild, 1);
+            range.setEnd(editor.firstChild, 2);
+            const sel = document.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+            helper.getElement('#' + helper.id + '_super').click();
+            helper.triggerKeyNativeEvent(13);
+            setTimeout(() => {
+                helper.invoke('selectRange', ['A6']);
+                helper.triggerKeyNativeEvent(113);
+                const edit2: HTMLElement = helper.getElement('#' + helper.id + '_edit'); edit2.focus();
+                edit2.textContent = '';
+                helper.triggerKeyNativeEvent(13);
+                setTimeout(() => {
+                    const cell: CellModel = spreadsheet.sheets[0].rows[5].cells[0];
+                    expect(cell.value === '' || cell.value === undefined).toBeTruthy();
+                    expect(!cell.richText || cell.richText.length === 0).toBeTruthy();
+                    done();
+                }, 10);
+            }, 10);
+        });
+        it('should allow editing and clearing subscript runs by deleting text', (done: Function) => {
+            const spreadsheet: Spreadsheet = helper.getInstance();
+            helper.invoke('selectRange', ['A7']);
+            helper.triggerKeyNativeEvent(113);
+            const editor: HTMLElement = helper.getElement('#' + helper.id + '_edit');
+            editor.focus();
+            editor.textContent = 'xy';
+            const range = document.createRange();
+            range.setStart(editor.firstChild, 0);
+            range.setEnd(editor.firstChild, 1);
+            const sel = document.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+            helper.getElement('#' + helper.id + '_sub').click();
+            helper.triggerKeyNativeEvent(13);
+            setTimeout(() => {
+                helper.invoke('selectRange', ['A7']);
+                helper.triggerKeyNativeEvent(113);
+                const edit2: HTMLElement = helper.getElement('#' + helper.id + '_edit'); edit2.focus();
+                edit2.textContent = '';
+                helper.triggerKeyNativeEvent(13);
+                setTimeout(() => {
+                    const cell: CellModel = spreadsheet.sheets[0].rows[6].cells[0];
+                    expect(cell.value === '' || cell.value === undefined).toBeTruthy();
+                    expect(!cell.richText || cell.richText.length === 0).toBeTruthy();
+                    done();
+                }, 10);
+            }, 10);
+        });
+        it('should not apply superscript to number, date and time cell selections', (done: Function) => {
+            const spreadsheet: Spreadsheet = helper.getInstance();
+            helper.invoke('updateCell', [{ value: 12345 }, 'A10']);
+            helper.invoke('selectRange', ['A10']);
+            helper.triggerKeyNativeEvent(113); // start edit
+            let editor: HTMLElement = helper.getElement('#' + helper.id + '_edit');
+            editor.focus(); editor.textContent = '12345';
+            let range = document.createRange(); range.setStart(editor.firstChild, 4); range.setEnd(editor.firstChild, 5);
+            let sel = document.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+            helper.getElement('#' + helper.id + '_super').click();
+            helper.triggerKeyNativeEvent(13);
+            helper.invoke('updateCell', [{ value: '1/1/2020' }, 'A11']);
+            helper.invoke('selectRange', ['A11']);
+            helper.triggerKeyNativeEvent(113);
+            editor = helper.getElement('#' + helper.id + '_edit'); editor.focus(); editor.textContent = '1/1/2020';
+            range = document.createRange(); range.setStart(editor.firstChild, 0); range.setEnd(editor.firstChild, 1);
+            sel = document.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+            helper.getElement('#' + helper.id + '_super').click();
+            helper.triggerKeyNativeEvent(13);
+            helper.invoke('updateCell', [{ value: '12:30:00 PM' }, 'A12']);
+            helper.invoke('selectRange', ['A12']);
+            helper.triggerKeyNativeEvent(113);
+            editor = helper.getElement('#' + helper.id + '_edit'); editor.focus(); editor.textContent = '12:30 PM';
+            range = document.createRange(); range.setStart(editor.firstChild, 2); range.setEnd(editor.firstChild, 3);
+            sel = document.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+            helper.getElement('#' + helper.id + '_super').click();
+            helper.triggerKeyNativeEvent(13);
+            setTimeout(() => {
+                const cellA10: CellModel = spreadsheet.sheets[0].rows[9].cells[0];
+                const tdA10: HTMLElement = helper.invoke('getCell', [9, 0]);
+                expect(
+                    (cellA10 && cellA10.richText && cellA10.richText.some(rt => rt.style && rt.style.verticalAlign === 'super')) ||
+                    !!tdA10.querySelector('span.e-vert-super') ||
+                    (cellA10 && cellA10.style && cellA10.style.verticalAlign === 'super')
+                ).toBeFalsy();
+                const cellA11: CellModel = spreadsheet.sheets[0].rows[10].cells[0];
+                const tdA11: HTMLElement = helper.invoke('getCell', [10, 0]);
+                expect(
+                    (cellA11 && cellA11.richText && cellA11.richText.some(rt => rt.style && rt.style.verticalAlign === 'super')) ||
+                    !!tdA11.querySelector('span.e-vert-super') ||
+                    (cellA11 && cellA11.style && cellA11.style.verticalAlign === 'super')
+                ).toBeFalsy();
+                const cellA12: CellModel = spreadsheet.sheets[0].rows[11].cells[0];
+                const tdA12: HTMLElement = helper.invoke('getCell', [11, 0]);
+                expect(
+                    (cellA12 && cellA12.richText && cellA12.richText.some(rt => rt.style && rt.style.verticalAlign === 'super')) ||
+                    !!tdA12.querySelector('span.e-vert-super') ||
+                    (cellA12 && cellA12.style && cellA12.style.verticalAlign === 'super')
+                ).toBeFalsy();
+                done();
+            });
+        });
+        it('should not apply subscript to number, date and time cell selections', (done: Function) => {
+            const spreadsheet: Spreadsheet = helper.getInstance();
+            helper.invoke('updateCell', [{ value: 6789 }, 'B10']);
+            helper.invoke('selectRange', ['B10']);
+            helper.triggerKeyNativeEvent(113);
+            let editor: HTMLElement = helper.getElement('#' + helper.id + '_edit'); editor.focus(); editor.textContent = '6789';
+            let range = document.createRange(); range.setStart(editor.firstChild, 2); range.setEnd(editor.firstChild, 3);
+            let sel = document.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+            helper.getElement('#' + helper.id + '_sub').click();
+            helper.triggerKeyNativeEvent(13);
+            helper.invoke('updateCell', [{ value: '2/2/2021' }, 'B11']);
+            helper.invoke('selectRange', ['B11']);
+            helper.triggerKeyNativeEvent(113);
+            editor = helper.getElement('#' + helper.id + '_edit'); editor.focus(); editor.textContent = '2/2/2021';
+            range = document.createRange(); range.setStart(editor.firstChild, 0); range.setEnd(editor.firstChild, 1);
+            sel = document.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+            helper.getElement('#' + helper.id + '_sub').click();
+            helper.triggerKeyNativeEvent(13);
+            helper.invoke('updateCell', [{ value: '01:15:00 PM' }, 'B12']);
+            helper.invoke('selectRange', ['B12']);
+            helper.triggerKeyNativeEvent(113);
+            editor = helper.getElement('#' + helper.id + '_edit'); editor.focus(); editor.textContent = '01:15 PM';
+            range = document.createRange(); range.setStart(editor.firstChild, 3); range.setEnd(editor.firstChild, 4);
+            sel = document.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+            helper.getElement('#' + helper.id + '_sub').click();
+            helper.triggerKeyNativeEvent(13);
+            setTimeout(() => {
+                const cellB10: CellModel = spreadsheet.sheets[0].rows[9].cells[1];
+                const tdB10: HTMLElement = helper.invoke('getCell', [9, 1]);
+                expect(
+                    (cellB10 && cellB10.richText && cellB10.richText.some(rt => rt.style && rt.style.verticalAlign === 'sub')) ||
+                    !!tdB10.querySelector('span.e-vert-sub') ||
+                    (cellB10 && cellB10.style && cellB10.style.verticalAlign === 'sub')
+                ).toBeFalsy();
+
+                const cellB11: CellModel = spreadsheet.sheets[0].rows[10].cells[1];
+                const tdB11: HTMLElement = helper.invoke('getCell', [10, 1]);
+                expect(
+                    (cellB11 && cellB11.richText && cellB11.richText.some(rt => rt.style && rt.style.verticalAlign === 'sub')) ||
+                    !!tdB11.querySelector('span.e-vert-sub') ||
+                    (cellB11 && cellB11.style && cellB11.style.verticalAlign === 'sub')
+                ).toBeFalsy();
+
+                const cellB12: CellModel = spreadsheet.sheets[0].rows[11].cells[1];
+                const tdB12: HTMLElement = helper.invoke('getCell', [11, 1]);
+                expect(
+                    (cellB12 && cellB12.richText && cellB12.richText.some(rt => rt.style && rt.style.verticalAlign === 'sub')) ||
+                    !!tdB12.querySelector('span.e-vert-sub') ||
+                    (cellB12 && cellB12.style && cellB12.style.verticalAlign === 'sub')
+                ).toBeFalsy();
+                done();
+            });
+        });
+    });
+    describe('Hyperlink and wrap in subscript and superscript applied cells ->', () => {
+        beforeAll((done: Function) => {
+            helper.initializeSpreadsheet({ sheets: [{ ranges: [{ dataSource: defaultData }] }] }, done);
+        });
+        afterAll(() => {
+            helper.invoke('destroy');
+        });
+        it('should preserve hyperlink when applying superscript and subscript runs', (done: Function) => {
+            const spreadsheet: Spreadsheet = helper.getInstance();
+            const addr = 'A20';
+            helper.invoke('insertHyperlink', [{ address: 'www.test.com' }, `Sheet1!${addr}`, 'Link', false]);
+            setTimeout(() => {
+                helper.invoke('updateCell', [{ value: 'xy', richText: [
+                    { text: 'x', style: { verticalAlign: 'super' } },
+                    { text: 'y', style: { verticalAlign: 'sub' } }
+                ] }, addr]);
+                setTimeout(() => {
+                    const idx = 19;
+                    const cell: CellModel = spreadsheet.sheets[0].rows[idx].cells[0];
+                    expect(cell).toBeDefined();
+                    expect(cell.hyperlink).toBeDefined();
+                    expect(cell.richText && cell.richText.length).toBeGreaterThan(0);
+                    const runSuper = cell.richText.find(r => r.text && r.text.indexOf('x') > -1);
+                    const runSub = cell.richText.find(r => r.text && r.text.indexOf('y') > -1);
+                    expect(runSuper).toBeDefined();
+                    expect(runSuper.style && runSuper.style.verticalAlign).toBe('super');
+                    expect(runSub).toBeDefined();
+                    expect(runSub.style && runSub.style.verticalAlign).toBe('sub');
+                    done();
+                }, 10);
+            }, 10);
+        });
+        it('apply superscript+subscript to cells with filter, note, comment, wrap and then increase column width', (done: Function) => {
+            const spreadsheet: Spreadsheet = helper.getInstance();
+            helper.invoke('updateCell', [{ value: 'ab', richText: [
+                { text: 'a', style: { verticalAlign: 'super' } },
+                { text: 'b', style: { verticalAlign: 'sub' } }
+            ] }, 'A1']);
+            helper.invoke('updateCell', [{ value: 'xy', richText: [
+                { text: 'x', style: { verticalAlign: 'super' } },
+                { text: 'y', style: { verticalAlign: 'sub' } }
+            ] }, 'A2']);
+            helper.invoke('updateCell', [{ notes: 'Note for A2' }, 'A2']);
+            helper.invoke('updateCell', [{ value: 'pq', richText: [
+                { text: 'p', style: { verticalAlign: 'super' } },
+                { text: 'q', style: { verticalAlign: 'sub' } }
+            ] }, 'A3']);
+            helper.invoke('updateCell', [{ comment: { text: 'Comment for A3' } }, 'A3']);
+            helper.invoke('updateCell', [{ value: 'rs', richText: [
+                { text: 'r', style: { verticalAlign: 'super' } },
+                { text: 's', style: { verticalAlign: 'sub' } }
+            ] }, 'A4']);
+            helper.getInstance().wrap('A1');
+            helper.getInstance().wrap('A2');
+            helper.getInstance().wrap('A3');
+            helper.getInstance().wrap('A4');
+            helper.invoke('selectRange', ['A1']);
+            helper.getElement('#' + helper.id + '_sorting').click();
+            helper.getElement('#' + helper.id + '_applyfilter').click();
+            const tdBefore: HTMLElement = helper.invoke('getCell', [1, 0]);
+            const beforeWidth = tdBefore.offsetWidth;
+            spreadsheet.setColWidth(beforeWidth + 120, 0);
+            const tdAfter: HTMLElement = helper.invoke('getCell', [1, 0]);
+            const afterWidth = tdAfter.offsetWidth;
+            expect(afterWidth).toBeGreaterThan(beforeWidth);
+            const a1: CellModel = spreadsheet.sheets[0].rows[0].cells[0];
+            const a2: CellModel = spreadsheet.sheets[0].rows[1].cells[0];
+            const a3: CellModel = spreadsheet.sheets[0].rows[2].cells[0];
+            const a4: CellModel = spreadsheet.sheets[0].rows[3].cells[0]
+            expect(a1.richText && a1.richText.length).toBeGreaterThan(0);
+            expect(a1.richText[0].style && a1.richText[0].style.verticalAlign).toBe('super');
+            expect(a1.richText[1].style && a1.richText[1].style.verticalAlign).toBe('sub');
+            expect(a2.notes).toBeDefined();
+            expect(a2.richText && a2.richText.length).toBeGreaterThan(0);
+            expect(a3.comment).toBeDefined();
+            expect(a3.richText && a3.richText.length).toBeGreaterThan(0);
+            expect(a4.wrap).toBeTruthy();
+            expect(a4.richText && a4.richText.length).toBeGreaterThan(0);
+            done();
+        });
+        it('RichText model: preserve subscript run and render correctly', (done: Function) => {
+            const spreadsheet: Spreadsheet = helper.getInstance();
+            const addr = 'C25';
+            helper.invoke('updateCell', [{ value: 'H2O', richText: [
+                { text: 'H' },
+                { text: '2', style: { verticalAlign: 'sub' } },
+                { text: 'O' }
+            ] }, addr]);
+            setTimeout(() => {
+                const rowIdx = 24; const colIdx = 2; // C25 -> zero-based indexes
+                const cell: CellModel = spreadsheet.sheets[0].rows[rowIdx].cells[colIdx];
+                expect(cell).toBeDefined();
+                expect(cell.richText).toBeDefined();
+                expect(cell.richText.length).toBe(3);
+                expect(cell.richText[1].style && cell.richText[1].style.verticalAlign).toBe('sub');
+                const td: HTMLElement = helper.invoke('getCell', [rowIdx, colIdx]);
+                expect(td.querySelector('span.e-vert-sub')).not.toBeNull();
+                done();
+            }, 10);
+        });
+    });
+    describe('RichText initialization via sheets ->', () => {
+        beforeAll((done: Function) => {
+            helper.initializeSpreadsheet({
+                sheets: [{
+                    ranges: [{ dataSource: defaultData }],
+                    rows: [
+                        { cells: [{ value: 'Plain' }] },
+                        { cells: [{ value: 'H2O', richText: [
+                            { text: 'H' },
+                            { text: '2', style: { verticalAlign: 'sub' } },
+                            { text: 'O' }
+                        ] }] },
+                        { cells: [{ value: 'X', richText: [ { text: 'X', style: { verticalAlign: 'super' } } ] }] }
+                    ]
+                }]
+            }, done);
+        });
+        afterAll(() => {
+            helper.invoke('destroy');
+        });
+        it('should have richText initialized in model and render vertical runs', (done: Function) => {
+            const spreadsheet: Spreadsheet = helper.getInstance();
+            const cell = spreadsheet.sheets[0].rows[1].cells[0];
+            expect(cell).toBeDefined();
+            expect(cell.richText).toBeDefined();
+            expect(cell.richText.length).toBe(3);
+            const td: HTMLElement = helper.invoke('getCell', [1, 0]);
+            expect(td.querySelector('span.e-vert-sub')).not.toBeNull();
+            done();
+        });
+        it('directly instantiate RichText', (done: Function) => {
+            const parent = helper.getInstance();
+            const inst = new RichText(parent as any, 'richText', { text: 'H2O', style: { verticalAlign: 'sub' } }, false);
+            expect(inst).toBeDefined();
+            expect((inst as any).text || (inst as any).value && (inst as any).value.text).toBe('H2O');
+            const style = (inst as any).style || (inst as any).value && (inst as any).value.style;
+            expect(style && style.verticalAlign).toBe('sub');
             done();
         });
     });

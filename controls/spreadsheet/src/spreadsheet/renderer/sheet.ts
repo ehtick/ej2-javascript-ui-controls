@@ -93,7 +93,8 @@ export class SheetRender implements IRenderer {
             if (isRtlChange) {
                 frozenCol.style[`${rtlOffset}`] = '';
             }
-            frozenCol.style[`${offset}`] = width - getDPRValue(1) + 'Px'; frozenCol.style.display = '';
+            frozenCol.style[`${offset}`] = width - getDPRValue(1) + 'px';
+            frozenCol.style.display = '';
         }
         const widthCalc: string = `calc(100% - ${width}px)`;
         this.setHeaderPanelWidth(this.getSelectAllContent(), width);
@@ -149,10 +150,14 @@ export class SheetRender implements IRenderer {
                 headerPanel.style.height = '';
             }
             contentPanel.style.height = `calc(100% - ${frozenHeight + scrollSize}px)`;
-            const frozenRow: HTMLElement = document.getElementById(this.parent.element.id + '_sheet').getElementsByClassName(
-                'e-frozen-row')[0] as HTMLElement;
-            frozenRow.style.width = Browser.isDevice ? '100%' : `calc(100% - ${scrollSize}px)`;
-            frozenRow.style.top = frozenHeight - 1 - (sheet.showHeaders ? 1 : 0) + 'px'; frozenRow.style.display = '';
+            const sheetEle: Element = document.getElementById(this.parent.element.id + '_sheet');
+            if (sheetEle) {
+                const frozenRow: HTMLElement = sheetEle.getElementsByClassName('e-frozen-row')[0] as HTMLElement;
+                if (frozenRow) {
+                    frozenRow.style.width = Browser.isDevice ? '100%' : `calc(100% - ${scrollSize}px)`;
+                    frozenRow.style.top = frozenHeight - 1 - (sheet.showHeaders ? 1 : 0) + 'px'; frozenRow.style.display = '';
+                }
+            }
         } else {
             contentPanel.style.height = `calc(100% - ${(sheet.showHeaders ? getDPRValue(31) : 0) + scrollSize}px)`;
         }
@@ -226,7 +231,7 @@ export class SheetRender implements IRenderer {
      */
     public renderTable(args: SheetRenderArgs): void {
         let indexes: number[]; let row: Element; let hRow: Element; const sheet: SheetModel = this.parent.getActiveSheet();
-        let cell: Element; let cellArgs: CellRenderArgs; const mergeBorderRows: number[] = [];
+        let cell: Element; let cellArgs: CellRenderArgs; const mergeBorderRows: number[] = []; const mergeBorderCols: number[] = [];
         const visibleNotes: ExtendedNoteModel[] = [];
         const frag: DocumentFragment = document.createDocumentFragment();
         frag.appendChild(this.headerPanel); frag.appendChild(this.contentPanel);
@@ -298,11 +303,13 @@ export class SheetRender implements IRenderer {
                     this.cellRenderer.renderRowHeader(indexes[0], hRow);
                 }
             }
-            cellArgs = <CellRenderArgs>{colIdx: indexes[1], rowIdx: indexes[0], cell: value, mergeBorderRows: mergeBorderRows,
+            cellArgs = <CellRenderArgs>{
+                colIdx: indexes[1], rowIdx: indexes[0], cell: value, mergeBorderRows: mergeBorderRows, mergeBorderCols: mergeBorderCols,
                 address: key, lastCell: indexes[1] === args.indexes[3], isHeightCheckNeeded: true, row: row, hRow: hRow,
                 pRow: row.previousSibling, pHRow: hRow.previousSibling, isRefreshing: args.isRefreshing, visibleNotes: visibleNotes,
-                first: layout ? (layout.includes('Row') ? (indexes[0] === args.indexes[0] ? 'Row' : (layout.includes('Column') ? (
-                    indexes[1] === args.indexes[1] ? 'Column' : '') : '')) : (indexes[1] === args.indexes[1] ? 'Column' : '')) : '' };
+                first: layout ? (layout.includes('Row') ? (indexes[0] === args.indexes[0] ? 'Row' : (layout.includes('Column') ?
+                    (indexes[1] === args.indexes[1] ? 'Column' : '') : '')) : (indexes[1] === args.indexes[1] ? 'Column' : '')) : ''
+            };
             cell = this.cellRenderer.render(cellArgs);
             const notFirstRow: boolean = this.parent.scrollSettings.enableVirtualization && this.parent.viewport.topIndex !==
                 skipHiddenIdx(sheet, 0, true);
@@ -337,6 +344,7 @@ export class SheetRender implements IRenderer {
             this.parent['renderReactTemplates']();
         }
         updateMergeBorder(this.parent, mergeBorderRows);
+        updateMergeBorder(this.parent, null, mergeBorderCols, true);
         cTBody.parentElement.insertBefore(colGrp.cloneNode(true), cTBody);
         const isOpenFromJsonEvent: boolean = args.openOptions && args.openOptions.eventArgs && args.openOptions.eventArgs.triggerEvent;
         getUpdateUsingRaf((): void => {
@@ -495,7 +503,7 @@ export class SheetRender implements IRenderer {
     public refreshColumnContent(args: SheetRenderArgs): void {
         let row: Element; let count: number = 0;
         const sheet: SheetModel = this.parent.getActiveSheet();
-        let cellArgs: CellRenderArgs; const mergeBorderRows: number[] = [];
+        let cellArgs: CellRenderArgs; const mergeBorderRows: number[] = []; const mergeBorderCols: number[] = [];
         const frag: DocumentFragment = document.createDocumentFragment(); const hFrag: DocumentFragment = document.createDocumentFragment();
         let tBody: Element = this.parent.element.querySelector('.e-sheet-content tbody');
         let hTBody: Element = this.parent.element.querySelector('.e-column-header tbody');
@@ -531,7 +539,8 @@ export class SheetRender implements IRenderer {
             cellArgs = <CellRenderArgs>{
                 colIdx: indexes[1], rowIdx: indexes[0], cell: value, address: key, row: row, pRow: row.previousSibling,
                 first: !args.skipUpdateOnFirst && indexes[1] === args.indexes[1] ? 'Column' :
-                    (notFirstRow && indexes[0] === args.indexes[0] ? 'Row' : ''), isRefreshing: true, mergeBorderRows: mergeBorderRows
+                    (notFirstRow && indexes[0] === args.indexes[0] ? 'Row' : ''), isRefreshing: true,
+                mergeBorderRows: mergeBorderRows, mergeBorderCols: mergeBorderCols
             };
             const cell: Element = this.cellRenderer.render(cellArgs);
             this.checkColMerge(indexes, args.indexes, cell, value, sheet);
@@ -544,6 +553,7 @@ export class SheetRender implements IRenderer {
             table.appendChild(frag);
             this.parent.notify(virtualContentLoaded, { refresh: 'Column', prevRowColCnt: args.prevRowColCnt });
             updateMergeBorder(this.parent, mergeBorderRows);
+            updateMergeBorder(this.parent, null, mergeBorderCols, true);
             if (sheet.conditionalFormats && sheet.conditionalFormats.length) {
                 this.parent.notify(applyCF, <ApplyCFArgs>{ indexes: args.indexes, isRender: true });
             }
@@ -568,7 +578,7 @@ export class SheetRender implements IRenderer {
     public refreshRowContent(args: SheetRenderArgs): void {
         let row: HTMLElement; let hdrRow: HTMLElement; let colGroupWidth: number = this.colGroupWidth;
         const sheet: SheetModel = this.parent.getActiveSheet(); let cell: Element;
-        let cellArgs: CellRenderArgs; const mergeBorderRows: number[] = [];
+        let cellArgs: CellRenderArgs; const mergeBorderRows: number[] = []; const mergeBorderCols: number[] = [];
         const frag: DocumentFragment = document.createDocumentFragment();
         const hFrag: DocumentFragment = document.createDocumentFragment();
         const tBody: Element = this.parent.createElement('tbody');
@@ -600,10 +610,12 @@ export class SheetRender implements IRenderer {
             }
             if (frozenCol) { hdrRow = (hTBody.lastElementChild as HTMLElement) || hdrRow; }
             cellArgs = <CellRenderArgs>{
-                rowIdx: indexes[0], colIdx: indexes[1], cell: value, address:
-                    key, lastCell: indexes[1] === args.indexes[3], row: row, hRow: hdrRow, pRow: row.previousSibling,
-                pHRow: hdrRow.previousSibling, isHeightCheckNeeded: true, first: !args.skipUpdateOnFirst && indexes[0] === args.indexes[0] ?
-                    'Row' : (notFirstCol && indexes[1] === args.indexes[1] ? 'Column' : ''), isRefreshing: true,  mergeBorderRows: mergeBorderRows };
+                rowIdx: indexes[0], colIdx: indexes[1], cell: value, address: key, lastCell: indexes[1] === args.indexes[3],
+                row: row, hRow: hdrRow, pRow: row.previousSibling, pHRow: hdrRow.previousSibling, isHeightCheckNeeded: true,
+                first: !args.skipUpdateOnFirst && indexes[0] === args.indexes[0] ? 'Row' :
+                    (notFirstCol && indexes[1] === args.indexes[1] ? 'Column' : ''), isRefreshing: true,
+                mergeBorderRows: mergeBorderRows, mergeBorderCols: mergeBorderCols
+            };
             cell = this.cellRenderer.render(cellArgs);
             this.checkRowMerge(indexes, args.indexes, cell, value, sheet);
             if (frozenCol && indexes[1] === lastFrozenCol) { row = null; }
@@ -623,6 +635,7 @@ export class SheetRender implements IRenderer {
         }
         this.parent.notify(virtualContentLoaded, { refresh: 'Row', prevRowColCnt: args.prevRowColCnt });
         updateMergeBorder(this.parent, mergeBorderRows);
+        updateMergeBorder(this.parent, null, mergeBorderCols, true);
         if (sheet.conditionalFormats && sheet.conditionalFormats.length) {
             this.parent.notify(applyCF, <ApplyCFArgs>{ indexes: args.indexes, isRender: true });
         }
@@ -653,7 +666,8 @@ export class SheetRender implements IRenderer {
         getUpdateUsingRaf((): void => {
             let row: HTMLElement; let refChild: Element; let rowCount: number = 0;
             let cell: Element; let col: HTMLElement; let skipRender: boolean; let cellArgs: CellRenderArgs;
-            const sheet: SheetModel = this.parent.getActiveSheet(); const mergeBorderRows: number[] = [];
+            const sheet: SheetModel = this.parent.getActiveSheet();
+            const mergeBorderRows: number[] = []; const mergeBorderCols: number[] = [];
             const hRow: Element = this.parent.element.querySelector('.e-column-header .e-header-row');
             const colGrp: Element = this.parent.element.querySelector('.e-sheet-content colgroup');
             const hColGrp: Element = this.parent.element.querySelector('.e-column-header colgroup');
@@ -713,7 +727,7 @@ export class SheetRender implements IRenderer {
                     lastCell: indexes[1] === args.indexes[3], isHeightCheckNeeded: args.direction === 'first', first: args.direction ===
                         'last' && !args.skipUpdateOnFirst && indexes[1] === args.indexes[1] ? 'Column' : '', checkNextBorder: args.direction
                             === 'last' && indexes[3] === args.indexes[3] ? 'Column' : '', isRefreshing: args.direction === 'first',
-                    mergeBorderRows: mergeBorderRows
+                    mergeBorderRows: mergeBorderRows, mergeBorderCols: mergeBorderCols
                 };
                 if (args.direction === 'last') {
                     cellArgs.refChild = refChild;
@@ -732,6 +746,7 @@ export class SheetRender implements IRenderer {
             });
             this.parent.notify(virtualContentLoaded, { refresh: 'Column', prevRowColCnt: args.prevRowColCnt });
             updateMergeBorder(this.parent, mergeBorderRows);
+            updateMergeBorder(this.parent, null, mergeBorderCols, true);
             if (sheet.conditionalFormats && sheet.conditionalFormats.length) {
                 this.parent.notify(applyCF, <ApplyCFArgs>{ indexes: args.indexes, isRender: true });
             }
@@ -754,7 +769,7 @@ export class SheetRender implements IRenderer {
             return;
         }
         let row: HTMLElement; let hRow: HTMLElement; let cell: Element; let firstRow: HTMLTableRowElement;
-        let cellArgs: CellRenderArgs; const mergeBorderRows: number[] = [];
+        let cellArgs: CellRenderArgs; const mergeBorderRows: number[] = []; const mergeBorderCols: number[] = [];
         let count: number = 0; let colGroupWidth: number = this.colGroupWidth;
         const sheet: SheetModel = this.parent.getActiveSheet();
         const tBody: HTMLTableSectionElement = mainContent.querySelector('tbody');
@@ -810,7 +825,8 @@ export class SheetRender implements IRenderer {
                 lastCell: indexes[1] === args.indexes[3], pHRow: hRow.previousSibling || pHRow, checkNextBorder: args.direction === 'last' &&
                     indexes[2] === args.indexes[2] ? 'Row' : '', pRow: row.previousSibling || pRow, isHeightCheckNeeded: args.direction === 'first'
                         || args.direction === '', hRow: hRow, first: args.direction === 'last' && !args.skipUpdateOnFirst && indexes[0] ===
-                            args.indexes[0] ? 'Row' : '', isRefreshing: args.direction === 'first', mergeBorderRows: mergeBorderRows
+                            args.indexes[0] ? 'Row' : '', isRefreshing: args.direction === 'first',
+                mergeBorderRows: mergeBorderRows, mergeBorderCols: mergeBorderCols
             };
             cell = this.cellRenderer.render(cellArgs);
             if (args.direction === 'last' && tBody.rows.length) {
@@ -835,6 +851,7 @@ export class SheetRender implements IRenderer {
             this.parent.notify(virtualContentLoaded, { refresh: 'Row', prevRowColCnt: args.prevRowColCnt });
         }
         updateMergeBorder(this.parent, mergeBorderRows);
+        updateMergeBorder(this.parent, null, mergeBorderCols, true);
         if (sheet.conditionalFormats && sheet.conditionalFormats.length) {
             this.parent.notify(applyCF, <ApplyCFArgs>{ indexes: args.indexes, isRender: true });
         }

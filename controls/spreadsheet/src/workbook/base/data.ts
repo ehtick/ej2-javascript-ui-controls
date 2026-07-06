@@ -93,13 +93,15 @@ export function getData(
                                         }
                                         cellProp = cell.value;
                                         if (typeof cellProp === 'string') {
-                                            if (localeObj.decimal !== '.' && cellProp.includes(localeObj.decimal)) {
-                                                parsedNumVal = cellProp.replace(localeObj.decimal, '.');
-                                                if (isNumber(parsedNumVal)) {
-                                                    cellProp = parseFloat(parsedNumVal);
+                                            if (cell.format !== '@') {
+                                                if (localeObj.decimal !== '.' && cellProp.includes(localeObj.decimal)) {
+                                                    parsedNumVal = cellProp.replace(localeObj.decimal, '.');
+                                                    if (isNumber(parsedNumVal)) {
+                                                        cellProp = parseFloat(parsedNumVal);
+                                                    }
+                                                } else if (isNumber(cellProp)) {
+                                                    cellProp = parseFloat(cellProp);
                                                 }
-                                            } else if (isNumber(cellProp)) {
-                                                cellProp = parseFloat(cellProp);
                                             }
                                         }
                                     } else if (cell && cell.hyperlink) {

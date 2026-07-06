@@ -655,14 +655,14 @@ describe('Table Block', () => {
             const content = domHelpers.query(cell, '.e-block-content');
 
             editor.blockManager.setFocusToBlock(cellBlock);
-            setCursorPosition(content, content.textContent.length);
+            setCursorPosition(content, content.textContent.length - 1);
 
             domHelpers.key(content, 'Enter');
 
             const nextCellBlock = cellBlock.nextElementSibling as HTMLElement;
             const nextCellContent = getBlockContentElement(nextCellBlock);
             editor.blockManager.setFocusToBlock(nextCellBlock);
-            setCursorPosition(nextCellContent, nextCellContent.textContent.length);
+            setCursorPosition(nextCellContent, 0);
 
             domHelpers.key(nextCellContent, 'Backspace');
 

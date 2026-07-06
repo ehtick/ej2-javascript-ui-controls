@@ -160,7 +160,7 @@ export class BlockActionMenuModule {
     private getBlockPositionInfo(blockElement: HTMLElement): BlockPositionInfo {
         const allBlocks: BlockModel[] = this.parent.getEditorBlocks();
         const currentBlock: BlockModel = getBlockModelById(blockElement.id, allBlocks);
-        const currentBlockParent: BlockModel = this.getParentBlock(currentBlock.parentId);
+        const currentBlockParent: BlockModel = currentBlock ? this.getParentBlock(currentBlock.parentId) : null;
         const currentBlockIndex: number = getBlockIndexById(blockElement.id, allBlocks);
         const isFirstBlock: boolean = currentBlockIndex === 0;
         const isLastBlock: boolean = currentBlockIndex === (currentBlockParent

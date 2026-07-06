@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/fusionnew' as *;
-@forward 'ej2-base/styles/definition/fusionnew';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $de-ctnr-height: calc(100%) !default;
 $de-ctnr-tlbr-height: 72px !default;
 $de-ctnr-tlbt-height-big: 81px !default;
@@ -172,9 +172,6 @@ $de-ribbon-classic-editor-height: calc(100% - 42px) !default;
 $de-ribbon-classic-editor-height-big: calc(100% - 46px) !default;
 $de-ctnr-layout-margin-bottom: 2px;
 $de-ctnr-picture-margin-bottom: 0;
-
-$de-ribbon-simplified-ctnr-collapsed-editor-height: calc(100% - 56px) !default;
-$de-ribbon-classic-collapsed-editor-height: calc(100% - 63px) !default;
 
 // layout.scss
 $de-toolbar-line-height: 0;

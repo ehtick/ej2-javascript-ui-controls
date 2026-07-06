@@ -77,6 +77,9 @@ import { NodeFixedUserHandleModel } from './fixed-user-handle-model';
 import { NodeFixedUserHandle } from './fixed-user-handle';
 import { IReactDiagram } from '../rendering/canvas-interface';
 import { initContainerWrapper } from '../utility/container-util';
+import { ErShapeModel } from './node-model';
+import { ErHeader, ErField, ErFieldDefaults } from './er-objects';
+import { ErHeaderModel, ErFieldModel, ErFieldDefaultsModel } from './er-objects-model';
 
 const getShapeType: Function = (obj: Shape): Object => {
     if (obj) {
@@ -109,6 +112,8 @@ const getShapeType: Function = (obj: Shape): Object => {
                 (obj as Container).hasHeader = false;
             }
             return Container;
+        case 'Er':
+            return ErShape;
         default:
             return BasicShape;
         }
@@ -2341,7 +2346,7 @@ export class Node extends NodeBase implements IElement {
      * @aspType object
      */
     @ComplexFactory(getShapeType)
-    public shape: ShapeModel | FlowShapeModel | BasicShapeModel | ImageModel | PathModel | TextModel | BpmnShapeModel | NativeModel | HtmlModel | UmlActivityShapeModel | UmlClassifierShapeModel | SwimLaneModel | DiagramShapeModel | ContainerModel;
+    public shape: ShapeModel | FlowShapeModel | BasicShapeModel | ImageModel | PathModel | TextModel | BpmnShapeModel | NativeModel | HtmlModel | UmlActivityShapeModel | UmlClassifierShapeModel | SwimLaneModel | DiagramShapeModel | ContainerModel | ErShapeModel;
     /* tslint:enable */
 
     /**
@@ -2551,9 +2556,15 @@ export class Node extends NodeBase implements IElement {
     /** @private */
     public isLane: boolean = false;
     /** @private */
+    public isLaneHeader: boolean = false;
+    /** @private */
     public isPhase: boolean = false;
     /** @private */
     public laneGrids: string[] = [];
+    /** @private */
+    public isErHeader: boolean = false;
+    /** @private */
+    public isErField: boolean = false;
     /** @private */
     public get actualSize(): Size {
         if (this.wrapper !== null) {
@@ -2724,6 +2735,11 @@ export class Node extends NodeBase implements IElement {
             this.flip = FlipDirection.None;
             this.wrapper.flip = FlipDirection.None;
             content = initContainerWrapper(content, this, diagram);
+            break;
+        case 'Er':
+            if (diagram.erDiagramsModule) {
+                content = diagram.erDiagramsModule.initErContent(content, this, diagram);
+            }
             break;
         case 'SwimLane':
             this.annotations = [];
@@ -3434,6 +3450,15 @@ export class SwimLane extends Shape {
     public isPhase: boolean;
 
     /**
+     * Defines the whether the shape is a lane header or not
+     *
+     * @default false
+     *
+     * @private
+     */
+    public isLaneHeader: boolean;
+
+    /**
      * Defines space between children and lane
      *
      * @private
@@ -3528,6 +3553,111 @@ export class ChildContainer {
      */
     public getClassName(): string {
         return 'ChildContainer';
+    }
+}
+
+/**
+ * Defines the shape configuration for an Entity Relationship entity node.
+ *
+ * An ER entity shape consists of a header row and an ordered collection of field
+ * rows. The header typically displays the entity or table name. Each field row
+ * represents a database column or logical entity attribute.
+ */
+export class ErShape extends Shape {
+    /**
+     * Defines the node shape type.
+     *
+     * @default 'Er'
+     */
+    @Property('Er')
+    public type: Shapes;
+
+    /**
+     * Defines the header row of the ER entity.
+     *
+     * The header provides the entity name content, text styling, visual style,
+     * and row height.
+     *
+     * @default new ErHeader()
+     */
+    @Complex<ErHeaderModel>({annotation: { content: 'Entity' }, style: { fill: 'none', strokeColor: 'none', strokeWidth: 0 }, height: 30 }, ErHeader)
+    public header: ErHeaderModel;
+
+    /**
+     * Defines the ordered collection of fields rendered inside the ER entity.
+     *
+     * Each field is displayed as a row below the header.
+     * @default []
+     */
+    @Collection<ErFieldModel>([], ErField)
+    public fields: ErFieldModel[];
+
+    /**
+     * Defines default row-level visual options for ER entity fields.
+     *
+     * Field-level settings override these defaults where applicable.
+     *
+     * @default undefined
+     */
+    @Complex<ErFieldDefaultsModel>(undefined, ErFieldDefaults)
+    public fieldDefaults: ErFieldDefaultsModel;
+
+    /**
+     * Controls whether the ER entity field keys are visible.
+     *
+     * @default false
+     *
+     * @private
+     */
+    public hasFieldKeys: boolean;
+
+    /**
+     * Controls whether the ER entity field data types are visible.
+     *
+     * @default false
+     *
+     * @private
+     */
+    public hasFieldDataTypes: boolean;
+
+    /**
+     * Controls whether the ER entity field constraints are visible.
+     *
+     * @default false
+     *
+     * @private
+     */
+    public hasFieldConstraints: boolean;
+
+    /**
+     * Controls whether the ER entity field rows are visible.
+     *
+     * When set to `true`, only the entity header is rendered. When set to `false`,
+     * the header and field rows are rendered.
+     *
+     * @default false
+     *
+     * @private
+     */
+    public collapsed: boolean;
+
+    /**
+     * Defines header by user or not
+     *
+     * @private
+     *
+     */
+    public hasHeader: boolean = true;
+
+    /**
+     * getClassName method
+     *
+     * @returns { string } getClassName method.
+     *
+     * @private
+     */
+    public getClassName(): string {
+        return 'ErShape';
     }
 }
 

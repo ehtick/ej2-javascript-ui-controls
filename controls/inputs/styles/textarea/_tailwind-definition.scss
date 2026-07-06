@@ -1,5 +1,4 @@
-@use 'ej2-base/styles/definition/tailwind' as *;
-@forward 'ej2-base/styles/definition/tailwind';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 
 $textarea-VH-textarea-padding: 4px 10px 4px 10px !default;
 $textarea-outline-VH-textarea-padding: 3px 10px 3px 10px !default;

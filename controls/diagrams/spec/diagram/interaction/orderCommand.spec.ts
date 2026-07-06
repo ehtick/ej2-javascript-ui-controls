@@ -914,7 +914,7 @@ describe('SendToBack and BringToFront of native nodes', () => {
         diagram.select([diagram.nodes[0]]);
         diagram.bringToFront();
         diagram.sendBackward();
-        expect(diagram.nodes[0].zIndex === 0).toBe(true);
+        expect(diagram.nodes[0].zIndex === 15).toBe(true);
         done();
     });
 });
@@ -1273,6 +1273,154 @@ describe('Bug 921994-Z-index order changes are not reflected at the UI level wit
         expect(node2.zIndex === 4).toBe(true);
         diagram.redo();
         expect(node2.zIndex === 1).toBe(true);
+        done();
+    });
+});
+
+describe('Bug: bringToFront on group child node uses global z-order instead of group scope', () => {
+    let diagram: Diagram;
+    let ele: HTMLElement;
+
+    beforeAll((): void => {
+        ele = createElement('div', { id: 'diagramBringToFrontGroupScope' });
+        document.body.appendChild(ele);
+
+        // Layout:
+        // outsideNode  (zIndex 0) — lives OUTSIDE the group, highest global zIndex
+        // rect1        (zIndex 1) — child of 'group'
+        // rect2        (zIndex 2) — child of 'group'
+        // connector1   (zIndex 3) — child of 'group' (or a connector belonging to the same scope)
+        // outsideHigh  (zIndex 4) — another top-level node with a very high zIndex
+
+        const nodes: NodeModel[] = [
+            {
+                id: 'rect1',
+                offsetX: 200, offsetY: 200,
+                width: 100, height: 100,
+                zIndex: 1,
+                style: { fill: 'blue' },
+                annotations: [{ content: 'Rectangle 1' }]
+            },
+            {
+                id: 'rect2',
+                offsetX: 250, offsetY: 250,
+                width: 100, height: 100,
+                zIndex: 2,
+                style: { fill: 'green' },
+                annotations: [{ content: 'Rectangle 2' }]
+            },
+            {
+                id: 'outsideHigh',
+                offsetX: 500, offsetY: 100,
+                width: 100, height: 100,
+                zIndex: 4,
+                style: { fill: 'orange' },
+                annotations: [{ content: 'Outside High' }]
+            },
+            {
+                id: 'group',
+                children: ['rect1', 'rect2']
+            }
+        ];
+
+        const connectors: ConnectorModel[] = [
+            {
+                id: 'connector1',
+                sourcePoint: { x: 150, y: 150 },
+                targetPoint: { x: 300, y: 300 },
+                zIndex: 3,
+                style: { strokeColor: 'red', strokeWidth: 3 }
+            }
+        ];
+
+        diagram = new Diagram({
+            width: '1000px', height: '600px',
+            nodes: nodes,
+            connectors: connectors
+        });
+        diagram.appendTo('#diagramBringToFrontGroupScope');
+    });
+
+    afterAll((): void => {
+        diagram.destroy();
+        ele.remove();
+        diagram = null;
+        ele = null;
+    });
+
+    it('should restrict bringToFront of a group child node to group scope, not global layer', (done: Function) => {
+        const rect1: NodeModel = diagram.nameTable['rect1'];
+        const rect2: NodeModel = diagram.nameTable['rect2'];
+        const outsideHigh: NodeModel = diagram.nameTable['outsideHigh'];
+        const connector1: ConnectorModel = diagram.nameTable['connector1'];
+
+        // Step 1: Bring rect1 (group child) to front
+        diagram.select([rect1]);
+        diagram.bringToFront();
+
+        const rect1ZIndexAfterBringToFront: number = rect1.zIndex;
+        const outsideHighZIndexAfterNodeBTF: number = outsideHigh.zIndex;
+
+        // BUG: rect1 is assigned maxZindex+1 from the ENTIRE layer (beats outsideHigh).
+        // FIX EXPECTED: rect1 should only be placed above its group siblings, NOT above outsideHigh.
+        // Assert rect1 did NOT leapfrog the outside top-level node.
+        expect(rect1ZIndexAfterBringToFront).toBeLessThan(outsideHighZIndexAfterNodeBTF,
+            'rect1 (group child) bringToFront should not exceed the zIndex of outsideHigh (non-group element)');
+
+        // Step 2: Now bring connector1 to front — it should rise above all diagram elements
+        diagram.select([connector1]);
+        diagram.bringToFront();
+
+        const connector1ZIndexAfterBTF: number = connector1.zIndex;
+        const allZIndexes: number[] = [
+            rect1.zIndex,
+            rect2.zIndex,
+            outsideHigh.zIndex
+        ];
+        const maxOtherZIndex: number = Math.max(...allZIndexes);
+
+        // SPEC: after bringToFront, connector SHALL be above all other elements
+        expect(connector1ZIndexAfterBTF).toBeGreaterThan(maxOtherZIndex,
+            'connector1 bringToFront should place it above all other elements in the diagram');
+
+        done();
+    });
+
+    it('should allow connector bringToFront to take effect after a group child node was brought to front', (done: Function) => {
+        // Reset by undoing previous operations
+        diagram.undo();
+        diagram.undo();
+
+        const rect1: NodeModel = diagram.nameTable['rect1'];
+        const outsideHigh: NodeModel = diagram.nameTable['outsideHigh'];
+        const connector1: ConnectorModel = diagram.nameTable['connector1'];
+
+        // Re-apply: bring rect1 (child node in group) to front
+        diagram.select([rect1]);
+        diagram.bringToFront();
+
+        const rect1ZAfterNodeBTF: number = rect1.zIndex;
+
+        // Now bring connector to front — must produce a visible change (zIndex must increase)
+        const connector1ZBeforeBTF: number = connector1.zIndex;
+        diagram.select([connector1]);
+        diagram.bringToFront();
+        const connector1ZAfterBTF: number = connector1.zIndex;
+
+        // BUG: When rect1 inflates its zIndex globally (above outsideHigh),
+        // connector1.bringToFront() either hits the isMaxIndexObjectSelected early-exit
+        // or results in connector1.zIndex === connector1ZBeforeBTF (no change).
+        // EXPECTED: connector1.zIndex must be strictly greater after bringToFront.
+        expect(connector1ZAfterBTF).toBeGreaterThan(connector1ZBeforeBTF,
+            'connector1 zIndex must increase after bringToFront — it must not be a no-op');
+
+        // And it must be the topmost element
+        expect(connector1ZAfterBTF).toBeGreaterThan(rect1ZAfterNodeBTF,
+            'connector1 must be above rect1 after bringToFront');
+
+        expect(connector1ZAfterBTF).toBeGreaterThan(outsideHigh.zIndex,
+            'connector1 must be above outsideHigh after bringToFront');
+
         done();
     });
 });

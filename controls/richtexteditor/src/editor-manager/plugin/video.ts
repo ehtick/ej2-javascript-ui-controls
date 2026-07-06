@@ -248,13 +248,15 @@ export class VideoCommand {
                         if (this.parent.userAgentData.isSafari()) {
                             scrollToCursor(this.parent.currentDocument, this.parent.editableElement as HTMLElement);
                         }
-                        e.callBack({
-                            requestType: 'Videos',
-                            editorMode: 'HTML',
-                            event: e.event,
-                            range: this.parent.nodeSelection.getRange(this.parent.currentDocument),
-                            elements: [videoElm]
-                        });
+                        if (!(!isNOU(e.event as any) && !isNOU((e.event as any).name) && ((e.event as any).name) === 'drop' && !this.parent.isBlazor)) {
+                            e.callBack({
+                                requestType: 'Videos',
+                                editorMode: 'HTML',
+                                event: e.event,
+                                range: this.parent.nodeSelection.getRange(this.parent.currentDocument),
+                                elements: [videoElm]
+                            });
+                        }
                     }
                 }
                 videoElm.removeEventListener(eventName, onVideoLoadEvent);

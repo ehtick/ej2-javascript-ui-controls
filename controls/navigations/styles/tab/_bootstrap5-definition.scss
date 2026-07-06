@@ -1,6 +1,5 @@
 @use 'sass:color';
-@use 'ej2-base/styles/definition/bootstrap5' as *;
-@forward 'ej2-base/styles/definition/bootstrap5';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 
 $tab-skin: 'bootstrap5' !default;
 $tab-font-family: $font-family !default;

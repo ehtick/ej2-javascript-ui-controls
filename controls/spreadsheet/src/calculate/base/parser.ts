@@ -470,9 +470,6 @@ export class Parser {
         const orCharArray: string[] = [this.charOr];
         const orTokenArray: string[] = [this.tokenOr];
         text = this.parseSimpleOperators(text, expTokenArray, expCharArray);
-        if (typeof text === 'object' && (text as FormulaError).message) {
-            return text;
-        }
         text = this.parseSimpleOperators(text, orTokenArray, orCharArray);
         if (needToContinue) {
             text = this.parseSimpleOperators(text, mulTokenArray, mulCharArray);
@@ -514,7 +511,7 @@ export class Parser {
             text = text.substring(1).split('-').join(tokenOrOp);
             text = '0-' + text;
             text = this.parseSimpleOperators(text, [this.tokenSubtract], [this.charSubtract]);
-            if (typeof text === 'string') { text = text.split(tokenOrOp).join('-'); }
+            text = text.split(tokenOrOp).join('-');
         } else if (text.length > 0 && text[0] === '+') {
             text = text.substring(1);
         } else if (text.length > 0 && text[text.length - 1] === '+') {
@@ -860,7 +857,7 @@ export class Parser {
             if (ex === this.parent.formulaErrorStrings[FormulasErrorsStrings.CircularReference]) {
                 throw ex;
             }
-            return ex;
+            throw ex;
         }
     }
 

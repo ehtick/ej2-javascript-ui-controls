@@ -11,6 +11,8 @@ import { GroupableView, DataBinding, DiagramModel, HierarchicalTree, ImageElemen
 import { UndoRedo } from '../../../src/diagram/objects/undo-redo';
 import { profile, inMB, getMemoryProfile } from '../../../spec/common.spec';
 import { DataManager, Query } from '@syncfusion/ej2-data';
+import * as diagramUtil from '../../../src/diagram/utility/diagram-util';
+
 Diagram.Inject(PrintAndExport, UndoRedo, DataBinding, HierarchicalTree);
 /**
  * Print and Export Spec
@@ -2451,4 +2453,181 @@ describe('Print and export', () => {
             done();
         });
     })
+});
+
+
+// Utility to make a data-URI tiny PNG (valid, minimal base64)
+const tinyPng =
+    'data:image/png;base64,' +
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Hn9JxEAAAAASUVORK5CYII=';
+
+describe('PrintAndExport', () => {
+
+    describe('canvasMultiplePage - orientation & default sizing fallback', () => {
+        let printOptions: PrintAndExport;
+
+        beforeAll(() => {
+            const diagramStub: any = {
+                element: { id: 'pm_canvasMultiplePage' },
+                pageSettings: {
+                    width: undefined,
+                    height: undefined
+                }
+            };
+            printOptions = new PrintAndExport(diagramStub);
+        });
+
+        afterAll(() => {
+            printOptions = null;
+        });
+
+        it('should fall back to canvas.height for pageWidth and swap width/height for Portrait when width > height', (done: Function) => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 300;
+            canvas.height = 500;
+
+            const options: any = {
+                multiplePage: true,
+                region: 'PageSettings',
+                pageOrientation: 'Portrait',
+                pageWidth: undefined,
+                pageHeight: undefined,
+                margin: {}
+            };
+            spyOn(printOptions as any, 'exportImage').and.stub();
+            printOptions['canvasMultiplePage'](options, canvas, options.margin, tinyPng, 'file');
+            expect(options.pageWidth).toBe(300);
+
+            done();
+        });
+    });
+
+    describe('getPrintCanvasStyle - fallback and orientation swaps', () => {
+        let printOptions: PrintAndExport;
+
+        beforeAll(() => {
+            const diagramStub: any = { element: { id: 'pm_printStyle' } };
+            printOptions = new PrintAndExport(diagramStub);
+        });
+
+        afterAll(() => { printOptions = null; });
+
+        it('should use fallback width when pageWidth is undefined', (done: Function) => {
+            const img = { width: 200, height: 100 } as any as HTMLImageElement;
+            const size = (printOptions as any).getPrintCanvasStyle(img, { pageHeight: 120, pageWidth: undefined });
+            expect(size.height).toBe(120);
+            expect(size.width).toBe(200);
+            done();
+        });
+
+        it('should swap for Landscape when height > width', (done: Function) => {
+            const img = { width: 100, height: 300 } as any as HTMLImageElement;
+            const size = (printOptions as any).getPrintCanvasStyle(img, { pageOrientation: 'Landscape', pageWidth: undefined, pageHeight: undefined });
+            expect(size.width).toBe(300);
+            expect(size.height).toBe(100);
+            done();
+        });
+    });
+
+    describe('getMultipleImage - single-page export path', () => {
+        let printOptions: PrintAndExport;
+
+        beforeAll(() => {
+            const diagramStub: any = { element: { id: 'pm_multipleImage' } };
+            printOptions = new PrintAndExport(diagramStub);
+        });
+
+        afterAll(() => { printOptions = null; });
+
+        it('should execute single-page branch and return image array when isExport = true', (done: Function) => {
+            const img = document.createElement('img');
+            Object.defineProperty(img, 'width', { value: 640 });
+            Object.defineProperty(img, 'height', { value: 480 });
+
+            const options: any = {
+                multiplePage: false,
+                margin: { left: 10, top: 10, right: 10, bottom: 10 }
+            };
+
+            const result = (printOptions as any).getMultipleImage(img, options, /*isExport*/ true);
+            expect(Array.isArray(result)).toBe(true);
+            expect(result.length).toBe(1);
+            expect(String(result[0]).startsWith('data:image/')).toBe(true);
+            done();
+        });
+    });
+
+    describe('getDiagramContent - currentZoom paths & replacement branch', () => {
+        let printOptions: PrintAndExport;
+        let container: HTMLElement;
+
+        beforeAll(() => {
+            const diagramStub: any = {
+                element: { id: 'pm_getDiagramContent' },
+                scroller: {
+                    currentZoom: 1,
+                    horizontalOffset: 0,
+                    verticalOffset: 0,
+                    transform: { tx: 0, ty: 0, scale: 1 },
+                    setSize: () => { /* no-op */ },
+                    zoom: () => { /* no-op */ }
+                },
+                scrollSettings: { currentZoom: 1 },
+                setSize: () => { /* no-op */ },
+                setOffset: () => { /* no-op */ },
+                renderSelector: () => { /* no-op */ },
+                dataBind: () => { /* no-op */ }
+            };
+
+            printOptions = new PrintAndExport(diagramStub);
+
+            // Provide the "<id>content" element the method expects
+            container = createElement('div', { id: diagramStub.element.id + 'content' });
+            document.body.appendChild(container);
+            container.innerHTML = '<svg id="svg"></svg>';
+
+            // Make getContent deterministic and include the long URL to be replaced
+            const longUrl = `url(${location.protocol}//${location.host}${location.pathname}#diagram_pattern `;
+            spyOn(printOptions as any, 'getContent').and.returnValue(`<div style="background:${longUrl})"></div>`);
+        });
+
+        afterAll(() => {
+            (printOptions as any) = null;
+            container.remove();
+            container = null;
+        });
+
+        it('when currentZoom === 1 should execute the htmlData.replace(...) (checkBrowserInfo = true)', (done: Function) => {
+            spyOn(diagramUtil, 'checkBrowserInfo').and.returnValue(true);
+
+            const html = (printOptions as any).getDiagramContent([]);
+            expect(html.indexOf('url(#diagram_pattern)') >= 0).toBe(true);
+            done();
+        });
+
+        it('when currentZoom !== 1 should take the percent-size branches and final replace', (done: Function) => {
+            (printOptions as any).diagram.scroller.currentZoom = 2;
+            (printOptions as any).diagram.scrollSettings.currentZoom = 2;
+
+            // Pretend diagram width/height were % to drive clientWidth/Height selection
+            (printOptions as any).diagram.width = '100%';
+            (printOptions as any).diagram.height = '100%';
+
+            // Arrange client sizes on the container
+            Object.defineProperty(container, 'clientWidth', { value: 800 });
+            Object.defineProperty(container, 'clientHeight', { value: 600 });
+            container.scrollLeft = 10;
+            container.scrollTop = 20;
+
+            // Make getDiagramBounds trivial (avoid node math)
+            spyOn(printOptions as any, 'getDiagramBounds').and.returnValue(new Rect(0, 0, 500, 400));
+
+            spyOn(diagramUtil, 'checkBrowserInfo').and.returnValue(true);
+
+            const html = (printOptions as any).getDiagramContent([]);
+            expect(html.indexOf('url(#diagram_pattern)') >= 0).toBe(true);
+            done();
+        });
+    });
+
 });

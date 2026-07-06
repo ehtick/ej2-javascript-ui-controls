@@ -1,4 +1,4 @@
-import { FreeTextSettings, HighlightSettings, LineSettings, StickyNotesSettings, StrikethroughSettings, UnderlineSettings, SquigglySettings, RectangleSettings, CircleSettings, ArrowSettings, PerimeterSettings, DistanceSettings, AreaSettings, RadiusSettings, VolumeSettings, PolygonSettings, InkAnnotationSettings, StampSettings, CustomStampSettings, HandWrittenSignatureSettings, RedactionSettings } from './../pdfviewer';
+import { FreeTextSettings, HighlightSettings, LineSettings, StickyNotesSettings, StrikethroughSettings, UnderlineSettings, SquigglySettings, RectangleSettings, CircleSettings, ArrowSettings, PerimeterSettings, DistanceSettings, AreaSettings, RadiusSettings, VolumeSettings, PolygonSettings, InkAnnotationSettings, StampSettings, CustomStampSettings, HandWrittenSignatureSettings, RedactionSettings, CommentFilterSettings } from './../pdfviewer';
 import {
     PdfViewer, PdfViewerBase, AnnotationType, ITextMarkupAnnotation, TextMarkupAnnotation, ShapeAnnotation,
     StampAnnotation, StickyNotesAnnotation, IPopupAnnotation, ICommentsCollection, MeasureAnnotation, InkAnnotation,
@@ -8,7 +8,7 @@ import { createElement, Browser, isNullOrUndefined, isBlazor, SanitizeHtmlHelper
 import { NumericTextBox, Slider, ColorPicker, ColorPickerEventArgs } from '@syncfusion/ej2-inputs';
 import { Dialog } from '@syncfusion/ej2-popups';
 import { DropDownButton, MenuEventArgs } from '@syncfusion/ej2-splitbuttons';
-import { DecoratorShapes, PointModel, processPathData, splitArrayCollection } from '@syncfusion/ej2-drawings';
+import { DecoratorShapes, PointModel, processPathData, splitArrayCollection } from '../ej2-drawings/index';
 import { isLineShapes, cloneObject } from '../drawing/drawing-util';
 import { PdfAnnotationBaseModel, PdfBoundsModel, PdfFontModel, PdfFormFieldBaseModel } from '../drawing/pdf-annotation-model';
 import { NodeDrawingTool, LineTool, MoveTool, ResizeTool, ConnectTool, PolygonDrawingTool } from '../drawing/tools';
@@ -23,6 +23,7 @@ import { PdfAnnotationBase, SelectorModel, PdfAnnotationType } from '../drawing'
 import { renderAdornerLayer } from '../drawing/dom-util';
 import { Redaction } from './redaction-annotation';
 import { RedactionOverlayText } from './redaction-overlay-text';
+import { buildFilterPredicates, isFilterEmpty } from './comment-filter-predicates';
 /**
  * @hidden
  */
@@ -43,6 +44,16 @@ export interface IActionElements {
 export interface IPoint {
     x: number
     y: number
+}
+
+/**
+ *
+ * @hidden
+ */
+export enum AnnotationStatus {
+    NewlyAdded = 'NewlyAdded',
+    ExistingModified = 'ExistingModified',
+    Deleted = 'Deleted'
 }
 
 /**
@@ -95,6 +106,7 @@ export interface IPageAnnotations {
 
 export interface IAnnotation {
     shapeAnnotationType: string
+    annotationIndex?: number
     author: string
     modifiedDate: string
     subject: string
@@ -108,6 +120,7 @@ export interface IAnnotation {
     annotationSelectorSettings: AnnotationSelectorSettingsModel
     annotationSettings?: any
     isCommentLock?: boolean
+    status?: AnnotationStatus
     originalName?: string
 }
 
@@ -187,6 +200,24 @@ export class Annotation {
     private boundsChanged: boolean = false;
     private selectedLineStyle: string;
     private selectedLineDashArray: string;
+    /**
+     * @private
+     * Stores the current comment filter settings
+     */
+    private currentFilterState: CommentFilterSettings | null = null;
+    /**
+     * @private
+     * Stores annotation names that were added while filter was active.
+     * These annotations bypass filtering to ensure they are always visible.
+     */
+    private newlyAddedAnnotations: Set<string> = new Set();
+    /**
+     * @private
+     * Stores annotation IDs that are currently hidden due to applied filters.
+     * This collection is updated whenever filters are applied or cleared.
+     * Contains annotationId values from annotations that do not satisfy the active filter conditions.
+     */
+    private hiddenAnnotationIds: Set<string> = new Set();
     /**
      * @private
      */
@@ -1344,6 +1375,207 @@ export class Annotation {
     }
 
     /**
+     * Applies or clears comment filters on the annotations.
+     * When filters are applied, comments in the panel and/or document are hidden based on the filter criteria.
+     * Pass null to clear all active filters and restore visibility of all comments.
+     * @param {CommentFilterSettings | null} filterSettings - The filter configuration, or null to clear filters
+     * @returns {void}
+     * @example
+     * // Apply filters
+     * pdfViewer.annotation.applyCommentFilter({
+     *   type: ['sticky'],
+     *   status: 'Answered',
+     *   author: ['John Doe']
+     * });
+     * // Clear filters
+     * pdfViewer.annotation.applyCommentFilter(null);
+     */
+    public applyCommentFilter(filterSettings: CommentFilterSettings | null): void {
+        //clear the selector in the annotations
+        if (this.pdfViewer && this.pdfViewer.clearSelection) {
+            for (let i : number = 0; i < this.pdfViewer.viewerBase.pageCount; i++) {
+                this.pdfViewer.clearSelection(i);
+            }
+        }
+
+        // Clear filters if null
+        if (filterSettings === null) {
+            this.currentFilterState = null;
+            this.newlyAddedAnnotations.clear();
+            this.hiddenAnnotationIds.clear();
+            this.refreshAllComments();
+            for (let i: number = 0; i < this.pdfViewer.viewerBase.pageCount; i++) {
+                this.renderAnnotations(i, null, null, null);
+            }
+            return;
+        }
+
+        // If filter is empty (no criteria set), treat it as clearing filters
+        if (isFilterEmpty(filterSettings)) {
+            this.currentFilterState = null;
+            this.newlyAddedAnnotations.clear();
+            this.hiddenAnnotationIds.clear();
+            this.refreshAllComments();
+            for (let i: number = 0; i < this.pdfViewer.viewerBase.pageCount; i++) {
+                this.renderAnnotations(i, null, null, null);
+            }
+            return;
+        }
+
+        // Store filter state
+        this.currentFilterState = filterSettings;
+
+        // Apply filters to rendering paths
+        this.refreshFilteredComments();
+        for (let i: number = 0; i < this.pdfViewer.viewerBase.pageCount; i++) {
+            this.renderAnnotations(i, null, null, null);
+        }
+    }
+
+    /**
+     * @private
+     * Gets the currently active filter settings, or null if no filter is applied.
+     * @returns {CommentFilterSettings | null} - The current filter state
+     */
+    public getCurrentFilterState(): CommentFilterSettings | null {
+        return this.currentFilterState;
+    }
+
+    /**
+     * @private
+     * Gets the collection of annotation IDs that are currently hidden due to applied filters.
+     * This collection is automatically maintained and updated whenever filters are applied or cleared.
+     * When no filters are active, this collection will be empty.
+     * @returns {string[]} - Array of annotation IDs for annotations that do not satisfy the active filter conditions
+     * ```
+     */
+    public getHiddenAnnotationIds(): string[] {
+        return Array.from(this.hiddenAnnotationIds);
+    }
+
+    /**
+     * @private
+     * Registers an annotation as newly added while filter is active.
+     * New annotations bypass filtering to ensure they are always visible.
+     * @param {string} annotationName - The annotation name to register
+     * @returns {void}
+     */
+    public registerNewAnnotation(annotationName: string): void {
+        if (this.currentFilterState && !isFilterEmpty(this.currentFilterState)) {
+            this.newlyAddedAnnotations.add(annotationName);
+        }
+    }
+
+    /**
+     * @private
+     * Unregisters an annotation from the newly added set.
+     * Called when the annotation is no longer considered "new".
+     * @param {string} annotationName - The annotation name to unregister
+     * @returns {void}
+     */
+    public unregisterNewAnnotation(annotationName: string): void {
+        this.newlyAddedAnnotations.delete(annotationName);
+    }
+
+    /**
+     * @private
+     * Checks if an annotation was added while filter was active.
+     * @param {string} annotationName - The annotation name to check
+     * @returns {boolean} - True if the annotation is newly added
+     */
+    public isNewlyAddedAnnotation(annotationName: string): boolean {
+        return this.newlyAddedAnnotations.has(annotationName);
+    }
+
+    /**
+     * @private
+     * Refreshes the filtered view of comments based on current filter state
+     * @returns {void}
+     */
+    private refreshFilteredComments(): void {
+        if (!this.currentFilterState) {
+            return;
+        }
+        const predicates: any = buildFilterPredicates(this.currentFilterState);
+
+        // Apply filter to comment panel (CSS-based visibility)
+        if (this.pdfViewerBase.annotationComments && this.pdfViewerBase.annotationComments.length > 0) {
+            this.applyCommentPanelFilter(predicates.commentPredicate);
+        }
+
+        // Update the collection of hidden annotation IDs (also clears previous state at the start)
+        this.updateHiddenAnnotationIds(predicates.documentPredicate);
+    }
+
+    /**
+     * @private
+     * Restores visibility of all comments (clears filters)
+     *  @returns {void}
+     */
+    private refreshAllComments(): void {
+        // Restore all comments in panel
+        if (this.pdfViewerBase.annotationComments && this.pdfViewerBase.annotationComments.length > 0) {
+            this.applyCommentPanelFilter(() => true); // All pass the filter
+        }
+
+        // Clear the collection of hidden annotation IDs when filters are removed
+        this.hiddenAnnotationIds.clear();
+    }
+
+    /**
+     * @private
+     * Applies CSS-based filtering to comments in the panel
+     * @param {Function} predicate - Function used to determine whether an annotation passes the filter
+     * @returns {void}
+     */
+    private applyCommentPanelFilter(predicate: (annotation: any) => boolean): void {
+        // Delegate to StickyNotesAnnotation module for CSS-based filtering
+        if (this.stickyNotesAnnotationModule) {
+            if (this.currentFilterState && !isFilterEmpty(this.currentFilterState)) {
+                this.stickyNotesAnnotationModule.updateCommentPanelWithFilter(this.currentFilterState);
+            } else {
+                this.stickyNotesAnnotationModule.updateCommentPanelWithoutFilter();
+            }
+        }
+    }
+
+    /**
+     * @private
+     * Updates the collection of hidden annotation IDs based on the current filter predicate.
+     * Iterates through all annotations in the annotationCollection and identifies those
+     * that do not satisfy the active filter conditions.
+     * @param {function(any): boolean} predicate - The filter predicate function
+     * @returns {void}
+     */
+    private updateHiddenAnnotationIds(predicate: (annotation: any) => boolean): void {
+        // Clear previous hidden annotation IDs
+        this.hiddenAnnotationIds.clear();
+
+        // Get the complete annotation collection
+        const allAnnotations : any[] = this.pdfViewer.annotationCollection;
+        if (!allAnnotations || allAnnotations.length === 0) {
+            return;
+        }
+
+        // Iterate through all annotations and identify hidden ones
+        for (let i : number = 0; i < allAnnotations.length; i++) {
+            // eslint-disable-next-line security/detect-object-injection
+            const annotation : any = allAnnotations[i];
+
+            // Skip newly added annotations (they should remain visible)
+            if (annotation && annotation.annotationId && this.isNewlyAddedAnnotation(annotation.annotationId)) {
+                continue;
+            }
+            // Check if annotation satisfies the filter predicate
+            // If it doesn't satisfy the predicate, add it to hidden collection
+            if (annotation && annotation.annotationId && !predicate(annotation)) {
+                this.hiddenAnnotationIds.add(annotation.annotationId);
+            }
+        }
+    }
+
+    /**
+     *
      * @param {number} pageIndex - pageIndex
      * @private
      * @returns {boolean} - boolean
@@ -1615,6 +1847,19 @@ export class Annotation {
             this.isUndoAction = true;
             this.isUndoActionImageLoad = true;
             switch (actionObject.action) {
+            case 'InkPathModified':
+                if (this.pdfViewer.annotation.inkAnnotationModule) {
+                    const inkModule: InkAnnotation = this.pdfViewer.annotation.inkAnnotationModule;
+                    inkModule.restoreInkPathData(
+                        actionObject.undoElement as {
+                            id: string;
+                            data: string;
+                            bounds?: any;
+                        },
+                        actionObject.pageIndex as number
+                    );
+                }
+                break;
             case 'Text Markup Added':
             case 'Text Markup Deleted':
                 if (this.textMarkupAnnotationModule) {
@@ -2059,6 +2304,19 @@ export class Annotation {
             let shapeType: string = actionObject.annotation.shapeAnnotationType;
             this.isUndoRedoAction = true;
             switch (actionObject.action) {
+            case 'InkPathModified':
+                if (this.pdfViewer.annotation.inkAnnotationModule) {
+                    const inkModule: InkAnnotation = this.pdfViewer.annotation.inkAnnotationModule;
+                    inkModule.restoreInkPathData(
+                        actionObject.redoElement as {
+                            id: string;
+                            data: string;
+                            bounds?: any;
+                        },
+                        actionObject.pageIndex as number
+                    );
+                }
+                break;
             case 'Text Markup Property modified':
                 if (this.textMarkupAnnotationModule) {
                     actionObject.annotation = this.textMarkupAnnotationModule.
@@ -2152,8 +2410,10 @@ export class Annotation {
                         this.hideAnnotationPropertiesToolbar();
                     }
                     this.showOrHideRedactionIcon();
-                    this.pdfViewer.annotationModule.stickyNotesAnnotationModule.
-                        addAnnotationComments(actionObject.annotation.pageIndex, shapeType, false);
+                    if (actionObject.annotation.annotName) {
+                        this.pdfViewer.annotationModule.stickyNotesAnnotationModule.
+                            addAnnotationComments(actionObject.annotation.pageIndex, shapeType, false);
+                    }
                     if (Browser.isDevice && !this.pdfViewer.enableDesktopMode) {
                         const mobileAnnotationToolbar: HTMLElement = document.getElementById(this.pdfViewer.element.id + '_propertyToolbar');
                         if (mobileAnnotationToolbar && mobileAnnotationToolbar.children.length > 0) {
@@ -2442,7 +2702,8 @@ export class Annotation {
                     }
                 }
             }
-            if (actionObject.redoElement && actionObject.redoElement.modifiedDate !== undefined) {
+            if (actionObject.redoElement && actionObject.redoElement.modifiedDate !== undefined &&
+                actionObject.annotation && actionObject.annotation.modifiedDate !== undefined) {
                 actionObject.annotation.modifiedDate = actionObject.redoElement.modifiedDate;
             }
             this.actionCollection.push(actionObject);
@@ -2851,6 +3112,9 @@ export class Annotation {
             } else {
                 this.modifyInCollections(currentAnnotation, 'opacity');
             }
+            if (currentAnnotation.status !== 'NewlyAdded') {
+                currentAnnotation.status = AnnotationStatus.ExistingModified;
+            }
             if (currentAnnotation.shapeAnnotationType === 'HandWrittenSignature' || currentAnnotation.shapeAnnotationType === 'SignatureImage' || currentAnnotation.shapeAnnotationType === 'SignatureText') {
                 this.pdfViewer.fireSignaturePropertiesChange(currentAnnotation.pageIndex, currentAnnotation.signatureName,
                                                              currentAnnotation.shapeAnnotationType as AnnotationType, false,
@@ -2873,6 +3137,9 @@ export class Annotation {
         const clonedObject: PdfAnnotationBaseModel = cloneObject(currentAnnotation);
         const redoClonedObject: PdfAnnotationBaseModel = cloneObject(currentAnnotation);
         redoClonedObject.fontColor = currentColor;
+        if (currentAnnotation.status !== 'NewlyAdded') {
+            currentAnnotation.status = AnnotationStatus.ExistingModified;
+        }
         this.pdfViewer.nodePropertyChange(currentAnnotation, { fontColor: currentColor });
         this.modifyInCollections(currentAnnotation, 'fontColor');
         this.triggerAnnotationPropChange(currentAnnotation, false, false, false, true);
@@ -2894,6 +3161,9 @@ export class Annotation {
             this.updateFontFamilyRenderSize(currentAnnotation, currentValue);
         } else {
             this.pdfViewer.nodePropertyChange(currentAnnotation, { fontFamily: currentValue });
+        }
+        if (currentAnnotation.status !== 'NewlyAdded') {
+            currentAnnotation.status = AnnotationStatus.ExistingModified;
         }
         this.modifyInCollections(currentAnnotation, 'fontFamily');
         this.triggerAnnotationPropChange(currentAnnotation, false, false, false, true);
@@ -2974,6 +3244,9 @@ export class Annotation {
                 this.pdfViewer.renderSelector(currentAnnotation.pageIndex, this.pdfViewer.annotationSelectorSettings);
                 currentAnnotation.previousFontSize = currentValue;
             }
+            if (currentAnnotation.status !== 'NewlyAdded') {
+                currentAnnotation.status = AnnotationStatus.ExistingModified;
+            }
             this.modifyInCollections(currentAnnotation, 'fontSize');
             this.modifyInCollections(currentAnnotation, 'bounds');
             this.triggerAnnotationPropChange(currentAnnotation, false, false, false, true);
@@ -3015,6 +3288,9 @@ export class Annotation {
     public modifyTextAlignment(currentValue: string): void {
         const currentAnnotation: PdfAnnotationBaseModel = this.pdfViewer.selectedItems.annotations[0];
         this.pdfViewer.nodePropertyChange(currentAnnotation, { textAlign: currentValue });
+        if (currentAnnotation.status !== 'NewlyAdded') {
+            currentAnnotation.status = AnnotationStatus.ExistingModified;
+        }
         this.modifyInCollections(currentAnnotation, 'textAlign');
         this.triggerAnnotationPropChange(currentAnnotation, false, false, false, true);
         this.pdfViewer.renderDrawing();
@@ -3045,6 +3321,9 @@ export class Annotation {
                 redoClonedObject.font.isUnderline = false;
             }
         }
+        if (currentAnnotation.status !== 'NewlyAdded') {
+            currentAnnotation.status = AnnotationStatus.ExistingModified;
+        }
         this.pdfViewer.nodePropertyChange(currentAnnotation, { font: fontInfo });
         this.modifyInCollections(currentAnnotation, 'textPropertiesChange');
         this.triggerAnnotationPropChange(currentAnnotation, false, false, false, true);
@@ -3063,6 +3342,9 @@ export class Annotation {
             const clonedObject: PdfAnnotationBaseModel = cloneObject(currentAnnotation);
             const redoClonedObject: PdfAnnotationBaseModel = cloneObject(currentAnnotation);
             redoClonedObject.thickness = thicknessValue;
+            if (currentAnnotation.status !== 'NewlyAdded') {
+                currentAnnotation.status = AnnotationStatus.ExistingModified;
+            }
             this.pdfViewer.nodePropertyChange(currentAnnotation, { thickness: thicknessValue });
             this.modifyInCollections(currentAnnotation, 'thickness');
             if (currentAnnotation.shapeAnnotationType === 'HandWrittenSignature' || currentAnnotation.shapeAnnotationType === 'SignatureText' || currentAnnotation.shapeAnnotationType === 'SignatureImage') {
@@ -3087,6 +3369,9 @@ export class Annotation {
         const clonedObject: PdfAnnotationBaseModel = cloneObject(currentAnnotation);
         const redoClonedObject: PdfAnnotationBaseModel = cloneObject(currentAnnotation);
         redoClonedObject.strokeColor = color;
+        if (currentAnnotation.status !== 'NewlyAdded') {
+            currentAnnotation.status = AnnotationStatus.ExistingModified;
+        }
         this.pdfViewer.nodePropertyChange(currentAnnotation, { strokeColor: color });
         this.modifyInCollections(currentAnnotation, 'stroke');
         if (currentAnnotation.shapeAnnotationType === 'HandWrittenSignature' || currentAnnotation.shapeAnnotationType === 'SignatureText' || currentAnnotation.shapeAnnotationType === 'SignatureImage') {
@@ -3111,6 +3396,9 @@ export class Annotation {
         const clonedObject: PdfAnnotationBaseModel = cloneObject(currentAnnotation);
         const redoClonedObject: PdfAnnotationBaseModel = cloneObject(currentAnnotation);
         redoClonedObject.fillColor = color;
+        if (currentAnnotation.status !== 'NewlyAdded') {
+            currentAnnotation.status = AnnotationStatus.ExistingModified;
+        }
         this.pdfViewer.nodePropertyChange(this.pdfViewer.selectedItems.annotations[0], { fillColor: color });
         this.modifyInCollections(currentAnnotation, 'fill');
         this.triggerAnnotationPropChange(currentAnnotation, true, false, false, false);
@@ -3132,6 +3420,9 @@ export class Annotation {
             const clonedObject: PdfAnnotationBaseModel = cloneObject(currentAnnotation);
             const redoClonedObject: PdfAnnotationBaseModel = cloneObject(currentAnnotation);
             currentAnnotation.dynamicText = dynamicText;
+            if (currentAnnotation.status !== 'NewlyAdded') {
+                currentAnnotation.status = AnnotationStatus.ExistingModified;
+            }
             redoClonedObject.dynamicText = dynamicText;
             if (clonedObject.dynamicText === '') {
                 clonedObject.dynamicText = this.freeTextAnnotationModule.previousText;
@@ -4389,7 +4680,7 @@ export class Annotation {
                         comments: [], review: { state: annotation.State, stateModel: annotation.StateModel,
                             modifiedDate: annotation.ModifiedDate, author: annotation.Author },
                         annotName: annotation.AnnotName, parentId: parentAnnotation.AnnotName, subject: annotation.Subject,
-                        isLock: annotation.IsLock
+                        isLock: annotation.IsLock, commentsIndex: annotation.CommentsIndex
                     };
                     newArray[newArray.length] = annotationObject;
                 }
@@ -4464,15 +4755,22 @@ export class Annotation {
      * @returns {void}
      */
     public clearAnnotationCanvas(pageNumber: number): void {
+        if (isNullOrUndefined(pageNumber)) {
+            return;
+        }
         const zoom: number = this.pdfViewerBase.getZoomFactor();
         const ratio: number = this.pdfViewerBase.getZoomRatio(zoom);
+        const pageDetails: ISize = this.pdfViewerBase.pageSize[Number.parseInt(String(pageNumber), 10)];
+        if (!pageDetails) {
+            return;
+        }
         // Styles need to be applied to both canvases. The 'blendAnnotationsIntoCanvas' is used for highlight annotations.
         const canvasIds: string[] = ['_annotationCanvas_', '_blendAnnotationsIntoCanvas_'];
         canvasIds.forEach((id: string) => {
             const canvas: HTMLElement = this.pdfViewerBase.getElement(id + pageNumber) as HTMLCanvasElement;
             if (canvas) {
-                const width: number = this.pdfViewerBase.pageSize[parseInt(pageNumber.toString(), 10)].width;
-                const height: number = this.pdfViewerBase.pageSize[parseInt(pageNumber.toString(), 10)].height;
+                const width: number = pageDetails.width;
+                const height: number = pageDetails.height;
                 (canvas as HTMLCanvasElement).width = width * ratio;
                 (canvas as HTMLCanvasElement).height = height * ratio;
                 (canvas as HTMLCanvasElement).style.width = width * zoom + 'px';
@@ -5273,6 +5571,9 @@ export class Annotation {
                 this.pdfViewer.nodePropertyChange(currentAnnotation, { fontSize: currentAnnotation.fontSize });
             }
             currentAnnotation.modifiedDate = this.pdfViewer.annotation.stickyNotesAnnotationModule.getDateAndTime();
+            if (currentAnnotation.status !== 'NewlyAdded') {
+                currentAnnotation.status = AnnotationStatus.ExistingModified;
+            }
             this.pdfViewer.renderDrawing();
             this.pdfViewerBase.signatureModule.modifySignatureCollection(null, pageNumber, currentAnnotation, true);
         }
@@ -5466,6 +5767,9 @@ export class Annotation {
                     currentAnnotation.notes = annotation.note;
                     this.pdfViewer.annotationModule.stickyNotesAnnotationModule.
                         addTextToComments(currentAnnotation.annotName, currentAnnotation.notes);
+                }
+                if (annotation.labelSettings && annotation.labelSettings.labelContent !== annotation.note) {
+                    annotation.labelSettings.labelContent = annotation.note;
                 }
                 this.isEdited = true;
             } else {
@@ -5701,7 +6005,7 @@ export class Annotation {
                 if (annotation.type === 'Ink' || annotation.shapeAnnotationType === 'Ink') {
                     annotationType = 'ink';
                 }
-                if (annotation.type === 'Measure' || annotation.indent === 'LineDimension' || annotation.indent === 'PolyLineDimension' || annotation.indent === 'PolygonDimension' || annotation.indent === 'PolygonRadius' || annotation.indent === 'PolygonVolume') {
+                if (annotation.type === 'Measure' || annotation.indent === 'LineDimension' || annotation.indent === '1' || annotation.indent === 'PolyLineDimension' || annotation.indent === 'PolygonDimension' || annotation.indent === 'PolygonRadius' || annotation.indent === 'PolygonVolume') {
                     annotationType = 'shape_measure';
                 }
                 if (annotation.labelSettings && this.pdfViewer.enableShapeLabel) {
@@ -6037,6 +6341,9 @@ export class Annotation {
 
     private annotationPropertyChange(currentAnnotation: any, opacity: any, actionString: string, clonedObject: any,
                                      redoClonedObject: any): void {
+        if (currentAnnotation.status !== 'NewlyAdded') {
+            currentAnnotation.status = AnnotationStatus.ExistingModified;
+        }
         this.pdfViewer.nodePropertyChange(currentAnnotation, { opacity: opacity });
         this.triggerAnnotationPropChange(currentAnnotation, false, false, false, true);
         this.pdfViewer.annotation.addAction(currentAnnotation.pageIndex, null, currentAnnotation, actionString, '', clonedObject, redoClonedObject);
@@ -6199,8 +6506,11 @@ export class Annotation {
                         if (annotationCollection[parseInt(i.toString(), 10)].annotName === annotationId) {
                             const newAnnot: any = this.modifyAnnotationProperties(annotationCollection[parseInt(i.toString(), 10)],
                                                                                   annotation, annotationType);
+                            if (newAnnot.status !== 'NewlyAdded') {
+                                newAnnot.status = AnnotationStatus.ExistingModified;
+                            }
                             annotationCollection[parseInt(i.toString(), 10)] = newAnnot;
-                            this.storeAnnotationCollections(newAnnot , pageNumber);
+                            this.storeAnnotationCollections(newAnnot, pageNumber);
                         }
                     }
                     this.pdfViewer.annotationsCollection.delete(this.pdfViewerBase.documentId + '_annotations_' + annotationType);
@@ -6394,6 +6704,9 @@ export class Annotation {
         if (!isNullOrUndefined(annotation.annotationSelectorSettings) && (newAnnotation.annotationSelectorSettings !==
              annotation.annotationSelectorSettings)) {
             newAnnotation.annotationSelectorSettings = annotation.annotationSelectorSettings;
+        }
+        if (newAnnotation.status !== 'NewlyAdded') {
+            newAnnotation.status = AnnotationStatus.ExistingModified;
         }
         return newAnnotation;
     }
@@ -7176,6 +7489,11 @@ export class Annotation {
         this.pdfViewer.annotationsCollection.delete(this.pdfViewerBase.documentId + '_annotations_shape_measure');
         this.pdfViewer.annotationsCollection.delete(this.pdfViewerBase.documentId + '_annotations_stamp');
         this.pdfViewer.annotationsCollection.delete(this.pdfViewerBase.documentId + '_annotations_sticky');
+
+        // Clear comment filter state when loading a new document
+        this.currentFilterState = null;
+        this.newlyAddedAnnotations.clear();
+        this.hiddenAnnotationIds.clear();
     }
     public retrieveAnnotationCollection(): any[] {
         return this.pdfViewer.annotationCollection;
@@ -7701,6 +8019,10 @@ export class Annotation {
         window.removeEventListener('mouseup', this.onPopupElementMoveEnd.bind(this));
         window.removeEventListener('touchend', this.onPopupElementMoveEnd.bind(this));
         this.destroyPropertiesWindow();
+        if (this.pdfViewerBase.navigationPane && this.pdfViewerBase.navigationPane.commentFilterDialog) {
+            this.pdfViewerBase.navigationPane.commentFilterDialog.destroy();
+            this.pdfViewerBase.navigationPane.commentFilterDialog = null;
+        }
         if (this.textMarkupAnnotationModule) {
             this.textMarkupAnnotationModule.clear();
         }
@@ -7974,6 +8296,26 @@ export class Annotation {
         //Annotation rendering can be done with the import annotation method.
         const pdf: object = { pdfAnnotation };
         this.pdfViewerBase.isAddAnnotation = true;
+
+        // Register newly added annotations to bypass filter while active
+        if (this.currentFilterState && !isFilterEmpty(this.currentFilterState)) {
+            for (const pageKey in pdfAnnotation) {
+                if (pdfAnnotation[pageKey as any]) {
+                    const annotations: any = pdfAnnotation[pageKey as any];
+                    if (Array.isArray(annotations)) {
+                        for (const annot of annotations) {
+                            if (annot.annotName) {
+                                this.newlyAddedAnnotations.add(annot.annotName);
+                            }
+                        }
+                    } else if (annotations.annotName) {
+                        this.newlyAddedAnnotations.add(annotations.annotName);
+                    }
+                }
+            }
+
+        }
+
         this.pdfViewerBase.importAnnotations(pdf);
         this.pdfViewerBase.isAddAnnotation = false;
     }
@@ -8317,6 +8659,7 @@ export class AnnotationsInternal {
  */
 export class AnnotationsBase {
     public isMultiSelect?: boolean;
+    public AnnotationIndex: number;
     public isAddAnnotationProgramatically? : boolean;
     public annotationAddMode?: string;
     public AllowedInteractions?: AllowedInteraction[];

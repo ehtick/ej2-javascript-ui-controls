@@ -7,6 +7,7 @@ import { kanbanData } from './common/kanban-data.spec';
 import { profile, inMB, getMemoryProfile } from './common/common.spec';
 import * as util from './common/util.spec';
 import { ENTERKEY_EVENT_INIT } from './dialog.spec';
+import * as cls from '../../src/kanban/base/css-constant';
 
 Kanban.Inject();
 
@@ -478,6 +479,50 @@ describe('Keyboard module', () => {
                 if(dialog) {
                     dialog.destroy();
                 }
+            }
+        });
+    });
+
+    describe('Keyboard - Down Arrow: Complete Coverage', () => {
+        let kanbanObj: Kanban;
+        let keyModule: any;
+        let nextElementDiv: HTMLElement;
+        beforeAll((done: DoneFn) => {
+            const model: KanbanModel = {
+                columns: [
+                    { headerText: 'Backlog', keyField: 'Open', showAddButton: true },
+                    { headerText: 'Done', keyField: 'Close', showAddButton: true }
+                ],
+                allowKeyboard: true,
+                cardSettings: { selectionType: 'Multiple' }
+            };
+            kanbanObj = util.createKanban(model, kanbanData, done);
+        });
+
+        afterAll(() => {
+            nextElementDiv.remove();
+            util.destroy(kanbanObj);
+        });
+
+        // ESSENTIAL COVERAGE (Must have)
+        it('Case 1: else if executes - nextElementSibling exists', () => {
+            keyModule = kanbanObj.keyboardModule;
+            const lastCard: HTMLElement = [].slice.call(
+                kanbanObj.element.querySelectorAll('.e-content-cells')[0].querySelectorAll('.e-card')
+            ).pop();
+
+            util.triggerMouseEvent(lastCard, 'click');
+            lastCard.focus();
+            const wrapper: Element = lastCard.closest('.' + cls.CARD_WRAPPER_CLASS);
+            if (wrapper && !wrapper.nextElementSibling) {
+                nextElementDiv = document.createElement('div');
+                wrapper.parentElement.appendChild(nextElementDiv);
+            }
+            if (wrapper && wrapper.nextElementSibling) {
+                keyModule.keyActionHandler({ action: 'downArrow', preventDefault: () => { /** Null */ } });
+                expect((wrapper.nextElementSibling as HTMLElement).getAttribute('tabindex')).toEqual('0');
+                expect(wrapper.nextElementSibling.classList.contains('e-show-add-focus')).toBe(true);
+                expect(document.activeElement === wrapper.nextElementSibling).toBe(true);
             }
         });
     });

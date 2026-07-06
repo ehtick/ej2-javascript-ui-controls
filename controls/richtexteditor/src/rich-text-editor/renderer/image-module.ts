@@ -14,7 +14,7 @@ import { CLS_IMG_FOCUS, CLS_RESIZE, CLS_RTE_DRAG_IMAGE } from '../../common/cons
 import { RenderType } from '../base/enum';
 import { AfterImageDeleteEventArgs, ICssClassArgs, IImageNotifyArgs, IRichTextEditor, ImageFailedEventArgs, SlashMenuItemSelectArgs, IQuickToolbar, IRenderer } from '../base/interface';
 import { ActionBeginEventArgs, ActionCompleteEventArgs, IDropDownItemModel, IImageCommandsArgs, ImageSuccessEventArgs, IShowPopupArgs, IToolbarItemModel, NotifyArgs, OffsetPosition, ResizeArgs } from '../../common/interface';
-import { dispatchEvent, hasClass, parseHtml, isElementContainsAllowedClass } from '../base/util';
+import { dispatchEvent, hasClass, parseHtml, isElementContainsAllowedClass, toggleButtonDisableState } from '../base/util';
 import { RendererFactory } from '../services/renderer-factory';
 import { ServiceLocator } from '../services/service-locator';
 import { DialogRenderer } from './dialog-renderer';
@@ -298,9 +298,6 @@ export class Image {
 
     private resizeEnd(e: PointerEvent | TouchEvent): void {
         this.resizeBtnInit();
-        if (this.imgEle.parentElement) {
-            this.imgEle.parentElement.style.cursor = 'auto';
-        }
         if (Browser.isDevice) {
             removeClass([(e.target as HTMLElement).parentElement], 'e-mob-span');
         }
@@ -595,7 +592,6 @@ export class Image {
                         parseInt(this.parent.insertImageSettings.maxHeight as string, 10) < parseInt(height, 10))) {
                     return;
                 }
-                this.imgEle.parentElement.style.cursor = 'pointer';
                 this.setAspectRatio(this.imgEle, parseInt(width, 10), parseInt(height, 10));
                 this.resizeImgDupPos(this.imgEle);
                 this.imgResizePos(this.imgEle, this.imgResizeDiv);
@@ -1818,9 +1814,9 @@ export class Image {
     private inputUrlInput(): void {
         if (!isNOU(this.inputUrl) && this.dialogObj) {
             if ((this.inputUrl as HTMLInputElement).value.length === 0) {
-                (this.dialogObj.getButtons(0) as Button).element.disabled = true;
+                toggleButtonDisableState((this.dialogObj.getButtons(0) as Button), true);
             } else {
-                (this.dialogObj.getButtons(0) as Button).element.removeAttribute('disabled');
+                toggleButtonDisableState((this.dialogObj.getButtons(0) as Button), false);
             }
         }
     }
@@ -1831,9 +1827,9 @@ export class Image {
         let url: string = (proxy.inputUrl as HTMLInputElement).value;
         if (e.target && (e.target as HTMLElement).nodeName === 'BUTTON' && (e.target as HTMLElement).classList.contains('e-updateImage')) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const element: HTMLElement = (this as any).selectNode && (this as any).selectNode[0] && (this as any).selectNode[0].nodeName === 'IMG' ?
+            const element: HTMLElement = (this as any).selectParent && (this as any).selectParent[0] && (this as any).selectParent[0].nodeName === 'IMG' ?
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (this as any).selectNode[0] as HTMLElement : null;
+                (this as any).selectParent[0] as HTMLElement : null;
             const args: AfterImageDeleteEventArgs = {
                 element: element,
                 src: url
@@ -2097,9 +2093,9 @@ export class Image {
                                     if (!isNOU(button)) {
                                         if (isNOU(proxy.parent.insertImageSettings.saveUrl) && this.isAllowedTypes
                                             && selectArgs.filesData[0].size <= this.uploadObj.maxFileSize) {
-                                            button.element.removeAttribute('disabled');
+                                            toggleButtonDisableState(button, false);
                                         } else {
-                                            button.element.setAttribute('disabled', 'true');
+                                            toggleButtonDisableState(button, true);
                                         }
                                     }
                                 }
@@ -2148,7 +2144,7 @@ export class Image {
                         previousFileInfo = e.file;
                     }
                     if ((e as ProgressEventArgs).operation === 'upload' && !isNOU(this.dialogObj)) {
-                        (this.dialogObj.getButtons(0) as Button).element.removeAttribute('disabled');
+                        toggleButtonDisableState((this.dialogObj.getButtons(0) as Button), false);
                     }
                 });
             },
@@ -2159,7 +2155,7 @@ export class Image {
                 // eslint-disable-next-line
                 this.parent.trigger(events.imageRemoving, removeEventArgs, (e: RemovingEventArgs) => {
                     proxy.isImgUploaded = false;
-                    (this.dialogObj.getButtons(0) as Button).element.disabled = true;
+                    toggleButtonDisableState((this.dialogObj.getButtons(0) as Button), true);
                     proxy.inputUrl.removeAttribute('disabled'); if (proxy.uploadUrl) {
                         proxy.uploadUrl.url = '';
                     }
@@ -2173,7 +2169,7 @@ export class Image {
         if (this.uploadObj.allowedExtensions) {
             if (e.type) {
                 if (this.uploadObj.allowedExtensions.toLocaleLowerCase().indexOf(('.' + e.type).toLocaleLowerCase()) === -1) {
-                    (this.dialogObj.getButtons(0) as Button).element.setAttribute('disabled', 'disabled');
+                    toggleButtonDisableState((this.dialogObj.getButtons(0) as Button), true);
                     this.isAllowedTypes = false;
                 } else {
                     this.isAllowedTypes = true;
@@ -2490,7 +2486,7 @@ export class Image {
                     range, this.parent.contentModule.getDocument());
                 const imageCommand: IImageCommandsArgs = {
                     cssClass: (this.parent.insertImageSettings.display === 'inline' ? classes.CLS_IMG_INLINE : classes.CLS_IMG_BREAK),
-                    url:  proxy.parent.insertImageSettings.saveFormat === 'Blob' ? url : reader.result as string,
+                    url: proxy.parent.insertImageSettings.saveFormat === 'Blob' ? url : reader.result as string,
                     selection: selection,
                     altText: file.name.replace(/\.[a-zA-Z0-9]+$/, ''),
                     width: {

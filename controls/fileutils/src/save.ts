@@ -30,7 +30,7 @@ export class Save {
             buffer = new Blob([buffer], { type: mimeType });
         }
         if (this.isMicrosoftBrowser) {
-            navigator.msSaveBlob(buffer, fileName);
+            (navigator as any).msSaveBlob(buffer, fileName);
         } else {
             const downloadLink: HTMLAnchorElement = document.createElementNS('http://www.w3.org/1999/xhtml', 'a') as HTMLAnchorElement;
             this.saveInternal(fileName, extension, buffer, downloadLink, 'download' in downloadLink);

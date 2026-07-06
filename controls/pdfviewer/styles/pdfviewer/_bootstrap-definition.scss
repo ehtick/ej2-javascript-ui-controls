@@ -1,5 +1,4 @@
-@use 'ej2-base/styles/definition/bootstrap' as *;
-@forward 'ej2-base/styles/definition/bootstrap';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 
 /*! PdfViewer's default definitions and variables */
 $pv-background: $grey-e6 !default;

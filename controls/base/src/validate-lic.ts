@@ -5,10 +5,24 @@ export const componentList: string[] = ['grid', 'pivotview', 'treegrid', 'spread
 export const pdfViewerSDKComponents: string[] = ['grid', 'chart', 'maps', 'schedule', 'gantt', 'richtexteditor', 'kanban', 'treegrid', 'filemanager', 'pivotview', 'diagram', 'blockeditor', 'spreadsheet', 'DocumentEditor'];
 export const spreadsheetEditorSDKComponents: string[] = ['maps', 'schedule', 'gantt', 'richtexteditor', 'kanban', 'treegrid', 'filemanager', 'pivotview', 'diagram', 'blockeditor', 'PdfViewer', 'DocumentEditor','pdf','pdf-extract'];
 export const wordEditorSDKComponents: string[] = ['grid', 'maps', 'schedule', 'gantt', 'richtexteditor', 'kanban', 'treegrid', 'filemanager', 'pivotview', 'diagram', 'blockeditor', 'PdfViewer', 'spreadsheet','pdf','pdf-extract'];
+export const gridSDKComponents: string[] = ['schedule', 'gantt', 'richtexteditor', 'diagram', 'blockeditor', 'kanban', 'spreadsheet', 'DocumentEditor', 'PdfViewer', 'pdf', 'pdf-extract'];
+export const fileManagerSDKComponents: string[] = ['schedule', 'gantt', 'richtexteditor', 'diagram', 'blockeditor', 'kanban', 'spreadsheet', 'DocumentEditor', 'PdfViewer', 'pdf', 'pdf-extract'];
+export const chartsSDKComponents: string[] = ['schedule', 'gantt', 'richtexteditor', 'diagram', 'blockeditor', 'kanban', 'spreadsheet', 'DocumentEditor', 'PdfViewer', 'pdf', 'pdf-extract'];
+export const rteSDKComponents: string[] = ['chart', 'treegrid', 'pivotview', 'maps', 'schedule', 'gantt', 'kanban', 'diagram', 'spreadsheet', 'DocumentEditor', 'PdfViewer', 'pdf', 'pdf-extract'];
+export const diagramSDKComponents: string[] = ['grid', 'treegrid', 'pivotview', 'chart', 'maps', 'schedule', 'gantt', 'richtexteditor', 'kanban', 'filemanager', 'blockeditor', 'spreadsheet', 'DocumentEditor', 'PdfViewer', 'pdf', 'pdf-extract'];
+export const ganttSDKComponents: string[] = ['chart', 'pivotview', 'schedule', 'diagram', 'blockeditor', 'spreadsheet', 'DocumentEditor', 'PdfViewer', 'pdf', 'pdf-extract'];
+export const schedulerSDKComponents: string[] = ['grid', 'treegrid', 'pivotview', 'chart', 'maps', 'gantt', 'richtexteditor', 'kanban', 'filemanager', 'diagram', 'blockeditor', 'spreadsheet', 'DocumentEditor', 'PdfViewer', 'pdf', 'pdf-extract'];
+export const essentialUISDKComponents = ['schedule', 'gantt', 'richtexteditor', 'diagram', 'blockeditor', 'kanban', 'spreadsheet', 'DocumentEditor', 'PdfViewer', 'pdf', 'pdf-extract'];
 
 const bypassKey: number[] = [115, 121, 110, 99, 102, 117, 115, 105,
     111, 110, 46, 105, 115, 76, 105, 99, 86, 97, 108,
     105, 100, 97, 116, 101, 100];
+const bypassKey2: number[] = [115, 121, 110, 99, 102, 117, 115, 105,
+    111, 110, 46, 105, 115, 69, 83, 85, 73, 76, 105, 99, 86, 97, 108, 105, 100, 97, 116, 101, 100];
+const bypassKey3: number[] = [115, 121, 110, 99, 102, 117, 115, 105,
+    111, 110, 46, 105, 115, 69, 83, 85, 73, 118, 51, 52, 76, 105, 99, 86, 97, 108, 105, 100, 97, 116, 101, 100];
+const esUI: string[] = ['spreadsheet', 'DocumentEditor', 'PdfViewer', 'pdf', 'pdf-extract'];
+const esUIv34: string[] = ['spreadsheet', 'DocumentEditor', 'PdfViewer', 'pdf', 'pdf-extract', 'richtexteditor', 'diagram', 'schedule', 'gantt', 'blockeditor', 'kanban'];
 let accountURL: string;
 let banner: boolean = true;
 /**
@@ -23,7 +37,7 @@ class LicenseValidator {
     /**
      * @private
      */
-    public version: string = '33';
+    public version: string = '34';
     /**
      * @private
      */
@@ -31,7 +45,7 @@ class LicenseValidator {
     /**
      * @private
      */
-    public prefixRegex: RegExp = /essentialui|pdfviewersdk|documentsdk|spreadsheeteditorsdk|docxeditorsdk/i;
+    public prefixRegex: RegExp = /essentialui|essentialuisdk_v34|pdfviewersdk|documentsdk|spreadsheeteditorsdk|schedulersdk|ganttsdk|diagramsdk|richtexteditorsdk|gridsdk|chartsdk|filemanagersdk|docxeditorsdk/i;
     /**
      * @private
      */
@@ -39,12 +53,24 @@ class LicenseValidator {
     private errors: IErrorType = {
         noLicense: '<span>This application was built using a trial version of Syncfusion<sup>®</sup> Essential Studio<sup>®</sup>.' +
             ' To remove the license validation message permanently, a valid license key must be included.</span>',
-        trailExpired: '<span>This application was built using a trial version of Syncfusion<sup>®</sup> Essential Studio<sup>®</sup>.' +
+        trailExpired: '<span>This application was built using a trial version of Syncfusion<sup>®</sup> Essential Studio<sup>®</sup>, which has now expired.' +
             ' To remove the license validation message permanently, a valid license key must be included.</span>',
-        versionMismatched: '<span>The included Syncfusion<sup>®</sup> license key is invalid.</span>',
-        platformMismatched: '<span>The included Syncfusion<sup>®</sup> license key is invalid.</span>',
-        invalidKey: '<span>The included Syncfusion<sup>®</sup> license key is invalid.</span>',
-        componentRestricted: '<span>The included Syncfusion<sup>®</sup> license key is invalid.</span>'
+        versionMismatched: '<span>The included Syncfusion<sup>®</sup> key and package versions do not match. Ensure that the license key corresponds to the same package version.</span>',
+        platformMismatched: '<span>The included Syncfusion<sup>®</sup> license key is not compatible with this platform. Please register the appropriate platform license keys.</span>',
+        invalidKey: '<span>The included Syncfusion<sup>®</sup> license key is invalid. Please register a valid license key to use the corresponding UI components.</span>',
+        uiSuite: '<span>The included Syncfusion<sup>®</sup> license key is valid only for the UI Components. To use other Document solutions SDK components, please register the appropriate license keys.</span>',
+        documentSdk: '<span>The included Syncfusion<sup>®</sup> license key is valid only for the Document SDK components. To use other UI or SDK components, please register the appropriate license keys.</span>',
+        pdfSdk: '<span>The included Syncfusion<sup>®</sup> license key is valid only for the PDF Viewer SDK components. To use other UI or SDK components, please register the appropriate license keys.</span>',
+        spreadSheetSdk: '<span>The included Syncfusion<sup>®</sup> license key is valid only for the Spreadsheet Editor SDK components. To use other UI or SDK components, please register the appropriate license keys.</span>',
+        docxEditorSdk: '<span>The included Syncfusion<sup>®</sup> license key is valid only for the DOCX Editor SDK components. To use other UI or SDK components, please register the appropriate license keys.</span>',
+        gridSdk: '<span>The included Syncfusion<sup>®</sup> license key is valid only for the Grid SDK components. To use other UI or SDK components, please register the appropriate license keys.</span>',
+        filemanagerSdk: '<span>The included Syncfusion<sup>®</sup> license key is valid only for the FileManager SDK components. To use other UI or SDK components, please register the appropriate license keys.</span>',
+        ganttSdk: '<span>The included Syncfusion<sup>®</sup> license key is valid only for the Gantt SDK components. To use other UI or SDK components, please register the appropriate license keys.</span>',
+        rteSdk: '<span>The included Syncfusion<sup>®</sup> license key is valid only for the RTE SDK components. To use other UI or SDK components, please register the appropriate license keys.</span>',
+        diagaramSdk: '<span>The included Syncfusion<sup>®</sup> license key is valid only for the Diagram SDK components. To use other UI or SDK components, please register the appropriate license keys.</span>',
+        schedulerSdk: '<span>The included Syncfusion<sup>®</sup> license key is valid only for the Scheduler SDK components. To use other UI or SDK components, please register the appropriate license keys.</span>',
+        essentialUISdk: '<span>The included Syncfusion<sup>®</sup> license key is valid only for the Essential UI SDK components. To use other UI or SDK components, please register the appropriate license keys.</span>',
+        chartSdk: '<span>The included Syncfusion<sup>®</sup> license key is valid only for the Chart SDK components. To use other UI or SDK components, please register the appropriate license keys.</span>'
     };
     private validatedPlatforms: string[] = [];
     /**
@@ -58,7 +84,15 @@ class LicenseValidator {
     private allowedComponentsMap: { [key: string]: string[] } = {
         'pdfviewersdk': pdfViewerSDKComponents,
         'spreadsheeteditorsdk': spreadsheetEditorSDKComponents,
-        'docxeditorsdk': wordEditorSDKComponents
+        'docxeditorsdk': wordEditorSDKComponents,
+        'gridsdk': gridSDKComponents,
+        'filemanagersdk': fileManagerSDKComponents,
+        'chartsdk': chartsSDKComponents,
+        'richtexteditorsdk': rteSDKComponents,
+        'diagramsdk': diagramSDKComponents,
+        'ganttsdk': ganttSDKComponents,
+        'schedulersdk': schedulerSDKComponents,
+        'essentialuisdk_v34': essentialUISDKComponents
     };
 
     /**
@@ -135,6 +169,7 @@ class LicenseValidator {
                             }
                             else {
                                 componentRestrictedMsg = null;
+                                this.isLicensed = true;
                             }
                             if (((res.minVersion >= res.lastValue) && (res.minVersion !== res.lastValue)) ||
                                 (res.lastValue < parseInt(this.version, 10))) {
@@ -210,13 +245,13 @@ class LicenseValidator {
             if (validateMsg && typeof document !== 'undefined' && !isNullOrUndefined(document)) {
                 if (component !== 'pdf' && component !== 'pdf-extract') {
                     if (banner) {
-                        accountURL = (validateURL && validateURL !== '') ?  validateURL : 'https://www.syncfusion.com/account/claim-license-key?pl=SmF2YVNjcmlwdA==&vs=MzM=&utm_source=es_license_validation_banner&utm_medium=listing&utm_campaign=license-information';
+                        accountURL = (validateURL && validateURL !== '') ?  validateURL : 'https://www.syncfusion.com/account/claim-license-key?pl=SmF2YVNjcmlwdA==&vs=MzQ=&utm_source=es_license_validation_banner&utm_medium=listing&utm_campaign=license-information';
                         const errorDiv: HTMLElement = createElement('div', {
                             innerHTML: `<img src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGcgY2xpcC1wYXRoPSJ1cmwoI2NsaXAwXzE5OV80KSI+CjxwYXRoIGQ9Ik0xMiAyMUMxNi45NzA2IDIxIDIxIDE2Ljk3MDYgMjEgMTJDMjEgNy4wMjk0NCAxNi45NzA2IDMgMTIgM0M3LjAyOTQ0IDMgMyA3LjAyOTQ0IDMgMTJDMyAxNi45NzA2IDcuMDI5NDQgMjEgMTIgMjFaIiBzdHJva2U9IiM3MzczNzMiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+CjxwYXRoIGQ9Ik0xMS4yNSAxMS4yNUgxMlYxNi41SDEyLjc1IiBmaWxsPSIjNjE2MDYzIi8+CjxwYXRoIGQ9Ik0xMS4yNSAxMS4yNUgxMlYxNi41SDEyLjc1IiBzdHJva2U9IiM3MzczNzMiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+CjxwYXRoIGQ9Ik0xMS44MTI1IDlDMTIuNDMzOCA5IDEyLjkzNzUgOC40OTYzMiAxMi45Mzc1IDcuODc1QzEyLjkzNzUgNy4yNTM2OCAxMi40MzM4IDYuNzUgMTEuODEyNSA2Ljc1QzExLjE5MTIgNi43NSAxMC42ODc1IDcuMjUzNjggMTAuNjg3NSA3Ljg3NUMxMC42ODc1IDguNDk2MzIgMTEuMTkxMiA5IDExLjgxMjUgOVoiIGZpbGw9IiM3MzczNzMiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xOTlfNCI+CjxyZWN0IHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgZmlsbD0id2hpdGUiLz4KPC9jbGlwUGF0aD4KPC9kZWZzPgo8L3N2Zz4K' style="top: 6px;
                         position: absolute;
                         left: 16px;
                         width: 24px;
-                        height: 24px;"/>` + validateMsg + ' ' + '<a style="text-decoration: none;color: #0D6EFD;font-weight: 500;" href=' + accountURL + '>Claim your free account</a>'
+                        height: 24px;"/>` + validateMsg + ' ' + '<a style="text-decoration: none;color: #0D6EFD;font-weight: 500;" href=' + accountURL + '>Claim your free account</a>' + '<button class="license-banner-close" style="position: absolute; right: 12px; top: 10px; background: none; border: none; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center;"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M15 5L5 15M5 5L15 15" stroke="#737373" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>'
                         });
                         errorDiv.setAttribute('style', `position: fixed;
                     top: 10px;
@@ -228,9 +263,15 @@ class LicenseValidator {
                     z-index: 999999999;
                     text-align: left;
                     border: 1px solid #EEEEEE;
-                    padding: 10px 11px 10px 50px;
+                    padding: 10px 40px 10px 50px;
                     border-radius: 8px;
                     font-family: Helvetica Neue, Helvetica, Arial;`);
+                        const closeButton: HTMLElement | null = errorDiv.querySelector('.license-banner-close');
+                        if (closeButton) {
+                            closeButton.addEventListener('click', function () {
+                                errorDiv.remove();
+                            });
+                        }
                         document.body.appendChild(errorDiv);
                         banner = false;
                     }
@@ -244,20 +285,31 @@ class LicenseValidator {
     private restrictComponent(component: string, platform: string): string | null {
         const ignoreList: string[] = ['DocumentEditor', 'spreadsheet', 'PdfViewer'];
         if (platform === 'essentialui') {
-            return ignoreList.indexOf(component) === -1 ? null : this.errors.componentRestricted;
+            return ignoreList.indexOf(component) === -1 ? null : this.errors.uiSuite;
         }
-        else if (platform === 'documentsdk') {
+        if (platform === 'documentsdk') {
             if (component === 'pdf' || component === 'pdf-extract') {
                 this.isLicensed = true;
                 return null;
             }
-            return this.errors.componentRestricted;
+            return this.errors.documentSdk;
         }
-        else {
-            // eslint-disable-next-line security/detect-object-injection
-            const allowedList: string[] = this.allowedComponentsMap[platform] || [];
-            return allowedList.indexOf(component) === -1 ? null : this.errors.componentRestricted;
-        }
+        const errorMap: Record<string, string> = {
+            gridsdk: this.errors.gridSdk,
+            filemanagersdk: this.errors.filemanagerSdk,
+            chartsdk: this.errors.chartSdk,
+            richtexteditorsdk: this.errors.rteSdk,
+            diagramsdk: this.errors.diagaramSdk,
+            ganttsdk: this.errors.ganttSdk,
+            schedulersdk: this.errors.schedulerSdk,
+            pdfviewersdk: this.errors.pdfSdk,
+            docxeditorsdk: this.errors.docxEditorSdk,
+            spreadsheeteditorsdk: this.errors.spreadSheetSdk,
+            essentialuisdk_v34: this.errors.essentialUISdk
+        };
+        // eslint-disable-next-line security/detect-object-injection
+        const list: string[] = this.allowedComponentsMap[platform] || [];
+        return list.indexOf(component) === -1 ? null : errorMap[platform];
     }
 
     private getDecryptedData(key: string): string {
@@ -378,6 +430,13 @@ export const validateLicense: Function = (component: string, key?: string): bool
     if (key) {
         registerLicense(key);
     }
+    if (containerObject) {
+        const val2: string = getValue(convertToChar(bypassKey2), containerObject);
+        const val3: string = getValue(convertToChar(bypassKey3), containerObject);
+        if ((val2 && esUI.indexOf(component) === -1) || (val3 && esUIv34.indexOf(component) === -1)) {
+            return true;
+        }
+    }
     return licenseValidator.validate(component);
 };
 
@@ -427,6 +486,7 @@ border-top-right-radius: 20px;
     top: 14px;
     left: 31px;
 ">
+<button class="license-overlay-close" style="position: absolute; right: 16px; top: 21px; background: none; border: none; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center;"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M15 5L5 15M5 5L15 15" stroke="#737373" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
             </div>
             <div style="
     position: relative;
@@ -521,6 +581,12 @@ font-weight: 500;">Sign In</a></div>
         const errorBackground: HTMLElement = createElement('div', {
             innerHTML: bannerTemplate
         });
+        const clearButton: HTMLElement | null = errorBackground.querySelector('.license-overlay-close');
+        if (clearButton) {
+            clearButton.addEventListener('click', function () {
+                errorBackground.remove();
+            });
+        }
         document.body.appendChild(errorBackground);
     }
 };
@@ -542,5 +608,17 @@ interface IErrorType {
     versionMismatched: string;
     platformMismatched: string;
     invalidKey: string;
-    componentRestricted: string;
+    uiSuite: string;
+    documentSdk: string;
+    pdfSdk: string;
+    spreadSheetSdk: string;
+    docxEditorSdk: string;
+    gridSdk: string;
+    filemanagerSdk: string;
+    ganttSdk: string;
+    rteSdk: string;
+    diagaramSdk: string;
+    schedulerSdk: string;
+    essentialUISdk: string;
+    chartSdk: string;
 }

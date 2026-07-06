@@ -4879,3 +4879,109 @@ describe('Testing resizing - With Aspect Ratio and MinWidth and height', () => {
         done();
     });
 });
+
+describe('Fixed User Handle collection removal', () => {
+    let diagram: Diagram;
+    let ele: HTMLElement;
+
+    beforeAll((): void => {
+        const isDef = (o: any) => o !== undefined && o !== null;
+        if (!isDef(window.performance)) {
+            console.log("Unsupported environment, window.performance.memory is unavailable");
+            this.skip(); //Skips test (in Chai)
+            return;
+        }
+        ele = createElement('div', { id: 'diagramFixedUserHandleRemoval' });
+        document.body.appendChild(ele);
+        diagram = new Diagram({
+            width: 1100, height: 850, nodes: [{
+                id: 'node1',
+                width: 100,
+                height: 100,
+                offsetX: 300,
+                offsetY: 300,
+                fixedUserHandles:[{offset:{x:0,y:0} ,visibility:true, iconStrokeColor:'red', fill:'green', margin:{right:20},width:20,handleStrokeColor:'orange', height:20,id:'user1',pathData: 'M60.3,18H27.5c-3,0-5.5,2.4-5.5,5.5v38.2h5.5V23.5h32.7V18z M68.5,28.9h-30c-3,0-5.5,2.4-5.5,5.5v38.2c0,3,2.4,5.5,5.5,5.5h30c3,0,5.5-2.4,5.5-5.5V34.4C73.9,31.4,71.5,28.9,68.5,28.9z M68.5,72.5h-30V34.4h30V72.5z'}],
+
+            }]
+        });
+        diagram.appendTo('#diagramFixedUserHandleRemoval');
+    });
+
+    afterAll((): void => {
+        diagram.destroy();
+        ele.remove();
+        (diagram as any) = null;
+        (ele as any) = null;
+    });
+
+    it('should remove all fixed user handles when collection is replaced with empty array', (done: Function) => {
+        diagram.nodes[0].fixedUserHandles = [];
+        diagram.dataBind();
+
+        setTimeout(() => {
+            let fixedUserHandle = diagram.nodes[0].fixedUserHandles;
+            expect(fixedUserHandle.length).toBe(0);
+            done();
+        }, 500);
+    });
+
+});
+
+	describe('Fixed User Handle Runtime Updates', () => {
+    let diagram: Diagram;
+    let ele: HTMLElement;
+
+    beforeAll((): void => {
+        const isDef = (o: any) => o !== undefined && o !== null;
+        if (!isDef(window.performance)) {
+            console.log("Unsupported environment, window.performance.memory is unavailable");
+            this.skip(); //Skips test (in Chai)
+            return;
+        }
+        ele = createElement('div', { id: 'diagramFixedUserHandle' });
+        document.body.appendChild(ele);
+        diagram = new Diagram({
+            width: 1100, height: 850, nodes: [{
+                id: 'node1',
+                width: 100,
+                height: 100,
+                offsetX: 300,
+                offsetY: 300,
+            }]
+        });
+        diagram.appendTo('#diagramFixedUserHandle');
+    });
+
+    afterAll((): void => {
+        diagram.destroy();
+        ele.remove();
+        (diagram as any) = null;
+        (ele as any) = null;
+    });
+
+    it('should render fixed user handle when added at runtime', (done: Function) => {
+
+        // Act: Add fixed user handle at runtime
+        diagram.nodes[0].fixedUserHandles = [{
+            id: 'user1',
+            offset: { x: 0, y: 0 },
+            visibility: true,
+            iconStrokeColor: 'red',
+            fill: 'green',
+            margin: { right: 20 },
+            width: 20,
+            handleStrokeColor: 'orange',
+            height: 20,
+            pathData: 'M60.3,18H27.5c-3,0-5.5,2.4-5.5,5.5v38.2h5.5V23.5h32.7V18z'
+        }];
+        diagram.dataBind();
+
+        // Assert
+        setTimeout(() => {
+            const fixedUserHandle = diagram.nodes[0].fixedUserHandles[0];
+            expect(fixedUserHandle).toBeDefined(); 
+            done();
+        }, 500);
+    });
+
+});

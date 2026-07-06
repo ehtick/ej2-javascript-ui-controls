@@ -82,6 +82,7 @@ describe('CheckBox', () => {
             checkbox = new CheckBox({ disabled: true }, '#checkbox');
             expect(element.disabled).toEqual(true);
             expect(element.parentElement.parentElement.classList.contains('e-checkbox-disabled')).toEqual(true);
+            expect(element.parentElement.parentElement.classList.contains('e-disabled')).toEqual(true);
         });
 
         it('CheckBox with RTL', () => {
@@ -275,11 +276,13 @@ describe('CheckBox', () => {
             expect(checkbox.disabled).toEqual(true);
             expect(element.disabled).toEqual(true);
             expect(element.parentElement.parentElement.classList.contains('e-checkbox-disabled')).toEqual(true);
+            expect(element.parentElement.parentElement.classList.contains('e-disabled')).toEqual(true);
             checkbox.disabled = false;
             checkbox.dataBind();
             expect(checkbox.disabled).toEqual(false);
             expect(element.disabled).toEqual(false);
             expect(element.parentElement.parentElement.classList.contains('e-checkbox-disabled')).toEqual(false);
+            expect(element.parentElement.parentElement.classList.contains('e-disabled')).toEqual(false);
         });
 
         it('CheckBox with RTL', () => {
@@ -394,6 +397,7 @@ describe('CheckBox', () => {
             checkbox.click();
             checkbox.focusIn();
         });
+
         it('Get component instance using getComponent', () => {
             checkbox = new CheckBox({ label: 'Default' }, '#checkbox');
             const comp: CheckBox = getComponent<CheckBox>(element, CheckBox);
@@ -431,7 +435,6 @@ describe('CheckBox', () => {
             testInput.remove();
         });
     });
-
 
     describe('creation by util function', () => {
         it('', () => {

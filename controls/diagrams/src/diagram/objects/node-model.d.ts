@@ -1,4 +1,4 @@
-import { Property, Complex, Collection, ChildProperty, ComplexFactory, isBlazor, extend, cloneNode, isNullOrUndefined, compile as baseTemplateCompiler } from '@syncfusion/ej2-base';import { ShapeStyle, Margin, TextStyle, Shadow } from '../core/appearance';import { ShapeStyleModel, TextStyleModel, ShadowModel } from '../core/appearance-model';import { Point } from '../primitives/point';import { Size } from '../primitives/size';import { PointModel } from '../primitives/point-model';import { Shapes, BasicShapes, FlowShapes, UmlActivityShapes, Scale, ImageAlignment, Status, ElementAction, TextAnnotationDirection, FlipDirection } from '../enum/enum';import { IElement } from './interface/IElement';import { GroupableView } from '../core/containers/container';import { Canvas } from '../core/containers/canvas';import { getBasicShape } from './dictionary/basic-shapes';import { DiagramElement } from '../core/elements/diagram-element';import { PathElement } from '../core/elements/path-element';import { TextElement } from '../core/elements/text-element';import { ImageElement } from '../core/elements/image-element';import { DiagramNativeElement } from '../core/elements/native-element';import { RubberBandSelectionMode, ThumbsConstraints } from '../enum/enum';import { Port, PointPort } from './port';import { PointPortModel } from './port-model';import { SelectorConstraints } from '../enum/enum';import { Annotation, ShapeAnnotation } from './annotation';import { ShapeAnnotationModel, HyperlinkModel, PathAnnotationModel } from './annotation-model';import { getPortShape, getIconShape } from './dictionary/common';import { getFlowShape } from './dictionary/flow-shapes';import { HorizontalAlignment, VerticalAlignment, BpmnShapes, BpmnEvents, BpmnTriggers, BpmnGateways, NodeConstraints } from '../enum/enum';import { BpmnDataObjects, BpmnTasks, BpmnSubProcessTypes, BpmnLoops, BranchTypes } from '../enum/enum';import { BpmnBoundary, BpmnActivities, UmlScope } from '../enum/enum';import { MarginModel } from '../core/appearance-model';import { LayoutModel } from '../layout/layout-base-model';import { checkPortRestriction, setUMLActivityDefaults, getUMLActivityShapes } from './../utility/diagram-util';import { updatePortEdges, initFixedUserHandlesSymbol } from './../utility/diagram-util';import { setSwimLaneDefaults, setPortsEdges } from './../utility/diagram-util';import { randomId, getFunction, cloneObject } from './../utility/base-util';import { NodeBase } from './node-base';import { canShadow } from './../utility/constraints-util';import { PortVisibility, Stretch } from '../enum/enum';import { IconShapeModel } from './icon-model';import { IconShape } from './icon';import { measurePath, getContent, getTemplateContent } from './../utility/dom-util';import { Rect } from '../primitives/rect';import { getFreeHandPath, getPolygonPath } from './../utility/path-util';import { DiagramHtmlElement } from '../core/elements/html-element';import { StackPanel } from '../core/containers/stack-panel';import { GridPanel, RowDefinition, ColumnDefinition } from '../core/containers/grid';import { Orientation, ContainerTypes, ClassifierShape } from '../enum/enum';import { getULMClassifierShapes } from '../utility/uml-util';import { initSwimLane } from './../utility/swim-lane-util';import { AnnotationModel } from './annotation-model';import { ConnectorModel } from './connector-model';import { Diagram } from '../../diagram/diagram';import { Connector } from './connector';import { UserHandleModel } from '../interaction/selector-model';import { UserHandle } from '../interaction/selector';import { LayoutInfo } from '../diagram/layoutinfo';import { LayoutInfoModel } from '../diagram/layoutinfo-model';import { SymbolSizeModel } from './preview-model';import { SymbolSize } from './preview';import { NodeFixedUserHandleModel } from './fixed-user-handle-model';import { NodeFixedUserHandle } from './fixed-user-handle';import { IReactDiagram } from '../rendering/canvas-interface';import { initContainerWrapper } from '../utility/container-util';
+import { Property, Complex, Collection, ChildProperty, ComplexFactory, isBlazor, extend, cloneNode, isNullOrUndefined, compile as baseTemplateCompiler } from '@syncfusion/ej2-base';import { ShapeStyle, Margin, TextStyle, Shadow } from '../core/appearance';import { ShapeStyleModel, TextStyleModel, ShadowModel } from '../core/appearance-model';import { Point } from '../primitives/point';import { Size } from '../primitives/size';import { PointModel } from '../primitives/point-model';import { Shapes, BasicShapes, FlowShapes, UmlActivityShapes, Scale, ImageAlignment, Status, ElementAction, TextAnnotationDirection, FlipDirection } from '../enum/enum';import { IElement } from './interface/IElement';import { GroupableView } from '../core/containers/container';import { Canvas } from '../core/containers/canvas';import { getBasicShape } from './dictionary/basic-shapes';import { DiagramElement } from '../core/elements/diagram-element';import { PathElement } from '../core/elements/path-element';import { TextElement } from '../core/elements/text-element';import { ImageElement } from '../core/elements/image-element';import { DiagramNativeElement } from '../core/elements/native-element';import { RubberBandSelectionMode, ThumbsConstraints } from '../enum/enum';import { Port, PointPort } from './port';import { PointPortModel } from './port-model';import { SelectorConstraints } from '../enum/enum';import { Annotation, ShapeAnnotation } from './annotation';import { ShapeAnnotationModel, HyperlinkModel, PathAnnotationModel } from './annotation-model';import { getPortShape, getIconShape } from './dictionary/common';import { getFlowShape } from './dictionary/flow-shapes';import { HorizontalAlignment, VerticalAlignment, BpmnShapes, BpmnEvents, BpmnTriggers, BpmnGateways, NodeConstraints } from '../enum/enum';import { BpmnDataObjects, BpmnTasks, BpmnSubProcessTypes, BpmnLoops, BranchTypes } from '../enum/enum';import { BpmnBoundary, BpmnActivities, UmlScope } from '../enum/enum';import { MarginModel } from '../core/appearance-model';import { LayoutModel } from '../layout/layout-base-model';import { checkPortRestriction, setUMLActivityDefaults, getUMLActivityShapes } from './../utility/diagram-util';import { updatePortEdges, initFixedUserHandlesSymbol } from './../utility/diagram-util';import { setSwimLaneDefaults, setPortsEdges } from './../utility/diagram-util';import { randomId, getFunction, cloneObject } from './../utility/base-util';import { NodeBase } from './node-base';import { canShadow } from './../utility/constraints-util';import { PortVisibility, Stretch } from '../enum/enum';import { IconShapeModel } from './icon-model';import { IconShape } from './icon';import { measurePath, getContent, getTemplateContent } from './../utility/dom-util';import { Rect } from '../primitives/rect';import { getFreeHandPath, getPolygonPath } from './../utility/path-util';import { DiagramHtmlElement } from '../core/elements/html-element';import { StackPanel } from '../core/containers/stack-panel';import { GridPanel, RowDefinition, ColumnDefinition } from '../core/containers/grid';import { Orientation, ContainerTypes, ClassifierShape } from '../enum/enum';import { getULMClassifierShapes } from '../utility/uml-util';import { initSwimLane } from './../utility/swim-lane-util';import { AnnotationModel } from './annotation-model';import { ConnectorModel } from './connector-model';import { Diagram } from '../../diagram/diagram';import { Connector } from './connector';import { UserHandleModel } from '../interaction/selector-model';import { UserHandle } from '../interaction/selector';import { LayoutInfo } from '../diagram/layoutinfo';import { LayoutInfoModel } from '../diagram/layoutinfo-model';import { SymbolSizeModel } from './preview-model';import { SymbolSize } from './preview';import { NodeFixedUserHandleModel } from './fixed-user-handle-model';import { NodeFixedUserHandle } from './fixed-user-handle';import { IReactDiagram } from '../rendering/canvas-interface';import { initContainerWrapper } from '../utility/container-util';import { ErHeader, ErField, ErFieldDefaults } from './er-objects';import { ErHeaderModel, ErFieldModel, ErFieldDefaultsModel } from './er-objects-model';
 import {NodeBaseModel} from "./node-base-model";
 
 /**
@@ -1866,7 +1866,7 @@ export interface NodeModel extends NodeBaseModel{
      * @default Basic Shape
      * @aspType object
      */
-    shape?: ShapeModel | FlowShapeModel | BasicShapeModel | ImageModel | PathModel | TextModel | BpmnShapeModel | NativeModel | HtmlModel | UmlActivityShapeModel | UmlClassifierShapeModel | SwimLaneModel | DiagramShapeModel | ContainerModel;
+    shape?: ShapeModel | FlowShapeModel | BasicShapeModel | ImageModel | PathModel | TextModel | BpmnShapeModel | NativeModel | HtmlModel | UmlActivityShapeModel | UmlClassifierShapeModel | SwimLaneModel | DiagramShapeModel | ContainerModel | ErShapeModel;
 
     /**
      * Defines the size of the symbol preview
@@ -2306,6 +2306,47 @@ export interface ChildContainerModel {
      * @default undefined
      */
     orientation?: Orientation;
+
+}
+
+/**
+ * Interface for a class ErShape
+ */
+export interface ErShapeModel extends ShapeModel{
+
+    /**
+     * Defines the node shape type.
+     *
+     * @default 'Er'
+     */
+    type?: Shapes;
+
+    /**
+     * Defines the header row of the ER entity.
+     *
+     * The header provides the entity name content, text styling, visual style,
+     * and row height.
+     *
+     * @default new ErHeader()
+     */
+    header?: ErHeaderModel;
+
+    /**
+     * Defines the ordered collection of fields rendered inside the ER entity.
+     *
+     * Each field is displayed as a row below the header.
+     * @default []
+     */
+    fields?: ErFieldModel[];
+
+    /**
+     * Defines default row-level visual options for ER entity fields.
+     *
+     * Field-level settings override these defaults where applicable.
+     *
+     * @default undefined
+     */
+    fieldDefaults?: ErFieldDefaultsModel;
 
 }
 

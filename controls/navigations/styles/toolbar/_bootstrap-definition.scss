@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/bootstrap' as *;
-@forward 'ej2-base/styles/definition/bootstrap';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $tbar-skin: 'bootstrap' !default;
 $tbar-zero-value: 0 !default;
 $tbar-separator-bgr-minheight: 36px !default;
@@ -21,6 +21,7 @@ $tbar-default-font-overlay: $default-font-color !default;
 $tbar-default-icon-overlay: $default-icon-color !default;
 $tbar-select-font: $tbar-hover-font !default;
 $tbar-pressed-font: $tbar-hover-font !default;
+$tbar-active-icon-color: $brand-primary-font !default;
 
 $tbar-default-bg: $grey-f8 !default;
 $tbar-pop-bg: $tbar-default-bg !default;

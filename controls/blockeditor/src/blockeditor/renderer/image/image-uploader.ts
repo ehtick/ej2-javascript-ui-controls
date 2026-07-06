@@ -5,6 +5,7 @@ import { BlockEditor } from '../../base/blockeditor';
 import { UploadSession } from './upload-session';
 import { ImageProgressRenderer } from './image-progress';
 import { FileUploadSuccessEventArgs } from '../../../models/eventargs';
+import * as constants from '../../../common/constant';
 
 /**
  * ImageUploaderRenderer manages the Tab and Uploader components for image upload workflow.
@@ -61,9 +62,20 @@ export class ImageUploaderRenderer {
         this.editor.blockManager.observer.off('clearUploaderObj', this.clearUploaderObj);
     }
 
-    private renderImageUploader(args: { container: HTMLElement }): void {
-        if (!this.isInitialized && args.container) {
-            this.container = args.container;
+    private renderImageUploader(): void {
+        if (!this.isInitialized) {
+            const uploadPopupElement: HTMLElement = createElement('div', {
+                id: `${this.editor.element.id + constants.IMAGE_POPUP_ID}`,
+                className: 'e-image-upload-popup e-popup-container'
+            });
+            // Create popup content container
+            const contentContainer: HTMLElement = createElement('div', {
+                id: `${this.editor.element.id}_image-tab-container`,
+                className: 'e-popup-content'
+            });
+            uploadPopupElement.appendChild(contentContainer);
+            this.editor.element.appendChild(uploadPopupElement);
+            this.container = contentContainer;
             this.initialize();
         }
     }
@@ -156,7 +168,7 @@ export class ImageUploaderRenderer {
             allowedExtensions: this.editor.imageBlockSettings.allowedTypes.join(','),
             maxFileSize: this.editor.imageBlockSettings.maxFileSize,
             dropArea: uploaderContainer,
-            cssClass: 'e-image-uploader',
+            cssClass: 'e-blockeditor-image-uploader',
             selected: this.handleFileSelected.bind(this),
             uploading: this.handleUploading.bind(this),
             progress: this.handleProgress.bind(this),
@@ -380,7 +392,7 @@ export class ImageUploaderRenderer {
 
         // Create upload session immediately (synchronous) and store in map
         const sessionId: string = getUniqueID('upload-session');
-        const session: UploadSession = new UploadSession(sessionId, blockId, file, null);
+        const session: UploadSession = new UploadSession(sessionId, blockId, file, '');
         this.uploadSessions.set(blockId, session);
         this.fileNameToBlockId.set(file.name, blockId);
         this.AddImagePreview(file, blockId);
@@ -418,7 +430,7 @@ export class ImageUploaderRenderer {
     }
 
     private getPreviewUrl(file: File): Promise<string> {
-        const saveFormat: string = (this.editor.imageBlockSettings.saveFormat || 'Base64').toString().toLowerCase();
+        const saveFormat: string = (this.editor.imageBlockSettings.saveFormat || 'Blob').toString().toLowerCase();
 
         // If host requests blob previews, always use blob URL (fast and low-memory)
         if (saveFormat === 'blob') {
@@ -480,12 +492,6 @@ export class ImageUploaderRenderer {
             const blockId: string = this.fileNameToBlockId.get(fileName) || '';
             const progressRenderer: ImageProgressRenderer = this.progressRenderers.get(blockId);
 
-            // Update session progress
-            const session: UploadSession = this.uploadSessions.get(blockId);
-            if (session) {
-                session.updateProgress(progressPercent);
-            }
-
             // Update progress bar for this specific upload
             if (progressRenderer) {
                 progressRenderer.updateProgress(progressPercent);
@@ -504,9 +510,6 @@ export class ImageUploaderRenderer {
         }
 
         const session: UploadSession = this.uploadSessions.get(blockId);
-        if (session) {
-            session.complete();
-        }
 
         // Parse server response
         let serverResponse: any = {};
@@ -527,7 +530,7 @@ export class ImageUploaderRenderer {
         const path: string = this.editor.imageBlockSettings.path;
 
         if (path && path.trim() !== '') {
-            const uploadFileName: string = session ? session.file.name : (serverResponse.fileName || '');
+            const uploadFileName: string = session ? session.fileName : (serverResponse.fileName || '');
             const normalizedPath: string = path.endsWith('/') ? path : path + '/';
             const normalizedFileName: string = uploadFileName.startsWith('/') ? uploadFileName.substring(1) : uploadFileName;
             finalImageUrl = normalizedPath + normalizedFileName;
@@ -575,11 +578,6 @@ export class ImageUploaderRenderer {
             if (eventObj.target && eventObj.target.statusText) {
                 errorMessage = eventObj.target.statusText;
             }
-        }
-
-        const session: UploadSession = this.uploadSessions.get(blockId);
-        if (session) {
-            session.fail(errorMessage);
         }
 
         const failedArgs: FailureEventArgs = {

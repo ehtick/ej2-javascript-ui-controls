@@ -134,7 +134,13 @@ export class RibbonGroupButton {
                 target: btnContainerEle,
                 enableRtl: this.parent.enableRtl,
                 cssClass: 'e-ribbon-dropdown-group-button',
-                disabled: item.disabled
+                disabled: item.disabled,
+                beforeOpen: () => {
+                    const target: HTMLElement = this.parent.getAppendToElement();
+                    if (dropdown && dropdown.dropDown && !target.contains(dropdown.dropDown.element)) {
+                        target.appendChild(dropdown.dropDown.element);
+                    }
+                }
             }, buttonEle);
             if (groupBtnSettings.header) {
                 const dropDownPopup: Popup = dropdown.dropDown;
@@ -311,7 +317,13 @@ export class RibbonGroupButton {
                 target: containerEle,
                 enableRtl: this.parent.enableRtl,
                 cssClass: 'e-ribbon-dropdown-group-button',
-                disabled: item.disabled
+                disabled: item.disabled,
+                beforeOpen: () => {
+                    const target: HTMLElement = this.parent.getAppendToElement();
+                    if (dropdown && dropdown.dropDown && !target.contains(dropdown.dropDown.element)) {
+                        target.appendChild(dropdown.dropDown.element);
+                    }
+                }
             }, buttonEle);
             if (groupBtnSettings.header) {
                 const dropDownPopup: Popup = dropdown.dropDown;

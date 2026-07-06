@@ -805,6 +805,11 @@ export class PasteCleanupAction {
     public handleBlobOrUpload(): void {
         const inputElement: Element = this.pasteModel.getEditPanel();
         const inputImgs: NodeListOf<HTMLImageElement> = inputElement.querySelectorAll('img');
+        const inputAuds: NodeListOf<HTMLAudioElement> = inputElement.querySelectorAll('audio');
+        const inputVids: NodeListOf<HTMLAudioElement> = inputElement.querySelectorAll('video');
+        if (inputAuds.length > 0 || inputVids.length > 0) {
+            this.pasteModel.mediaUpload();
+        }
         const needsBlobConversion: boolean = inputImgs.length > 0 &&
             inputImgs[0].src.startsWith('blob') &&
             !isNOU(this.pasteModel.insertImageSettings.saveUrl) &&

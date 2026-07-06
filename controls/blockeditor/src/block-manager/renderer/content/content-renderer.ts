@@ -81,11 +81,8 @@ export class ContentRenderer {
         }
         // Add <br> if placeholder check is needed and content is empty
         if (node && !contentModel.content && !(block.properties as BasePlaceholderProp).placeholder) {
-            const container: HTMLElement = document.createElement('span');
-            container.appendChild(node);
             const br: HTMLElement = document.createElement('br');
-            container.appendChild(br);
-            return container;
+            return br;
         }
         return node;
     }

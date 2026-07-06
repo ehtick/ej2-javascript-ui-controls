@@ -1,4 +1,4 @@
-@use 'ej2-base/styles/common/mixin' as *;
+@use 'variables' as *;
 @mixin rowcell-container {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -214,8 +214,8 @@
         width: 16px;
       }
       @else {
-        height: $cbox-height;
-        width: $cbox-width;
+        height: $treegrid-cbox-height;
+        width: $treegrid-cbox-width;
       }
     }
 
@@ -275,7 +275,7 @@
       }
     }
 
-    #{if(&, '&', '*')}.e-grid.e-print-grid-layout .e-icons {
+    &.e-grid.e-print-grid-layout .e-icons {
       display: inline-block;
     }
 

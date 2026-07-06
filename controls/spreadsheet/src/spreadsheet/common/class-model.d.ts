@@ -39,3 +39,31 @@ export interface SelectionSettingsModel {
     mode?: SelectionMode;
 
 }
+
+/**
+ * Interface for a class AIAssistSettings
+ */
+export interface AIAssistSettingsModel {
+
+    /**
+     * Specifies the service endpoint URL where the Spreadsheet AI assist sends chat requests and receives responses.
+     *
+     * @default null
+     */
+    requestUrl?: string;
+
+    /**
+     * Specifies the placeholder text displayed in the AI assist chat input box.
+     *
+     * @default null
+     */
+    placeholder?: string;
+
+    /**
+     * Specifies a list of sample prompts displayed in the AI assist chat to help users initiate a conversation.
+     *
+     * @default null
+     */
+    promptSuggestions?: string[];
+
+}

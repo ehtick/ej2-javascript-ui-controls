@@ -1,7 +1,7 @@
-@use 'ej2-base/styles/definition/material3-dark' as *;
-@use 'ej2-navigations/styles/toolbar/material3-dark-definition' as *;
-@forward 'ej2-base/styles/definition/material3-dark';
-@forward 'ej2-navigations/styles/toolbar/material3-dark-definition';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+@use '@syncfusion/ej2-navigations/styles/toolbar/material3-dark-definition' as *;
+@use '../spreadsheet-ribbon/material3-dark-definition' as *;
+
 $sheet-skin: 'Material3' !default;
 $spreadsheet-border-width: 1px;
 $select-all-size: 26px !default;
@@ -107,6 +107,11 @@ $spreadsheet-formula-bar-expanded-separator-height: 60px !default;
 $bigger-name-box-ddl-input-height: 22px !default;
 $bigger-formula-bar-drop-icon-line-height: 32px !default;
 $bigger-insert-function-height: 87px !default;
+$sheet-bar-btn-box-shadow: $tbar-btn-box-shadow !default;
+$sheet-bar-default-font-color: $tbar-default-font !default;
+$sheet-bar-active-font-color: $tbar-active-font-color !default;
+$sheet-bar-active-icon-color: $tbar-active-icon-color !default;
+$sheet-bar-default-icon-color: $tbar-default-icon-color !default;
 
 //Insert dialog box
 $dlg-list-border: $spreadsheet-border !default;
@@ -145,6 +150,7 @@ $spreadsheet-ribbon-item-active-border-color: transparent !default;
 $spreadsheet-ribbon-item-focus-shadow: $shadow-focus-ring1 !default;
 $spreadsheet-ribbon-item-active-background-color: rgba($content-bg-color-selected) !default;
 $font-family-collection: ('Arial', 'Arial Black', 'Axettac Demo', 'Batang', 'Book Antiqua', 'Calibri', 'Comic Sans MS', 'Courier', 'Courier New', 'Din Condensed', 'Georgia', 'Helvetica', 'Helvetica New', 'Roboto', 'Tahoma', 'Times New Roman', 'Verdana') !default;
+$sf-font-family-collection: ('Algerian', 'Arial', 'Calibri', 'Cambria', 'Cambria Math', 'Courier New', 'Candara', 'Georgia', 'Impact', 'Segoe Print', 'Segoe Script', 'Segoe UI', sans-serif, 'Times New Roman', 'Verdana', sans-serif) !default;
 $normal-btn-padding: 8px !default;
 $bigger-cpicker-btn-line-height: $bigger-spreadsheet-ribbon-btn-height - 4 !default;
 $bigger-cpicker-btn-padding-bottom: 0 !default;
@@ -256,7 +262,7 @@ $mac-scrollbar-background: rgba(0, 0, 0, .5) !default;
 $custom-listview-color: rgba($border-light) !default;
 $custom-format-dlg-input-margin-right: 24px !default;
 $custom-format-dlg-sample-margin: 20px 0 4px !default;
-$expand-icon-color: rgba($icon-color) !default;
+$spreadsheet-ribbon-expand-icon-color: $expand-icon-color !default;
 
 //File Name Dialog
 $open-dlg-width: 340px !default;
@@ -285,7 +291,6 @@ $spreadsheet-chart-icon-font-size: 30px !default;
 $bigger-spreadsheet-chart-icon-size: 36px !default;
 
 //Mixins
-$spreadsheet-ribbon-tab-text-wrap-height: 32px !default;
 $spreadsheet-sort-template-item-padding: 5px 0 0 !default;
 $hyperlink-dlg-content-header-line-height: 16px !default;
 $dlg-description-content-padding-top: 16px !default;
@@ -303,7 +308,7 @@ $validation-dlg-content-footer-clearall-margin-right: 0 !default;
 $validation-dlg-content-header-line: 16px !default;
 $validation-dlg-content-padding: 12px !default;
 $spreadsheet-sort-dlg-error-bottom: 0 !default;
-$bigger-spread-ribbon-tab-text-wrap-height: 48px !default;
+$bigger-spreadsheet-ribbon-tab-text-wrap-height: 48px !default;
 $bigger-spread-ribbon-tab-menu-items-height: 41px !default;
 $bigger-spread-ribbon-tab-menu-items-line-height: 41px !default;
 $bigger-formula-bar-height: 32px !default;
@@ -332,6 +337,7 @@ $bigger-protect-password-content-padding: 4px 0 0 !default;
 $bigger-protect-password-content-padding2: 20px 0 0 !default;
 $bigger-data-validation-content-padding-top: 20px !default;
 $spreadsheet-ribbon-toolbar-btn-hover-color: $tbar-hover-bg !default;
+$spreadsheet-ribbon-toolbar-btn-hover-font: $tbar-hover-font !default;
 $spread-toolbar-btn-font-weight: normal !default;
 
 //Name Manager Dialog
@@ -453,8 +459,11 @@ $spread-comment-text-color: rgba($content-text-color) !default;
 $spread-comment-timestamp-color: rgba($content-text-color-alt1) !default;
 $spread-comment-input-height: 32px !default;
 $spread-comment-input-border-bottom-focused: 2px solid rgba($primary) !default;
-$spread-comment-border: 1px solid $outline-variant !default;
 $spread-comment-menu-height: 32px !default;
 $spread-comment-menu-width: 32px !default;
 $spread-comment-postbtn-padding: 6px 12px !default;
 $spread-comment-header-wrap-gap: 8px !default;
+$spread-border-color: rgba($flyout-text-color) !default;
+
+//Side panel
+$spread-side-panel-border: 1px solid $outline-variant !default;

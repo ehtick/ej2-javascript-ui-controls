@@ -1,6 +1,6 @@
-@use 'ej2-base/styles/definition/material3-dark' as *;
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 @use '../document-editor/material3-dark-definition' as *;
-@forward 'ej2-base/styles/definition/material3-dark';
+
 @forward '../document-editor/material3-dark-definition';
 $de-ctnr-height: calc(100%) !default;
 $de-ctnr-tlbr-height: 85px !default;
@@ -180,8 +180,8 @@ $de-ribbon-classic-editor-height-big: calc(100% - 183px) !default;
 $de-ctnr-layout-margin-bottom: 8px;
 $de-ctnr-picture-margin-bottom: 8px;
 
-$de-ribbon-simplified-ctnr-collapsed-editor-height: calc(100% - 52px) !default;
-$de-ribbon-classic-collapsed-editor-height: calc(100% - 76px) !default;
+$de-ribbon-simplified-ctnr-collapsed-editor-height: calc(100% - 72px) !default;
+$de-ribbon-classic-collapsed-editor-height: calc(100% - 72px) !default;
 
 // layout.scss
 $de-toolbar-line-height: 0;

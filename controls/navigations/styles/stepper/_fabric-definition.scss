@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/fabric' as *;
-@forward 'ej2-base/styles/definition/fabric';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $stepper-ol-padding: 0 !default;
 $stepper-step-radius: 9999px !default;
 $stepper-step-width: 32px !default;

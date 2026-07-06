@@ -24,7 +24,7 @@ import { ImageResizer } from './index';
 import { SfdtExport } from './index';
 import { HyperlinkDialog, TableDialog, BookmarkDialog, StylesDialog, TableOfContentsDialog } from './index';
 import { PageSetupDialog, ParagraphDialog, ListDialog, StyleDialog, FontDialog } from './index';
-import { TablePropertiesDialog, BordersAndShadingDialog, CellOptionsDialog, TableOptionsDialog } from './index';
+import { TablePropertiesDialog, BordersAndShadingDialog, CellOptionsDialog, TableOptionsDialog, NotesDialog } from './index';
 import { SpellChecker } from './implementation/spell-check/spell-checker';
 import { SpellCheckDialog } from './implementation/dialogs/spellCheck-dialog';
 import { DocumentEditorModel, ServerActionSettingsModel, DocumentEditorSettingsModel, FormFieldSettingsModel, CollaborativeEditingSettingsModel, DocumentSettingsModel, AutoResizeSettingsModel, RevisionSettingsModel, OpenAsyncSettingsModel } from './document-editor-model';
@@ -36,7 +36,6 @@ import { DropDownFormFieldDialog } from './implementation/dialogs/form-field-dro
 import { FormFillingMode, TrackChangeEventArgs, ServiceFailureArgs, ImageFormat, ProtectionType, ContentControlInfo, ServerActionType, CommentInfo, CommentProperties } from './base';
 import { TrackChangesPane } from './implementation/track-changes/track-changes-pane';
 import { Revision, RevisionCollection } from './implementation/track-changes/track-changes';
-import { NotesDialog } from './implementation/dialogs/notes-dialog';
 import { CommentElementBox, ContentControl, FootNoteWidget, HeaderFooterWidget, IWidget, ImageElementBox, LineWidget, TextElementBox } from './implementation/viewer/page';
 import { internalZoomFactorChange, contentChangeEvent, documentChangeEvent, selectionChangeEvent, zoomFactorChangeEvent, beforeFieldFillEvent, afterFieldFillEvent, serviceFailureEvent, viewChangeEvent, customContextMenuSelectEvent, customContextMenuBeforeOpenEvent, internalviewChangeEvent, internalDocumentEditorSettingsChange, trackChanges, internalOptionPaneChange, documentLoadFailedEvent, beforecontentControlFillEvent, aftercontentControlFillEvent } from './base/constants';
 import { Optimized, Regular, HelperMethods } from './index';

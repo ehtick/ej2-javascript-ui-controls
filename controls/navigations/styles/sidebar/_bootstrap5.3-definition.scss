@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/bootstrap5.3' as *;
-@forward 'ej2-base/styles/definition/bootstrap5.3';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $sidebar-box-shadow: $shadow !default;
 
 //color variables

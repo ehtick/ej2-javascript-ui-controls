@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Button } from '../src/button/button';
+import { Button, ClickedEventArgs } from '../src/button/button';
 import { Browser, createElement, detach } from '@syncfusion/ej2-base';
 import { profile , inMB, getMemoryProfile } from './common.spec';
 
@@ -45,6 +45,7 @@ describe('Button', () => {
         it('Disable state testing', () => {
             button = new Button({ disabled: true });
             button.appendTo('#button');
+            expect(element.classList.contains('e-disabled')).toEqual(true);
             expect(element.getAttribute('disabled')).toEqual('');
         });
 
@@ -226,9 +227,11 @@ describe('Button', () => {
             button.appendTo('#button');
             button.disabled = true;
             button.dataBind();
+            expect(element.classList.contains('e-disabled')).toEqual(true);
             expect(element.getAttribute('disabled')).toEqual('');
             button.disabled = false;
             button.dataBind();
+            expect(element.classList.contains('e-disabled')).toEqual(false);
             expect(element.getAttribute('disabled')).toEqual(null);
         });
 
@@ -382,6 +385,418 @@ describe('Button', () => {
         const memory: any = inMB(getMemoryProfile());
         // check the final memory usage against the first usage, there should be little change if everything was properly deallocated
         expect(memory).toBeLessThan(profile.samples[0] + 0.25);
+    });
+
+    // ---------------------------------------------------------------------------
+    // Repeat Button Tests
+    // ---------------------------------------------------------------------------
+
+    describe('Repeat Button — Core Pointer Behavior', () => {
+        let repeatBtn: Button;
+        const repeatElement: HTMLButtonElement = createElement('button', { id: 'repeat-button' }) as HTMLButtonElement;
+        document.body.appendChild(repeatElement);
+
+        afterEach(() => {
+            jasmine.clock().uninstall();
+            repeatBtn.destroy();
+        });
+
+        // 8.1 — enableRepeat default is false, no repeat handlers wired
+        it('8.1 enableRepeat default is false', () => {
+            repeatBtn = new Button({}, '#repeat-button');
+            expect(repeatBtn.enableRepeat).toBe(false);
+        });
+
+        // 8.2 — single click with enableRepeat: true fires clicked with isRepeat: false exactly once
+        it('8.2 single pointerdown fires clicked with isRepeat: false exactly once', () => {
+            jasmine.clock().install();
+            repeatBtn = new Button({ enableRepeat: true }, '#repeat-button');
+            const fired: ClickedEventArgs[] = [];
+            repeatBtn.clicked = (args: ClickedEventArgs) => { fired.push(args); };
+            const pdEvent: PointerEvent = new PointerEvent('pointerdown', { button: 0, bubbles: true });
+            repeatElement.dispatchEvent(pdEvent);
+            // cancel immediately
+            repeatElement.dispatchEvent(new PointerEvent('pointerup', { button: 0, bubbles: true }));
+            jasmine.clock().tick(0);
+            expect(fired.length).toBe(1);
+            expect(fired[0].isRepeat).toBe(false);
+        });
+
+        // 8.3 — hold past repeatDelay fires repeated clicked with isRepeat: true
+        it('8.3 hold past repeatDelay fires clicked with isRepeat: true', () => {
+            jasmine.clock().install();
+            repeatBtn = new Button({ enableRepeat: true, repeatDelay: 400, repeatInterval: 100 }, '#repeat-button');
+            const fired: ClickedEventArgs[] = [];
+            repeatBtn.clicked = (args: ClickedEventArgs) => { fired.push(args); };
+            repeatElement.dispatchEvent(new PointerEvent('pointerdown', { button: 0, bubbles: true }));
+            jasmine.clock().tick(400); // delay expires
+            jasmine.clock().tick(300); // 3 interval ticks
+            repeatElement.dispatchEvent(new PointerEvent('pointerup', { button: 0, bubbles: true }));
+            // 1 initial + 3 repeats
+            expect(fired.length).toBe(4);
+            expect(fired[0].isRepeat).toBe(false);
+            expect(fired[1].isRepeat).toBe(true);
+            expect(fired[3].isRepeat).toBe(true);
+        });
+
+        // 8.4 — pointerup after hold clears timers and stops firing
+        it('8.4 pointerup stops repeat', () => {
+            jasmine.clock().install();
+            repeatBtn = new Button({ enableRepeat: true, repeatDelay: 200, repeatInterval: 100 }, '#repeat-button');
+            const fired: ClickedEventArgs[] = [];
+            repeatBtn.clicked = () => { fired.push({ originalEvent: new PointerEvent('pointerdown', { button: 0, bubbles: true }), isRepeat: false }); };
+            repeatElement.dispatchEvent(new PointerEvent('pointerdown', { button: 0, bubbles: true }));
+            jasmine.clock().tick(300);
+            repeatElement.dispatchEvent(new PointerEvent('pointerup', { button: 0, bubbles: true }));
+            const countAfterUp: number = fired.length;
+            jasmine.clock().tick(500);
+            expect(fired.length).toBe(countAfterUp); // no more fires after pointerup
+        });
+
+        // 8.5 — pointerleave stops repeat mid-hold
+        it('8.5 pointerleave stops repeat mid-hold', () => {
+            jasmine.clock().install();
+            repeatBtn = new Button({ enableRepeat: true, repeatDelay: 100, repeatInterval: 100 }, '#repeat-button');
+            const fired: ClickedEventArgs[] = [];
+            repeatBtn.clicked = (args: ClickedEventArgs) => { fired.push(args); };
+            repeatElement.dispatchEvent(new PointerEvent('pointerdown', { button: 0, bubbles: true }));
+            jasmine.clock().tick(200);
+            repeatElement.dispatchEvent(new PointerEvent('pointerleave', { button: 0, bubbles: true }));
+            const countAfterLeave: number = fired.length;
+            jasmine.clock().tick(500);
+            expect(fired.length).toBe(countAfterLeave);
+        });
+
+        // 8.6 — pointercancel stops repeat mid-hold
+        it('8.6 pointercancel stops repeat mid-hold', () => {
+            jasmine.clock().install();
+            repeatBtn = new Button({ enableRepeat: true, repeatDelay: 100, repeatInterval: 100 }, '#repeat-button');
+            const fired: ClickedEventArgs[] = [];
+            repeatBtn.clicked = (args: ClickedEventArgs) => { fired.push(args); };
+            repeatElement.dispatchEvent(new PointerEvent('pointerdown', { button: 0, bubbles: true }));
+            jasmine.clock().tick(200);
+            repeatElement.dispatchEvent(new PointerEvent('pointercancel', { button: 0, bubbles: true }));
+            const countAfterCancel: number = fired.length;
+            jasmine.clock().tick(500);
+            expect(fired.length).toBe(countAfterCancel);
+        });
+
+        // 8.7 — repeatDelay: 0 starts repeat immediately after initial click
+        it('8.7 repeatDelay: 0 starts repeat immediately', () => {
+            jasmine.clock().install();
+            repeatBtn = new Button({ enableRepeat: true, repeatDelay: 0, repeatInterval: 100 }, '#repeat-button');
+            const fired: ClickedEventArgs[] = [];
+            repeatBtn.clicked = (args: ClickedEventArgs) => { fired.push(args); };
+            repeatElement.dispatchEvent(new PointerEvent('pointerdown', { button: 0, bubbles: true }));
+            jasmine.clock().tick(0);   // initial fire (no delay phase)
+            jasmine.clock().tick(200); // 2 interval ticks
+            repeatElement.dispatchEvent(new PointerEvent('pointerup', { button: 0, bubbles: true }));
+            // 1 initial + 2 repeats
+            expect(fired.length).toBe(3);
+        });
+
+        // 8.8 — custom repeatInterval: 200 fires at 200ms cadence, not default 100ms
+        it('8.8 custom repeatInterval: 200 fires at 200ms cadence', () => {
+            jasmine.clock().install();
+            repeatBtn = new Button({ enableRepeat: true, repeatDelay: 0, repeatInterval: 200 }, '#repeat-button');
+            const fired: ClickedEventArgs[] = [];
+            repeatBtn.clicked = (args: ClickedEventArgs) => { fired.push(args); };
+            repeatElement.dispatchEvent(new PointerEvent('pointerdown', { button: 0, bubbles: true }));
+            jasmine.clock().tick(0);   // initial
+            jasmine.clock().tick(400); // exactly 2 repeat fires at 200ms each
+            repeatElement.dispatchEvent(new PointerEvent('pointerup', { button: 0, bubbles: true }));
+            expect(fired.length).toBe(3); // 1 initial + 2 repeats
+        });
+
+        // 8.9 — right-click (button=2) does NOT fire clicked
+        it('8.9 pointerdown with button=2 (right-click) does not fire clicked', () => {
+            jasmine.clock().install();
+            repeatBtn = new Button({ enableRepeat: true }, '#repeat-button');
+            const fired: ClickedEventArgs[] = [];
+            repeatBtn.clicked = (args: ClickedEventArgs) => { fired.push(args); };
+            repeatElement.dispatchEvent(new PointerEvent('pointerdown', { button: 2, bubbles: true }));
+            jasmine.clock().tick(0);
+            expect(fired.length).toBe(0);
+        });
+
+        // 8.10 — middle-click (button=1) does NOT fire clicked
+        it('8.10 pointerdown with button=1 (middle-click) does not fire clicked', () => {
+            jasmine.clock().install();
+            repeatBtn = new Button({ enableRepeat: true }, '#repeat-button');
+            const fired: ClickedEventArgs[] = [];
+            repeatBtn.clicked = (args: ClickedEventArgs) => { fired.push(args); };
+            repeatElement.dispatchEvent(new PointerEvent('pointerdown', { button: 1, bubbles: true }));
+            jasmine.clock().tick(0);
+            expect(fired.length).toBe(0);
+        });
+
+        // 8.11 — right-click does not start any timer (no timer leak)
+        it('8.11 right-click does not start any timer after 1000ms', () => {
+            jasmine.clock().install();
+            repeatBtn = new Button({ enableRepeat: true, repeatDelay: 400, repeatInterval: 100 }, '#repeat-button');
+            const fired: ClickedEventArgs[] = [];
+            repeatBtn.clicked = (args: ClickedEventArgs) => { fired.push(args); };
+            repeatElement.dispatchEvent(new PointerEvent('pointerdown', { button: 2, bubbles: true }));
+            jasmine.clock().tick(1000); // well past both delay and several interval ticks
+            expect(fired.length).toBe(0);
+        });
+
+        // 8.12 — primary button (button=0) still fires normally
+        it('8.12 pointerdown with button=0 (primary) fires clicked normally', () => {
+            jasmine.clock().install();
+            repeatBtn = new Button({ enableRepeat: true }, '#repeat-button');
+            const fired: ClickedEventArgs[] = [];
+            repeatBtn.clicked = (args: ClickedEventArgs) => { fired.push(args); };
+            repeatElement.dispatchEvent(new PointerEvent('pointerdown', { button: 0, bubbles: true }));
+            repeatElement.dispatchEvent(new PointerEvent('pointerup', { button: 0, bubbles: true }));
+            jasmine.clock().tick(0);
+            expect(fired.length).toBe(1);
+            expect(fired[0].isRepeat).toBe(false);
+        });
+    });
+
+    describe('Repeat Button — Keyboard Behavior', () => {
+        let repeatBtn: Button;
+        const kbElement: HTMLButtonElement = createElement('button', { id: 'repeat-kb-button' }) as HTMLButtonElement;
+        document.body.appendChild(kbElement);
+
+        afterEach(() => {
+            jasmine.clock().uninstall();
+            repeatBtn.destroy();
+        });
+
+        function makeKeyEvent(key: string, repeat: boolean): KeyboardEvent {
+            return new KeyboardEvent('keydown', { key: key, repeat: repeat, bubbles: true });
+        }
+
+        // 9.1 — keydown with repeat: false on Space fires clicked with isRepeat: false
+        it('9.1 keydown Space (repeat: false) fires clicked with isRepeat: false', () => {
+            jasmine.clock().install();
+            repeatBtn = new Button({ enableRepeat: true }, '#repeat-kb-button');
+            const fired: ClickedEventArgs[] = [];
+            repeatBtn.clicked = (args: ClickedEventArgs) => { fired.push(args); };
+            kbElement.dispatchEvent(makeKeyEvent(' ', false));
+            kbElement.dispatchEvent(new KeyboardEvent('keyup', { key: ' ', bubbles: true }));
+            expect(fired.length).toBe(1);
+            expect(fired[0].isRepeat).toBe(false);
+        });
+
+        // 9.2 — keydown with repeat: true and repeatInterval === 0 fires clicked with isRepeat: true
+        it('9.2 keydown Space (repeat: true, repeatInterval 0) fires clicked with isRepeat: true', () => {
+            jasmine.clock().install();
+            repeatBtn = new Button({ enableRepeat: true, repeatInterval: 0 }, '#repeat-kb-button');
+            const fired: ClickedEventArgs[] = [];
+            repeatBtn.clicked = (args: ClickedEventArgs) => { fired.push(args); };
+            kbElement.dispatchEvent(makeKeyEvent(' ', false));
+            kbElement.dispatchEvent(makeKeyEvent(' ', true));
+            kbElement.dispatchEvent(makeKeyEvent(' ', true));
+            kbElement.dispatchEvent(new KeyboardEvent('keyup', { key: ' ', bubbles: true }));
+            expect(fired.length).toBe(3);
+            expect(fired[1].isRepeat).toBe(true);
+            expect(fired[2].isRepeat).toBe(true);
+        });
+
+        // 9.3 — keydown with repeat: true and repeatInterval > 0 is suppressed
+        it('9.3 keydown Space (repeat: true, repeatInterval > 0) is suppressed', () => {
+            jasmine.clock().install();
+            repeatBtn = new Button({ enableRepeat: true, repeatInterval: 150 }, '#repeat-kb-button');
+            const fired: ClickedEventArgs[] = [];
+            repeatBtn.clicked = (args: ClickedEventArgs) => { fired.push(args); };
+            kbElement.dispatchEvent(makeKeyEvent(' ', false)); // fires once
+            kbElement.dispatchEvent(makeKeyEvent(' ', true));  // suppressed
+            kbElement.dispatchEvent(makeKeyEvent(' ', true));  // suppressed
+            jasmine.clock().tick(0); // no interval started yet (delay not passed)
+            // only the initial press fires — native repeats are suppressed
+            expect(fired.length).toBe(1);
+            kbElement.dispatchEvent(new KeyboardEvent('keyup', { key: ' ', bubbles: true }));
+        });
+
+        // 9.4 — custom interval active via keyboard: clock advance fires at interval rate
+        it('9.4 keyboard custom interval fires at interval rate', () => {
+            jasmine.clock().install();
+            repeatBtn = new Button({ enableRepeat: true, repeatDelay: 200, repeatInterval: 100 }, '#repeat-kb-button');
+            const fired: ClickedEventArgs[] = [];
+            repeatBtn.clicked = (args: ClickedEventArgs) => { fired.push(args); };
+            kbElement.dispatchEvent(makeKeyEvent(' ', false));
+            jasmine.clock().tick(200); // delay expires
+            jasmine.clock().tick(300); // 3 interval ticks
+            kbElement.dispatchEvent(new KeyboardEvent('keyup', { key: ' ', bubbles: true }));
+            expect(fired.length).toBe(4); // 1 initial + 3 repeats
+        });
+
+        // 9.5 — keyup clears active keyboard interval
+        it('9.5 keyup clears active keyboard interval', () => {
+            jasmine.clock().install();
+            repeatBtn = new Button({ enableRepeat: true, repeatDelay: 100, repeatInterval: 100 }, '#repeat-kb-button');
+            const fired: ClickedEventArgs[] = [];
+            repeatBtn.clicked = (args: ClickedEventArgs) => { fired.push(args); };
+            kbElement.dispatchEvent(makeKeyEvent(' ', false));
+            jasmine.clock().tick(200);
+            kbElement.dispatchEvent(new KeyboardEvent('keyup', { key: ' ', bubbles: true }));
+            const countAfterUp: number = fired.length;
+            jasmine.clock().tick(500);
+            expect(fired.length).toBe(countAfterUp);
+        });
+
+        // 9.6 — blur clears active keyboard interval
+        it('9.6 blur clears active keyboard interval', () => {
+            jasmine.clock().install();
+            repeatBtn = new Button({ enableRepeat: true, repeatDelay: 100, repeatInterval: 100 }, '#repeat-kb-button');
+            const fired: ClickedEventArgs[] = [];
+            repeatBtn.clicked = (args: ClickedEventArgs) => { fired.push(args); };
+            kbElement.dispatchEvent(makeKeyEvent(' ', false));
+            jasmine.clock().tick(200);
+            kbElement.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
+            const countAfterBlur: number = fired.length;
+            jasmine.clock().tick(500);
+            expect(fired.length).toBe(countAfterBlur);
+        });
+    });
+
+    describe('Repeat Button — Edge Cases', () => {
+        let repeatBtn: Button;
+        const edgeElement: HTMLButtonElement = createElement('button', { id: 'repeat-edge-button' }) as HTMLButtonElement;
+        document.body.appendChild(edgeElement);
+
+        afterEach(() => {
+            jasmine.clock().uninstall();
+            repeatBtn.destroy();
+        });
+
+        // 10.1 — disabled set true mid-repeat clears timers and stops firing
+        it('10.1 disabled set true mid-repeat stops all further clicks', () => {
+            jasmine.clock().install();
+            repeatBtn = new Button({ enableRepeat: true, repeatDelay: 100, repeatInterval: 100 }, '#repeat-edge-button');
+            const fired: ClickedEventArgs[] = [];
+            repeatBtn.clicked = (args: ClickedEventArgs) => { fired.push(args); };
+            edgeElement.dispatchEvent(new PointerEvent('pointerdown', { button: 0, bubbles: true }));
+            jasmine.clock().tick(200);
+            repeatBtn.disabled = true;
+            repeatBtn.dataBind();
+            const countAtDisable: number = fired.length;
+            jasmine.clock().tick(500);
+            expect(fired.length).toBe(countAtDisable);
+        });
+
+        // 10.2 — enableRepeat: true + isToggle: true — initial press toggles e-active; repeats do NOT re-toggle
+        it('10.2 isToggle + enableRepeat: only initial press toggles e-active', () => {
+            jasmine.clock().install();
+            repeatBtn = new Button({ enableRepeat: true, isToggle: true, repeatDelay: 0, repeatInterval: 100 }, '#repeat-edge-button');
+            edgeElement.dispatchEvent(new PointerEvent('pointerdown', { button: 0, bubbles: true }));
+            jasmine.clock().tick(0);
+            expect(edgeElement.classList.contains('e-active')).toBe(true);
+            jasmine.clock().tick(300); // 3 repeat fires — must NOT toggle off
+            expect(edgeElement.classList.contains('e-active')).toBe(true);
+            edgeElement.dispatchEvent(new PointerEvent('pointerup', { button: 0, bubbles: true }));
+        });
+
+        // 10.3 — destroy() called mid-repeat — no clicked fires after destroy
+        it('10.3 destroy mid-repeat stops firing', () => {
+            jasmine.clock().install();
+            repeatBtn = new Button({ enableRepeat: true, repeatDelay: 0, repeatInterval: 100 }, '#repeat-edge-button');
+            const fired: ClickedEventArgs[] = [];
+            repeatBtn.clicked = (args: ClickedEventArgs) => { fired.push(args); };
+            edgeElement.dispatchEvent(new PointerEvent('pointerdown', { button: 0, bubbles: true }));
+            jasmine.clock().tick(200);
+            repeatBtn.destroy();
+            const countAtDestroy: number = fired.length;
+            jasmine.clock().tick(500);
+            expect(fired.length).toBe(countAtDestroy);
+        });
+
+        // 10.4 — enableRepeat toggled false → true → false dynamically
+        it('10.4 enableRepeat toggled dynamically wires and unwires correctly', () => {
+            jasmine.clock().install();
+            repeatBtn = new Button({ enableRepeat: false }, '#repeat-edge-button');
+            const fired: ClickedEventArgs[] = [];
+            repeatBtn.clicked = (args: ClickedEventArgs) => { fired.push(args); };
+
+            // wire on
+            repeatBtn.enableRepeat = true;
+            repeatBtn.dataBind();
+            edgeElement.dispatchEvent(new PointerEvent('pointerdown', { button: 0, bubbles: true }));
+            jasmine.clock().tick(0);
+            edgeElement.dispatchEvent(new PointerEvent('pointerup', { button: 0, bubbles: true }));
+            expect(fired.length).toBeGreaterThan(0); // at least initial fire
+
+            // unwire
+            repeatBtn.enableRepeat = false;
+            repeatBtn.dataBind();
+            const countAfterUnwire: number = fired.length;
+            edgeElement.dispatchEvent(new PointerEvent('pointerdown', { button: 0, bubbles: true }));
+            jasmine.clock().tick(500);
+            edgeElement.dispatchEvent(new PointerEvent('pointerup', { button: 0, bubbles: true }));
+            expect(fired.length).toBe(countAfterUnwire); // no new fires
+        });
+
+        // 10.5 — clicked event fires even when enableRepeat: false (simple click)
+        it('10.5 clicked fires on simple click even when enableRepeat is false', () => {
+            repeatBtn = new Button({ enableRepeat: false }, '#repeat-edge-button');
+            let fired: boolean = false;
+            // When enableRepeat is false the clicked event won't auto-fire; verify it can be triggered manually
+            repeatBtn.clicked = () => { fired = true; };
+            repeatBtn.trigger('clicked', { originalEvent: new Event('click'), isRepeat: false });
+            expect(fired).toBe(true);
+        });
+
+        // 10.6 — native click DOM event fires on each repeat fire
+        it('10.6 native click DOM event fires on each repeat fire', () => {
+            jasmine.clock().install();
+            repeatBtn = new Button({ enableRepeat: true, repeatDelay: 0, repeatInterval: 100 }, '#repeat-edge-button');
+            let nativeClicks: number = 0;
+            const nativeSpy: EventListenerOrEventListenerObject = () => { nativeClicks++; };
+            edgeElement.addEventListener('click', nativeSpy);
+            edgeElement.dispatchEvent(new PointerEvent('pointerdown', { button: 0, bubbles: true }));
+            jasmine.clock().tick(0);
+            jasmine.clock().tick(200); // 2 repeat ticks
+            edgeElement.dispatchEvent(new PointerEvent('pointerup', { button: 0, bubbles: true }));
+            edgeElement.removeEventListener('click', nativeSpy);
+            // 1 initial + 2 repeats = 3 native clicks
+            expect(nativeClicks).toBeGreaterThanOrEqual(3);
+        });
+    });
+
+    describe('Repeat – disabled guard', () => {
+        let repeatBtn: Button;
+        const guardElement: HTMLButtonElement = createElement('button', { id: 'repeat-guard-button' }) as HTMLButtonElement;
+        document.body.appendChild(guardElement);
+
+        afterEach(() => {
+            jasmine.clock().uninstall();
+            repeatBtn.destroy();
+        });
+
+        // 11.1 — disabled=true before pointerdown: clicked must not fire
+        it('11.1 pointerdown does not fire clicked when button is already disabled', () => {
+            jasmine.clock().install();
+            repeatBtn = new Button({ enableRepeat: true, repeatDelay: 0, repeatInterval: 100 }, '#repeat-guard-button');
+            const fired: ClickedEventArgs[] = [];
+            repeatBtn.clicked = (args: ClickedEventArgs) => { fired.push(args); };
+            repeatBtn.disabled = true;
+            repeatBtn.dataBind();
+            guardElement.dispatchEvent(new PointerEvent('pointerdown', { button: 0, bubbles: true }));
+            jasmine.clock().tick(0);
+            jasmine.clock().tick(300);
+            guardElement.dispatchEvent(new PointerEvent('pointerup', { button: 0, bubbles: true }));
+            expect(fired.length).toBe(0);
+        });
+
+        // 11.2 — disabled=true mid-repeat: no additional clicked fires after disable
+        it('11.2 setting disabled mid-repeat stops further clicked events', () => {
+            jasmine.clock().install();
+            repeatBtn = new Button({ enableRepeat: true, repeatDelay: 0, repeatInterval: 100 }, '#repeat-guard-button');
+            const fired: ClickedEventArgs[] = [];
+            repeatBtn.clicked = (args: ClickedEventArgs) => { fired.push(args); };
+            guardElement.dispatchEvent(new PointerEvent('pointerdown', { button: 0, bubbles: true }));
+            jasmine.clock().tick(0);   // initial fire + first interval starts
+            jasmine.clock().tick(200); // 2 interval ticks
+            const countAtDisable: number = fired.length;
+            repeatBtn.disabled = true;
+            repeatBtn.dataBind();
+            jasmine.clock().tick(200); // 2 more ticks — should not fire
+            guardElement.dispatchEvent(new PointerEvent('pointerup', { button: 0, bubbles: true }));
+            expect(fired.length).toBe(countAtDisable);
+        });
     });
 
     describe('Null or undefined value testing', () => {

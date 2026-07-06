@@ -8,12 +8,12 @@ import { Connector } from '../../../src/diagram/objects/connector';
 import { StraightSegmentModel } from '../../../src/diagram/objects/connector-model';
 import { PathElement } from '../../../src/diagram/core/elements/path-element';
 import { MouseEvents } from '../../../spec/diagram/interaction/mouseevents.spec';
-import { SnapConstraints, PointPort, Annotation, IconShapes, Decorator, TextElement, PathAnnotation, BezierSegment, Rect, cloneObject, IConnectionChangeEventArgs, Ej1Serialization } from '../../../src/diagram/index';
+import { SnapConstraints, PointPort, Annotation, IconShapes, Decorator, TextElement, PathAnnotation, BezierSegment, Rect, cloneObject, IConnectionChangeEventArgs, Ej1Serialization, UndoRedo } from '../../../src/diagram/index';
 import { getDiagramLayerSvg } from '../../../src/diagram/utility/dom-util';
 import { PortModel } from '../../../src/index';
 import { profile, inMB, getMemoryProfile } from '../../../spec/common.spec';
 import { ConnectorEditing } from '../../../src/diagram/interaction/connector-editing';
-Diagram.Inject(Ej1Serialization, ConnectorEditing);
+Diagram.Inject(Ej1Serialization, ConnectorEditing, UndoRedo);
 /**
  * Connector spec
  */
@@ -3306,6 +3306,63 @@ describe('Diagram Control', () => {
          it('Connector port and annotation Offset value should not exceed 1', function (done) {
             diagram.clearSelection();
             expect(diagram.connectors[1].annotations[0].offset == 1 && diagram.connectors[1].ports[0].offset == 1)
+            done();
+        });
+    });
+
+    describe('Connector Rotation Undo/Redo', () => {
+        let diagram: Diagram;
+        let diagramElement: HTMLElement;
+        let diagramCanvas: HTMLElement;
+        let mouseEvents: MouseEvents = new MouseEvents();
+        beforeEach(() => {
+            // Setup: Create diagram with a connector
+            diagramElement = createElement('div', { id: 'diagramConnectorRotate' });
+            document.body.appendChild(diagramElement);
+
+            diagram = new Diagram({
+                width: '1050px',
+                height: '500px',
+                connectors: [
+                    {
+                        id: 'connector1',
+                        sourcePoint: { x: 100, y: 100 },
+                        targetPoint: { x: 200, y: 200 },
+                        style: {
+                            strokeColor: '#6BA5D7',
+                            strokeWidth: 2,
+                        },
+                    },
+                ],
+            });
+
+            diagram.appendTo('#diagramConnectorRotate');
+        });
+
+        afterEach(() => {
+            if (diagram) {
+                diagram.destroy();
+                diagram = null;
+            }
+            if (diagramElement) {
+                diagramElement.remove();
+                diagramElement = null;
+            }
+        });
+
+        it('Should record history when connector is rotated via Ctrl+R', function (done) {
+            let connector = diagram.connectors[0];
+            diagram.select([connector]);
+            diagramCanvas = document.getElementById(diagram.element.id + 'content');
+            mouseEvents.keyDownEvent(diagramCanvas, 'R', true);
+
+            expect(connector.sourcePoint.x === 200).toBe(true);
+
+            diagram.undo();
+            expect(connector.sourcePoint.x === 100).toBe(true);
+            
+            diagram.redo();
+            expect(connector.sourcePoint.x === 200).toBe(true);
             done();
         });
     });

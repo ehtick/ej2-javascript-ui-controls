@@ -1,5 +1,4 @@
-@use 'ej2-base/styles/definition/material3-dark' as *;
-@forward 'ej2-base/styles/definition/material3-dark';
+@use '../../node_modules/@syncfusion/ej2-base/styles/common/base-variables' as *;
 
 //Layout Variables Start
 $kanban-icons-border-radius: 4px !default;

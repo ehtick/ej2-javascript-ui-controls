@@ -201,7 +201,7 @@ describe('Base Editor Manager', () => {
         });
         it('space in middle/last of the paragraph, should not create list item', (done: Function) => {
             editor.focusIn();
-            editor.inputElement.innerHTML = `<p>one two<strong>-​</strong></p>`;
+            editor.inputElement.innerHTML = `<p>one two<strong>-</strong></p>`;
             const pElement: HTMLElement = editor.inputElement.querySelector('p');
             const range: Range = new Range();
             range.setStart(pElement.lastChild.firstChild, 0);
@@ -220,7 +220,7 @@ describe('Base Editor Manager', () => {
         });
         it('Should create list item when its in the starting', (done: Function) => {
             editor.focusIn();
-            editor.inputElement.innerHTML = `<p>-​</p>`;
+            editor.inputElement.innerHTML = `<p>-</p>`;
             const pElement: HTMLElement = editor.inputElement.querySelector('p');
             const range: Range = new Range();
             range.setStart(pElement.firstChild, 1);
@@ -252,7 +252,7 @@ describe('Base Editor Manager', () => {
         });
         it('space in middle/last of the paragraph, should not create list item', (done: Function) => {
             editor.focusIn();
-            editor.inputElement.innerHTML = `one two<strong>-​</strong>`;
+            editor.inputElement.innerHTML = `one two<strong>-</strong>`;
             const pElement: HTMLElement = editor.inputElement.querySelector('strong');
             const range: Range = new Range();
             range.setStart(pElement.firstChild, 0);
@@ -271,7 +271,7 @@ describe('Base Editor Manager', () => {
         });
         it('Should create list item when its in the starting', (done: Function) => {
             editor.focusIn();
-            editor.inputElement.innerHTML = `-​`;
+            editor.inputElement.innerHTML = `-`;
             const pElement: Node = editor.inputElement.firstChild;
             const range: Range = new Range();
             range.setStart(pElement, 1);
@@ -290,7 +290,7 @@ describe('Base Editor Manager', () => {
         });
         it('should create list item when range is after BR', (done: Function) => {
             editor.focusIn();
-            editor.inputElement.innerHTML = `one two<br><strong>-​</strong>`;
+            editor.inputElement.innerHTML = `one two<br><strong>-</strong>`;
             const pElement: HTMLElement = editor.inputElement.querySelector('strong');
             const range: Range = new Range();
             range.setStart(pElement.firstChild, 1);
@@ -309,7 +309,7 @@ describe('Base Editor Manager', () => {
         });
         it('should create list item when range is after blockElement', (done: Function) => {
             editor.focusIn();
-            editor.inputElement.innerHTML = `<h1>one two</h1><strong>-​</strong>`;
+            editor.inputElement.innerHTML = `<h1>one two</h1><strong>-</strong>`;
             const pElement: HTMLElement = editor.inputElement.querySelector('strong');
             const range: Range = new Range();
             range.setStart(pElement.firstChild, 1);

@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/material3' as *;
-@forward 'ej2-base/styles/definition/material3';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $splitpane-font-size: $text-sm !default;
 $splitpane-font-weight: $font-weight-normal !default;
 $splitpane-font-family: $font-family !default;

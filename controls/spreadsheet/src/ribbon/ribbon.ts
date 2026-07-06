@@ -93,10 +93,14 @@ export interface ExpandCollapseEventArgs {
 
 /**
  * Interface for ribbon content item model.
+ *
+ * @hidden
  */
 interface ExtendedItemModel extends ItemModel {
     /** Specifies whether the property is updated manually using public methods. */
     isManuallyEnabled : boolean;
+    /** Stores previous disabled state when temporarily toggling all items. */
+    prevDisableState?: boolean;
 }
 
 /**
@@ -108,7 +112,10 @@ interface ExtendedItemModel extends ItemModel {
 export class Ribbon extends Component<HTMLDivElement> implements INotifyPropertyChanged {
     public toolbarObj: Toolbar;
     public tabObj: Tab;
-
+    /**
+     * @hidden
+     */
+    public aiBtn: HTMLElement;
     /**
      * Defines class/multiple classes separated by a space in the Spreadsheet element.
      *
@@ -416,7 +423,15 @@ export class Ribbon extends Component<HTMLDivElement> implements INotifyProperty
         this.tabObj.appendTo(tabElement);
         const collapseBtn: Element = this.createElement('span', { className: 'e-drop-icon e-icons' });
         collapseBtn.addEventListener('click', this.ribbonExpandCollapse.bind(this));
-        this.element.appendChild(collapseBtn);
+        if (this.aiBtn) {
+            const actionBtnWrapper: HTMLElement = this.createElement('div', { className: 'e-ribbon-action' });
+            this.element.classList.add('e-ribbon-ai-assist');
+            actionBtnWrapper.appendChild(this.aiBtn);
+            actionBtnWrapper.appendChild(collapseBtn);
+            this.element.appendChild(actionBtnWrapper);
+        } else {
+            this.element.appendChild(collapseBtn);
+        }
     }
 
     private ribbonExpandCollapse(e: MouseEvent): void {
@@ -651,8 +666,8 @@ export class Ribbon extends Component<HTMLDivElement> implements INotifyProperty
      */
     public enableItems(tab: string, items?: number[] | string[], enable?: boolean, isPublic?: boolean): void {
         if (enable === undefined) { enable = true; }
+        const tabIdx: number = this.getTabIndex(tab, -1);
         if (items) {
-            const tabIdx: number = this.getTabIndex(tab, -1);
             if (tabIdx < 0) { return; }
             let isEnabled: boolean;
             for (let i: number = 0; i < items.length; i++) {
@@ -665,7 +680,7 @@ export class Ribbon extends Component<HTMLDivElement> implements INotifyProperty
                     if (items.length - 1 > i) { continue; } else { return; }
                 }
                 const itemContent: ExtendedItemModel = this.items[tabIdx as number].content[items[i as number]] as ExtendedItemModel;
-                isEnabled = enable;
+                isEnabled = enable as boolean;
                 if (isPublic) {
                     itemContent.isManuallyEnabled = enable;
                 } else if (enable && itemContent.isManuallyEnabled !== undefined) {
@@ -677,8 +692,37 @@ export class Ribbon extends Component<HTMLDivElement> implements INotifyProperty
                     this.toolbarObj.enableItems(<number>items[i as number], isEnabled);
                 }
             }
-        }
-        else {
+        } else if (tabIdx < 0) {
+            if (!enable) {
+                for (let t: number = 0; t < this.items.length; t++) {
+                    for (let k: number = 0; k < this.items[t as number].content.length; k++) {
+                        const itemContent: ExtendedItemModel = this.items[t as number].content[k as number] as ExtendedItemModel;
+                        if (itemContent.prevDisableState === undefined) { itemContent.prevDisableState = itemContent.disabled; }
+                        const id: string = (itemContent.id || '').toString().toLowerCase();
+                        if (id.indexOf('subscript') !== -1 || id.indexOf('superscript') !== -1) {
+                            itemContent.disabled = false;
+                        } else {
+                            itemContent.disabled = true;
+                        }
+                        if (t === this.selectedTab) { this.toolbarObj.enableItems(k, !itemContent.disabled); }
+                    }
+                }
+            } else {
+                for (let t: number = 0; t < this.items.length; t++) {
+                    for (let k: number = 0; k < this.items[t as number].content.length; k++) {
+                        const itemContent: ExtendedItemModel = this.items[t as number].content[k as number] as ExtendedItemModel;
+                        if (itemContent.prevDisableState !== undefined) {
+                            itemContent.disabled = itemContent.prevDisableState as boolean;
+                            itemContent.prevDisableState = undefined;
+                        } else {
+                            itemContent.disabled = false;
+                        }
+                        if (t === this.selectedTab) { this.toolbarObj.enableItems(k, !itemContent.disabled); }
+                    }
+                }
+            }
+            this.setProperties({ 'items': this.items }, true);
+        } else {
             this.toolbarObj.disable(!enable);
         }
     }

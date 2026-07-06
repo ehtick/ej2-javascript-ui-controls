@@ -2,7 +2,8 @@ import { TreeGrid } from '../../src/treegrid/base/treegrid';
 import { createGrid, destroy } from './treegridutil.spec';
 import { sampleData, projectData, stackedData, projectData2 } from './datasource.spec';
 import { PageEventArgs, QueryCellInfoEventArgs, doesImplementInterface, RowDataBoundEventArgs } from '@syncfusion/ej2-grids';
-import { Column, ColumnModel } from '../../src';
+import { Column, ColumnModel } from '../../src/treegrid/models/column';
+import * as ColumnMod from '../../src/treegrid/models/column';
 import { ITreeData } from '../../src/treegrid/base/interface';
 import { profile, inMB, getMemoryProfile } from '../common.spec';
 import { ColumnChooser } from '../../src/treegrid/actions/column-chooser';
@@ -64,6 +65,38 @@ describe('TreeGrid Column Module', () => {
         const memory: any = inMB(getMemoryProfile());
         //Check the final memory usage against the first usage, there should be little change if everything was properly deallocated
         expect(memory).toBeLessThan(profile.samples[0] + 0.25);
+    });
+});
+
+describe('Coverage - Column.setProperties', () => {
+    it('should update properties and call refreshReactColumnTemplateByUid when parent.isReact and template changed', () => {
+        const col: any = new Column({ uid: 'col-uid', field: 'test' });
+        const refreshSpy = jasmine.createSpy('refreshReactColumnTemplateByUid');
+        const parentStub: any = {
+            isReact: true,
+            clipboardModule: { treeGridParent: { renderModule: { refreshReactColumnTemplateByUid: refreshSpy } } }
+        };
+        col.uid = 'col-uid';
+        (col as any).parent = parentStub;
+        (col as any).setProperties({ template: '<span>t</span>' });
+        expect((col as any).template).toBe('<span>t</span>');
+        expect(refreshSpy).toHaveBeenCalledWith('col-uid');
+    });
+});
+
+describe('Coverage - Column inheritance constructors', () => {
+    it('TreeGridColumn constructor should create instance and call super', () => {
+        const tcol: any = new (ColumnMod as any).TreeGridColumn({ field: 'x' });
+        expect(tcol).toBeDefined();
+        expect(tcol instanceof (ColumnMod as any).TreeGridColumn).toBe(true);
+        expect(tcol instanceof Column).toBe(true);
+    });
+
+    it('StackedColumn constructor should create instance and call super', () => {
+        const scol: any = new (ColumnMod as any).StackedColumn({ field: 'y' });
+        expect(scol).toBeDefined();
+        expect(scol instanceof (ColumnMod as any).StackedColumn).toBe(true);
+        expect(scol instanceof (ColumnMod as any).TreeGridColumn).toBe(true);
     });
 });
 

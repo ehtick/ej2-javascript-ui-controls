@@ -36,8 +36,19 @@ export class WorkbookProtectSheet {
                 this.parent.setSheetPropertyOnMute(sheet, 'saltValue', res.saltValue);
             });
         }
-        this.parent.notify(protectSheetWorkBook, { sheetIndex: sheetIndex, triggerEvent: args.triggerEvent });
-        this.parent.notify(updateToggle, { props: 'Protect' });
+        const isSuspended: boolean = this.parent.paintSuspendCount > 0;
+        if (isSuspended) {
+            this.parent.queuePaintAction('protectSheet', () => {
+                this.parent.notify(protectSheetWorkBook, { sheetIndex: sheetIndex, triggerEvent: args.triggerEvent });
+                this.parent.notify(updateToggle, { props: 'Protect' });
+            });
+        } else {
+            this.parent.notify(protectSheetWorkBook, {
+                sheetIndex: sheetIndex,
+                triggerEvent: args.triggerEvent
+            });
+            this.parent.notify(updateToggle, { props: 'Protect' });
+        }
         sheet.columns.forEach((column: ColumnModel) => {
             if (column && isUndefined(column.isLocked)) {
                 column.isLocked = true;
@@ -50,11 +61,18 @@ export class WorkbookProtectSheet {
         if (!isNullOrUndefined(args.sheet)) {
             sheet = this.parent.sheets[args.sheet];
         }
-        sheet.protectSettings.formatCells = sheet.protectSettings.formatColumns = false;
-        sheet.protectSettings.formatRows = sheet.protectSettings.selectCells = false;
         this.parent.setSheetPropertyOnMute(sheet, 'isProtected', false);
-        this.parent.notify(protectSheetWorkBook, sheet.protectSettings);
-        this.parent.notify(updateToggle, { props: 'Protect' });
+        const updateProtectSettings: () => void = (): void => {
+            sheet.protectSettings.formatCells = sheet.protectSettings.formatColumns = false;
+            sheet.protectSettings.formatRows = sheet.protectSettings.selectCells = false;
+            this.parent.notify(protectSheetWorkBook, sheet.protectSettings);
+            this.parent.notify(updateToggle, { props: 'Protect' });
+        };
+        if (this.parent.paintSuspendCount > 0) {
+            this.parent.queuePaintAction('unProtectSheet', updateProtectSettings);
+        } else {
+            updateProtectSettings();
+        }
     }
 
     /**
@@ -79,7 +97,6 @@ export class WorkbookProtectSheet {
             this.parent.off(protectsheetHandler, this.protectsheetHandler);
             this.parent.off(setLockCells, this.lockCells);
             this.parent.off(unprotectsheetHandler, this.unprotectsheetHandler);
-
         }
     }
 

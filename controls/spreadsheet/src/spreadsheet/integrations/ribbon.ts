@@ -6,8 +6,8 @@ import { dialog, reapplyFilter, enableFileMenuItems, protectCellFormat, protectW
 import { DialogBeforeOpenEventArgs, insertChart, chartDesignTab, unProtectWorkbook, addNote, editNote, deleteNote } from '../common/index';
 import { IRenderer, destroyComponent, performUndoRedo, completeAction, applySort, hideRibbonTabs, showHideNote } from '../common/index';
 import { enableToolbarItems, ribbonClick, paste, locale, initiateCustomSort, getFilteredColumn } from '../common/index';
-import { tabSwitch, getUpdateUsingRaf, updateToggleItem, initiateHyperlink, editHyperlink, clearFilter } from '../common/index';
-import { addRibbonTabs, addToolbarItems, hideFileMenuItems, addFileMenuItems, hideToolbarItems, enableRibbonTabs } from '../common/index';
+import { tabSwitch, getUpdateUsingRaf, updateToggleItem, initiateHyperlink, editHyperlink, clearFilter, showAIAssistPane } from '../common/index';
+import { addRibbonTabs, addToolbarItems, hideFileMenuItems, addFileMenuItems, hideToolbarItems, enableRibbonTabs, editOperation } from '../common/index';
 import { MenuEventArgs, BeforeOpenCloseMenuEventArgs, ClickEventArgs, Toolbar, Menu, MenuItemModel, Tab } from '@syncfusion/ej2-navigations';
 import { ItemModel as TlbItemModel } from '@syncfusion/ej2-navigations';
 import { SelectingEventArgs } from '@syncfusion/ej2-navigations';
@@ -27,7 +27,7 @@ import { Button } from '@syncfusion/ej2-buttons';
 import { ColorPicker as RibbonColorPicker } from './color-picker';
 import { Dialog } from '../services';
 import { BeforeOpenEventArgs } from '@syncfusion/ej2-popups';
-import { insertDesignChart, removeDesignChart, isMouseMove } from '../common/index';
+import { insertDesignChart, removeDesignChart, isMouseMove, ExtendedSpreadsheet } from '../common/index';
 import { LocalizedFormatActionArgs, refreshRibbonIcons, ChartTheme, beginAction, setCFRule } from '../../workbook/common/index';
 import { findToolDlg, localizedFormatAction, convertToDefaultFormat, isImported, ExtendedNoteModel } from '../../workbook/index';
 import { ExtendedThreadedCommentModel, ThreadedCommentModel } from '../../workbook/common/index';
@@ -51,6 +51,7 @@ export class Ribbon {
     private cfDdb: DropDownButton;
     private clearDdb: DropDownButton;
     private findDdb: Button;
+    private aiBtn: Button;
     private border: string = '1px solid #000000';
     private fontNameIndex: number = 5;
     private numPopupWidth: number = 0;
@@ -152,6 +153,8 @@ export class Ribbon {
                 { type: 'Separator', id: id + '_separator_7' },
                 { template: this.getTextAlignDDB(id), tooltipText: l10n.getConstant('HorizontalAlignment'), id: id + '_text_align' },
                 { template: this.getVerticalAlignDDB(id), tooltipText: l10n.getConstant('VerticalAlignment'), id: id + '_vertical_align' },
+                { template: this.getBtn(id, 'sub', l10n.getConstant('Subscript')), tooltipText: l10n.getConstant('Subscript'), id: id + '_subscript', disabled: true },
+                { template: this.getBtn(id, 'super', l10n.getConstant('Superscript')), tooltipText: l10n.getConstant('Superscript'), id: id + '_superscript', disabled: true },
                 { template: this.getBtn(id, 'wrap', l10n.getConstant('WrapText'), false), tooltipText: `${l10n.getConstant('WrapText')}`, id: id + '_wrap' }]
         },
         {
@@ -521,12 +524,37 @@ export class Ribbon {
             spreadInstance: (this.parent && this.parent.isReact) ? this.parent : null
         });
         this.ribbon.createElement = this.parent.createElement;
+        if ((this.parent as ExtendedSpreadsheet).aIAssistModule) {
+            this.ribbon.aiBtn = this.getAiBtn(this.parent.element.id);
+        }
         if (refEle) {
             this.parent.element.insertBefore(ribbonElement, refEle);
         } else {
             this.parent.element.appendChild(ribbonElement);
         }
         this.ribbon.appendTo(ribbonElement);
+    }
+    private getAiBtn(id: string): HTMLElement {
+        const l10n: L10n = this.parent.serviceLocator.getService(locale);
+        const aiToolBtn: HTMLElement = this.parent.createElement(
+            'button', { id: id + '_aibtn', attrs: { 'type': 'button', 'aria-label': l10n.getConstant('AIAssistButton') } }) as HTMLElement;
+        this.aiBtn = new Button({
+            cssClass: 'e-spreadsheet-ai-btn e-outline',
+            iconCss: 'e-icons e-ai-chat',
+            isPrimary: true,
+            content: l10n.getConstant('AIAssistButton'),
+            enableRtl: this.parent.enableRtl
+        });
+        this.aiBtn.createElement = this.parent.createElement;
+        this.aiBtn.appendTo(aiToolBtn);
+        aiToolBtn.onclick = (): void => {
+            if (this.parent.spreadsheetCommentModule.isReviewPaneVisible) {
+                this.parent.notify(showCommentsPane, { show: false });
+            }
+            this.parent.notify(showAIAssistPane,
+                               { show: !(this.parent as ExtendedSpreadsheet).aIAssistModule.isAIPaneVisible });
+        };
+        return this.aiBtn.element;
     }
     private tabSelecting(args: SelectingEventArgs): void {
         if (args.selectingIndex !== this.ribbon.selectedTab) {
@@ -1207,6 +1235,10 @@ export class Ribbon {
                     commentFocus = true;
                     break;
                 case 'cm_show':
+                    if ((this.parent as ExtendedSpreadsheet).aIAssistModule &&
+                        (this.parent as ExtendedSpreadsheet).aIAssistModule.isAIPaneVisible) {
+                        this.parent.notify(showAIAssistPane, { show: false });
+                    }
                     this.parent.notify(showCommentsPane, { show: !this.parent.spreadsheetCommentModule.isReviewPaneVisible });
                     break;
                 case 'cm_prev':
@@ -2382,6 +2414,16 @@ export class Ribbon {
             property = textDecorationUpdate; defaultModel = { textDecoration: 'underline' }; activeModel = defaultModel;
             key = 'textDecoration';
             break;
+        case `${parentId}_sub`:
+            key = 'sub';
+            break;
+        case `${parentId}_super`:
+            key = 'super';
+            break;
+        }
+        if (key === 'sub' || key === 'super') {
+            this.parent.notify(editOperation, { action: 'richTextFormat', verticalAlign: key });
+            return;
         }
         if (target.classList.contains('e-active')) {
             value = activeModel[`${key}`];
@@ -2633,7 +2675,7 @@ export class Ribbon {
         if (!isNullOrUndefined(cell.value) || cell.value !== '') {
             const format: string = getFormatFromType(args.item.id.split(this.parent.element.id + '_')[1] as NumberFormatType);
             const eventArgs: NumberFormatArgs = { type: args.item.text, formattedText: '', value: cell.value, format: format,
-                cell: { value: cell.value, format: format }, skipFormatCheck: isImported(this.parent) };
+                cell: { value: cell.value, format: format, formula: cell.formula }, skipFormatCheck: isImported(this.parent) };
             this.parent.notify(getFormattedCellObject, eventArgs);
             const previewElem: HTMLElement = this.parent.createElement(
                 'span', { className: 'e-numformat-preview-text', styles: `float:${this.parent.enableRtl ? 'left' : 'right'};` });
@@ -2651,7 +2693,11 @@ export class Ribbon {
         const cellIndexes: number[] = getCellIndexes(sheet.activeCell);
         switch (this.ribbon.items[activeTab as number].header.text) {
         case l10n.getConstant('Home'):
-            this.refreshHomeTabContent(cellIndexes);
+            if (this.parent.isEdit) {
+                this.refreshHomeTabContentInEdit();
+            } else {
+                this.refreshHomeTabContent(cellIndexes);
+            }
             break;
         case l10n.getConstant('Insert'): {
             if (sheet.isProtected) {
@@ -2707,6 +2753,7 @@ export class Ribbon {
         if (sheet.isProtected && this.parent.enableClipboard &&
             ((this.parent as unknown as { clipboardModule?: Object }).clipboardModule as unknown as { copiedInfo?: Object }).copiedInfo) {
             this.parent.notify(enableToolbarItems, [{
+                tab: l10n.getConstant('Home'),
                 items: [this.parent.element.id + '_paste'],
                 enable: !isLocked(cell, getColumn(sheet, actCell[1]))
             }]);
@@ -2743,6 +2790,58 @@ export class Ribbon {
         this.refreshToggleBtn(indexes);
         if (this.parent.allowMerge) {
             this.updateMergeBtnState(sheet, l10n, cell);
+        }
+    }
+
+    private refreshHomeTabContentInEdit(): void {
+        const editArgs: { action: string, element?: HTMLElement } = { action: 'getElement' };
+        this.parent.notify(editOperation, editArgs);
+        const editorElem: HTMLElement = editArgs.element as HTMLElement;
+        const superBtn: HTMLElement = document.getElementById(this.parent.element.id + '_super');
+        const subBtn: HTMLElement = document.getElementById(this.parent.element.id + '_sub');
+        const removeActive: (el: HTMLElement) => void = (el: HTMLElement): void => { if (el && el.classList.contains('e-active')) { el.classList.remove('e-active'); } };
+        const addActive: (el: HTMLElement) => void = (el: HTMLElement): void => { if (el && !el.classList.contains('e-active')) { el.classList.add('e-active'); } };
+        if (editorElem) {
+            const sel: Selection = window.getSelection();
+            let isSuper: boolean = false; let isSub: boolean = false;
+            const getClosestVertSpan: (node: Node) => HTMLElement = (node: Node): HTMLElement => {
+                let cur: Node = node;
+                while (cur) {
+                    const el: HTMLElement | null = cur.nodeType === 3 ? (cur as Node).parentElement : cur as HTMLElement;
+                    if (!el) { break; }
+                    if (el.tagName === 'SPAN' && el.className && (el.className.indexOf('e-vert-') > -1)) { return el as HTMLElement; }
+                    cur = el.parentNode;
+                }
+                return null;
+            };
+            if (sel && sel.rangeCount) {
+                const range: Range = sel.getRangeAt(0);
+                const startNode: Node = range.startContainer.nodeType === 3 ? range.startContainer.parentNode : range.startContainer;
+                const endNode: Node = range.endContainer.nodeType === 3 ? range.endContainer.parentNode : range.endContainer;
+                const startSpan: HTMLElement = getClosestVertSpan(startNode);
+                const endSpan: HTMLElement = getClosestVertSpan(endNode);
+                if (startSpan && endSpan && startSpan === endSpan) {
+                    isSuper = startSpan.classList.contains('e-vert-super');
+                    isSub = startSpan.classList.contains('e-vert-sub');
+                } else {
+                    const frag: DocumentFragment = range.cloneContents();
+                    const selSpanNodes: boolean = startNode !== endNode || (frag && frag.childNodes && frag.childNodes.length > 1);
+                    if (!selSpanNodes) {
+                        if (frag && frag.querySelector && frag.querySelector('span.e-vert-super')) { isSuper = true; }
+                        if (frag && frag.querySelector && frag.querySelector('span.e-vert-sub')) { isSub = true; }
+                    }
+                }
+            } else {
+                const anchorNode: Node = (window.getSelection() && window.getSelection().anchorNode) || null;
+                const checkNode: Node = anchorNode ? (anchorNode.nodeType === 3 ? anchorNode.parentNode : anchorNode) : null;
+                const caretSpan: HTMLElement = checkNode ? getClosestVertSpan(checkNode) : null;
+                if (caretSpan) { isSuper = caretSpan.classList.contains('e-vert-super'); isSub = caretSpan.classList.contains('e-vert-sub'); }
+            }
+            if (isSuper) { addActive(superBtn); removeActive(subBtn); }
+            else if (isSub) { addActive(subBtn); removeActive(superBtn); }
+            else { removeActive(superBtn); removeActive(subBtn); }
+        } else {
+            removeActive(superBtn); removeActive(subBtn);
         }
     }
 
@@ -3023,7 +3122,7 @@ export class Ribbon {
                     this.ribbon.setProperties({ 'items': this.ribbon.items }, true);
                 }
             }
-            if (this.ribbon.items[this.ribbon.selectedTab].header.text === viewtabHeader && args.props !== 'Protect') {
+            if (this.ribbon.items[this.ribbon.selectedTab].header.text === viewtabHeader && args.props !== 'Protect' && args.props !== 'Protectworkbook') {
                 this.updateToggleText(args.props.toLowerCase(), text);
             }
         }
@@ -3246,7 +3345,7 @@ export class Ribbon {
 
     private enableToolbarItems(args: { tab?: string, items?: number[] | string[], enable?: boolean, isPublic?: boolean }[]): void {
         args.forEach((arg: { tab?: string, items?: number[] | string[], enable: boolean, isPublic?: boolean }): void => {
-            this.ribbon.enableItems(arg.tab || this.ribbon.items[this.ribbon.selectedTab].header.text, arg.items, arg.enable, arg.isPublic);
+            this.ribbon.enableItems(arg.tab, arg.items, arg.enable, arg.isPublic);
         });
     }
 

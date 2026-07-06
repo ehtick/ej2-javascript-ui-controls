@@ -1,5 +1,4 @@
-@use 'ej2-base/styles/definition/material3' as *;
-@forward 'ej2-base/styles/definition/material3';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 
 $textarea-VH-textarea-padding: 3px 0 3px !default;
 $textarea-outline-VH-textarea-padding: 3px 14px 3px 14px !default;

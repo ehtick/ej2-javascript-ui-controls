@@ -3,12 +3,12 @@
  */
 
 import { Diagram } from '../diagram';
-import { ConnectorConstraints, NodeConstraints} from '../enum/enum';
+import { ConnectorConstraints, NodeConstraints, PortVisibility} from '../enum/enum';
 import { Rect } from '../primitives/rect';
 import { Node } from '../objects/node';
 import { Connector } from '../objects/connector';
 import { ShapeAnnotationModel } from '../objects/annotation-model';
-import { ShapeStyleModel, ShapeAnnotation, PathPortModel, PathPort, PathModel, PointPort, PointPortModel, StrokeStyleModel, randomId } from '../index';
+import { ShapeStyleModel, ShapeAnnotation, PathPortModel, PathPort, PathModel, PointPort, PointPortModel, StrokeStyleModel, randomId, DecoratorModel } from '../index';
 import { ChildProperty, Collection, Property } from '@syncfusion/ej2-base';
 import { PointModel } from '../../diagram/primitives/point-model';
 import { UmlSequenceDiagramModel, UmlSequenceParticipantModel, UmlSequenceMessageModel, UmlSequenceFragmentModel, UmlSequenceFragmentConditionModel, UmlSequenceActivationBoxModel } from './sequence-diagram-model';
@@ -49,6 +49,177 @@ export enum UmlSequenceFragmentType {
     /** Represents an optional interaction (e.g., an optional message flow). */
     Optional = 'Optional'
 }
+
+/**
+ * Specifies the visual stereotype used to represent a participant in a UML sequence diagram.
+ *
+ * The stereotype determines the shape and semantic meaning of the participant
+ * header (for example, actor, boundary, control, entity, or database).
+ *
+ */
+export enum UmlSequenceParticipantStereotype {
+    /**
+     * Represents a standard object participant.
+     *
+     * The participant is rendered as a labelled rectangular box.
+     */
+    Default = 'Default',
+
+    /**
+     * Represents an actor that interacts with the system.
+     *
+     * The participant is rendered as a UML actor, typically shown as a stick
+     * figure above the lifeline. This is equivalent to the Mermaid `actor`
+     * participant type.
+     */
+    Actor = 'Actor',
+
+    /**
+     * Represents a boundary object or system interface.
+     *
+     * Use this stereotype for elements such as user interfaces, API gateways,
+     * or external-facing system boundaries. The participant is rendered using
+     * the UML boundary symbol.
+     *
+     * This is equivalent to Mermaid `@{ type: "boundary" }`.
+     */
+    Boundary = 'Boundary',
+
+    /**
+     * Represents a control object.
+     *
+     * Use this stereotype for coordinator, controller, or workflow objects that
+     * manage interactions between participants. The participant is rendered
+     * using the UML control symbol.
+     *
+     * This is equivalent to Mermaid `@{ type: "control" }`.
+     */
+    Control = 'Control',
+
+    /**
+     * Represents an entity object.
+     *
+     * Use this stereotype for passive data, domain, or persistent objects.
+     * The participant is rendered using the UML entity symbol.
+     *
+     * This is equivalent to Mermaid `@{ type: "entity" }`.
+     */
+    Entity = 'Entity',
+
+    /**
+     * Represents a database or persistent storage system.
+     *
+     * The participant is rendered as a cylindrical database shape,
+     * commonly used for storage services or data repositories.
+     *
+     * Equivalent to Mermaid syntax: `@{ type: "database" }`.
+     */
+    Database = 'Database',
+}
+
+/**
+ * Defines the line style for a message connector in a UML sequence diagram.
+ *
+ * @remarks
+ * When `UmlSequenceMessage.lineStyle` is set, it overrides the line style that
+ * would normally be derived from `UmlSequenceMessage.type`. When not set,
+ * the default line style for the message type is used:
+ * - Synchronous, Asynchronous, Create, Delete → Solid
+ * - Reply → Dashed
+ *
+ * @private
+ */
+export enum UmlSequenceMessageLineStyle {
+    /**
+     * A continuous solid line.
+     * Typical for synchronous method calls and activation messages.
+     */
+    Solid = 'Solid',
+
+    /**
+     * A dashed (dotted) line.
+     * Typical for reply messages and asynchronous responses.
+     */
+    Dashed = 'Dashed'
+}
+
+/**
+ * Defines the arrowhead shape at one end of a message line in a UML sequence diagram.
+ *
+ * Used by `UmlSequenceMessage.sourceArrow` and `UmlSequenceMessage.targetArrow`.
+ *
+ * @remarks
+ * - `sourceArrow` controls the arrowhead at the **sending** end of the message.
+ * - `targetArrow` controls the arrowhead at the **receiving** end.
+ *
+ * ### Mermaid target-side mappings
+ *
+ * - None: `->`
+ * - Arrow: `->>`
+ * - OpenArrow: `-)`
+ * - Cross: `-x`
+ * - TopHalfArrow: `-|\`
+ * - BottomHalfArrow: `-|/`
+ * - TopStickHalfArrow: `-\`
+ * - BottomStickHalfArrow: `-//`
+ *
+ * ### Mermaid source-side mappings
+ *
+ * - TopHalfArrow: `/|-`
+ * - BottomHalfArrow: `\|-`
+ * - TopStickHalfArrow: `//-`
+ * - BottomStickHalfArrow: `\\-`
+ *
+ * @private
+ */
+export enum UmlSequenceMessageArrowShape {
+    /** No arrowhead. When both source and target are `None`, a plain line is rendered. */
+    None = 'None',
+
+    /**
+     * Standard filled arrowhead (`>>`).
+     * When set on both source and target, renders a bidirectional arrow (`<<->>`).
+     */
+    Arrow = 'Arrow',
+
+    /**
+     * Open (outline) arrowhead — rendered as a parenthesis `)`.
+     * Equivalent to Mermaid `--)` for asynchronous/open messages.
+     */
+    OpenArrow = 'OpenArrow',
+
+    /**
+     * Cross/X terminator — rendered at the endpoint as a crossing mark.
+     * Typically used to indicate message loss or termination.
+     * Equivalent to Mermaid `-x`.
+     */
+    Cross = 'Cross',
+
+    /**
+     * Top-half filled arrowhead — a filled triangle occupying the upper half of the arrow space.
+     * Equivalent to Mermaid `-|\`.
+     */
+    TopHalfArrow = 'TopHalfArrow',
+
+    /**
+     * Bottom-half filled arrowhead — a filled triangle occupying the lower half of the arrow space.
+     * Equivalent to Mermaid `-|/`.
+     */
+    BottomHalfArrow = 'BottomHalfArrow',
+
+    /**
+     * Top-half open (stick) arrowhead — an open line occupying the upper half of the arrow space.
+     * Equivalent to Mermaid `-\\` (single backslash in the rendered arrow).
+     */
+    TopStickHalfArrow = 'TopStickHalfArrow',
+
+    /**
+     * Bottom-half open (stick) arrowhead — an open line occupying the lower half of the arrow space.
+     * Equivalent to Mermaid `-//`.
+     */
+    BottomStickHalfArrow = 'BottomStickHalfArrow'
+}
+
 enum MermaidConnectorType {
     Solid = 'Solid',
     Dashed = 'Dashed',
@@ -57,8 +228,74 @@ enum MermaidConnectorType {
     Bidirectional = 'Bidirectional',
     DashedBidirectional = 'DashedBidirectional',
     OpenArrow = 'OpenArrow',
-    DashedOpenArrow = 'DashedOpenArrow'
+    DashedOpenArrow = 'DashedOpenArrow',
+    SolidCross = 'SolidCross',
+    DashedCross = 'DashedCross',
+    // Half-arrow types
+    SolidHalfArrowTop = 'SolidHalfArrowTop',
+    DashedHalfArrowTop = 'DashedHalfArrowTop',
+    SolidHalfArrowBottom = 'SolidHalfArrowBottom',
+    DashedHalfArrowBottom = 'DashedHalfArrowBottom',
+    SolidReverseHalfArrowTop = 'SolidReverseHalfArrowTop',
+    DashedReverseHalfArrowTop = 'DashedReverseHalfArrowTop',
+    SolidStickHalfArrowTop = 'SolidStickHalfArrowTop',
+    DashedStickHalfArrowTop = 'DashedStickHalfArrowTop',
+    SolidStickHalfArrowBottom = 'SolidStickHalfArrowBottom',
+    DashedStickHalfArrowBottom = 'DashedStickHalfArrowBottom',
+    SolidReverseStickHalfArrowTop = 'SolidReverseStickHalfArrowTop',
+    DashedReverseStickHalfArrowTop = 'DashedReverseStickHalfArrowTop',
+    SolidReverseStickHalfArrowBottom = 'SolidReverseStickHalfArrowBottom',
+    DashedReverseStickHalfArrowBottom = 'DashedReverseStickHalfArrowBottom'
 }
+
+/**
+ * Configuration for a participant shape (stereotype or legacy).
+ *
+ * Defines the visual properties and geometric layout parameters for rendering
+ * a participant in a sequence diagram.
+ */
+interface StereotypeShapeConfig {
+    /** SVG path data for rendering the shape */
+    svgPath: string;
+    /** Override width for this stereotype (default: 50 if omitted) */
+    width?: number;
+    /** Override height for this stereotype (default: 50 if omitted) */
+    height?: number;
+}
+
+/**
+ * Registry mapping participant stereotypes to their visual configurations.
+ *
+ * Contains entries for:
+ * - 6 UML stereotypes: boundary, control, entity, database, collections, queue
+ * - 2 legacy shapes: __actor (stick figure), __rectangle (default object)
+ *
+ * The registry is used by the shape selection logic to determine how to render
+ * each participant based on its stereotype type.
+ */
+const SHAPE_REGISTRY: Map<string, StereotypeShapeConfig> = new Map([
+    ['boundary', {
+        svgPath: 'M1.5 16L14.5 16M1.5 16L1.5 12M1.5 16L1.5 20M14.5 16C14.5 20.4183 18.0818 24 22.5001 24C26.9184 24 30.5001 20.4183 30.5001 16C30.5001 11.5817 26.9184 8 22.5001 8C18.0818 8 14.5 11.5817 14.5 16Z',
+        width: 100,
+        height: 50
+    }],
+    ['control', {
+        svgPath: 'M14 6.5L13.7572 6.06292C13.5984 6.15111 13.5 6.31842 13.5 6.5C13.5 6.68158 13.5984 6.84889 13.7572 6.93708L14 6.5ZM23 1.5L23.4287 1.75725C23.5452 1.56317 23.5167 1.31507 23.3594 1.15239C23.202 0.9897 22.955 0.953005 22.7572 1.06292L23 1.5ZM23 11.5L22.7572 11.9371C22.955 12.047 23.202 12.0103 23.3594 11.8476C23.5167 11.6849 23.5452 11.4368 23.4287 11.2428L23 11.5ZM20 6.5L19.5713 6.24275C19.4762 6.40109 19.4762 6.59891 19.5713 6.75725L20 6.5ZM29 18H28.5C28.5 24.3513 23.3513 29.5 17 29.5V30V30.5C23.9036 30.5 29.5 24.9036 29.5 18H29ZM17 30V29.5C10.6487 29.5 5.5 24.3513 5.5 18H5H4.5C4.5 24.9036 10.0964 30.5 17 30.5V30ZM5 18H5.5C5.5 12.5468 9.29614 7.97896 14.3905 6.79723L14.2775 6.31016L14.1645 5.82309C8.62709 7.1076 4.5 12.0712 4.5 18H5ZM20.2473 6.44455L20.1123 6.92598C24.9519 8.28321 28.5 12.7279 28.5 18H29H29.5C29.5 12.268 25.6422 7.43823 20.3823 5.96313L20.2473 6.44455ZM14 6.5L14.2428 6.93708L23.2428 1.93708L23 1.5L22.7572 1.06292L13.7572 6.06292L14 6.5ZM14 6.5L13.7572 6.93708L22.7572 11.9371L23 11.5L23.2428 11.0629L14.2428 6.06292L14 6.5ZM23 11.5L23.4287 11.2428L20.4287 6.24275L20 6.5L19.5713 6.75725L22.5713 11.7572L23 11.5ZM20 6.5L20.4287 6.75725L23.4287 1.75725L23 1.5L22.5713 1.24275L19.5713 6.24275L20 6.5Z'
+    }],
+    ['entity', {
+        svgPath: 'M2 29L30 29M29 16C29 23.1797 23.1797 29 16 29C8.8203 29 3 23.1797 3 16C3 8.8203 8.8203 3 16 3C23.1797 3 29 8.8203 29 16Z'
+    }],
+    ['database', {
+        svgPath: 'M29 5C29 6.65685 23.1797 8 16 8C8.8203 8 3 6.65685 3 5M29 5C29 3.34315 23.1797 2 16 2C8.8203 2 3 3.34315 3 5M29 5V27C29 28.6569 23.1797 30 16 30C8.8203 30 3 28.6569 3 27V5M29 15C29 16.6569 23.1797 18 16 18C8.8203 18 3 16.6569 3 15'
+    }],
+    ['collections', {
+        svgPath: 'M4.5 10.5V7.5H30.5V21.5H27.5M1.5 24.5V10.5H27.5V24.5H1.5Z'
+    }],
+    ['queue', {
+        svgPath: 'M28 8L4 8C2.61929 8 1.5 11.5817 1.5 16C1.5 20.4183 2.61929 24 4 24H28M28 8C29.3807 8 30.5 11.5817 30.5 16C30.5 20.4183 29.3807 24 28 24M28 8C26.6193 8 25.5 11.5817 25.5 16C25.5 20.4183 26.6193 24 28 24'
+    }]
+]);
+
 //#region UmlSequenceDiagram
 
 /**
@@ -94,8 +331,10 @@ export class UmlSequenceActivationBox extends ChildProperty<UmlSequenceActivatio
 }
 
 /**
- * Represents a participant (lifeline) in the UML sequence diagram.
- * A participant can be an actor or object involved in message exchanges.
+ * Represents a participant (lifeline) in a UML sequence diagram.
+ *
+ * A participant is any entity that takes part in a message exchange,
+ * such as an object, actor, or external system.
  */
 export class UmlSequenceParticipant extends ChildProperty<UmlSequenceParticipant> {
 
@@ -111,9 +350,10 @@ export class UmlSequenceParticipant extends ChildProperty<UmlSequenceParticipant
     public height: number = 50;
 
     /**
-     * A unique identifier for the participant.
+     * A unique identifier for this participant.
      *
-     * This ID is used to reference the participant in messages and other diagram elements.
+     * Used to reference this participant from messages, activation boxes, and fragments.
+     * Must be unique within the diagram.
      *
      * @default undefined
      */
@@ -121,7 +361,10 @@ export class UmlSequenceParticipant extends ChildProperty<UmlSequenceParticipant
     public id: string | number;
 
     /**
-     * The display content of the participant (e.g., class name or actor label).
+     * The display label shown in the participant's header box.
+     *
+     * Corresponds to the `as <content>` clause in Mermaid syntax.
+     * When omitted, the `id` value is used as the display label.
      *
      * @default ''
      */
@@ -129,10 +372,11 @@ export class UmlSequenceParticipant extends ChildProperty<UmlSequenceParticipant
     public content: string;
 
     /**
-     * Indicates whether the participant is an actor.
+     * Indicates whether this participant is rendered as a stick-figure actor.
      *
-     * If `true`, the participant is rendered using an actor (stick figure) symbol.
-     * If `false`, the participant is rendered as a rectangle (object lifeline).
+     * @deprecated Use `stereotype = UmlSequenceParticipantStereotype.Actor` instead.
+     * This property is maintained for backward compatibility and will be removed in a future release.
+     * When `stereotype` is defined, this property is ignored.
      *
      * @default false
      */
@@ -140,9 +384,36 @@ export class UmlSequenceParticipant extends ChildProperty<UmlSequenceParticipant
     public isActor: boolean;
 
     /**
+     * The visual stereotype that determines how this participant is rendered.
+     *
+     * When specified, this property takes precedence over the legacy `isActor`
+     * property. To render a participant as an actor, use
+     * `UmlSequenceParticipantStereotype.Actor` instead of setting `isActor` to `true`.
+     *
+     * If this property is not set, rendering falls back to `isActor`. If neither
+     * `stereotype` nor `isActor` is set, the participant is rendered as a standard
+     * rectangular lifeline header.
+     *
+     * @default undefined
+     *
+     * @example
+     * ```typescript
+     * // Render the participant as a database stereotype.
+     * {
+     *   id: 'DB',
+     *   content: 'UserStore',
+     *   stereotype: UmlSequenceParticipantStereotype.Database
+     * }
+     * ```
+     */
+    @Property(undefined)
+    public stereotype: UmlSequenceParticipantStereotype;
+
+    /**
      * Specifies whether to show a destruction marker (X) at the end of the participant's lifeline.
      *
-     * When enabled, the participant is considered to be destroyed at the end of the sequence.
+     * When `true`, a destruction marker (×) is rendered at the bottom of this lifeline,
+     * indicating the participant is terminated during the sequence.
      *
      * @default false
      */
@@ -150,18 +421,18 @@ export class UmlSequenceParticipant extends ChildProperty<UmlSequenceParticipant
     public showDestructionMarker: boolean;
 
     /**
-     * A list of activation boxes for this participant.
+     * The activation boxes (focus-of-control rectangles) drawn on this participant's lifeline.
      *
-     * Activation boxes represent the time periods during which a participant is active
-     * (e.g., executing a method or processing a message).
-     *
-     * ```typescript
-     * activationBoxes: [
-     *     { id: 'act1', startMessageID: 'MSG1', endMessageID: 'MSG3' }
-     * ]
-     * ```
+     * Each entry defines a time range during which the participant is actively processing a message.
      *
      * @default []
+     *
+     * @example
+     * ```typescript
+     * activationBoxes: [
+     *   { id: 'act1', startMessageID: 'msg1', endMessageID: 'msg3' }
+     * ]
+     * ```
      */
     @Collection<UmlSequenceActivationBoxModel>([], UmlSequenceActivationBox)
     public activationBoxes: UmlSequenceActivationBoxModel[];
@@ -212,13 +483,45 @@ export class UmlSequenceMessage extends ChildProperty<UmlSequenceMessage> {
     public content: string;
 
     /**
-     * Specifies the type of the message, such as synchronous, asynchronous, reply, etc.
-     * Determines how the message line is styled and interpreted in the diagram.
+     * The semantic type of this message.
+     *
+     * Determines the default line style and arrowhead unless overridden by
+     * `lineStyle`, `sourceArrow`, or `targetArrow`.
+     *
+     * | Type          | Default line | Default target arrow |
+     * |---------------|--------------|----------------------|
+     * | Synchronous   | Solid        | Arrow (`>>`)         |
+     * | Asynchronous  | Solid        | OpenArrow (`)`)      |
+     * | Reply         | Dashed       | Arrow (`>>`)         |
+     * | Create        | Solid        | OpenArrow (`)`)      |
+     * | Delete        | Solid        | Arrow (`>>`)         |
+     * | Self          | Solid        | Arrow (`>>`)         |
      *
      * @default UmlSequenceMessageType.Synchronous
      */
     @Property('Synchronous')
     public type: UmlSequenceMessageType;
+
+    /**
+     * Overrides the line style of this message connector.
+     *
+     * @private
+     */
+    public lineStyle: UmlSequenceMessageLineStyle;
+
+    /**
+     * Overrides the arrowhead shape at the **source** (sending) end of the message.
+     *
+     * @private
+     */
+    public sourceArrow: UmlSequenceMessageArrowShape;
+
+    /**
+     * Overrides the arrowhead shape at the **target** (receiving) end of the message.
+     *
+     * @private
+     */
+    public targetArrow: UmlSequenceMessageArrowShape;
 }
 
 
@@ -688,21 +991,26 @@ class SequenceDiagramModel {
                 console.warn('[WARNING] :: Participant ID cannot be undefined.');
                 continue;
             }
+
+            // Compute effective isActor value without mutating the public API property
+            // When stereotype is present, it takes precedence over isActor
+            const hasStereotype: boolean = participant.stereotype && typeof participant.stereotype === 'string' && participant.stereotype.trim() !== '';
+            const effectiveIsActor: boolean = hasStereotype ? false : participant.isActor;
+
             const participantNode: Node = new Node(this.diagram, 'nodes', {
                 id: participant.id.toString(),
                 width: participant.width,
                 height: participant.height,
                 data: participant
             }, true);
-            UMLHelperClass.updateNodeShape(participantNode, participant.isActor);
-            UMLHelperClass.updateAnnotation(participantNode, participant.content, participant.isActor);
+            UMLHelperClass.updateNodeShape(participantNode, effectiveIsActor, participant.stereotype as string);
+            UMLHelperClass.updateAnnotation(participantNode, participant.content, effectiveIsActor, participant.stereotype as string);
 
             if (participant.showDestructionMarker) {
                 this.destroyAtEndParticipants.push(participant.id.toString());
             }
 
             this.addParticipant(participantNode);
-
             // Calculate max width and height
             if (participant.width > maxParticipantWidth) {
                 maxParticipantWidth = participant.width;
@@ -753,7 +1061,20 @@ class SequenceDiagramModel {
             UMLHelperClass.addOrUpdateParticipantDetails(connector, sourceParticipant.id,
                                                          targetParticipant.id, message.type, null);
 
+            // PHASE 3 NEW: Step 1 - ALWAYS apply type-based styling first (provides sensible defaults)
             UMLHelperClass.updateConnectorStyles(connector, message.type.toString());
+
+            // PHASE 3 NEW: Step 2 - Override specific properties if user specified them
+            if ((message as UmlSequenceMessage).lineStyle || (message as UmlSequenceMessage).sourceArrow ||
+                (message as UmlSequenceMessage).targetArrow) {
+                UMLHelperClass.applyMessageArrowOverrides(
+                    connector,
+                    (message as UmlSequenceMessage).lineStyle,
+                    (message as UmlSequenceMessage).sourceArrow,
+                    (message as UmlSequenceMessage).targetArrow
+                );
+            }
+
             UMLHelperClass.updateAnnotation(connector as Connector, message.content);
 
             if (message.type === UmlSequenceMessageType.Create) {
@@ -1022,10 +1343,11 @@ class UMLHelperClass {
      * @param {Node|Connector} ele - element to provide annotations
      * @param {string} value - annotation content
      * @param {boolean} isActor - is Actor or Participant
+     * @param {string} participantType - stereotype type for positioning
      * @returns {void}
      * @private
      */
-    public static updateAnnotation(ele: Node | Connector, value: string, isActor?: boolean): void {
+    public static updateAnnotation(ele: Node | Connector, value: string, isActor?: boolean, participantType?: string): void {
         const annoContent: string = value.trim();
         // Node
         if (ele instanceof Node) {
@@ -1033,7 +1355,7 @@ class UMLHelperClass {
                 content: annoContent,
                 horizontalAlignment: 'Center'
             }];
-            if (isActor) {
+            if (isActor || this.shouldHaveLabelBelow(participantType)) {
                 const actorAnnotation: ShapeAnnotationModel = ele.annotations[0];
                 actorAnnotation.style.textWrapping = 'NoWrap';
                 actorAnnotation.offset = { x: 0.5, y: 1 };
@@ -1063,14 +1385,24 @@ class UMLHelperClass {
     /**
      * @param {Node} node - node to update the shape.
      * @param {boolean} isActor - true if node is actor, false otherwise.
+     * @param {string} participantType - PHASE B NEW: stereotype type (boundary, control, entity, etc.)
      * @returns {void}
      * @private
      */
-    public static updateNodeShape(node: Node, isActor: boolean): void {
-        if (isActor) {
+    public static updateNodeShape(node: Node, isActor: boolean, participantType?: string): void {
+        // PHASE B NEW: Precedence logic for shape selection
+        if (participantType && participantType !== UmlSequenceParticipantStereotype.Actor &&
+            participantType !== UmlSequenceParticipantStereotype.Default) {
+            // If stereotype is specified, use shape registry
+            const config: StereotypeShapeConfig | undefined = UMLHelperClass.getStereotypeShape(participantType);
+            if (config) {
+                node.shape = { type: 'Path', data: config.svgPath };
+            }
+        } else if (isActor || participantType === UmlSequenceParticipantStereotype.Actor) {
+            // Legacy actor shape
             node.shape = { type: 'Path', data: actor };
-        }
-        else {
+        } else {
+            // Legacy rectangle shape
             node.shape = { type: 'Path', data: rectangle };
         }
     }
@@ -1089,6 +1421,86 @@ class UMLHelperClass {
     }
 
     /**
+     * Checks if a participant is a special type by comparing path data directly.
+     * Special types: actor, boundary, control, entity, database (checked via SVG path comparison).
+     * These types require annotation and lifeline adjustments.
+     *
+     * @param {Node} node - participant node to check
+     * @returns {boolean} true if path data matches one of the special participant types
+     * @private
+     */
+    public static isSpecialParticipantType(node: Node): boolean {
+        // First check if it's an actor using existing isActor method
+        if (this.isActor(node)) {
+            return true;
+        }
+
+        const shape: PathModel = node.shape as PathModel;
+
+        // Check if shape is a Path type
+        if (!shape || shape.type !== 'Path' || !shape.data) {
+            return false;
+        }
+
+        const pathData: string = shape.data;
+
+        // Check if path matches any of the stereotype shapes: boundary, control, entity, database
+        const specialStereotypes: string[] = ['boundary', 'control', 'entity', 'database'];
+
+        for (const stereotype of specialStereotypes) {
+            const config: StereotypeShapeConfig | undefined = SHAPE_REGISTRY.get(stereotype);
+            if (config && pathData === config.svgPath) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Checks if a participant type (stereotype) should have label positioned below the shape.
+     * This includes: actor, boundary, control, entity, database.
+     * Collections and queue have different layout requirements.
+     *
+     * @param {string} participantType - the stereotype type to check
+     * @returns {boolean} true if label should be positioned below, false otherwise
+     * @private
+     */
+    public static shouldHaveLabelBelow(participantType?: string): boolean {
+        if (!participantType) {
+            return false;
+        }
+        const typeLower: string = participantType.toLowerCase();
+        const labelBelowStereotypes: string[] = ['boundary', 'control', 'entity', 'database'];
+        return labelBelowStereotypes.indexOf(typeLower) !== -1;
+    }
+
+    /**
+     * Calculates the source padding for a participant node's lifeline.
+     * Accounts for different participant types and their label positioning.
+     *
+     * @param {Node} node - participant node
+     * @param {boolean} hasLabelBelow - whether label is positioned below the node
+     * @returns {number} calculated source padding
+     * @private
+     */
+    public static calculateSourcePadding(node: Node, hasLabelBelow: boolean): number {
+        if (!hasLabelBelow) {
+            return node.height / 2;
+        }
+
+        // Check if this is an actor or a stereotype with label below
+        if (this.isActor(node)) {
+            // For actors with label below
+            return (node.height / 2) + (node.height / 4);
+        } else {
+            // For stereotypes (boundary, control, entity, database) with label below
+            // Padding = half height + fixed label space (15px for margin + text height)
+            return (node.height / 2) + 19;
+        }
+    }
+
+    /**
      * @param {Node} node - node to update the color.
      * @param {string} color - color to be filled with.
      * @returns {void}
@@ -1100,6 +1512,46 @@ class UMLHelperClass {
             strokeColor: '#000000',
             strokeWidth: 1
         };
+    }
+
+    /**
+     * @param {Connector} connector - connector to update the styles.
+     * @param {Object} options - options to apply half arrow style
+     * @returns {void}
+     * @private
+     */
+    private static applyHalfArrow(
+        connector: Connector,
+        options: {
+            style: 'solid' | 'dashed';
+            decorator: 'source' | 'target';
+            pathData: string;
+            pivot: { x: number; y: number };
+        }
+    ): void {
+        // Define line styles
+        const solidStyle: StrokeStyleModel = {
+            strokeColor: 'black',
+            strokeWidth: 1
+        };
+
+        const dashedStyle: StrokeStyleModel = {
+            strokeColor: 'black',
+            strokeWidth: 1,
+            strokeDashArray: '5,5'
+        };
+        connector.style = options.style === 'dashed' ? dashedStyle : solidStyle;
+
+        const decorator: DecoratorModel =
+            options.decorator === 'source'
+                ? connector.sourceDecorator
+                : connector.targetDecorator;
+
+        decorator.shape = 'Custom';
+        decorator.pathData = options.pathData;
+        decorator.pivot = options.pivot;
+        decorator.width = 10;
+        decorator.height = 5;
     }
 
     /**
@@ -1165,6 +1617,64 @@ class UMLHelperClass {
             case 'DashedOpenArrow':
                 connector.style = dashedStyle;
                 connector.targetDecorator.shape = 'OpenArrow';
+                break;
+            case 'SolidCross':
+                connector.style = solidStyle;
+                connector.targetDecorator.shape = 'Custom';
+                connector.targetDecorator.pathData = 'M 0,0 L 25,25 M 25,0 L 0,25';
+                break;
+            case 'DashedCross':
+                connector.style = dashedStyle;
+                connector.targetDecorator.shape = 'Custom';
+                connector.targetDecorator.pathData = 'M 0,0 L 25,25 M 25,0 L 0,25';
+                break;
+            case 'SolidHalfArrowTop':
+                this.applyHalfArrow(connector, {style: 'solid', decorator: 'target', pathData: 'M 0 0 L 15 5 L 15 0 Z',
+                    pivot: { x: 0, y: 0 }});
+                break;
+            case 'DashedHalfArrowTop':
+                this.applyHalfArrow(connector, {style: 'dashed', decorator: 'target', pathData: 'M 0 0 L 15 5 L 15 0 Z',
+                    pivot: { x: 0, y: 0 }});
+                break;
+            case 'SolidHalfArrowBottom':
+                this.applyHalfArrow(connector, {style: 'solid', decorator: 'target', pathData: 'M 0 0 L 10 -5 L 10 0 Z',
+                    pivot: { x: 0, y: 1 }});
+                break;
+            case 'DashedHalfArrowBottom':
+                this.applyHalfArrow(connector, {style: 'dashed', decorator: 'target', pathData: 'M 0 0 L 10 -5 L 10 0 Z',
+                    pivot: { x: 0, y: 1 }});
+                break;
+            case 'SolidReverseHalfArrowTop':
+                this.applyHalfArrow(connector, {style: 'solid', decorator: 'source', pathData: 'M 0 0 L 10 -5 L 10 0 Z',
+                    pivot: { x: 0, y: 1 }});
+                break;
+            case 'DashedReverseHalfArrowTop':
+                this.applyHalfArrow(connector, {style: 'dashed', decorator: 'source', pathData: 'M 0 0 L 10 -5 L 10 0 Z',
+                    pivot: { x: 0, y: 1 }});
+                break;
+            case 'SolidStickHalfArrowTop':
+                this.applyHalfArrow(connector, {style: 'solid', decorator: 'target', pathData: 'M 0 0 L 10 5', pivot: { x: 0, y: 0 }});
+                break;
+            case 'DashedStickHalfArrowTop':
+                this.applyHalfArrow(connector, {style: 'dashed', decorator: 'target', pathData: 'M 0 0 L 10 5', pivot: { x: 0, y: 0 }});
+                break;
+            case 'SolidStickHalfArrowBottom':
+                this.applyHalfArrow(connector, {style: 'solid', decorator: 'target', pathData: 'M 0 10 L 10 5', pivot: { x: 0, y: 1 }});
+                break;
+            case 'DashedStickHalfArrowBottom':
+                this.applyHalfArrow(connector, {style: 'dashed', decorator: 'target', pathData: 'M 0 10 L 10 5', pivot: { x: 0, y: 1 }});
+                break;
+            case 'SolidReverseStickHalfArrowTop':
+                this.applyHalfArrow(connector, {style: 'solid', decorator: 'source', pathData: 'M 0 10 L 10 5', pivot: { x: 0, y: 1 }});
+                break;
+            case 'DashedReverseStickHalfArrowTop':
+                this.applyHalfArrow(connector, {style: 'dashed', decorator: 'source', pathData: 'M 0 10 L 10 5', pivot: { x: 0, y: 1 }});
+                break;
+            case 'SolidReverseStickHalfArrowBottom':
+                this.applyHalfArrow(connector, {style: 'solid', decorator: 'source', pathData: 'M 10 0 L 0 -5', pivot: { x: 0, y: 0 }});
+                break;
+            case 'DashedReverseStickHalfArrowBottom':
+                this.applyHalfArrow(connector, {style: 'dashed', decorator: 'source', pathData: 'M 10 0 L 0 -5', pivot: { x: 0, y: 0 }});
                 break;
             }
         }
@@ -1233,11 +1743,178 @@ class UMLHelperClass {
         }
     }
 
+    /**
+     * Override ONLY the specific arrow properties specified by the user.
+     * All other properties keep their values from type-based styling.
+     *
+     * STRATEGY:
+     * 1. Step 1 (already done): Type-based styling applied by updateConnectorStyles()
+     * 2. Step 2 (this method): Override ONLY the properties that are explicitly set
+     *
+     * @param {Connector} connector - Connector with type-based styling already applied
+     * @param {UmlSequenceMessageLineStyle | undefined} lineType - Override line style if set
+     * @param {UmlSequenceMessageArrowShape | undefined} sourceArrowType - Override source arrow if set
+     * @param {UmlSequenceMessageArrowShape | undefined} targetArrowType - Override target arrow if set
+     * @returns {void}
+     * @private
+     */
+    public static applyMessageArrowOverrides(
+        connector: Connector,
+        lineType?: UmlSequenceMessageLineStyle,
+        sourceArrowType?: UmlSequenceMessageArrowShape,
+        targetArrowType?: UmlSequenceMessageArrowShape
+    ): void {
+        // Define reusable styles
+        const solidStyle: StrokeStyleModel = {
+            strokeColor: 'black',
+            strokeWidth: 1,
+            strokeDashArray: ''
+
+        };
+
+        const dashedStyle: StrokeStyleModel = {
+            strokeColor: 'black',
+            strokeWidth: 1,
+            strokeDashArray: '5,5'
+        };
+
+        // Override line type if specified
+        if (lineType) {
+            connector.style = (lineType === 'Dashed') ? dashedStyle : solidStyle;
+        }
+
+        // Override source arrow if specified
+        if (sourceArrowType) {
+            this.applyArrowDecorator(connector, sourceArrowType, 'source', connector.style as StrokeStyleModel);
+        }
+
+        // Override target arrow if specified
+        if (targetArrowType) {
+            this.applyArrowDecorator(connector, targetArrowType, 'target', connector.style as StrokeStyleModel);
+        }
+    }
+
+    /**
+     * Map an arrow type to its corresponding decorator shape and apply to connector.
+     * Paths are position-specific: source arrows use reversed/opposite paths compared to target arrows.
+     *
+     * @param {Connector} connector - Connector to apply arrow to
+     * @param {UmlSequenceMessageArrowShape} arrowType - Arrow type to apply
+     * @param {'source' | 'target'} position - Which end of the message (source or target)
+     * @param {StrokeStyleModel} lineStyle - Current line style (used for decorator)
+     * @returns {void}
+     * @private
+     */
+    private static applyArrowDecorator(
+        connector: Connector,
+        arrowType: UmlSequenceMessageArrowShape,
+        position: 'source' | 'target',
+        lineStyle: StrokeStyleModel
+    ): void {
+        const decoratorStyle: ShapeStyleModel = {
+            fill: 'black',
+            strokeColor: 'black',
+            strokeWidth: 1
+        };
+
+        const decorator: DecoratorModel = position === 'source' ? connector.sourceDecorator : connector.targetDecorator;
+        const isSource: boolean = position === 'source';
+
+        switch (arrowType) {
+        case 'None':
+            decorator.shape = 'None';
+            break;
+
+        case 'Arrow':
+            decorator.shape = 'Arrow';
+            decorator.style = decoratorStyle;
+            break;
+
+        case 'OpenArrow':
+            decorator.shape = 'OpenArrow';
+            decorator.style = decoratorStyle;
+            break;
+
+        case 'Cross':
+            decorator.shape = 'Custom';
+            decorator.pathData = 'M 0,0 L 25,25 M 25,0 L 0,25';
+            decorator.style = decoratorStyle;
+            break;
+
+        case 'TopHalfArrow':
+            decorator.shape = 'Custom';
+            if (isSource) {
+                // Source: reversed top half arrow
+                decorator.pathData = 'M 0 0 L 10 -5 L 10 0 Z';
+                decorator.pivot = { x: 0, y: 1 };
+            } else {
+                // Target: standard top half arrow
+                decorator.pathData = 'M 0 0 L 15 5 L 15 0 Z';
+                decorator.pivot = { x: 0, y: 0 };
+            }
+            decorator.width = 10;
+            decorator.height = 5;
+            decorator.style = decoratorStyle;
+            break;
+
+        case 'BottomHalfArrow':
+            decorator.shape = 'Custom';
+            if (isSource) {
+                // Source: reversed bottom half arrow
+                decorator.pathData = 'M 0 0 L 15 5 L 15 0 Z';
+                decorator.pivot = { x: 0, y: 0 };
+            } else {
+                // Target: standard bottom half arrow
+                decorator.pathData = 'M 0 0 L 10 -5 L 10 0 Z';
+                decorator.pivot = { x: 0, y: 1 };
+            }
+            decorator.width = 10;
+            decorator.height = 5;
+            decorator.style = decoratorStyle;
+            break;
+
+        case 'TopStickHalfArrow':
+            decorator.shape = 'Custom';
+            if (isSource) {
+                // Source: reversed top stick half arrow
+                decorator.pathData = 'M 0 10 L 10 5';
+                decorator.pivot = { x: 0, y: 1 };
+            } else {
+                // Target: standard top stick half arrow
+                decorator.pathData = 'M 0 0 L 10 5';
+                decorator.pivot = { x: 0, y: 0 };
+            }
+            decorator.width = 10;
+            decorator.height = 5;
+            decorator.style = decoratorStyle;
+            break;
+
+        case 'BottomStickHalfArrow':
+            decorator.shape = 'Custom';
+            if (isSource) {
+                // Source: reversed bottom stick half arrow (from updateConnectorStyles SolidReverseStickHalfArrowBottom)
+                decorator.pathData = 'M 10 0 L 0 -5';
+                decorator.pivot = { x: 0, y: 0 };
+            } else {
+                // Target: standard bottom stick half arrow
+                decorator.pathData = 'M 0 10 L 10 5';
+                decorator.pivot = { x: 0, y: 1 };
+            }
+            decorator.width = 10;
+            decorator.height = 5;
+            decorator.style = decoratorStyle;
+            break;
+        }
+    }
 
     private static isMermaidConnectorType(type: string): boolean {
         const mermaidTypes: string[] = [
             'Solid', 'Dashed', 'SolidArrow', 'DashedArrow',
-            'Bidirectional', 'DashedBidirectional', 'OpenArrow', 'DashedOpenArrow'
+            'Bidirectional', 'DashedBidirectional', 'OpenArrow', 'DashedOpenArrow', 'SolidCross', 'DashedCross',
+            'SolidHalfArrowTop', 'DashedHalfArrowTop', 'SolidHalfArrowBottom', 'DashedHalfArrowBottom',
+            'SolidReverseHalfArrowTop', 'DashedReverseHalfArrowTop',
+            'SolidStickHalfArrowTop', 'DashedStickHalfArrowTop', 'SolidStickHalfArrowBottom', 'DashedStickHalfArrowBottom',
+            'SolidReverseStickHalfArrowTop', 'DashedReverseStickHalfArrowTop', 'SolidReverseStickHalfArrowBottom', 'DashedReverseStickHalfArrowBottom'
         ];
         return mermaidTypes.indexOf(type) !== -1;
     }
@@ -1247,6 +1924,62 @@ class UMLHelperClass {
             'Synchronous', 'Asynchronous', 'Create', 'Delete', 'Reply', 'Self'
         ];
         return umlTypes.indexOf(type) !== -1;
+    }
+
+    /**
+     * Retrieves the shape configuration for a given participant type.
+     *
+     * @param {string | undefined} participantType - The type of participant (stereotype or legacy shape key)
+     * @returns {StereotypeShapeConfig | undefined} The shape configuration, or undefined if type is not found
+     * @private
+     */
+    public static getStereotypeShape(participantType: string | undefined): StereotypeShapeConfig | undefined {
+        if (participantType) {
+            return SHAPE_REGISTRY.get(participantType.toLowerCase());
+        }
+        return undefined;
+    }
+
+    /**
+     * Retrieves the shape configuration for a participant node by matching its SVG path
+     * against every entry in SHAPE_REGISTRY.
+     *
+     * @param {Node} node - participant node
+     * @returns {StereotypeShapeConfig | undefined} matching registry entry, or undefined
+     * @private
+     */
+    public static getShapeConfigForNode(node: Node): StereotypeShapeConfig | undefined {
+        const shape: PathModel = node.shape as PathModel;
+        if (!shape || shape.type !== 'Path' || !shape.data) {
+            return undefined;
+        }
+        const pathData: string = shape.data;
+        let result: StereotypeShapeConfig | undefined;
+        SHAPE_REGISTRY.forEach((config: StereotypeShapeConfig) => {
+            if (!result && config.svgPath === pathData) {
+                result = config;
+            }
+        });
+        return result;
+    }
+
+    /**
+     * Validates whether a participant type is a recognized stereotype.
+     *
+     * Valid stereotypes are: boundary, control, entity, database, collections, queue
+     *
+     * @param {string} stereotypeType - The stereotype type to validate
+     * @returns {boolean} true if the type is a recognized stereotype, false otherwise
+     * @private
+     */
+    public static isValidStereotype(stereotypeType: string): boolean {
+        const validStereotypes: string[] = ['boundary', 'control', 'entity', 'database', 'collections', 'queue'];
+
+        return (
+            validStereotypes.indexOf(
+                stereotypeType.toLowerCase()
+            ) !== -1
+        );
     }
 }
 
@@ -1561,10 +2294,19 @@ class ParticipantRenderer {
             if (i < participants.length - 1) {
                 const nextParticipant: Node = participants[i + 1];
 
-                if (UMLHelperClass.isActor(nextParticipant) && model.isLoadedFromMermaid) {
-                    this.resizeWithAspectRatio(nextParticipant, model.maxParticipantHeight);
+                // Check if next participant is actor or special stereotype type using path data
+                const isActorOrStereotype: boolean = UMLHelperClass.isActor(nextParticipant)
+                    || UMLHelperClass.isSpecialParticipantType(nextParticipant);
+                if (isActorOrStereotype && model.isLoadedFromMermaid) {
+                    // For stereotypes, use per-stereotype dimensions from SHAPE_REGISTRY
+                    if (!UMLHelperClass.isActor(nextParticipant)) {
+                        const nextDims: StereotypeShapeConfig = UMLHelperClass.getShapeConfigForNode(nextParticipant);
+                        nextParticipant.width = nextDims && nextDims.width != null ? nextDims.width : 50;
+                        nextParticipant.height = nextDims && nextDims.height != null ? nextDims.height : 50;
+                    } else {
+                        this.resizeWithAspectRatio(nextParticipant, model.maxParticipantHeight);
+                    }
                 }
-
                 nextParticipantWidth = nextParticipant.width > 0 ? nextParticipant.width : this.model.maxParticipantWidth;
             }
 
@@ -1583,13 +2325,25 @@ class ParticipantRenderer {
                 const actorAnnotation: ShapeAnnotationModel = participant.annotations[0];
                 actorAnnotation.style.textWrapping = 'NoWrap';
                 actorAnnotation.offset = { x: 0.5, y: 1 };
-                actorAnnotation.margin = { left: 0, top: 6, right: 0, bottom: 0 };
+                actorAnnotation.margin = { left: 0, top: 10, right: 0, bottom: 0 };
 
                 if (this.model.isLoadedFromMermaid) {
                     this.resizeWithAspectRatio(participant, this.model.maxParticipantHeight);
                 } else {
                     this.resizeWithAspectRatio(participant, 50);
                 }
+            }
+            else if (UMLHelperClass.isSpecialParticipantType(participant)) {
+                // update annotation offset for stereotypes (boundary, control, entity, database)
+                const annotation: ShapeAnnotationModel = participant.annotations[0];
+                annotation.style.textWrapping = 'NoWrap';
+                annotation.offset = { x: 0.5, y: 1 };
+                annotation.margin = { left: 0, top: 10, right: 0, bottom: 0 };
+
+                // Use per-stereotype dimensions from SHAPE_REGISTRY (e.g. boundary is 50x25)
+                const stereotypeDims: StereotypeShapeConfig = UMLHelperClass.getShapeConfigForNode(participant);
+                participant.width = stereotypeDims && stereotypeDims.width != null ? stereotypeDims.width : 50;
+                participant.height = stereotypeDims && stereotypeDims.height != null ? stereotypeDims.height : 50;
             }
             else {
                 if (!(participant.width > 0)) {
@@ -1813,8 +2567,8 @@ class MessageRenderer {
     }
 
     private static renderNormalMessage(sender: Connector, receiver: Connector, message: Connector, messageY: number): void {
-        const senderPort: PathPortModel = this.createPort(sender, messageY);
-        const receiverPort: PathPortModel = this.createPort(receiver, messageY);
+        const senderPort: PathPortModel = this.createPort(sender, messageY, message.sourceCentralConnection);
+        const receiverPort: PathPortModel = this.createPort(receiver, messageY, message.targetCentralConnection);
 
         this.applyActivationPadding(senderPort, message, messageY, true);
         this.applyActivationPadding(receiverPort, message, messageY, false);
@@ -1896,13 +2650,20 @@ class MessageRenderer {
         return false;
     }
 
-    private static createPort(lifeline: Connector, yPosition: number): PathPortModel {
+    private static createPort(lifeline: Connector, yPosition: number, centralConnection?: boolean): PathPortModel {
         const lifelineSourceY: number = this.getLifelineSourceY(lifeline);
         const lifelineLength: number = this.calculateLifelineLength(lifeline, lifelineSourceY);
         let lengthFraction: number = this.calculateLengthFraction(yPosition, lifelineSourceY, lifelineLength);
         lengthFraction = lengthFraction > 1 ? 1 : lengthFraction;
-        const port: PathPort = new PathPort(this.diagram, 'ports', { id: randomId(), offset: lengthFraction });
-
+        let port: PathPort;
+        if (centralConnection) {
+            port = new PathPort(this.diagram, 'ports', {
+                id: randomId(), offset: lengthFraction, visibility: PortVisibility.Visible, shape: 'Circle', pathData: 'M0,6 A6,6,0,1,1,12,6 A6,6,0,1,1,0,6 Z ',
+                width: 8, height: 8, style: { fill: '#000000', strokeColor: '#000000' }
+            });
+        } else {
+            port = new PathPort(this.diagram, 'ports', { id: randomId(), offset: lengthFraction });
+        }
         this.addPortToLifeline(lifeline, port);
 
         return port;
@@ -2942,8 +3703,9 @@ class LifeLineRenderer {
             lifeline.sourcePortID = port.id;
             lifeline.sourceID = sourceNode.id;
             // add padding so that lifeline connectors have some gap from participants
-            const srcpadding: number = (UMLHelperClass.isActor(sourceNode) ? (sourceNode.height / 2) + (sourceNode.height / 6) :
-                sourceNode.height / 2) ;
+            // Calculate padding for stereotypes vs actors/regular participants using path data
+            const hasLabelBelow: boolean = UMLHelperClass.isActor(sourceNode) || UMLHelperClass.isSpecialParticipantType(sourceNode);
+            const srcpadding: number = UMLHelperClass.calculateSourcePadding(sourceNode, hasLabelBelow);
             // compenstate port height to approximate to correct end point - bug to be resolved
             lifeline.sourcePadding = srcpadding - port.height / 2;
             // Manually update the lifeLine source point with the expected value considering compensated padding value
@@ -3021,9 +3783,9 @@ class LifeLineRenderer {
         // fetch the life line connector using participant name
         const lifelineConnector: Connector = this.lifelines.get(participant.id);
 
-        // updating only the y offset position
-        const padding: number = (UMLHelperClass.isActor(participant) ? (participant.height / 2) + (participant.height / 6) :
-            participant.height / 2);
+        // Check if participant is actor or one of the special types (boundary, control, entity, database) using path data
+        const hasLabelBelow: boolean = UMLHelperClass.isActor(participant) || UMLHelperClass.isSpecialParticipantType(participant);
+        const padding: number = UMLHelperClass.calculateSourcePadding(participant, hasLabelBelow);
         lifelineConnector.sourcePoint = {
             x: lifelineConnector.sourcePoint.x, y: yPosition + padding
         };
@@ -3101,6 +3863,76 @@ class MermaidUmlParser {
         this.sequenceDiagramModel = new SequenceDiagramModel(diagram);
         this.sequenceDiagramModel.isLoadedFromMermaid = true;
     }
+
+    private normalizeText(text: string): string {
+        return text
+            ? text.replace(/<br\s*\/?>/gi, '\n')
+            : text;
+    }
+
+
+    private parseFlexibleMetadata(metadata: string): any {
+        if (!metadata) {
+            return {};
+        }
+        // Remove outer braces and trim
+        let content: string = metadata.trim();
+        if (content.startsWith('{') && content.endsWith('}')) {
+            content = content.slice(1, -1).trim();
+        }
+        if (!content) {
+            return {};
+        }
+        try {
+            // First try direct JSON parse (handles strict JSON)
+            return JSON.parse('{' + content + '}');
+        } catch (e1) {
+            // If strict JSON fails, try to normalize unquoted keys/values
+            try {
+                // Regex pattern to match key:value pairs
+                const normalizedContent: string = content.replace(
+                    /(?:^|,)\s*(?:"([^"]*)"|([a-zA-Z_$][a-zA-Z0-9_$]*))\s*:\s*(?:"([^"]*)"|([a-zA-Z_$][a-zA-Z0-9_$]*)|(\d+)|true|false)/g,
+                    (
+                        match: string,
+                        quotedKey: string | undefined,
+                        unquotedKey: string | undefined,
+                        quotedValue: string | undefined,
+                        unquotedValue: string | undefined,
+                        numberValue: string | undefined
+                    ): string => {
+                        const prefix: string = match.startsWith(',') ? ',' : '';
+                        // Use quoted key if present, otherwise use unquoted key
+                        const key: string = quotedKey !== undefined ? quotedKey : unquotedKey;
+                        const quotedKeyFinal: string = `"${key}"`;
+
+                        if (quotedValue !== undefined) {
+                            // Value is already quoted
+                            return `${prefix}${quotedKeyFinal}:"${quotedValue}"`;
+                        } else if (unquotedValue) {
+                            // Value is an unquoted identifier - quote it
+                            return `${prefix}${quotedKeyFinal}:"${unquotedValue}"`;
+                        } else if (numberValue !== undefined) {
+                            // Value is a number - keep as is
+                            return `${prefix}${quotedKeyFinal}:${numberValue}`;
+                        } else {
+                            // Value is boolean (true/false) - keep as is
+                            const booleanMatch: RegExpMatchArray | null = match.match(/true|false/i);
+                            if (booleanMatch) {
+                                return `${prefix}${quotedKeyFinal}:${booleanMatch[0]}`;
+                            }
+                            return match;
+                        }
+                    }
+                );
+                return JSON.parse('{' + normalizedContent + '}');
+            } catch (e2) {
+                // If normalization fails, return empty object
+                console.warn(`[WARNING] :: Failed to parse metadata: '${metadata}'. Using defaults.`);
+                return {};
+            }
+        }
+    }
+
     /**
      * parse memaidUmlSequenceData into an internal SequenceDiagramModel object model
      * @param {string} mermaidUmlCode - mermaid data
@@ -3122,7 +3954,10 @@ class MermaidUmlParser {
             this.parseCreateOrDestroyMessage(line, index);
         } else if (/^\s*(participant|actor)\b/i.test(line)) {
             this.parseParticipant(line);
-        } else if (/\w+\s*(<<-{1,2}|-{1,2}>>?|<<-{1,2}>>?|-{1,2}\))\s*\w+/i.test(line)) {
+        } else if (/([\w/.\-_ ()]+?)\s*(<<-{1,2}|-{1,2}>>?|-{1,2}x|\(-{1,2}\)|-{1,2}\)|<<-{1,2}>>?|-{0,2}\|[/\\]-{0,2}|-{0,2}[/\\]\|-{0,2}|-{0,2}\\\\-{0,2}|-{0,2}\/\/-{0,2}|\/\/-{0,2}|-{0,2}\/-{0,2}|-{1,2}\\\\|--?\\|--?)(?!\s*[+-])\s*([\w/.\-_ ()]+?)\s*:\s*.+/.test(line)) {
+            // PHASE 7 FIX: Added negative lookahead (?!\s*[+-]) to connector pattern
+            // This prevents matching lines with activation symbols (+/-) immediately after the arrow
+            // Lines with activation symbols will now fall through to parseActivation instead
             this.parseConnector(line, index);
         }
         else if (/^(?!\s*(alt|else if|else|opt|loop|end)\b)(?!\w+\s*--?\)\s*\w+\s*:)(?=.*(?:activate|deactivate)\b|.*[+-])/i.test(line)) {
@@ -3139,8 +3974,11 @@ class MermaidUmlParser {
         const isCreate: boolean = /^\s*create\b/i.test(line);
 
         if (isCreate) {
+            // PHASE 3 FIX: Extended regex to capture @{...} metadata (stereotype type)
+            // PHASE 3 FIXED: Removed \s from character class and changed +? to + (participant IDs don't have spaces)
             /* eslint-disable security/detect-unsafe-regex */
-            const match: RegExpMatchArray = line.match(/create\s+(participant|actor)\s+(\w+)(?:\s+as\s+(.+))?/i);
+            const match: RegExpMatchArray = line.match(/create\s+(participant|actor)\s+([A-Za-z0-9._-]+)(?:@(\{[^}]*\}))?(?:\s+as\s+(.+))?/i);
+
             /* eslint-enable security/detect-unsafe-regex */
 
             if (!match) {
@@ -3148,11 +3986,27 @@ class MermaidUmlParser {
                 return;
             }
             const type: string = match[1];
-            const alias: string = match[3] ? match[2] : null;
-            const participantName: string = match[3] || match[2];
-            const affectedParticipant: string = alias || participantName;
+            const participantName: string = match[2].trim();
+            const metadata: string | undefined = match[3];      // @{...} JSON metadata
+            const externalAlias: string | null = match[4] ? match[4].trim() : null;
+            const affectedParticipant: string = externalAlias || participantName;
 
-            this.createOrGetParticipant(participantName, alias, type.toLowerCase() === 'actor');
+            // PHASE 3 NEW: Parse stereotype from metadata (same logic as parseParticipant)
+            let participantType: string | undefined = undefined;
+            let inlineAlias: string | undefined = undefined;
+            if (metadata) {
+                const parsed: any = this.parseFlexibleMetadata(metadata);
+                participantType = parsed.type;
+                inlineAlias = parsed.alias;
+
+                // Validate stereotype against enum
+                if (participantType && !UMLHelperClass.isValidStereotype(participantType)) {
+                    console.warn(`[WARNING] :: Unknown stereotype type: '${participantType}'. Using default.`);
+                    participantType = undefined;
+                }
+            }
+
+            this.createOrGetParticipant(participantName, externalAlias, type.toLowerCase() === 'actor', participantType, inlineAlias);
 
             let nextIndex: number = index;
             let nextLine: string | null = null;
@@ -3164,27 +4018,30 @@ class MermaidUmlParser {
                 nextIndex++;
             }
 
-            if (nextIndex < this.lines.length && /\w+\s*(-\)|<<-{1,2}|-{1,2}>>?|<<-{1,2}>>?|\(-{1,2}\))\s*\w+\s*:\s*.+/.test(nextLine)) {
-                const connectorMatch: RegExpMatchArray = nextLine.match(/(\w+)\s*(-\)|<<-{1,2}|-{1,2}>>?|<<-{1,2}>>?|\(-{1,2}\))\s*(\w+)\s*:\s*(.+)/);
+            // PHASE 4 FIX: Extended arrow pattern to include all arrow types incl. half-arrows (\\--, -\\, -//, --//, etc.)
+            /* eslint-disable security/detect-unsafe-regex */
+            if (nextIndex < this.lines.length && /([\w/.\-_ ()]+?)\s*(<<-{1,2}|-{1,2}>>?|-{1,2}x|\(-{1,2}\)|-{1,2}\)|<<-{1,2}>>?|-{0,2}\|[/\\]-{0,2}|-{0,2}[/\\]\|-{0,2}|-{0,2}\\\\-{0,2}|-{0,2}\/\/-{0,2}|\/\/-{0,2}|-{0,2}\/-{0,2}|-{1,2}\\\\|--?\\|--?)\s*([\w/.\-_ ()]+?)\s*:\s*.+/.test(nextLine)) {
+                const connectorMatch: RegExpMatchArray = nextLine.match(/([\w/.\-_ ()]+?)\s*(<<-{1,2}|-{1,2}>>?|-{1,2}x|\(-{1,2}\)|-{1,2}\)|<<-{1,2}>>?|-{0,2}\|[/\\]-{0,2}|-{0,2}[/\\]\|-{0,2}|-{0,2}\\\\-{0,2}|-{0,2}\/\/-{0,2}|\/\/-{0,2}|-{0,2}\/-{0,2}|-{1,2}\\\\|--?\\|--?)\s*([\w/.\-_ ()]+?)\s*:\s*(.+)/);
+                /* eslint-enable security/detect-unsafe-regex */
                 if (connectorMatch) {
                     const source: string = connectorMatch[1];
                     const arrow: string = connectorMatch[2];
                     const target: string = connectorMatch[3];
                     const message: string = connectorMatch[4];
 
-                    if (source.toLowerCase() === affectedParticipant.toLowerCase() ||
-                        target.toLowerCase() === affectedParticipant.toLowerCase()) {
+                    if (source.toLowerCase() === participantName.toLowerCase() ||
+                        target.toLowerCase() === participantName.toLowerCase()) {
                         //Bug 974517: Error thrown in UML Sequence diagram connectors customization.
                         const createConnector: Connector = new Connector(this.diagram, 'connectors', {
                             id: (nextIndex + 1).toString()
                         }, true);
 
                         UMLHelperClass.addOrUpdateParticipantDetails(createConnector, source, target,
-                                                                     UmlSequenceMessageType.Create, affectedParticipant);
+                                                                     UmlSequenceMessageType.Create, participantName);
                         UMLHelperClass.updateAnnotation(createConnector, message);
-                        UMLHelperClass.updateConnectorStyles(createConnector, UmlSequenceMessageType.Create.toString());
+                        UMLHelperClass.updateConnectorStyles(createConnector, this.getMermaidConnectorTypeFromArrow(arrow).toString());
 
-                        this.sequenceDiagramModel.affectedParticipants.push(affectedParticipant);
+                        this.sequenceDiagramModel.affectedParticipants.push(participantName);
                         this.sequenceDiagramModel.addMessage(createConnector);
                         this.registerConnectorInCondition(createConnector, nextIndex + 1);
                     }
@@ -3192,12 +4049,34 @@ class MermaidUmlParser {
             }
         }
         else {
-            const match: RegExpMatchArray = line.match(/destroy\s+(\w+)/i);
+            // PHASE 3 FIX: Extended regex to capture @{...} metadata (stereotype type)
+            // PHASE 3 FIXED: Removed \s from character class and changed +? to + (participant IDs don't have spaces)
+            /* eslint-disable security/detect-unsafe-regex */
+            const match: RegExpMatchArray = line.match(/destroy\s+([A-Za-z0-9._-]+)(?:@(\{[^}]*\}))?(?:\s+as\s+(.+))?/i);
+            /* eslint-enable security/detect-unsafe-regex */
             if (!match) {
                 console.warn('[WARNING] :: Invalid destroy syntax: \'' + line + '\'.');
                 return;
             }
-            const participantName: string = match[1];
+            const participantName: string = match[1].trim();
+            const metadata: string | undefined = match[2];      // @{...} JSON metadata
+            const externalAlias: string | null = match[3] ? match[3].trim() : null;
+
+            // PHASE 3 NEW: Parse stereotype from metadata (same logic as parseParticipant)
+            let participantType: string | undefined = undefined;
+            let inlineAlias: string | undefined = undefined;
+            if (metadata) {
+                const parsed: any = this.parseFlexibleMetadata(metadata);
+                participantType = parsed.type;
+                inlineAlias = parsed.alias;
+
+                // Validate stereotype against enum
+                if (participantType && !UMLHelperClass.isValidStereotype(participantType)) {
+                    console.warn(`[WARNING] :: Unknown stereotype type: '${participantType}'. Using default.`);
+                    participantType = undefined;
+                }
+            }
+
             if (!this.sequenceDiagramModel.participants.has(participantName)) {
                 console.warn('[WARNING] :: Participant \'' + participantName + '\' not found for destroy.');
                 return;
@@ -3212,8 +4091,11 @@ class MermaidUmlParser {
                 nextIndex++;
             }
 
-            if (nextIndex < this.lines.length && /\w+\s*(<<-{1,2}|-{1,2}>>?|\(-{1,2}\)|<<-{1,2}>>?)\s*\w+\s*:\s*.+/.test(nextLine)) {
-                const connectorMatch: RegExpMatchArray = nextLine.match(/(\w+)\s*(<<-{1,2}|-{1,2}>>?|\(-{1,2}\)|<<-{1,2}>>?)\s*(\w+)\s*:\s*(.+)/);
+            // PHASE 4 FIX: Extended arrow pattern to include all arrow types incl. half-arrows (\\--, -\\, -//, --//, etc.)
+            /* eslint-disable security/detect-unsafe-regex */
+            if (nextIndex < this.lines.length && /([\w/.\-_ ()]+?)\s*(<<-{1,2}|-{1,2}>>?|-{1,2}x|\(-{1,2}\)|-{1,2}\)|<<-{1,2}>>?|-{0,2}\|[/\\]-{0,2}|-{0,2}[/\\]\|-{0,2}|-{0,2}\\\\-{0,2}|-{0,2}\/\/-{0,2}|\/\/-{0,2}|-{0,2}\/-{0,2}|-{1,2}\\\\|--?\\|--?)\s*([\w/.\-_ ()]+?)\s*:\s*.+/.test(nextLine)) {
+                const connectorMatch: RegExpMatchArray = nextLine.match(/([\w/.\-_ ()]+?)\s*(<<-{1,2}|-{1,2}>>?|-{1,2}x|\(-{1,2}\)|-{1,2}\)|<<-{1,2}>>?|-{0,2}\|[/\\]-{0,2}|-{0,2}[/\\]\|-{0,2}|-{0,2}\\\\-{0,2}|-{0,2}\/\/-{0,2}|\/\/-{0,2}|-{0,2}\/-{0,2}|-{1,2}\\\\|--?\\|--?)\s*([\w/.\-_ ()]+?)\s*:\s*(.+)/);
+                /* eslint-enable security/detect-unsafe-regex */
                 if (connectorMatch) {
                     const source: string = connectorMatch[1];
                     const arrow: string = connectorMatch[2];
@@ -3230,7 +4112,7 @@ class MermaidUmlParser {
                         UMLHelperClass.addOrUpdateParticipantDetails(destroyConnector, source, target,
                                                                      UmlSequenceMessageType.Delete, participantName);
                         UMLHelperClass.updateAnnotation(destroyConnector, message);
-                        UMLHelperClass.updateConnectorStyles(destroyConnector, UmlSequenceMessageType.Delete.toString());
+                        UMLHelperClass.updateConnectorStyles(destroyConnector, this.getMermaidConnectorTypeFromArrow(arrow).toString());
 
                         if (this.sequenceDiagramModel.affectedParticipants.indexOf(participantName) === -1) {
                             this.sequenceDiagramModel.affectedParticipants.push(participantName);
@@ -3244,20 +4126,40 @@ class MermaidUmlParser {
         }
     }
     private parseParticipant(line: string): void {
-        // Regular expression to handle both cases: with and without alias
+        // PHASE B: Extended regex to support @{...} metadata syntax
+        // PHASE 3 FIXED: Removed \s from character class and changed +? to + (participant IDs don't have spaces)
         /* eslint-disable security/detect-unsafe-regex */
-        const participantRegex: RegExp = /^(participant|actor)\s+([A-Za-z0-9._/\-\s]+?)(?:\s+as\s+(.+))?$/i;
-        const match: RegExpExecArray = participantRegex.exec(line);
+        const stereotypeRegex: RegExp = /^(participant|actor)\s+([A-Za-z0-9._-]+)(?:@(\{[^}]*\}))?(?:\s+as\s+(.+))?$/i;
+        const match: RegExpExecArray = stereotypeRegex.exec(line);
         /* eslint-enable security/detect-unsafe-regex */
         if (!match) {
             console.warn('[WARNING] :: Invalid participant syntax: \'' + line + '\'.');
             return;
         }
-        const type: string = match[1];
-        const alias: string | null = match[3] ? match[2] : null;
-        const name: string = match[3] ? match[3] : match[2];
 
-        this.createOrGetParticipant(name, alias, type.toLowerCase() === 'actor');
+        const type: string = match[1];                      // 'participant' or 'actor'
+        const id: string = match[2].trim();                 // participant ID
+        const metadata: string | undefined = match[3];      // @{...} JSON metadata (PHASE B NEW)
+        const externalAlias: string | undefined = match[4]; // 'as DisplayName' (PHASE B NEW: inline alias support)
+
+        // PHASE B NEW: Parse stereotype and inline alias from metadata
+        let participantType: string | undefined = undefined;
+        let inlineAlias: string | undefined = undefined;
+
+        if (metadata) {
+            const parsed: any = this.parseFlexibleMetadata(metadata);
+            participantType = parsed.type;
+            inlineAlias = parsed.alias;  // NEW: inline alias support
+
+            // Validate stereotype against enum
+            if (participantType && !UMLHelperClass.isValidStereotype(participantType)) {
+                console.warn(`[WARNING] :: Unknown stereotype type: '${participantType}'. Using default.`);
+                participantType = undefined;
+            }
+        }
+
+        const isActor: boolean = type.toLowerCase() === 'actor';
+        this.createOrGetParticipant(id, externalAlias, isActor, participantType, inlineAlias);  // NEW: pass inlineAlias
     }
 
     private parseConnector(line: string, index: number): void {
@@ -3267,22 +4169,53 @@ class MermaidUmlParser {
         }
 
         line = this.removeActivationSymbols(line);
-        const pattern: RegExp = /([\w/.\-_ ]+?)\s*(<<-{1,2}|-{1,2}>>?|\(-{1,2}\)|-{1,2}\)|<<-{1,2}>>?)\s*([\w/.\-_ ]+?)\s*:\s*(.+)/;
+        // Pattern captures: source (arrow-syntax) target : message
+        // Includes support for: solid/dashed, arrows, half-arrows, crosses, etc.
+        // Supports central connections with () syntax (e.g., Alice()->>Bob or Alice->>()Bob)
+        // NOTE: Longer patterns must be checked before shorter ones to avoid premature matches
+        // e.g., "-//" must be checked before "-/", "--//" before "--/", "//-" before "-/"
+        /* eslint-disable security/detect-unsafe-regex */
+        const pattern: RegExp = /([\w/.\-_ ()]+?)\s*(<<-{1,2}|-{1,2}>>?|-{1,2}x|\(-{1,2}\)|-{1,2}\)|<<-{1,2}>>?|-{0,2}\|[/\\]-{0,2}|-{0,2}[/\\]\|-{0,2}|-{0,2}\\\\-{0,2}|-{0,2}\/\/-{0,2}|\/\/-{0,2}|-{0,2}\/-{0,2}|-{1,2}\\\\|--?\\|--?)\s*([\w/.\-_ ()]+?)\s*:\s*(.+)/;
+        /* eslint-enable security/detect-unsafe-regex */
         const match: RegExpMatchArray = line.match(pattern);
         if (!match) {
             console.warn('[WARNING] :: Invalid connector syntax: \'' + line + '\'.');
             return;
         }
-        const source: string = match[1];
+        let source: string = match[1];
         const arrow: string = match[2];
-        const target: string = match[3];
-        const message: string = match[4];
+        let target: string = match[3];
+        let message: string = match[4];
+        message = this.normalizeText(message);
+
+        // Trim whitespace from source and target
+        source = source.trim();
+        target = target.trim();
+
+        // PHASE C: Detect central connection markers ()
+        let centralConnectionSource: boolean = false;
+        let centralConnectionTarget: boolean = false;
+
+        if (source.endsWith('()')) {
+            centralConnectionSource = true;
+            source = source.slice(0, -2).trim();
+        }
+        if (target.startsWith('()')) {
+            centralConnectionTarget = true;
+            target = target.slice(2).trim();
+        }
 
         // Dynamically create participants if not explicitly defined
         this.createOrGetParticipant(source);
         this.createOrGetParticipant(target);
 
         const connector: Connector = new Connector(this.diagram, 'connectors', { id: index.toString() }, true);
+        if (centralConnectionSource) {
+            connector.sourceCentralConnection = true;
+        }
+        if (centralConnectionTarget) {
+            connector.targetCentralConnection = true;
+        }
 
         UMLHelperClass.addOrUpdateParticipantDetails(connector, source, target, UmlSequenceMessageType.Synchronous, null);
         UMLHelperClass.updateAnnotation(connector, message);
@@ -3321,7 +4254,11 @@ class MermaidUmlParser {
                         continue;
                     }
 
-                    const connectorMatch: RegExpMatchArray = previousLine.match(/(\w+)\s*(<<-{1,2}|-{1,2}>>?|\(-{1,2}\)|-{1,2}\)|<<-{1,2}>>?)\s*(\w+)\s*:\s*(.+)/);
+                    // PHASE 5 FIX: Extended arrow pattern to include half-arrows and all arrow types for activation lookup
+                    /* eslint-disable security/detect-unsafe-regex */
+                    const connectorMatch: RegExpMatchArray = previousLine.match(/([\w/.\-_ ()]+?)\s*(<<-{1,2}|-{1,2}>>?|-{1,2}x|\(-{1,2}\)|-{1,2}\)|<<-{1,2}>>?|-{0,2}\|[/\\]-{0,2}|-{0,2}[/\\]\|-{0,2}|-{0,2}\\\\-{0,2}|-{0,2}\/\/-{0,2}|\/\/-{0,2}|-{0,2}\/-{0,2}|-{1,2}\\\\|--?\|--?)\s*([\w/.\-_ ()]+?)\s*:\s*(.+)/);
+
+                    /* eslint-enable security/detect-unsafe-regex */
                     if (connectorMatch) {
                         source = connectorMatch[1];
                         target = connectorMatch[3];
@@ -3373,8 +4310,12 @@ class MermaidUmlParser {
         }
         else {
             this.parseConnector(line, index);
-            // Handle symbol-based activation syntax
-            const match: RegExpMatchArray = line.match(/(\w+)\s*(-+>|->>|-->|-->|<<->>|<<-->>|-x|--x|-\)|--\)|-x|--)>\s*(\+|-)\s*(\w+)\s*:\s*(.+)/);
+            // Handle symbol-based activation syntax with comprehensive arrow type support
+            // PHASE 5 FIX: Extended arrow pattern to include half-arrows and all arrow types
+            /* eslint-disable security/detect-unsafe-regex */
+            const match: RegExpMatchArray = line.match(/([\w/.\-_ ()]+?)\s*(<<-{1,2}|-{1,2}>>?|-{1,2}x|\(-{1,2}\)|-{1,2}\)|<<-{1,2}>>?|-{0,2}\|[/\\]-{0,2}|-{0,2}[/\\]\|-{0,2}|-{0,2}\\\\-{0,2}|-{0,2}\/\/-{0,2}|\/\/-{0,2}|-{0,2}\/-{0,2}|-{1,2}\\\\|--?\|--?)\s*(\+|-)\s*([\w/.\-_ ()]+?)\s*:\s*(.+)/);
+
+            /* eslint-enable security/detect-unsafe-regex */
             if (!match) {
                 console.warn('[WARNING] :: Invalid activation syntax: \'' + line + '\'.');
                 return;
@@ -3585,20 +4526,46 @@ class MermaidUmlParser {
             }
         }
     }
-    private createOrGetParticipant(name: string, alias: string = '', isActor: boolean = false): void {
-        if (!name || name.trim() === '') {
+    private getParticipantWidth(participantType?: string): number {
+        if (participantType && participantType !== UmlSequenceParticipantStereotype.Default) {
+            const config: StereotypeShapeConfig | undefined = UMLHelperClass.getStereotypeShape(participantType);
+            return config && config.width != null ? config.width : 100;
+        }
+        return 100;
+    }
+
+    private getParticipantHeight(participantType?: string): number {
+        if (participantType && participantType !== UmlSequenceParticipantStereotype.Default) {
+            const config: StereotypeShapeConfig | undefined = UMLHelperClass.getStereotypeShape(participantType);
+            return config && config.height != null ? config.height : 50;
+        }
+        return 50;
+    }
+    private createOrGetParticipant(id: string, externalAlias?: string, isActor: boolean = false,
+                                   participantType?: string, inlineAlias?: string): void {
+        if (!id || id.trim() === '') {
             console.warn('[WARNING] :: Participant name cannot be null or empty.');
             return;
         }
-        if (!this.sequenceDiagramModel.participants.has(alias || name)) {
+
+        // Resolve display content with priority: externalAlias > inlineAlias > id
+        const displayContent: string = externalAlias || inlineAlias || id;
+
+        // Node ID should always be the original participant ID (id), not the alias
+        if (!this.sequenceDiagramModel.participants.has(id)) {
             const participant: Node = new Node(this.diagram, 'nodes', {
-                id: alias || name
+                id: id,
+                width: this.getParticipantWidth(participantType),
+                height: this.getParticipantHeight(participantType)
             }, true);
-            UMLHelperClass.updateNodeShape(participant, isActor);
-            UMLHelperClass.updateAnnotation(participant, name, isActor);
+
+            UMLHelperClass.updateNodeShape(participant, isActor, participantType);
+            UMLHelperClass.updateAnnotation(participant, displayContent, isActor, participantType);
             this.sequenceDiagramModel.addParticipant(participant);
-            if (alias) {
-                this.sequenceDiagramModel.addAlias(alias, name);
+
+            // Add alias mapping if external alias was used
+            if (externalAlias) {
+                this.sequenceDiagramModel.addAlias(externalAlias, id);
             }
         }
     }
@@ -3620,6 +4587,45 @@ class MermaidUmlParser {
             return MermaidConnectorType.OpenArrow;
         case '--)':
             return MermaidConnectorType.DashedOpenArrow;
+        case '-x':
+            return MermaidConnectorType.SolidCross;
+        case '--x':
+            return MermaidConnectorType.DashedCross;
+        // Half-arrow types: top half with pipe
+        case '-|\\':
+            return MermaidConnectorType.SolidHalfArrowTop;
+        case '--|\\':
+            return MermaidConnectorType.DashedHalfArrowTop;
+        // Half-arrow types: bottom half with pipe
+        case '-|/':
+            return MermaidConnectorType.SolidHalfArrowBottom;
+        case '--|/':
+            return MermaidConnectorType.DashedHalfArrowBottom;
+        // Half-arrow types: reverse top with pipe
+        case '/|-':
+            return MermaidConnectorType.SolidReverseHalfArrowTop;
+        case '/|--':
+            return MermaidConnectorType.DashedReverseHalfArrowTop;
+        // Stick half-arrow types: top stick
+        case '-\\\\':
+            return MermaidConnectorType.SolidStickHalfArrowTop;
+        case '--\\\\':
+            return MermaidConnectorType.DashedStickHalfArrowTop;
+        // Stick half-arrow types: bottom stick
+        case '-//':
+            return MermaidConnectorType.SolidStickHalfArrowBottom;
+        case '--//':
+            return MermaidConnectorType.DashedStickHalfArrowBottom;
+        // Stick half-arrow types: reverse top stick
+        case '//-':
+            return MermaidConnectorType.SolidReverseStickHalfArrowTop;
+        case '//--':
+            return MermaidConnectorType.DashedReverseStickHalfArrowTop;
+        // Stick half-arrow types: reverse bottom stick
+        case '\\\\-':
+            return MermaidConnectorType.SolidReverseStickHalfArrowBottom;
+        case '\\\\--':
+            return MermaidConnectorType.DashedReverseStickHalfArrowBottom;
         default:
             return MermaidConnectorType.SolidArrow;
         }
@@ -3741,7 +4747,7 @@ class MermaidGenerator {
             // Append the message at an indent one level deeper than the open fragments.
             sb += messageIndent +
                 this.getParticipantContentByID(settings, message.fromParticipantID) +
-                this.getArrowType(message.type) +
+                this.getMermaidArrowSyntax(message) +
                 this.getParticipantContentByID(settings, message.toParticipantID) +
                 ': ' + message.content + '\n';
 
@@ -3828,19 +4834,144 @@ class MermaidGenerator {
         });
         return lookup;
     }
-    private getArrowType(type: UmlSequenceMessageType): string {
+
+    private static readonly MERMAID_SUPPORTED_ARROWS: Set<string> = new Set([
+        // Plain lines
+        '->', '-->',
+        // Standard target arrows
+        '->>', '-->>',  '-x', '--x',  '-)', '--)',
+        // Bidirectional
+        '<<->>', '<<-->>',
+        // Target half-arrows (filled pipe)
+        '-|\\', '--|\\', '-|/', '--|/',
+        // Target stick half-arrows
+        '-\\\\', '--\\\\', '-//', '--//',
+        // Source-only half-arrows (reverse pipe)
+        '/|-', '/|--', '\\|-', '\\|--',
+        // Source-only stick half-arrows
+        '//-', '//--', '\\\\-', '\\\\--'
+    ]);
+
+    private static readonly TARGET_ARROW_MAP: { readonly [key: string]: string } = {
+        'None': '',
+        'Arrow': '>>',          // ->>
+        'OpenArrow': ')',        // -)
+        'Cross': 'x',            // -x
+        'TopHalfArrow': '|\\',   // -|\
+        'BottomHalfArrow': '|/', // -|/
+        'TopStickHalfArrow': '\\\\',    // -\\  (one rendered backslash in Mermaid = '\\' in TS)
+        'BottomStickHalfArrow': '//'    // -//
+    };
+
+    private static readonly SOURCE_ARROW_MAP: { readonly [key: string]: string } = {
+        'None': '',
+        'Arrow': '<<',          // <<->>
+        'OpenArrow': '(',        // (-
+        'Cross': 'x',            // x-
+        'TopHalfArrow': '/|',    // /|-
+        'BottomHalfArrow': '\\\\', // \|-  (one rendered backslash in Mermaid)
+        'TopStickHalfArrow': '//',       // //-
+        'BottomStickHalfArrow': '\\\\'   // \\-  (two rendered backslashes in Mermaid)
+    };
+
+    private resolveArrowsForExport(message: UmlSequenceMessageModel): {
+        resolvedLine: UmlSequenceMessageLineStyle;
+        resolvedSource?: UmlSequenceMessageArrowShape;
+        resolvedTarget?: UmlSequenceMessageArrowShape;
+    } {
+        const typedMessage: UmlSequenceMessage = message as UmlSequenceMessage;
+        const { lineStyle, sourceArrow, targetArrow, type } = typedMessage;
+        // Derive defaults from message type (used when explicit values are absent)
+        const defaultLine: UmlSequenceMessageLineStyle =
+            type === UmlSequenceMessageType.Reply
+                ? UmlSequenceMessageLineStyle.Dashed
+                : UmlSequenceMessageLineStyle.Solid;
+        const defaultTarget: UmlSequenceMessageArrowShape =
+            (type === UmlSequenceMessageType.Synchronous || type === UmlSequenceMessageType.Delete || type === UmlSequenceMessageType.Self)
+                ? UmlSequenceMessageArrowShape.Arrow
+                : UmlSequenceMessageArrowShape.OpenArrow;
+        const resolvedLine: UmlSequenceMessageLineStyle = lineStyle || defaultLine;
+
+        if (targetArrow === undefined && sourceArrow === UmlSequenceMessageArrowShape.Arrow) {
+            return { resolvedLine: resolvedLine, resolvedTarget: defaultTarget, resolvedSource: sourceArrow };
+        }
+        if (targetArrow === undefined) {
+            // No explicit arrows: derive entirely from type
+            return { resolvedLine, resolvedTarget: defaultTarget };
+        }
+        // Bidirectional: both ends are Arrow
+        if (targetArrow === UmlSequenceMessageArrowShape.Arrow &&
+            sourceArrow === UmlSequenceMessageArrowShape.Arrow) {
+            return { resolvedLine, resolvedSource: sourceArrow, resolvedTarget: targetArrow };
+        }
+        // Plain line: both ends are None
+        if (targetArrow === UmlSequenceMessageArrowShape.None &&
+            sourceArrow === UmlSequenceMessageArrowShape.None) {
+            return { resolvedLine, resolvedSource: sourceArrow, resolvedTarget: targetArrow };
+        }
+        // Source-only: target is None but source arrow is set
+        if (targetArrow === UmlSequenceMessageArrowShape.None && sourceArrow !== undefined) {
+            return { resolvedLine, resolvedSource: sourceArrow };
+        }
+        if (targetArrow === UmlSequenceMessageArrowShape.None && sourceArrow === undefined) {
+            return { resolvedLine, resolvedTarget: targetArrow, resolvedSource: UmlSequenceMessageArrowShape.None };
+        }
+        // Normal: target arrow only (source is irrelevant for Mermaid single-end syntax)
+        return { resolvedLine, resolvedTarget: targetArrow };
+    }
+
+    private constructMermaidArrow(
+        line: UmlSequenceMessageLineStyle,
+        source?: UmlSequenceMessageArrowShape,
+        target?: UmlSequenceMessageArrowShape
+    ): string {
+        const dashes: string = (line === UmlSequenceMessageLineStyle.Dashed) ? '--' : '-';
+        // Bidirectional: <<->>  /  <<-->>
+        if (source === UmlSequenceMessageArrowShape.Arrow && target === UmlSequenceMessageArrowShape.Arrow) {
+            return `<<${dashes}>>`;
+        }
+        // Plain line: ->  /  -->
+        if (source === UmlSequenceMessageArrowShape.None && target === UmlSequenceMessageArrowShape.None) {
+            return `${dashes}>`;
+        }
+        const sourceChar: string = source ? (MermaidGenerator.SOURCE_ARROW_MAP[`${source}`] || '') : '';
+        const targetChar: string = target ? (MermaidGenerator.TARGET_ARROW_MAP[`${target}`] || '') : '';
+        // Source-only arrow: /|-  //--  etc.
+        if (sourceChar && !targetChar) {
+            return `${sourceChar}${dashes}`;
+        }
+        // Target-only arrow: ->>  -x  --|/  etc.
+        if (!sourceChar && targetChar) {
+            return `${dashes}${targetChar}`;
+        }
+        return '';
+    }
+
+    private getTypeBasedArrow(type: UmlSequenceMessageType, line: UmlSequenceMessageLineStyle): string {
+        const d: string = (line === UmlSequenceMessageLineStyle.Dashed) ? '--' : '-';
         switch (type) {
         case UmlSequenceMessageType.Synchronous:
         case UmlSequenceMessageType.Delete:
-            return '->>';
+            return `${d}>>`;
         case UmlSequenceMessageType.Asynchronous:
         case UmlSequenceMessageType.Create:
-            return '-->';
         case UmlSequenceMessageType.Reply:
-            return '-->>';
+            return `${d})`;
         default:
-            return '->>';
+            return `${d}>>`;
         }
+    }
+
+    private getMermaidArrowSyntax(message: UmlSequenceMessageModel): string {
+        const { resolvedLine, resolvedSource, resolvedTarget } = this.resolveArrowsForExport(message);
+
+        const arrow: string = this.constructMermaidArrow(resolvedLine, resolvedSource, resolvedTarget);
+
+        if (arrow && MermaidGenerator.MERMAID_SUPPORTED_ARROWS.has(arrow)) {
+            return arrow;
+        }
+
+        return this.getTypeBasedArrow(message.type, resolvedLine);
     }
 
     private getFragmentType(type: UmlSequenceFragmentType): string {
@@ -3857,8 +4988,29 @@ class MermaidGenerator {
     }
 
     private getParticipantContent(participant: UmlSequenceParticipantModel): string {
-        const type: string = participant.isActor ? 'actor' : 'participant';
-        return `${type} ${participant.id} as ${participant.content}`;
+        // PHASE 4 NEW: Check if participant has a stereotype type set
+        if (participant.stereotype) {
+            const typeValue: string = participant.stereotype.toLowerCase();
+
+            // Actor uses special Mermaid keyword syntax
+            if (typeValue === 'actor') {
+                return `actor ${participant.id} as ${participant.content}`;
+            }
+
+            if (typeValue === 'default') {
+                return `participant ${participant.id} as ${participant.content}`;
+            }
+
+            // Other stereotypes (boundary, entity, database, collections, queue, control) use @{ "type" : "..." } syntax
+            return `participant ${participant.id}@{ "type" : "${typeValue}" } as ${participant.content}`;
+        }
+
+        // Fallback: use isActor or default to participant
+        if (participant.isActor) {
+            return `actor ${participant.id} as ${participant.content}`;
+        }
+
+        return `participant ${participant.id} as ${participant.content}`;
     }
 
     private getParticipantContentByID(settings: UmlSequenceDiagramModel, id: string | number): string {

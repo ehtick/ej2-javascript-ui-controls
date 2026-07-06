@@ -22,7 +22,7 @@ import { GroupableView } from '../core/containers/container';
 import { LaneModel } from '../objects/node-model';
 import { swimLaneMeasureAndArrange, checkLaneSize, checkPhaseOffset, canLaneInterchange } from '../utility/swim-lane-util';
 import { updatePhaseMaxWidth, updateHeaderMaxWidth, updateConnectorsProperties } from '../utility/swim-lane-util';
-import { considerSwimLanePadding } from '../utility/swim-lane-util';
+import { considerSwimLanePadding, getNodeBoundsWithPaddingConstraints } from '../utility/swim-lane-util';
 import { DiagramAction, DiagramConstraints, NodeConstraints } from '../enum/enum';
 import { getDiagramElement } from '../utility/dom-util';
 import { LayerModel } from '../diagram/layer-model';
@@ -315,11 +315,6 @@ export function checkChildNodeInContainer(diagram: Diagram, obj: NodeModel): voi
             bottom: obj.margin.bottom
         }, rotateAngle: obj.rotateAngle
     } as Node);
-    //EJ2-913789 - Lane size gets varied upon undo redo the node drop
-    if (diagram.undoRedoModule && parentNode && (parentNode as Node).isLane && diagram.undoRedoModule.checkRedo &&
-        (obj.margin.left < 0 || obj.margin.top < 0)) {
-        removeChildrenInLane(diagram, obj);
-    }
     if (parentNode && !(parentNode as Node).isLane) {
         parentNode.wrapper.measure(new Size());
         parentNode.wrapper.arrange(parentNode.wrapper.desiredSize);
@@ -494,7 +489,9 @@ export function updateLaneBoundsAfterAddChild(
     const padding: number = (swimLane.shape as SwimLane).padding;
     const containerBounds: Rect = container.wrapper.bounds;
     const containerOuterBounds: Rect = container.wrapper.outerBounds;
-    const nodeBounds: Rect = node.wrapper.bounds;
+    // 1030490: For accurate boundary detection, get bounds AFTER considering padding constraints
+    // This avoids swimlane recalculation side effects but gives us accurate bounds for comparison
+    const nodeBounds: Rect = !isSelector ? getNodeBoundsWithPaddingConstraints(diagram, node as NodeModel, padding) : node.wrapper.bounds;
     if (swimLane && swimLane.shape.type === 'SwimLane' &&
         (containerBounds.right < nodeBounds.right + padding ||
         containerBounds.bottom < nodeBounds.bottom + padding || (isSelector && containerBounds.top > nodeBounds.top + padding))) {
@@ -628,20 +625,35 @@ export function updateSwimlaneSize(swimLane: NodeModel, isHorizontal: boolean): 
 /**
  * renderStackHighlighter method\
  *
- * @returns {  void  }    renderStackHighlighter method .\
+ * @returns {void}    renderStackHighlighter method .\
  * @param {DiagramElement} element - provide the element value.
  * @param {boolean} isVertical - provide the isVertical value.
  * @param {PointModel} position - provide the position value.
  * @param {Diagram} diagram - provide the diagram value.
  * @param {boolean} isUml - provide the isUml value.
  * @param {boolean} isSwimlane - provide the isSwimlane value.
+ * @param {boolean} isErEntity - provide the isEREntity value.
  * @private
  */
 export function renderStackHighlighter(
-    element: DiagramElement, isVertical: boolean, position: PointModel, diagram: Diagram, isUml?: boolean, isSwimlane?: boolean): void {
+    element: DiagramElement, isVertical: boolean, position: PointModel, diagram: Diagram,
+    isUml?: boolean, isSwimlane?: boolean, isErEntity?: boolean): void {
     const adornerSvg: SVGElement = getAdornerLayerSvg(diagram.element.id);
     diagram.diagramRenderer.renderStackHighlighter(
-        element, adornerSvg, diagram.scroller.transform, isVertical, position, isUml, isSwimlane);
+        element, adornerSvg, diagram.scroller.transform, isVertical, position, isUml, isSwimlane, isErEntity);
+}
+
+/**
+ * hideERFieldInsertionIndicator - Remove ER field insertion indicator
+ * Delegates to swimlane removal - uses same ID pattern
+ *
+ * @returns {void}    hideERFieldInsertionIndicator method .\
+ * @param {Diagram} diagram - Diagram instance
+ * @private
+ */
+export function hideErFieldInsertionIndicator(diagram: Diagram): void {
+    // Reuse swimlane removal - uses standard {adorner.id}_stack_highlighter ID pattern
+    diagram.commandHandler.removeStackHighlighter();
 }
 
 /**
@@ -660,7 +672,8 @@ export function moveChildInStack(sourceNode: Node, target: Node, diagram: Diagra
     const sourceParent: Node = diagram.nameTable[(obj as Node).parentId];
     //1001268-UML Classifier Nodes break when moved rapidly
     if (target && sourceParent && sourceParent.container && sourceParent.container.type === 'Stack' &&
-        target.container && target.container.type === 'Stack' && (sourceParent.id !== target.parentId) && sourceParent.shape.type !== 'UmlClassifier') {
+        target.container && target.container.type === 'Stack' && (sourceParent.id !== target.parentId) &&
+        sourceParent.shape.type !== 'UmlClassifier' && sourceParent.shape.type !== 'Er') {
         const value: number = sourceParent.wrapper.children.indexOf(obj.wrapper);
         if (value > -1) {
             diagram.nameTable[obj.id].parentId = target.id;

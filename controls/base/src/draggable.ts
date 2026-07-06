@@ -395,6 +395,7 @@ export class Draggable extends Base<HTMLElement> implements INotifyPropertyChang
     private tempScrollHeight: number;
     private tempScrollWidth: number;
     public droppables: { [key: string]: DropInfo } = {};
+    private isEscCancelled: boolean;
     constructor(element: HTMLElement, options?: DraggableModel) {
         super(options, element);
         this.bind();
@@ -409,6 +410,33 @@ export class Draggable extends Base<HTMLElement> implements INotifyPropertyChang
     private static getDefaultPosition(): PositionCoordinates {
         return extend({}, defaultPosition);
     }
+    private getDragEventName(type: 'start' | 'move' | 'end' | 'cancel'): string {
+        let eventName: string;
+        switch (type) {
+        case 'move':
+            eventName = Browser.touchMoveEvent;
+            break;
+        case 'end':
+            eventName = Browser.touchEndEvent;
+            break;
+        case 'cancel':
+            eventName = Browser.touchCancelEvent;
+            break;
+        default:
+            eventName = Browser.touchStartEvent;
+            break;
+        }
+        if (Browser.isSafari()) {
+            const suffix: { [key: string]: string } = {
+                start: 'pointerdown mousedown',
+                move: 'pointermove mousemove',
+                end: 'pointerup mouseup',
+                cancel: 'pointercancel mouseleave'
+            };
+            eventName += ' ' + suffix[`${type}`];
+        }
+        return eventName;
+    }
     private toggleEvents(isUnWire?: boolean): void {
         let ele: Element;
         if (!isUndefined(this.handle)) {
@@ -416,9 +444,9 @@ export class Draggable extends Base<HTMLElement> implements INotifyPropertyChang
         }
         const handler: Function = (this.enableTapHold && Browser.isDevice && Browser.isTouch) ? this.mobileInitialize : this.initialize;
         if (isUnWire) {
-            EventHandler.remove(ele || this.element, Browser.isSafari() ? 'touchstart' : Browser.touchStartEvent, handler);
+            EventHandler.remove(ele || this.element, this.getDragEventName('start'), handler);
         } else {
-            EventHandler.add(ele || this.element, Browser.isSafari() ? 'touchstart' : Browser.touchStartEvent, handler, this);
+            EventHandler.add(ele || this.element, this.getDragEventName('start'), handler, this);
         }
     }
     /* istanbul ignore next */
@@ -431,14 +459,14 @@ export class Draggable extends Base<HTMLElement> implements INotifyPropertyChang
                 this.initialize(evt, target);
             },
             this.tapHoldThreshold);
-        EventHandler.add(document, Browser.isSafari() ? 'touchmove' : Browser.touchMoveEvent, this.removeTapholdTimer, this);
-        EventHandler.add(document, Browser.isSafari() ? 'touchend' : Browser.touchEndEvent, this.removeTapholdTimer, this);
+        EventHandler.add(document, this.getDragEventName('move'), this.removeTapholdTimer, this);
+        EventHandler.add(document, this.getDragEventName('end'), this.removeTapholdTimer, this);
     }
     /* istanbul ignore next */
     private removeTapholdTimer(): void {
         clearTimeout(this.tapHoldTimer);
-        EventHandler.remove(document, Browser.isSafari() ? 'touchmove' : Browser.touchMoveEvent, this.removeTapholdTimer);
-        EventHandler.remove(document, Browser.isSafari() ? 'touchend' : Browser.touchEndEvent, this.removeTapholdTimer);
+        EventHandler.remove(document, this.getDragEventName('move'), this.removeTapholdTimer);
+        EventHandler.remove(document, this.getDragEventName('end'), this.removeTapholdTimer);
     }
     /* istanbul ignore next */
     private getScrollableParent(element: HTMLElement, axis: string): HTMLElement {
@@ -478,6 +506,7 @@ export class Draggable extends Base<HTMLElement> implements INotifyPropertyChang
         const horizontalScrollParent: HTMLElement = this.getScrollableParent(this.element.parentNode as HTMLElement, 'horizontal');
     }
     private initialize(evt: MouseEvent & TouchEvent, curTarget?: EventTarget): void {
+        this.isEscCancelled = false;
         this.currentStateTarget = evt.target;
         if (this.isDragStarted()) {
             return;
@@ -519,8 +548,8 @@ export class Draggable extends Base<HTMLElement> implements INotifyPropertyChang
         if (this.externalInitialize) {
             this.intDragStart(evt);
         } else {
-            EventHandler.add(document, Browser.isSafari() ? 'touchmove' : Browser.touchMoveEvent, this.intDragStart, this);
-            EventHandler.add(document, Browser.isSafari() ? 'touchend' : Browser.touchEndEvent, this.intDestroy, this);
+            EventHandler.add(document, this.getDragEventName('move'), this.intDragStart, this);
+            EventHandler.add(document, this.getDragEventName('end'), this.intDestroy, this);
         }
         this.toggleEvents(true);
         if (evt.type !== 'touchstart' && this.isPreventSelect) {
@@ -618,8 +647,8 @@ export class Draggable extends Base<HTMLElement> implements INotifyPropertyChang
             }
             this.dragElePosition = { top: pos.top, left: pos.left };
             setStyleAttribute(dragTargetElement, this.getDragPosition({ position: 'absolute', left: posValue.left, top: posValue.top }));
-            EventHandler.remove(document, Browser.isSafari() ? 'touchmove' : Browser.touchMoveEvent, this.intDragStart);
-            EventHandler.remove(document, Browser.isSafari() ? 'touchend' : Browser.touchEndEvent, this.intDestroy);
+            EventHandler.remove(document, this.getDragEventName('move'), this.intDragStart);
+            EventHandler.remove(document, this.getDragEventName('end'), this.intDestroy);
             if (!isBlazor()) {
                 this.bindDragEvents(dragTargetElement);
             }
@@ -628,8 +657,10 @@ export class Draggable extends Base<HTMLElement> implements INotifyPropertyChang
 
     private bindDragEvents(dragTargetElement: HTMLElement): void {
         if (isVisible(dragTargetElement)) {
-            EventHandler.add(document, Browser.isSafari() ? 'touchmove' : Browser.touchMoveEvent, this.intDrag, this);
-            EventHandler.add(document, Browser.isSafari() ? 'touchend' : Browser.touchEndEvent, this.intDragStop, this);
+            EventHandler.add(document, this.getDragEventName('move'), this.intDrag, this);
+            EventHandler.add(document, this.getDragEventName('end'), this.intDragStop, this);
+            // Register keydown handler for ESC key cancellation during active drag
+            EventHandler.add(document, 'keydown', this.intEscapeCancel, this);
             this.setGlobalDroppables(false, this.element, dragTargetElement);
         } else {
             this.toggleEvents();
@@ -958,14 +989,57 @@ export class Draggable extends Base<HTMLElement> implements INotifyPropertyChang
         } else {
             this.element.setAttribute('aria-grabbed', 'false');
         }
-        const eleObj: DropObject = this.checkTargetElement(evt);
-        if (eleObj.target && eleObj.instance) {
-            eleObj.instance.dragStopCalled = true;
-            (<any>eleObj).instance.dragData[this.scope] = this.droppables[this.scope];
-            eleObj.instance.intDrop(evt, eleObj.target);
+        // Check if this is a cancellation (ESC key) - if so, skip drop logic
+        const isCancelled: boolean = (<any>evt).isCancelled === true;
+        if (!isCancelled) {
+            const eleObj: DropObject = this.checkTargetElement(evt);
+            if (eleObj.target && eleObj.instance) {
+                eleObj.instance.dragStopCalled = true;
+                (<any>eleObj).instance.dragData[this.scope] = this.droppables[this.scope];
+                eleObj.instance.intDrop(evt, eleObj.target);
+            }
         }
         this.setGlobalDroppables(true);
         document.body.classList.remove('e-prevent-select');
+    }
+      /**
+     * Handles ESC key press during active drag to cancel the drag operation.
+     * Restores element to original position and delegates to intDragStop for cleanup.
+     * @param {KeyboardEvent} evt - The keyboard event from ESC key press
+     * @returns {void}
+     * @private
+     */
+    private intEscapeCancel(evt: KeyboardEvent): void {
+        // Check for ESC key using both modern 'key' property and legacy 'keyCode' for IE11 compatibility
+        if (evt.key === 'Escape' || evt.keyCode === 27) {
+            // Prevent default ESC behavior and stop propagation to parent handlers
+            evt.preventDefault();
+            evt.stopPropagation();
+            this.isEscCancelled = true;
+            // Restore element to original position on cancel
+            if (this.helperElement) {
+                // For clone mode, remove the helper clone (will be cleaned by intDragStop)
+                // For non-clone mode, reset the element position to original
+                if (!this.clone && this.dragElePosition) {
+                    // Reset the dragged element back to its original position
+                    setStyleAttribute(this.helperElement, {
+                        left: this.dragElePosition.left + 'px',
+                        top: this.dragElePosition.top + 'px'
+                    });
+                }
+            }
+            
+            // Create synthetic mouse event to satisfy intDragStop signature
+            // intDragStop expects MouseEvent & TouchEvent with specific properties
+            // Add isCancelled flag to prevent drop operation
+            const syntheticEvent: any = extend({}, evt, {
+                type: 'mouseup',
+                changedTouches: undefined,
+                isCancelled: true  // Flag to indicate this is a cancellation, not a normal drop
+            });
+            // Reuse existing cleanup flow through intDragStop
+            this.intDragStop(syntheticEvent);
+        }
     }
     /**
      * @param {MouseEvent | TouchEvent} evt ?
@@ -977,10 +1051,16 @@ export class Draggable extends Base<HTMLElement> implements INotifyPropertyChang
         this.toggleEvents();
         document.body.classList.remove('e-prevent-select');
         this.element.setAttribute('aria-grabbed', 'false');
-        EventHandler.remove(document, Browser.isSafari() ? 'touchmove' : Browser.touchMoveEvent, this.intDragStart);
-        EventHandler.remove(document, Browser.isSafari() ? 'touchend' : Browser.touchEndEvent, this.intDragStop);
-        EventHandler.remove(document, Browser.isSafari() ? 'touchend' : Browser.touchEndEvent, this.intDestroy);
-        EventHandler.remove(document, Browser.isSafari() ? 'touchmove' : Browser.touchMoveEvent, this.intDrag);
+        EventHandler.remove(document, this.getDragEventName('move'), this.intDragStart);
+        EventHandler.remove(document, this.getDragEventName('end'), this.intDragStop);
+        EventHandler.remove(document, this.getDragEventName('end'), this.intDestroy);
+        EventHandler.remove(document, this.getDragEventName('move'), this.intDrag);
+        // Remove keydown handler to prevent memory leaks
+        EventHandler.remove(document, 'keydown', this.intEscapeCancel);
+        // Restore focus ONLY for ESC cancel
+        if (this.isEscCancelled && this.element && typeof this.element.focus === 'function') {
+            this.element.focus();
+        }
         if (this.isDragStarted()) {
             this.isDragStarted(true);
         }

@@ -295,6 +295,10 @@ export class ClipboardCleanupModule {
     private findDetachEmptyElem(element: Element): HTMLElement {
         let removableElement: HTMLElement;
         if (!isNOU(element.parentElement)) {
+            const hasHr: boolean = !isNOU(element.parentElement.querySelector('hr'));
+            if (hasHr) {
+                return null;
+            }
             const hasNbsp: boolean = element.parentElement.textContent.length > 0 &&
                 element.parentElement.textContent.match(/\u00a0/g) &&
                 element.parentElement.textContent.match(/\u00a0/g).length > 0;
@@ -355,7 +359,7 @@ export class ClipboardCleanupModule {
             }
 
             if (newStyles) {
-                elementsWithStyle[(i as number)].setAttribute('style', newStyles.trim());
+                elementsWithStyle[(i as number)].style.cssText = newStyles.trim();
             } else {
                 elementsWithStyle[(i as number)].removeAttribute('style');
             }
@@ -562,7 +566,7 @@ export class ClipboardCleanupModule {
 
             styleElements[(i as number)].removeAttribute('style');
             if (allowedStyleValue) {
-                styleElements[(i as number)].setAttribute('style', allowedStyleValue);
+                styleElements[(i as number)].style.cssText = allowedStyleValue;
             }
         }
 

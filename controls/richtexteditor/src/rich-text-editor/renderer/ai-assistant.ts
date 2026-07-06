@@ -14,6 +14,7 @@ import { DropDownButton, ItemModel, MenuEventArgs } from '@syncfusion/ej2-splitb
 import { RendererFactory, ServiceLocator } from '../services';
 import { AIAssistantActions } from '../../editor-manager/plugin/ai-assitant-actions';
 import { MarkdownConverter } from '@syncfusion/ej2-markdown-converter';
+import { cleanHTMLString } from './../../common/util';
 /**
  * Provides AI Assistant functionalities to the Rich Text Editor.
  * Inject this class as a module to access its features.
@@ -105,11 +106,13 @@ export class AIAssistant {
     }
 
     private onMenuItemSelect(args: MenuBarItemSelectedArgs): void {
-        if (args.element.closest('.e-rte-aicommands-menu') && args.item.id !== 'aicommands' && !isNOU((args.item as AICommands).prompt)) { // Prevent the Parent Item processing.
+        const menuPopupElement: HTMLElement = args.element.closest('.e-rte-aicommands-menu') as HTMLElement;
+        if (menuPopupElement && args.item.id !== 'aicommands' && !isNOU((args.item as AICommands).prompt)) { // Prevent the Parent Item processing.
             this.currentAction = 'Menu';
-            if (this.parent.userAgentData.getBrowser() === 'Safari') {
+            const isQueryPopup: boolean = menuPopupElement.id.indexOf(this.parent.getID() + '_QueryPopupCommandsMenu-popup') !== -1;
+            if (this.parent.userAgentData.getBrowser() === 'Safari' && !isQueryPopup) {
                 this.currentSelection = this.parent.htmlEditorModule.saveSelection;
-            } else {
+            } else if (!isQueryPopup) {
                 this.updateCurrentSelection();
             }
             const isQuickToolbarOpen: boolean = this.parent.element.querySelectorAll('.e-rte-quick-popup.e-popup-open').length > 0;
@@ -341,7 +344,7 @@ export class AIAssistant {
 
 
     private parseMarkdown(text: string): string {
-        return MarkdownConverter.toHtml(text) as string;
+        return cleanHTMLString(MarkdownConverter.toHtml(text) as string, this.parent.inputElement);
     }
 
     private parsePromptResponses(prompts: PromptModel[]): PromptModel[] {

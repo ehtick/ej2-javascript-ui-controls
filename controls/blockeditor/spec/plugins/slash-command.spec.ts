@@ -514,6 +514,42 @@ describe('Slash Command Module', () => {
                 }, 100);
             }, 300);
         });
+
+        it('should insert Image block via slash command and display upload popup', (done) => {
+            const blockElement = editorElement.querySelector('.e-block') as HTMLElement;
+            expect(blockElement).not.toBeNull();
+            editor.blockManager.setFocusToBlock(blockElement);
+            const contentElement = getBlockContentElement(blockElement);
+            setCursorPosition(contentElement, 0);
+            contentElement.textContent = '/' + contentElement.textContent;
+            setCursorPosition(contentElement, 1);
+            editor.blockManager.stateManager.updateContentOnUserTyping(blockElement);
+            editorElement.querySelector('.e-mention.e-editable-element').dispatchEvent(new KeyboardEvent('keyup', { key: '/', code: 'Slash', bubbles: true }));
+            const slashCommandElement = document.querySelector('.e-popup.e-blockeditor-command-menu') as HTMLElement;
+            expect(slashCommandElement).not.toBeNull();
+            
+            // Click on Image li element inside the popup
+            const imageElement = slashCommandElement.querySelector('li[data-value="Image"]') as HTMLElement;
+            expect(imageElement).not.toBeNull();
+            imageElement.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+
+            setTimeout(() => {
+                // Model check - Image block should be added
+                const modelBlocks = editor.blocks;
+                const imageBlock = modelBlocks.find(b => b.blockType === BlockType.Image);
+                expect(imageBlock).not.toBeNull();
+
+                // DOM check - Image upload popup should be visible
+                const imageUploadPopup = document.querySelector('.e-image-upload-popup') as HTMLElement;
+                expect(imageUploadPopup).not.toBeNull();
+
+                // Check popup is visible and not hidden
+                expect(imageUploadPopup.style.display).not.toBe('none');
+                expect(imageUploadPopup.classList.contains('e-popup-open')).toBe(true);
+
+                done();
+            }, 300);
+        });
     });
 
     describe('Events and other testing', () => {
@@ -878,7 +914,7 @@ describe('Slash Command Module', () => {
                 // Ensure block focus is set on the image block's container for Delete to work
                 const imageBlockElement = imgEl.closest('.e-block') as HTMLElement;
                 editor.blockManager.setFocusToBlock(imageBlockElement);
-
+                editor.blockManager.blockRenderer.imageRenderer.toggleUploadPopup(true);
                 // Press Delete to remove the image block
                 editor.element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', code: 'Delete', bubbles: true }));
 

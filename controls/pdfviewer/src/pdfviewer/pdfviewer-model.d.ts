@@ -1,4 +1,4 @@
-import { Component, INotifyPropertyChanged, NotifyPropertyChanges, ChildProperty, L10n, Collection, Complex, isBlazor, Browser } from '@syncfusion/ej2-base';import { ModuleDeclaration, isNullOrUndefined, Property, Event, EmitType, SanitizeHtmlHelper } from '@syncfusion/ej2-base';import { IAnnotationPoint, IPoint, IPageAnnotations, PdfViewerBase, PdfiumRunner, TextMarkupAnnotation, ShapeAnnotation, MeasureAnnotation, OrganizeDetails } from './index';import { Navigation } from './index';import { Magnification } from './index';import { Toolbar } from './index';import { AnnotationToolbar } from './index';import { RedactionToolbar } from './toolbar/redaction-toolbar';import { FormDesignerToolbar } from './toolbar/formdesigner-toolbar';import { PdfRenderedFields } from './pdf-base/form-fields-base';import { ToolbarItem } from './index';import { PdfRenderer } from './index';import { LinkTarget, InteractionMode, SignatureFitMode, AnnotationType, AnnotationToolbarItem, RedactionToolbarItem, LineHeadStyle, ContextMenuAction, FontStyle, TextAlignment, AnnotationResizerShape, AnnotationResizerLocation, ZoomMode, PrintMode, CursorType, ContextMenuItem, DynamicStampItem, SignStampItem, StandardBusinessStampItem, FormFieldType, AllowedInteraction, AnnotationDataFormat, SignatureType, CommentStatus, SignatureItem, FormDesignerToolbarItem, DisplayMode, Visibility, FormFieldDataFormat, PdfKeys, ModifierKeys, ExtractTextOption } from './base/types';import { Annotation } from './index';import { LinkAnnotation } from './index';import { ThumbnailView } from './index';import { BookmarkView } from './index';import { TextSelection } from './index';import { TextSearch } from './index';import { AccessibilityTags } from './index';import { FormFields } from './index';import { FormDesigner } from './index';import { Print, CalibrationUnit } from './index';import { PageOrganizer } from './index';import { UnloadEventArgs, LoadEventArgs, LoadFailedEventArgs, AjaxRequestFailureEventArgs, PageChangeEventArgs, PageClickEventArgs, ZoomChangeEventArgs, HyperlinkClickEventArgs, HyperlinkMouseOverArgs, ImportStartEventArgs, ImportSuccessEventArgs, ImportFailureEventArgs, ExportStartEventArgs, ExportSuccessEventArgs, ExportFailureEventArgs, AjaxRequestInitiateEventArgs, PageRenderInitiateEventArgs, AjaxRequestSuccessEventArgs, PageRenderCompleteEventArgs, PageOrganizerSaveAsEventArgs, PageOrganizerZoomChangedEventArgs } from './index';import { AnnotationAddEventArgs, AnnotationRemoveEventArgs, AnnotationPropertiesChangeEventArgs, AnnotationResizeEventArgs, AnnotationSelectEventArgs, AnnotationMoveEventArgs, AnnotationDoubleClickEventArgs, AnnotationMouseoverEventArgs, PageMouseoverEventArgs, AnnotationMouseLeaveEventArgs , ButtonFieldClickEventArgs} from './index';import { TextSelectionStartEventArgs, TextSelectionEndEventArgs, DownloadStartEventArgs, DownloadEndEventArgs, ExtractTextCompletedEventArgs, PrintStartEventArgs, PrintEndEventArgs } from './index';import { TextSearchStartEventArgs, TextSearchCompleteEventArgs, TextSearchHighlightEventArgs } from './index';import { CustomContextMenuSelectEventArgs, CustomContextMenuBeforeOpenEventArgs } from './index';import { PdfAnnotationBase, PdfFormFieldBase, ZOrderPageTable } from './drawing/pdf-annotation';import { PdfAnnotationBaseModel, PdfFormFieldBaseModel } from './drawing/pdf-annotation-model';import { Drawing, ClipBoardObject } from './drawing/drawing';import { Selector } from './drawing/selector';import { SelectorModel } from './drawing/selector-model';import { PointModel, IElement, Rect, Point, Size, processPathData, splitArrayCollection, getPathString } from '@syncfusion/ej2-drawings';import { renderAdornerLayer } from './drawing/dom-util';import { ThumbnailClickEventArgs } from './index';import { ValidateFormFieldsArgs, BookmarkClickEventArgs, AnnotationUnSelectEventArgs, BeforeAddFreeTextEventArgs, FormFieldFocusOutEventArgs, CommentEventArgs, FormFieldClickArgs, FormFieldAddArgs, FormFieldRemoveArgs, FormFieldPropertiesChangeArgs, FormFieldMouseLeaveArgs, FormFieldMouseoverArgs, FormFieldMoveArgs, FormFieldResizeArgs, FormFieldSelectArgs, FormFieldUnselectArgs, FormFieldDoubleClickArgs, AnnotationMovingEventArgs, KeyboardCustomCommandsEventArgs, ISize } from './base';import { AddSignatureEventArgs, RemoveSignatureEventArgs, MoveSignatureEventArgs, SignaturePropertiesChangeEventArgs, ResizeSignatureEventArgs, SignatureSelectEventArgs, SignatureUnselectEventArgs } from './base';import { IFormField, IFormFieldBound } from './form-designer/form-designer';import { ClickEventArgs, MenuItemModel } from '@syncfusion/ej2-navigations';import { PdfViewerUtils, PdfiumTaskScheduler, TaskPriorityLevel } from './base/pdfviewer-utlis';import { Rectangle } from '@syncfusion/ej2-pdf';import { PdfDocument, PdfPageImportOptions } from '@syncfusion/ej2-pdf';
+import { Component, INotifyPropertyChanged, NotifyPropertyChanges, ChildProperty, L10n, Collection, Complex, isBlazor, Browser } from '@syncfusion/ej2-base';import { ModuleDeclaration, isNullOrUndefined, Property, Event, EmitType, SanitizeHtmlHelper } from '@syncfusion/ej2-base';import { IAnnotationPoint, IPoint, IPageAnnotations, PdfViewerBase, PdfiumRunner, TextMarkupAnnotation, ShapeAnnotation, MeasureAnnotation, OrganizeDetails } from './index';import { Navigation } from './index';import { Magnification } from './index';import { Toolbar } from './index';import { AnnotationToolbar } from './index';import { RedactionToolbar } from './toolbar/redaction-toolbar';import { FormDesignerToolbar } from './toolbar/formdesigner-toolbar';import { PdfRenderedFields } from './pdf-base/form-fields-base';import { ToolbarItem } from './index';import { PdfRenderer } from './index';import { LinkTarget, InteractionMode, SignatureFitMode, AnnotationType, AnnotationToolbarItem, RedactionToolbarItem, LineHeadStyle, ContextMenuAction, FontStyle, TextAlignment, AnnotationResizerShape, AnnotationResizerLocation, ZoomMode, PrintMode, CursorType, ContextMenuItem, DynamicStampItem, SignStampItem, StandardBusinessStampItem, FormFieldType, AllowedInteraction, AnnotationDataFormat, SignatureType, CommentStatus, SignatureItem, FormDesignerToolbarItem, DisplayMode, Visibility, FormFieldDataFormat, PdfKeys, ModifierKeys, ExtractTextOption } from './base/types';import { Annotation } from './index';import { LinkAnnotation } from './index';import { ThumbnailView } from './index';import { BookmarkView } from './index';import { TextSelection } from './index';import { TextSearch } from './index';import { AccessibilityTags } from './index';import { FormFields } from './index';import { FormDesigner } from './index';import { Print, CalibrationUnit } from './index';import { PageOrganizer } from './index';import { UnloadEventArgs, LoadEventArgs, LoadFailedEventArgs, AjaxRequestFailureEventArgs, PageChangeEventArgs, PageClickEventArgs, ZoomChangeEventArgs, HyperlinkClickEventArgs, HyperlinkMouseOverArgs, ImportStartEventArgs, ImportSuccessEventArgs, ImportFailureEventArgs, ExportStartEventArgs, ExportSuccessEventArgs, ExportFailureEventArgs, AjaxRequestInitiateEventArgs, PageRenderInitiateEventArgs, AjaxRequestSuccessEventArgs, PageRenderCompleteEventArgs, PageOrganizerSaveAsEventArgs, PageOrganizerZoomChangedEventArgs } from './index';import { AnnotationAddEventArgs, AnnotationRemoveEventArgs, AnnotationPropertiesChangeEventArgs, AnnotationResizeEventArgs, AnnotationSelectEventArgs, AnnotationMoveEventArgs, AnnotationDoubleClickEventArgs, AnnotationMouseoverEventArgs, PageMouseoverEventArgs, AnnotationMouseLeaveEventArgs , ButtonFieldClickEventArgs} from './index';import { TextSelectionStartEventArgs, TextSelectionEndEventArgs, DownloadStartEventArgs, DownloadEndEventArgs, ExtractTextCompletedEventArgs, PrintStartEventArgs, PrintEndEventArgs } from './index';import { TextSearchStartEventArgs, TextSearchCompleteEventArgs, TextSearchHighlightEventArgs } from './index';import { CustomContextMenuSelectEventArgs, CustomContextMenuBeforeOpenEventArgs } from './index';import { PdfAnnotationBase, PdfFormFieldBase, ZOrderPageTable } from './drawing/pdf-annotation';import { PdfAnnotationBaseModel, PdfFormFieldBaseModel } from './drawing/pdf-annotation-model';import { Drawing, ClipBoardObject } from './drawing/drawing';import { Selector } from './drawing/selector';import { SelectorModel } from './drawing/selector-model';import { PointModel, IElement, Rect, Point, Size, processPathData, splitArrayCollection, getPathString } from './ej2-drawings/index';import { renderAdornerLayer } from './drawing/dom-util';import { ThumbnailClickEventArgs } from './index';import { ValidateFormFieldsArgs, BookmarkClickEventArgs, AnnotationUnSelectEventArgs, BeforeAddFreeTextEventArgs, FormFieldFocusOutEventArgs, CommentEventArgs, FormFieldClickArgs, FormFieldAddArgs, FormFieldRemoveArgs, FormFieldPropertiesChangeArgs, FormFieldMouseLeaveArgs, FormFieldMouseoverArgs, FormFieldMoveArgs, FormFieldResizeArgs, FormFieldSelectArgs, FormFieldUnselectArgs, FormFieldDoubleClickArgs, AnnotationMovingEventArgs, KeyboardCustomCommandsEventArgs, ISize } from './base';import { AddSignatureEventArgs, RemoveSignatureEventArgs, MoveSignatureEventArgs, SignaturePropertiesChangeEventArgs, ResizeSignatureEventArgs, SignatureSelectEventArgs, SignatureUnselectEventArgs } from './base';import { IFormField, IFormFieldBound } from './form-designer/form-designer';import { ClickEventArgs, MenuItemModel } from '@syncfusion/ej2-navigations';import { PdfViewerUtils, PdfiumTaskScheduler, TaskPriorityLevel } from './base/pdfviewer-utlis';import { Rectangle } from '@syncfusion/ej2-pdf';import { PdfDocument, PdfPageImportOptions } from '@syncfusion/ej2-pdf';
 import {IAjaxHeaders,IPdfRectBounds} from "./pdfviewer";
 import {ComponentModel} from '@syncfusion/ej2-base';
 
@@ -9,27 +9,32 @@ export interface ToolbarSettingsModel {
 
     /**
      * Enable or disables the tooltip of the toolbars.
+     * @default true
      */
     showTooltip?: boolean;
 
     /**
      * shows only the defined options in the PdfViewer.
+     * @default []
      */
     toolbarItems?: (CustomToolbarItemModel | ToolbarItem)[];
 
     /**
      * Provide option to customize the annotation toolbar of the PDF Viewer.
+     * @default []
      */
     annotationToolbarItems?: AnnotationToolbarItem[];
 
     /**
      * Provide option to customize the redaction toolbar of the PDF Viewer.
      * This redaction customization feature shall be available only when the PDF Viewer is operating in Standalone Mode.
+     * @default []
      */
     redactionToolbarItems?: RedactionToolbarItem[];
 
     /**
      * Customize the tools to be exposed in the form designer toolbar.
+     * @default []
      */
     formDesignerToolbarItems?: FormDesignerToolbarItem[];
 
@@ -43,41 +48,49 @@ export interface CustomToolbarItemModel {
     /**
      * Defines single/multiple classes separated by space used to specify an icon for the button.
      * The icon will be positioned before the text content if text is available, otherwise the icon alone will be rendered.
+     * @default ''
      */
     prefixIcon?: string;
 
     /**
      * Specifies the text to be displayed on the Toolbar button.
+     * @default ''
      */
     tooltipText?: string;
 
     /**
      * Specifies the unique ID to be used with button or input element of Toolbar items.
+     * @default ''
      */
     id?: string;
 
     /**
      * Specifies the text to be displayed on the Toolbar button.
+     * @default ''
      */
     text?: string;
 
     /**
      * Defines single/multiple classes (separated by space) to be used for customization of commands.
+     * @default ''
      */
     cssClass?: string;
 
     /**
      * Define which side(right/left) to use for customizing the icon.
+     * @default 'left'
      */
     align?: string;
 
     /**
      * Specifies the HTML element/element ID as a string that can be added as a Toolbar command.
+     * @default ''
      */
     template?: string | object | Function;
 
     /**
      * Specify the type or category of the Toolbar item.
+     * @default 'Button'
      */
     type?: string;
 
@@ -90,11 +103,13 @@ export interface AjaxRequestSettingsModel {
 
     /**
      * set the ajax Header values in the PdfViewer.
+     * @default []
      */
     ajaxHeaders?: IAjaxHeaders[];
 
     /**
      * set the ajax credentials for the pdfviewer.
+     * @default false
      */
     withCredentials?: boolean;
 
@@ -107,11 +122,13 @@ export interface CustomStampModel {
 
     /**
      * Defines the custom stamp name to be added in stamp menu of the PDF Viewer toolbar.
+     * @default ''
      */
     customStampName?: string;
 
     /**
      * Defines the custom stamp images source to be added in stamp menu of the PDF Viewer toolbar.
+     * @default ''
      */
     customStampImageSource?: string;
 
@@ -124,11 +141,13 @@ export interface AnnotationToolbarSettingsModel {
 
     /**
      * Enable or disables the tooltip of the toolbar.
+     * @default true
      */
     showTooltip?: boolean;
 
     /**
      * shows only the defined options in the PdfViewer.
+     * @default []
      */
     annotationToolbarItem?: AnnotationToolbarItem[];
 
@@ -141,11 +160,13 @@ export interface FormDesignerToolbarSettingsModel {
 
     /**
      * Enable or disables the tooltip of the toolbar.
+     * @default true
      */
     showTooltip?: boolean;
 
     /**
      * shows only the defined options in the PdfViewer.
+     * @default []
      */
     formDesignerToolbarItem?: FormDesignerToolbarItem[];
 
@@ -158,11 +179,13 @@ export interface RedactionToolbarSettingsModel {
 
     /**
      * Enable or disables the tooltip of the toolbar.
+     * @default true
      */
     showTooltip?: boolean;
 
     /**
      * Gets or sets the toolbar items available in the redaction toolbar of the PDF Viewer.
+     * @default []
      */
     redactionToolbarItem?: RedactionToolbarItem[];
 
@@ -175,46 +198,55 @@ export interface SignatureFieldSettingsModel {
 
     /**
      * Get or set the form field bounds.
+     * @default { x: 0, y: 0, width: 0, height: 0 }
      */
     bounds?: IFormFieldBound;
 
     /**
      * Get or set the name of the form field element.
+     * @default ''
      */
     name?: string;
 
     /**
      * Specifies whether the signature field is in read-only or read-write mode. FALSE by default.
+     * @default false
      */
     isReadOnly?: boolean;
 
     /**
      * Gets or set the visibility of the form field.
+     * @default 'visible'
      */
     visibility?: Visibility;
 
     /**
      * If it is set as true, consider as mandatory field in the PDF document. By default it is false.
+     * @default false
      */
     isRequired?: boolean;
 
     /**
      * Get or set the boolean value to print the signature field. TRUE by default.
+     * @default false
      */
     isPrint?: boolean;
 
     /**
      * Get or set the text to be displayed as tooltip. By default it is empty.
+     * @default ''
      */
     tooltip?: string;
 
     /**
      * Get or set the thickness of the Signature field. Default value is 1. To hide the borders, set the value to 0 (zero).
+     * @default 1
      */
     thickness?: number;
 
     /**
      * specifies the page number of the form field.
+     * @default 0
      */
     pageNumber?: number;
 
@@ -230,6 +262,7 @@ export interface SignatureFieldSettingsModel {
 
     /**
      * specifies the custom data of the form fields.
+     * @default null
      */
     customData?: object;
 
@@ -247,51 +280,61 @@ export interface InitialFieldSettingsModel {
 
     /**
      * Get or set the form field bounds.
+     * @default { x: 0, y: 0, width: 0, height: 0 }
      */
     bounds?: IFormFieldBound;
 
     /**
      * Get or set the name of the form field element.
+     * @default ''
      */
     name?: string;
 
     /**
      * Specifies whether the initial field is in read-only or read-write mode. FALSE by default.
+     * @default false
      */
     isReadOnly?: boolean;
 
     /**
      * Gets or set the visibility of the form field.
+     * @default 'visible'
      */
     visibility?: Visibility;
 
     /**
      * If it is set as true, consider as mandatory field in the PDF document. By default it is false.
+     * @default false
      */
     isRequired?: boolean;
 
     /**
      * Get or set the boolean value to print the initial field. TRUE by default.
+     * @default false
      */
     isPrint?: boolean;
 
     /**
      * Get or set the text to be displayed as tooltip. By default it is empty.
+     * @default ''
      */
     tooltip?: string;
 
     /**
      * Get or set the thickness of the Initial field. Default value is 1. To hide the borders, set the value to 0 (zero).
+     * @default 1
      */
     thickness?: number;
 
     /**
      * specifies the page number of the form field.
+     * @default 0
      */
     pageNumber?: number;
 
     /**
      * Gets or sets the initial field type of the signature field.
+     * @default false
      */
     isInitialField?: boolean;
 
@@ -307,6 +350,7 @@ export interface InitialFieldSettingsModel {
 
     /**
      * specifies the custom data of the form fields.
+     * @default null
      */
     customData?: object;
 
@@ -324,38 +368,45 @@ export interface SignatureIndicatorSettingsModel {
 
     /**
      * Specifies the opacity of the signature indicator.
+     * @default 1
      */
     opacity?: number;
 
     /**
      * Specifies the color of the signature indicator.
+     * @default 'orange'
      */
     backgroundColor?: string;
 
     /**
      * Specifies the width of the signature indicator. Maximum width is half the width of the signature field.
      * Minimum width is the default value.
+     * @default 19
      */
     width?: number;
 
     /**
      * Specifies the height of the signature indicator. Maximum height is half the height of the signature field.
      * Minimum height is the default value.
+     * @default 10
      */
     height?: number;
 
     /**
      * Specifies the signature Indicator's font size. The maximum size of the font is half the height of the signature field.
+     * @default 10
      */
     fontSize?: number;
 
     /**
      * Specifies the text of the signature Indicator.
+     * @default null
      */
     text?: string;
 
     /**
      * Specifies the color of the text of signature indicator.
+     * @default 'black'
      */
     color?: string;
 
@@ -368,11 +419,13 @@ export interface SignatureDialogSettingsModel {
 
     /**
      * Get or set the required signature options will be enabled in the signature dialog.
+     * @default DisplayMode.Draw | DisplayMode.Text | DisplayMode.Upload
      */
     displayMode?: DisplayMode;
 
     /**
      * Get or set a boolean value to show or hide the save signature check box option in the signature dialog. FALSE by default.
+     * @default false
      */
     hideSaveSignature?: boolean;
 
@@ -385,66 +438,79 @@ export interface ServerActionSettingsModel {
 
     /**
      * specifies the load action of PdfViewer.
+     * @default 'Load'
      */
     load?: string;
 
     /**
      * specifies the unload action of PdfViewer.
+     * @default 'Unload'
      */
     unload?: string;
 
     /**
      * specifies the render action of PdfViewer.
+     * @default 'RenderPdfPages'
      */
     renderPages?: string;
 
     /**
      * specifies the print action of PdfViewer.
+     * @default 'Print'
      */
     print?: string;
 
     /**
      * specifies the download action of PdfViewer.
+     * @default 'Download'
      */
     download?: string;
 
     /**
      * specifies the render thumbnail action of PdfViewer.
+     * @default 'RenderThumbnailImages'
      */
     renderThumbnail?: string;
 
     /**
      * specifies the annotation comments action of PdfViewer.
+     * @default 'RenderAnnotationComments'
      */
     renderComments?: string;
 
     /**
      * specifies the imports annotations action of PdfViewer.
+     * @default 'ImportAnnotations'
      */
     importAnnotations?: string;
 
     /**
      * specifies the export annotations action of PdfViewer.
+     * @default 'ExportAnnotations'
      */
     exportAnnotations?: string;
 
     /**
      * specifies the imports form fields action of PdfViewer.
+     * @default 'ImportFormFields'
      */
     importFormFields?: string;
 
     /**
      * specifies the export form fields action of PdfViewer.
+     * @default 'ExportFormFields'
      */
     exportFormFields?: string;
 
     /**
      * specifies the render pdf texts action of PdfViewer.
+     * @default 'RenderPdfTexts'
      */
     renderTexts?: string;
 
     /**
      * Specifies the password validation action of PDF Viewer.
+     * @default 'ValidatePassword'
      */
     validatePassword?: string;
 
@@ -457,36 +523,43 @@ export interface StrikethroughSettingsModel {
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     pageNumber?: number;
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     opacity?: number;
 
     /**
      * specifies the color of the annotation.
+     * @default '#ff0000'
      */
     color?: string;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     author?: string;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     annotationSelectorSettings?: AnnotationSelectorSettingsModel;
 
     /**
      * specifies the custom data of the annotation.
+     * @default null
      */
     customData?: object;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     isLock?: boolean;
 
@@ -514,11 +587,13 @@ export interface StrikethroughSettingsModel {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     isPrint?: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     subject?: string;
 
@@ -531,36 +606,43 @@ export interface SquigglySettingsModel {
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     pageNumber?: number;
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     opacity?: number;
 
     /**
      * specifies the color of the annotation.
+     * @default '#ff0000'
      */
     color?: string;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     author?: string;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     annotationSelectorSettings?: AnnotationSelectorSettingsModel;
 
     /**
      * specifies the custom data of the annotation.
+     * @default null
      */
     customData?: object;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     isLock?: boolean;
 
@@ -588,11 +670,13 @@ export interface SquigglySettingsModel {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     isPrint?: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     subject?: string;
 
@@ -605,36 +689,43 @@ export interface UnderlineSettingsModel {
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     pageNumber?: number;
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     opacity?: number;
 
     /**
      * specifies the color of the annotation.
+     * @default '#00ff00'
      */
     color?: string;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     author?: string;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     annotationSelectorSettings?: AnnotationSelectorSettingsModel;
 
     /**
      * specifies the custom data of the annotation.
+     * @default null
      */
     customData?: object;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     isLock?: boolean;
 
@@ -662,11 +753,13 @@ export interface UnderlineSettingsModel {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     isPrint?: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     subject?: string;
 
@@ -679,36 +772,43 @@ export interface HighlightSettingsModel {
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     pageNumber?: number;
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     opacity?: number;
 
     /**
      * specifies the color of the annotation.
+     * @default '#FFDF56'
      */
     color?: string;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     author?: string;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     annotationSelectorSettings?: AnnotationSelectorSettingsModel;
 
     /**
      * specifies the custom data of the annotation.
+     * @default null
      */
     customData?: object;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     isLock?: boolean;
 
@@ -736,11 +836,13 @@ export interface HighlightSettingsModel {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     isPrint?: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     subject?: string;
 
@@ -753,86 +855,103 @@ export interface LineSettingsModel {
 
     /**
      * Get or set offset of the annotation.
+     * @default { x: 0, y: 0 }
      */
     offset?: IPoint;
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     pageNumber?: number;
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     opacity?: number;
 
     /**
      * specifies the fill color of the annotation.
+     * @default '#ffffff00'
      */
     fillColor?: string;
 
     /**
      * specifies the stroke color of the annotation.
+     * @default '#ff0000'
      */
     strokeColor?: string;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     author?: string;
 
     /**
      * specified the thickness of the annotation.
+     * @default 1
      */
     thickness?: number;
 
     /**
      * specifies the line head start style of the annotation.
+     * @default 'None'
      */
     lineHeadStartStyle?: LineHeadStyle;
 
     /**
      * specifies the line head end style of the annotation.
+     * @default 'None'
      */
     lineHeadEndStyle?: LineHeadStyle;
 
     /**
      * specifies the border dash array of the annotation.
+     * @default 0
      */
     borderDashArray?: number;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     annotationSelectorSettings?: AnnotationSelectorSettingsModel;
 
     /**
      * specifies the minHeight of the annotation.
+     * @default 0
      */
     minHeight?: number;
 
     /**
      * specifies the minWidth of the annotation.
+     * @default 0
      */
     minWidth?: number;
 
     /**
      * specifies the maxHeight of the annotation.
+     * @default 0
      */
     maxHeight?: number;
 
     /**
      * specifies the maxWidth of the annotation.
+     * @default 0
      */
     maxWidth?: number;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     isLock?: boolean;
 
     /**
      * specifies the custom data of the annotation.
+     * @default null
      */
     customData?: object;
 
@@ -846,11 +965,13 @@ export interface LineSettingsModel {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     isPrint?: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     subject?: string;
 
@@ -867,6 +988,7 @@ export interface AnnotationDrawingOptionsModel {
      * When set to `true`, lines and arrows are restricted to fixed angles defined by the `restrictLineAngleTo` property.
      * On desktop platforms, holding the **Shift** key while drawing also activates angle constraints,
      * allowing precise control over line orientation.
+     * @default false
      */
     enableLineAngleConstraints?: boolean;
 
@@ -881,6 +1003,7 @@ export interface AnnotationDrawingOptionsModel {
      *     - `restrictLineAngleTo: 100` → Snapped angles: 0°, 100°, 200°, 300°, 360°
      * - Angular constraints apply only to lines and arrows when adjusted using the selector.
      * - The original direction of the line is used as the reference during selector-based modifications.
+     * @default 45
      */
     restrictLineAngleTo?: number;
 
@@ -893,86 +1016,103 @@ export interface ArrowSettingsModel {
 
     /**
      * Get or set offset of the annotation.
+     * @default { x: 0, y: 0 }
      */
     offset?: IPoint;
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     pageNumber?: number;
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     opacity?: number;
 
     /**
      * specifies the fill color of the annotation.
+     * @default '#ffffff00'
      */
     fillColor?: string;
 
     /**
      * specifies the stroke color of the annotation.
+     * @default '#ff0000'
      */
     strokeColor?: string;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     author?: string;
 
     /**
      * specified the thickness of the annotation.
+     * @default 1
      */
     thickness?: number;
 
     /**
      * specifies the line head start style of the annotation.
+     * @default 'None'
      */
     lineHeadStartStyle?: LineHeadStyle;
 
     /**
      * specifies the line head end style of the annotation.
+     * @default 'None'
      */
     lineHeadEndStyle?: LineHeadStyle;
 
     /**
      * specifies the border dash array of the annotation.
+     * @default 0
      */
     borderDashArray?: number;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     annotationSelectorSettings?: AnnotationSelectorSettingsModel;
 
     /**
      * specifies the minHeight of the annotation.
+     * @default 0
      */
     minHeight?: number;
 
     /**
      * specifies the minWidth of the annotation.
+     * @default 0
      */
     minWidth?: number;
 
     /**
      * specifies the maxHeight of the annotation.
+     * @default 0
      */
     maxHeight?: number;
 
     /**
      * specifies the maxWidth of the annotation.
+     * @default 0
      */
     maxWidth?: number;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     isLock?: boolean;
 
     /**
      * specifies the custom data of the annotation.
+     * @default null
      */
     customData?: object;
 
@@ -986,11 +1126,13 @@ export interface ArrowSettingsModel {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     isPrint?: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     subject?: string;
 
@@ -1003,81 +1145,97 @@ export interface RectangleSettingsModel {
 
     /**
      * Get or set offset of the annotation.
+     * @default { x: 0, y: 0 }
      */
     offset?: IPoint;
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     pageNumber?: number;
 
     /**
      * specifies the width of the annotation.
+     * @default 100
      */
     width?: number;
 
     /**
      * specifies the height of the annotation.
+     * @default 50
      */
     height?: number;
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     opacity?: number;
 
     /**
      * specifies the fill color of the annotation.
+     * @default '#ffffff00'
      */
     fillColor?: string;
 
     /**
      * specifies the stroke color of the annotation.
+     * @default '#ff0000'
      */
     strokeColor?: string;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     author?: string;
 
     /**
      * specified the thickness of the annotation.
+     * @default 1
      */
     thickness?: number;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     annotationSelectorSettings?: AnnotationSelectorSettingsModel;
 
     /**
      * specifies the minHeight of the annotation.
+     * @default 0
      */
     minHeight?: number;
 
     /**
      * specifies the minWidth of the annotation.
+     * @default 0
      */
     minWidth?: number;
 
     /**
      * specifies the maxHeight of the annotation.
+     * @default 0
      */
     maxHeight?: number;
 
     /**
      * specifies the maxWidth of the annotation.
+     * @default 0
      */
     maxWidth?: number;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     isLock?: boolean;
 
     /**
      * specifies the custom data of the annotation.
+     * @default null
      */
     customData?: object;
 
@@ -1091,11 +1249,13 @@ export interface RectangleSettingsModel {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     isPrint?: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     subject?: string;
 
@@ -1108,61 +1268,73 @@ export interface PdfAnnotationSettingsModel {
 
     /**
      * Get or set the bounds of the annotation.
+     * @default { x: 0, y: 0, width: 0, height: 0 }
      */
     bound?: Rectangle;
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     pageNumber?: number;
 
     /**
      * Gets or sets the fill color of the redacted area.
+     * @default '#ffffff00'
      */
     fillColor?: string;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     author?: string;
 
     /**
      * specified the thickness of the annotation.
+     * @default 1
      */
     thickness?: number;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     annotationSelectorSettings?: AnnotationSelectorSettingsModel;
 
     /**
      * specifies the minHeight of the annotation.
+     * @default 0
      */
     minHeight?: number;
 
     /**
      * specifies the minWidth of the annotation.
+     * @default 0
      */
     minWidth?: number;
 
     /**
      * specifies the minHeight of the annotation.
+     * @default 0
      */
     maxHeight?: number;
 
     /**
      * specifies the maxWidth of the annotation.
+     * @default 0
      */
     maxWidth?: number;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     isLock?: boolean;
 
     /**
      * specifies the custom data of the annotation.
+     * @default null
      */
     customData?: object;
 
@@ -1176,11 +1348,13 @@ export interface PdfAnnotationSettingsModel {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     isPrint?: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     subject?: string;
 
@@ -1193,59 +1367,69 @@ export interface RedactionSettingsModel extends PdfAnnotationSettingsModel{
 
     /**
      * If true, disables the default redaction confirmation popup.
+     * @default false
      */
     disableConfirmationPopup?: boolean;
 
     /**
      * Gets or sets the opacity of the redaction marker.
      * This property controls the transparency of the redaction marker's fill and border.
+     * @default 1
      */
     markerOpacity?: number;
 
     /**
      * Gets or sets the border color of the redaction marker.
      * This property defines the color of the border surrounding the redaction area.
+     * @default 'rgba(255, 0, 0, 1)'
      */
     markerBorderColor?: string;
 
     /**
      * Gets or sets the fill color of the redaction marker.
      * This property defines the color used to fill the redaction area.
+     * @default 'rgba(255, 255, 255, 1)'
      */
     markerFillColor?: string;
 
     /**
      * Gets or sets the text to be displayed as an overlay in the redaction annotation.
      * Specifies the string that will appear over the redacted area.
+     * @default ''
      */
     overlayText?: string;
 
     /**
      * Gets or sets a value indicating whether the overlay text should repeat to fill the redaction area.
+     * @default false
      */
     isRepeat?: boolean;
 
     /**
      * Gets or sets the font color of the overlay text in the redaction annotation.
      * Specifies the color used for the overlay text displayed within the redacted area.
+     * @default '#000'
      */
     fontColor?: string;
 
     /**
      * Gets or sets the font size of the overlay text in the redaction annotation.
      * This property determines the size of the overlay text displayed within the redacted area.
+     * @default 16
      */
     fontSize?: number;
 
     /**
      * Gets or sets the font family used for the overlay text in the redaction annotation.
      * Defines the font style of the overlay text that appears on the redacted area.
+     * @default 'Helvetica'
      */
     fontFamily?: string;
 
     /**
      * Gets or sets the alignment of the overlay text displayed in the redaction annotation.
      * This property defines how the overlay text is aligned within the bounds of the redaction area.
+     * @default 'Center'
      */
     textAlignment?: TextAlignment;
 
@@ -1258,81 +1442,97 @@ export interface CircleSettingsModel {
 
     /**
      * Get or set offset of the annotation.
+     * @default { x: 0, y: 0}
      */
     offset?: IPoint;
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     pageNumber?: number;
 
     /**
      * specifies the width of the annotation.
+     * @default 100
      */
     width?: number;
 
     /**
      * specifies the height of the annotation.
+     * @default 100
      */
     height?: number;
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     opacity?: number;
 
     /**
      * specifies the fill color of the annotation.
+     * @default '#ffffff00'
      */
     fillColor?: string;
 
     /**
      * specifies the stroke color of the annotation.
+     * @default '#ff0000'
      */
     strokeColor?: string;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     author?: string;
 
     /**
      * specified the thickness of the annotation.
+     * @default 1
      */
     thickness?: number;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     annotationSelectorSettings?: AnnotationSelectorSettingsModel;
 
     /**
      * specifies the minHeight of the annotation.
+     * @default 0
      */
     minHeight?: number;
 
     /**
      * specifies the minWidth of the annotation.
+     * @default 0
      */
     minWidth?: number;
 
     /**
      * specifies the maxHeight of the annotation.
+     * @default 0
      */
     maxHeight?: number;
 
     /**
      * specifies the maxWidth of the annotation.
+     * @default 0
      */
     maxWidth?: number;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     isLock?: boolean;
 
     /**
      * specifies the custom data of the annotation.
+     * @default null
      */
     customData?: object;
 
@@ -1346,11 +1546,13 @@ export interface CircleSettingsModel {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     isPrint?: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     subject?: string;
 
@@ -1363,26 +1565,31 @@ export interface ShapeLabelSettingsModel {
 
     /**
      * specifies the opacity of the label.
+     * @default 1
      */
     opacity?: number;
 
     /**
      * specifies the fill color of the label.
+     * @default '#ffffff00'
      */
     fillColor?: string;
 
     /**
      * specifies the font color of the label.
+     * @default '#000'
      */
     fontColor?: string;
 
     /**
      * specifies the font size of the label.
+     * @default 16
      */
     fontSize?: number;
 
     /**
      * specifies the font family of the label.
+     * @default 'Helvetica'
      */
     fontFamily?: string;
 
@@ -1391,11 +1598,13 @@ export interface ShapeLabelSettingsModel {
      *
      * @remarks
      * The labelContent is replaced with the calibrate measurement value for the calibrate annotation.
+     * @default 'Label'
      */
     labelContent?: string;
 
     /**
      * specifies the default content of the label.
+     * @default ''
      */
     notes?: string;
 
@@ -1408,71 +1617,85 @@ export interface PolygonSettingsModel {
 
     /**
      * Get or set offset of the annotation.
+     * @default { x: 0, y: 0}
      */
     offset?: IPoint;
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     pageNumber?: number;
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     opacity?: number;
 
     /**
      * specifies the fill color of the annotation.
+     * @default '#ffffff00'
      */
     fillColor?: string;
 
     /**
      * specifies the stroke color of the annotation.
+     * @default '#ff0000'
      */
     strokeColor?: string;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     author?: string;
 
     /**
      * specified the thickness of the annotation.
+     * @default 1
      */
     thickness?: number;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     annotationSelectorSettings?: AnnotationSelectorSettingsModel;
 
     /**
      * specifies the minHeight of the annotation.
+     * @default 0
      */
     minHeight?: number;
 
     /**
      * specifies the minWidth of the annotation.
+     * @default 0
      */
     minWidth?: number;
 
     /**
      * specifies the maxHeight of the annotation.
+     * @default 0
      */
     maxHeight?: number;
 
     /**
      * specifies the maxWidth of the annotation.
+     * @default 0
      */
     maxWidth?: number;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     isLock?: boolean;
 
     /**
      * specifies the custom data of the annotation.
+     * @default null
      */
     customData?: object;
 
@@ -1486,11 +1709,13 @@ export interface PolygonSettingsModel {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     isPrint?: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     subject?: string;
 
@@ -1503,11 +1728,13 @@ export interface StampSettingsModel {
 
     /**
      * Get or set offset of the annotation.
+     * @default { x: 0, y: 0}
      */
     offset?: IPoint;
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     pageNumber?: number;
 
@@ -1519,6 +1746,7 @@ export interface StampSettingsModel {
      * - If only width is provided, height is computed from the aspect ratio.
      * - If both width and height are provided, the smaller limiting dimension
      *   is used so the annotation fits entirely within the container.
+     * @default 150
      */
     width?: number;
 
@@ -1530,66 +1758,79 @@ export interface StampSettingsModel {
      * - If only height is provided, height is computed from the aspect ratio.
      * - If both width and height are provided, the smaller limiting dimension
      *   is used so the annotation fits entirely within the container.
+     * @default 50
      */
     height?: number;
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     opacity?: number;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     author?: string;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     annotationSelectorSettings?: AnnotationSelectorSettingsModel;
 
     /**
      * specifies the minHeight of the annotation.
+     * @default 0
      */
     minHeight?: number;
 
     /**
      * specifies the minWidth of the annotation.
+     * @default 0
      */
     minWidth?: number;
 
     /**
      * specifies the maxHeight of the annotation.
+     * @default 0
      */
     maxHeight?: number;
 
     /**
      * specifies the maxWidth of the annotation.
+     * @default 0
      */
     maxWidth?: number;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     isLock?: boolean;
 
     /**
      * specifies the custom data of the annotation.
+     * @default null
      */
     customData?: object;
 
     /**
      * Provide option to define the required dynamic stamp items to be displayed in annotation toolbar menu.
+     * @default []
      */
     dynamicStamps?: DynamicStampItem[];
 
     /**
      * Provide option to define the required sign stamp items to be displayed in annotation toolbar menu.
+     * @default []
      */
     signStamps?: SignStampItem[];
 
     /**
      * Provide option to define the required standard business stamp items to be displayed in annotation toolbar menu.
+     * @default []
      */
     standardBusinessStamps?: StandardBusinessStampItem[];
 
@@ -1603,11 +1844,13 @@ export interface StampSettingsModel {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     isPrint?: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     subject?: string;
 
@@ -1620,81 +1863,97 @@ export interface CustomStampSettingsModel {
 
     /**
      * Get or set offset of the annotation.
+     * @default { x: 0, y: 0}
      */
     offset?: IPoint;
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     pageNumber?: number;
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     opacity?: number;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     author?: string;
 
     /**
      * specifies the width of the annotation.
+     * @default 0
      */
     width?: number;
 
     /**
      * specifies the height of the annotation.
+     * @default 0
      */
     height?: number;
 
     /**
      * specifies the left position of the annotation.
+     * @default 0
      */
     left?: number;
 
     /**
      * specifies the top position of the annotation.
+     * @default 0
      */
     top?: number;
 
     /**
      * Specifies to maintain the newly added custom stamp element in the menu items.
+     * @default false
      */
     isAddToMenu?: boolean;
 
     /**
      * specifies the minHeight of the annotation.
+     * @default 0
      */
     minHeight?: number;
 
     /**
      * specifies the minWidth of the annotation.
+     * @default 0
      */
     minWidth?: number;
 
     /**
      * specifies the maxHeight of the annotation.
+     * @default 0
      */
     maxHeight?: number;
 
     /**
      * specifies the maxWidth of the annotation.
+     * @default 0
      */
     maxWidth?: number;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     isLock?: boolean;
 
     /**
      * Define the custom image path and it's name to be displayed in the menu items.
+     * @default ''
      */
     customStamps?: CustomStampModel[];
 
     /**
      * If it is set as false. then the custom stamp items won't be visible in the annotation toolbar stamp menu items.
+     * @default true
      */
     enableCustomStamp?: boolean;
 
@@ -1708,11 +1967,13 @@ export interface CustomStampSettingsModel {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     isPrint?: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     subject?: string;
 
@@ -1725,96 +1986,115 @@ export interface DistanceSettingsModel {
 
     /**
      * Get or set offset of the annotation.
+     * @default { x: 0, y: 0}
      */
     offset?: IPoint;
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     pageNumber?: number;
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     opacity?: number;
 
     /**
      * specifies the fill color of the annotation.
+     * @default '#ff0000'
      */
     fillColor?: string;
 
     /**
      * specifies the stroke color of the annotation.
+     * @default '#ff0000'
      */
     strokeColor?: string;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     author?: string;
 
     /**
      * specified the thickness of the annotation.
+     * @default 1
      */
     thickness?: number;
 
     /**
      * specifies the line head start style of the annotation.
+     * @default 'None'
      */
     lineHeadStartStyle?: LineHeadStyle;
 
     /**
      * specifies the line head end style of the annotation.
+     * @default 'None'
      */
     lineHeadEndStyle?: LineHeadStyle;
 
     /**
      * specifies the border dash array of the annotation.
+     * @default 0
      */
     borderDashArray?: number;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     annotationSelectorSettings?: AnnotationSelectorSettingsModel;
 
     /**
      * specifies the minHeight of the annotation.
+     * @default 0
      */
     minHeight?: number;
 
     /**
      * specifies the minWidth of the annotation.
+     * @default 0
      */
     minWidth?: number;
 
     /**
      * specifies the maxHeight of the annotation.
+     * @default 0
      */
     maxHeight?: number;
 
     /**
      * specifies the maxWidth of the annotation.
+     * @default 0
      */
     maxWidth?: number;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     isLock?: boolean;
 
     /**
      * specifies the custom data of the annotation.
+     * @default null
      */
     customData?: object;
 
     /**
      * specifies the leader length of the annotation.
+     * @default 40
      */
     leaderLength?: number;
 
     /**
      * Defines the cursor type for distance annotation.
+     * @default 'move'
      */
     resizeCursorType?: CursorType;
 
@@ -1828,11 +2108,13 @@ export interface DistanceSettingsModel {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     isPrint?: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     subject?: string;
 
@@ -1845,81 +2127,97 @@ export interface PerimeterSettingsModel {
 
     /**
      * Get or set offset of the annotation.
+     * @default { x: 0, y: 0}
      */
     offset?: IPoint;
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     pageNumber?: number;
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     opacity?: number;
 
     /**
      * specifies the fill color of the annotation.
+     * @default '#ffffff00'
      */
     fillColor?: string;
 
     /**
      * specifies the stroke color of the annotation.
+     * @default '#ff0000'
      */
     strokeColor?: string;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     author?: string;
 
     /**
      * specified the thickness of the annotation.
+     * @default 1
      */
     thickness?: number;
 
     /**
      * specifies the line head start style of the annotation.
+     * @default 'None'
      */
     lineHeadStartStyle?: LineHeadStyle;
 
     /**
      * specifies the line head end style of the annotation.
+     * @default 'None'
      */
     lineHeadEndStyle?: LineHeadStyle;
 
     /**
      * specifies the border dash array of the annotation.
+     * @default 0
      */
     borderDashArray?: number;
 
     /**
      * specifies the minHeight of the annotation.
+     * @default 0
      */
     minHeight?: number;
 
     /**
      * specifies the minWidth of the annotation.
+     * @default 0
      */
     minWidth?: number;
 
     /**
      * specifies the maxHeight of the annotation.
+     * @default 0
      */
     maxHeight?: number;
 
     /**
      * specifies the maxWidth of the annotation.
+     * @default 0
      */
     maxWidth?: number;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     isLock?: boolean;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     annotationSelectorSettings?: AnnotationSelectorSettingsModel;
 
@@ -1933,11 +2231,13 @@ export interface PerimeterSettingsModel {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     isPrint?: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     subject?: string;
 
@@ -1950,66 +2250,79 @@ export interface AreaSettingsModel {
 
     /**
      * Get or set offset of the annotation.
+     * @default { x: 0, y: 0}
      */
     offset?: IPoint;
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     pageNumber?: number;
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     opacity?: number;
 
     /**
      * specifies the fill color of the annotation.
+     * @default '#ffffff00'
      */
     fillColor?: string;
 
     /**
      * specifies the stroke color of the annotation.
+     * @default '#ff0000'
      */
     strokeColor?: string;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     author?: string;
 
     /**
      * specified the thickness of the annotation.
+     * @default 1
      */
     thickness?: number;
 
     /**
      * specifies the minHeight of the annotation.
+     * @default 0
      */
     minHeight?: number;
 
     /**
      * specifies the minWidth of the annotation.
+     * @default 0
      */
     minWidth?: number;
 
     /**
      * specifies the maxHeight of the annotation.
+     * @default 0
      */
     maxHeight?: number;
 
     /**
      * specifies the maxWidth of the annotation.
+     * @default 0
      */
     maxWidth?: number;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     isLock?: boolean;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     annotationSelectorSettings?: AnnotationSelectorSettingsModel;
 
@@ -2023,11 +2336,13 @@ export interface AreaSettingsModel {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     isPrint?: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     subject?: string;
 
@@ -2040,81 +2355,97 @@ export interface RadiusSettingsModel {
 
     /**
      * Get or set offset of the annotation.
+     * @default { x: 0, y: 0}
      */
     offset?: IPoint;
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     pageNumber?: number;
 
     /**
      * specifies the width of the annotation.
+     * @default 100
      */
     width?: number;
 
     /**
      * specifies the height of the annotation.
+     * @default 90
      */
     height?: number;
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     opacity?: number;
 
     /**
      * specifies the fill color of the annotation.
+     * @default '#ffffff00'
      */
     fillColor?: string;
 
     /**
      * specifies the stroke color of the annotation.
+     * @default '#ff0000'
      */
     strokeColor?: string;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     author?: string;
 
     /**
      * specified the thickness of the annotation.
+     * @default 1
      */
     thickness?: number;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     annotationSelectorSettings?: AnnotationSelectorSettingsModel;
 
     /**
      * specifies the minHeight of the annotation.
+     * @default 0
      */
     minHeight?: number;
 
     /**
      * specifies the minWidth of the annotation.
+     * @default 0
      */
     minWidth?: number;
 
     /**
      * specifies the maxHeight of the annotation.
+     * @default 0
      */
     maxHeight?: number;
 
     /**
      * specifies the maxWidth of the annotation.
+     * @default 0
      */
     maxWidth?: number;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     isLock?: boolean;
 
     /**
      * specifies the custom data of the annotation.
+     * @default null
      */
     customData?: object;
 
@@ -2128,11 +2459,13 @@ export interface RadiusSettingsModel {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     isPrint?: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     subject?: string;
 
@@ -2145,66 +2478,79 @@ export interface VolumeSettingsModel {
 
     /**
      * Get or set offset of the annotation.
+     * @default { x: 0, y: 0}
      */
     offset?: IPoint;
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     pageNumber?: number;
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     opacity?: number;
 
     /**
      * specifies the fill color of the annotation.
+     * @default '#ffffff00'
      */
     fillColor?: string;
 
     /**
      * specifies the stroke color of the annotation.
+     * @default '#ff0000'
      */
     strokeColor?: string;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     author?: string;
 
     /**
      * specified the thickness of the annotation.
+     * @default 1
      */
     thickness?: number;
 
     /**
      * specifies the minHeight of the annotation.
+     * @default 0
      */
     minHeight?: number;
 
     /**
      * specifies the minWidth of the annotation.
+     * @default 0
      */
     minWidth?: number;
 
     /**
      * specifies the maxHeight of the annotation.
+     * @default 0
      */
     maxHeight?: number;
 
     /**
      * specifies the maxWidth of the annotation.
+     * @default 0
      */
     maxWidth?: number;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     isLock?: boolean;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     annotationSelectorSettings?: AnnotationSelectorSettingsModel;
 
@@ -2218,11 +2564,13 @@ export interface VolumeSettingsModel {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     isPrint?: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     subject?: string;
 
@@ -2235,56 +2583,67 @@ export interface InkAnnotationSettingsModel {
 
     /**
      * Get or set offset of the annotation.
+     * @default { x: 0, y: 0}
      */
     offset?: IPoint;
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     pageNumber?: number;
 
     /**
      * specifies the width of the annotation.
+     * @default 0
      */
     width?: number;
 
     /**
      * specifies the height of the annotation.
+     * @default 0
      */
     height?: number;
 
     /**
      * Gets or sets the path of the ink annotation.
+     * @default ''
      */
     path?: string;
 
     /**
      * Sets the opacity value for ink annotation.By default value is 1. It range varies from 0 to 1.
+     * @default 1
      */
     opacity?: number;
 
     /**
      * Sets the stroke color for ink annotation.By default values is #FF0000.
+     * @default '#ff0000'
      */
     strokeColor?: string;
 
     /**
      * Sets the thickness for the ink annotation. By default value is 1. It range varies from 1 to 10.
+     * @default 1
      */
     thickness?: number;
 
     /**
      * Define the default option to customize the selector for ink annotation.
+     * @default ''
      */
     annotationSelectorSettings?: AnnotationSelectorSettingsModel;
 
     /**
      * If it is set as true, can't interact with annotation. Otherwise can interact the annotations. By default it is false.
+     * @default false
      */
     isLock?: boolean;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     author?: string;
 
@@ -2298,16 +2657,19 @@ export interface InkAnnotationSettingsModel {
 
     /**
      * specifies the custom data of the annotation
+     * @default null
      */
     customData?: object;
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     isPrint?: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     subject?: string;
 
@@ -2320,36 +2682,43 @@ export interface StickyNotesSettingsModel {
 
     /**
      * Get or set offset of the annotation.
+     * @default { x: 0, y: 0}
      */
     offset?: IPoint;
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     pageNumber?: number;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     author?: string;
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     opacity?: number;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     annotationSelectorSettings?: AnnotationSelectorSettingsModel;
 
     /**
      * specifies the custom data of the annotation.
+     * @default null
      */
     customData?: object;
 
     /**
      * specifies the lock action of the annotation.
+     * @default false
      */
     isLock?: boolean;
 
@@ -2363,11 +2732,13 @@ export interface StickyNotesSettingsModel {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     isPrint?: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     subject?: string;
 
@@ -2380,16 +2751,19 @@ export interface MeasurementSettingsModel {
 
     /**
      * specifies the scale ratio of the annotation.
+     * @default 1
      */
     scaleRatio?: number;
 
     /**
      * specifies the unit of the annotation.
+     * @default 'in'
      */
     conversionUnit?: CalibrationUnit;
 
     /**
      * specifies the unit of the annotation in UI.
+     * @default 'in'
      */
     displayUnit?: CalibrationUnit;
 
@@ -2398,6 +2772,7 @@ export interface MeasurementSettingsModel {
      *
      * @remarks
      * Applicable only for the volume annotation.
+     * @default 96
      */
     depth?: number;
 
@@ -2410,121 +2785,145 @@ export interface FreeTextSettingsModel {
 
     /**
      * Get or set offset of the annotation.
+     * @default { x: 0, y: 0}
      */
     offset?: IPoint;
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     pageNumber?: number;
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     opacity?: number;
 
     /**
      * specifies the border color of the annotation.
+     * @default '#000000'
      */
     borderColor?: string;
 
     /**
      * specifies the border with of the annotation.
+     * @default 0
      */
     borderWidth?: number;
 
     /**
      * specifies the border style of the annotation.
+     * @default 'solid'
      */
     borderStyle?: string;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     author?: string;
 
     /**
      * specifies the background fill color of the annotation.
+     * @default '#ffffff00'
      */
     fillColor?: string;
 
     /**
      * specifies the text box font size of the annotation.
+     * @default 16
      */
     fontSize?: number;
 
     /**
      * specifies the width of the annotation.
+     * @default 151
      */
     width?: number;
 
     /**
      * specifies the height of the annotation.
+     * @default 24.6
      */
     height?: number;
 
     /**
      * specifies the text box font color of the annotation.
+     * @default '#000'
      */
     fontColor?: string;
 
     /**
      * specifies the text box font family of the annotation.
+     * @default 'Helvetica'
      */
     fontFamily?: string;
 
     /**
      * setting the default text for annotation.
+     * @default 'TypeHere'
      */
     defaultText?: string;
 
     /**
      * applying the font styles for the text.
+     * @default 'None'
      */
     fontStyle?: FontStyle;
 
     /**
      * Aligning the text in the annotation.
+     * @default 'Left'
      */
     textAlignment?: TextAlignment;
 
     /**
      * specifies the allow text only action of the free text annotation.
+     * @default false
      */
     allowEditTextOnly?: boolean;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     annotationSelectorSettings?: AnnotationSelectorSettingsModel;
 
     /**
      * specifies the minHeight of the annotation.
+     * @default 0
      */
     minHeight?: number;
 
     /**
      * specifies the minWidth of the annotation.
+     * @default 0
      */
     minWidth?: number;
 
     /**
      * specifies the maxHeight of the annotation.
+     * @default 0
      */
     maxHeight?: number;
 
     /**
      * specifies the maxWidth of the annotation.
+     * @default 0
      */
     maxWidth?: number;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     isLock?: boolean;
 
     /**
      * specifies the custom data of the annotation.
+     * @default null
      */
     customData?: object;
 
@@ -2538,21 +2937,25 @@ export interface FreeTextSettingsModel {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     isPrint?: boolean;
 
     /**
      * Enables or disables text editing for the annotation. FALSE, by default.
+     * @default false
      */
     isReadonly?: boolean;
 
     /**
      * Enable or disable auto fit mode for FreeText annotation in the Pdfviewer. FALSE by default.
+     * @default false
      */
     enableAutoFit?: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     subject?: string;
 
@@ -2568,6 +2971,7 @@ export interface AnnotationSelectorSettingsModel {
      *
      * @remarks
      * Not applicable for line type annotations, text markup annotations, and sticky note annotations.
+     * @default ''
      */
     selectionBorderColor?: string;
 
@@ -2576,6 +2980,7 @@ export interface AnnotationSelectorSettingsModel {
      *
      * @remarks
      * Not applicable for text markup annotations and sticky note annotations.
+     * @default 'black'
      */
 
     resizerBorderColor?: string;
@@ -2586,6 +2991,7 @@ export interface AnnotationSelectorSettingsModel {
      * @remarks
      * Not applicable for text markup annotations and sticky note annotations.
      *
+     * @default '#FF4081'
      */
     resizerFillColor?: string;
 
@@ -2595,6 +3001,7 @@ export interface AnnotationSelectorSettingsModel {
      * @remarks
      * Not applicable for text markup annotations and sticky note annotations.
      *
+     * @default 8
      */
     resizerSize?: number;
 
@@ -2603,6 +3010,7 @@ export interface AnnotationSelectorSettingsModel {
      *
      * @remarks
      * Not applicable for line type annotations, text Markup annotations, and Sticky Note annotations.
+     * @default 1
      */
     selectionBorderThickness?: number;
 
@@ -2611,6 +3019,7 @@ export interface AnnotationSelectorSettingsModel {
      *
      * @remarks
      * Not applicable for text markup annotations and sticky note annotations.
+     * @default 'Square'
      */
     resizerShape?: AnnotationResizerShape;
 
@@ -2619,6 +3028,7 @@ export interface AnnotationSelectorSettingsModel {
      *
      * @remarks
      * Not applicable for line type annotations, text Markup annotations, and sticky Note annotations.
+     * @default []
      */
     selectorLineDashArray?: number[];
 
@@ -2627,6 +3037,7 @@ export interface AnnotationSelectorSettingsModel {
      *
      * @remarks
      * Not applicable for text markup annotations and sticky note annotations.
+     * @default AnnotationResizerLocation.Corners | AnnotationResizerLocation.Edges
      */
     resizerLocation?: AnnotationResizerLocation;
 
@@ -2635,6 +3046,7 @@ export interface AnnotationSelectorSettingsModel {
      *
      * @remarks
      * Not applicable for text markup annotations and sticky note annotations.
+     * @default null
      */
     resizerCursorType?: CursorType;
 
@@ -2647,11 +3059,13 @@ export interface TextSearchColorSettingsModel {
 
     /**
      * Gets or Sets the color of the current occurrence of the text searched string.
+     * @default '#fdd835'
      */
     searchHighlightColor?: string;
 
     /**
      * Gets or Sets the color of the other occurrence of the text searched string.
+     * @default '#8b4c12'
      */
     searchColor?: string;
 
@@ -2664,21 +3078,25 @@ export interface PageInfoModel {
 
     /**
      * The 0-based index of the page.
+     * @default 0
      */
     pageIndex?: number;
 
     /**
      * The width of the page in points.
+     * @default 0
      */
     width?: number;
 
     /**
      * The height of the page in points.
+     * @default 0
      */
     height?: number;
 
     /**
      * The rotation angle of the page in degrees.
+     * @default 0
      */
     rotation?: number;
 
@@ -2691,41 +3109,49 @@ export interface HandWrittenSignatureSettingsModel {
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     opacity?: number;
 
     /**
      * specifies the stroke color of the annotation.
+     * @default '#000000'
      */
     strokeColor?: string;
 
     /**
      * specified the thickness of the annotation.
+     * @default 1
      */
     thickness?: number;
 
     /**
      * specified the width of the annotation.
+     * @default 150
      */
     width?: number;
 
     /**
      * specified the height of the annotation.
+     * @default 100
      */
     height?: number;
 
     /**
      * Gets or sets the save signature limit of the signature. By default value is 1 and maximum limit is 5.
+     * @default 1
      */
     saveSignatureLimit?: number;
 
     /**
      * Gets or sets the save initial limit of the initial. By default value is 1 and maximum limit is 5.
+     * @default 1
      */
     saveInitialLimit?: number;
 
     /**
      * Provide option to define the required signature items to be displayed in signature menu.
+     * @default []
      */
     signatureItem?: SignatureItem[];
 
@@ -2736,6 +3162,7 @@ export interface HandWrittenSignatureSettingsModel {
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     annotationSelectorSettings?: AnnotationSelectorSettingsModel;
 
@@ -2793,46 +3220,55 @@ export interface AnnotationSettingsModel {
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     author?: string;
 
     /**
      * specifies the minHeight of the annotation.
+     * @default 0
      */
     minHeight?: number;
 
     /**
      * specifies the minWidth of the annotation.
+     * @default 0
      */
     minWidth?: number;
 
     /**
      * specifies the maxHeight of the annotation.
+     * @default 0
      */
     maxHeight?: number;
 
     /**
      * specifies the maxWidth of the annotation.
+     * @default 0
      */
     maxWidth?: number;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     isLock?: boolean;
 
     /**
      * specifies whether the annotations are included or not in print actions.
+     * @default false
      */
     skipPrint?: boolean;
 
     /**
      * specifies whether the annotations are included or not in download actions.
+     * @default false
      */
     skipDownload?: boolean;
 
     /**
      * specifies the custom data of the annotation.
+     * @default null
      */
     customData?: object;
 
@@ -2846,8 +3282,74 @@ export interface AnnotationSettingsModel {
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     subject?: string;
+
+}
+
+/**
+ * Interface for a class CommentFilterSettings
+ */
+export interface CommentFilterSettingsModel {
+
+    /**
+     * Filter by annotation type.
+     * Supported values: 'Highlight', 'StickNote', 'Rectangle', 'Circle',
+     * 'Polygon', 'Polyline', 'Line', 'Arrow', 'FreeText', 'Measure', 'Stamp', 'Ink', 'Redaction', 'Signature', 'InkSignature'
+     *
+     * @default 'None'
+     */
+    type?: AnnotationType;
+
+    /**
+     * Filter by annotation color (hex or named).
+     * Examples: '#FF0000', 'red', '#FFC000'
+     *
+     * @default null
+     */
+    color?: string[];
+
+    /**
+     * Filter by comment status.
+     *
+     * @default 'None'
+     */
+    status?: CommentStatus;
+
+    /**
+     * Filter by comment author name.
+     *
+     * @default null
+     */
+    author?: string[];
+
+    /**
+     * Filter by collection of specific modified dates (ISO 8601).
+     * Format: ['2026-05-01', '2026-05-04', '2026-05-10']
+     * Annotations matching any date in the collection are shown.
+     *
+     * @default null
+     */
+    modifiedDate?: string[];
+
+    /**
+     * When author filtering is active, include reply threads by any author or only parent author.
+     * - true: Show threads if parent OR any reply matches author filter
+     * - false: Show threads only if parent matches author filter
+     *
+     * @default true
+     */
+    includeReplies?: boolean;
+
+    /**
+     * Apply filtering to both comment panel and document annotations.
+     * - false: Comment Panel only (default)
+     * - true: Comment Panel + Document annotations
+     *
+     * @default false
+     */
+    applyToDocument?: boolean;
 
 }
 
@@ -2858,16 +3360,19 @@ export interface DocumentTextCollectionSettingsModel {
 
     /**
      * specifies the text data of the document.
+     * @default []
      */
     textData?: TextDataSettingsModel[];
 
     /**
      * specifies the page text of the document.
+     * @default ''
      */
     pageText?: string;
 
     /**
      * specifies the page size of the document.
+     * @default 0
      */
     pageSize?: number;
 
@@ -2885,6 +3390,7 @@ export interface TextDataSettingsModel {
 
     /**
      * specifies the text of the document.
+     * @default ''
      */
     text?: string;
 
@@ -2897,41 +3403,49 @@ export interface RectangleBoundsModel {
 
     /**
      * specifies the size of the rectangle.
+     * @default 0
      */
     size?: number;
 
     /**
      * specifies the x co-ordinate of the upper-left corner of the rectangle.
+     * @default 0
      */
     x?: number;
 
     /**
      * specifies the y co-ordinate of the upper-left corner of the rectangle.
+     * @default 0
      */
     y?: number;
 
     /**
      * specifies the width of the rectangle.
+     * @default 0
      */
     width?: number;
 
     /**
      * specifies the height of the rectangle.
+     * @default 0
      */
     height?: number;
 
     /**
      * specifies the left value of the rectangle.
+     * @default 0
      */
     left?: number;
 
     /**
      * specifies the top value of the rectangle.
+     * @default 0
      */
     top?: number;
 
     /**
      * specifies the right of the rectangle.
+     * @default 0
      */
     right?: number;
 
@@ -2956,16 +3470,19 @@ export interface TileRenderingSettingsModel {
 
     /**
      * Enable or disables tile rendering mode in the PDF Viewer.
+     * @default true
      */
     enableTileRendering?: boolean;
 
     /**
      * specifies the tileX count of the render Page.
+     * @default 0
      */
     x?: number;
 
     /**
      * specifies the tileY count of the render Page.
+     * @default 0
      */
     y?: number;
 
@@ -2978,6 +3495,7 @@ export interface ScrollSettingsModel {
 
     /**
      * Increase or decrease the delay time.
+     * @default 100
      */
     delayPageRequestTimeOnScroll?: number;
 
@@ -2990,111 +3508,133 @@ export interface FormFieldModel {
 
     /**
      * Gets the name of the form field.
+     * @default ''
      */
     name?: string;
 
     /**
      * Specifies whether the check box is in checked state or not.
+     * @default false
      */
     isChecked?: boolean;
 
     /**
      * Specifies whether the radio button is in selected state or not.
+     * @default false
      */
     isSelected?: boolean;
 
     /**
      * Gets the id of the form field.
+     * @default ''
      */
     id?: string;
 
     /**
      * Gets or sets the value of the form field.
+     * @default ''
      */
     value?: string;
 
     /**
      * Gets the type of the form field.
+     * @default ''
      */
     type?: FormFieldType;
 
     /**
      * If it is set as true, can't edit the form field in the PDF document. By default it is false.
+     * @default false
      */
     isReadOnly?: boolean;
 
     /**
      * specifies the type of the signature.
+     * @default ['']
      */
     signatureType?: SignatureType[];
 
     /**
      * specifies the fontName of the signature.
+     * @default ''
      */
     fontName?: string;
 
     /**
      * Get or set the form field bounds.
+     * @default { x: 0, y: 0, width: 0, height: 0 }
      */
     bounds?: IFormFieldBound;
 
     /**
      * Get or set the font family of the form field.
+     * @default 'Helvetica'
      */
     fontFamily?: string;
 
     /**
      * Get or set the font size of the form field.
+     * @default 10
      */
     fontSize?: number;
 
     /**
      * Get or set the font Style of form field.
+     * @default 'None'
      */
     fontStyle?: FontStyle;
 
     /**
      * Get or set the font color of the form field in hexadecimal string format.
+     * @default 'black'
      */
     color?: string;
 
     /**
      * Get or set the background color of the form field in hexadecimal string format.
+     * @default 'white'
      */
     backgroundColor?: string;
 
     /**
      * Get or set the text alignment of the form field.
+     * @default 'Left'
      */
     alignment?: TextAlignment;
 
     /**
      * Gets or set the visibility of the form field.
+     * @default 'visible'
      */
     visibility?: Visibility;
 
     /**
      * Get or set the maximum character length.
+     * @default 0
      */
     maxLength?: number;
 
     /**
      * Gets or set the is Required of form field.
+     * @default false
      */
     isRequired?: boolean;
 
     /**
      * Get or set the boolean value to print the form field. TRUE by default.
+     * @default false
      */
     isPrint?: boolean;
 
     /**
      * Get or set the text to be displayed as tooltip. By default it is empty.
+     * @default ''
      */
     tooltip?: string;
 
     /**
      * Get or set the form field items. This can be Dropdown items or Listbox items.
+     * @default []
      */
     options?: ItemModel[];
 
@@ -3105,16 +3645,19 @@ export interface FormFieldModel {
 
     /**
      * Get or set the thickness of the form field.
+     * @default 1
      */
     thickness?: number;
 
     /**
      * Get or set the border color of the form field.
+     * @default '#303030'
      */
     borderColor?: string;
 
     /**
      * Allows multiline input in the text field. FALSE, by default.
+     * @default false
      */
     isMultiline?: boolean;
 
@@ -3128,36 +3671,43 @@ export interface FormFieldModel {
 
     /**
      * Get the pageIndex of the form field. Default value is -1.
+     * @default -1
      */
     pageIndex?: number;
 
     /**
      * Get the pageNumber of the form field. Default value is 1.
+     * @default 1
      */
     pageNumber?: number;
 
     /**
      * Get the isTransparent of the form field. Default value is false.
+     * @default false
      */
     isTransparent?: boolean;
 
     /**
      * Get the rotateAngle of the form field. Default value is 0.
+     * @default 0
      */
     rotateAngle?: number;
 
     /**
      * Get the selectedIndex of the form field. Default value is null.
+     * @default []
      */
     selectedIndex?: number[];
 
     /**
      * Get the zIndex of the form field. Default value is 0.
+     * @default 0
      */
     zIndex?: number;
 
     /**
      * specifies the custom data of the form field.
+     * @default null
      */
     customData?: object;
 
@@ -3191,101 +3741,121 @@ export interface TextFieldSettingsModel {
 
     /**
      * Get or set the form field bounds.
+     * @default { x: 0, y: 0, width: 0, height: 0 }
      */
     bounds?: IFormFieldBound;
 
     /**
      * Get or set the name of the form field element.
+     * @default ''
      */
     name?: string;
 
     /**
      * Get or set the value of the form field.
+     * @default ''
      */
     value?: string;
 
     /**
      * Get or set the font family of the textbox field.
+     * @default 'Helvetica'
      */
     fontFamily?: string;
 
     /**
      * Get or set the font size of the textbox field.
+     * @default 10
      */
     fontSize?: number;
 
     /**
      * specifies the page number of the form field.
+     * @default 0
      */
     pageNumber?: number;
 
     /**
      * Get or set the font Style of textbox field.
+     * @default 'None'
      */
     fontStyle?: FontStyle;
 
     /**
      * Get or set the font color of the textbox in hexadecimal string format.
+     * @default 'black'
      */
     color?: string;
 
     /**
      * Get or set the background color of the textbox in hexadecimal string format.
+     * @default 'white'
      */
     backgroundColor?: string;
 
     /**
      * Get or set the alignment of the text.
+     * @default 'Left'
      */
     alignment?: TextAlignment;
 
     /**
      * Specifies whether the textbox field is in read-only or read-write mode. FALSE by default.
+     * @default false
      */
     isReadOnly?: boolean;
 
     /**
      * Gets or set the visibility of the form field.
+     * @default 'visible'
      */
     visibility?: Visibility;
 
     /**
      * Get or set the maximum character length.
+     * @default 0
      */
     maxLength?: number;
 
     /**
      * If it is set as true, consider as mandatory field in the PDF document. By default it is false.
+     * @default false
      */
     isRequired?: boolean;
 
     /**
      * Get or set the boolean value to print the textbox field. TRUE by default.
+     * @default false
      */
     isPrint?: boolean;
 
     /**
      * Get or set the text to be displayed as tooltip. By default it is empty.
+     * @default ''
      */
     tooltip?: string;
 
     /**
      * Get or set the thickness of the textbox field.
+     * @default 1
      */
     thickness?: number;
 
     /**
      * Get or set the border color of the textbox field.
+     * @default '#303030'
      */
     borderColor?: string;
 
     /**
      * Allows multiline input in the text field. FALSE, by default.
+     * @default false
      */
     isMultiline?: boolean;
 
     /**
      * specifies the custom data of the form fields.
+     * @default null
      */
     customData?: object;
 
@@ -3298,96 +3868,115 @@ export interface PasswordFieldSettingsModel {
 
     /**
      * Get or set the form field bounds.
+     * @default { x: 0, y: 0, width: 0, height: 0 }
      */
     bounds?: IFormFieldBound;
 
     /**
      * Get or set the name of the form field element.
+     * @default ''
      */
     name?: string;
 
     /**
      * Get or set the value of the form field.
+     * @default ''
      */
     value?: string;
 
     /**
      * specifies the page number of the form field.
+     * @default 0
      */
     pageNumber?: number;
 
     /**
      * Get or set the font family of the password field.
+     * @default 'Helvetica'
      */
     fontFamily?: string;
 
     /**
      * Get or set the font size of the password field.
+     * @default 10
      */
     fontSize?: number;
 
     /**
      * Get or set the font Style of password field.
+     * @default 'None'
      */
     fontStyle?: FontStyle;
 
     /**
      * Get or set the font color of the password field in hexadecimal string format.
+     * @default 'black'
      */
     color?: string;
 
     /**
      * Get or set the background color of the password field in hexadecimal string format.
+     * @default 'white'
      */
     backgroundColor?: string;
 
     /**
      * Get or set the alignment of the text.
+     * @default 'Left'
      */
     alignment?: TextAlignment;
 
     /**
      * Specifies whether the password field is in read-only or read-write mode. FALSE by default.
+     * @default false
      */
     isReadOnly?: boolean;
 
     /**
      * Gets or set the visibility of the form field.
+     * @default 'visible'
      */
     visibility?: Visibility;
 
     /**
      * Get or set the maximum character length.
+     * @default 0
      */
     maxLength?: number;
 
     /**
      * If it is set as true, consider as mandatory field in the PDF document. By default it is false.
+     * @default false
      */
     isRequired?: boolean;
 
     /**
      * Get or set the boolean value to print the password field. TRUE by default.
+     * @default false
      */
     isPrint?: boolean;
 
     /**
      * Get or set the text to be displayed as tooltip. By default it is empty.
+     * @default ''
      */
     tooltip?: string;
 
     /**
      * Get or set the thickness of the password field.
+     * @default 1
      */
     thickness?: number;
 
     /**
      * Get or set the border color of the password field.
+     * @default '#303030'
      */
     borderColor?: string;
 
     /**
      * specifies the custom data of the form fields.
+     * @default null
      */
     customData?: object;
 
@@ -3400,71 +3989,85 @@ export interface CheckBoxFieldSettingsModel {
 
     /**
      * Get or set the form field bounds.
+     * @default { x: 0, y: 0, width: 0, height: 0 }
      */
     bounds?: IFormFieldBound;
 
     /**
      * Get or set the name of the check box.
+     * @default ''
      */
     name?: string;
 
     /**
      * Get or set the value of the check box.
+     * @default ''
      */
     value?: string;
 
     /**
      * Specifies whether the check box is in checked state or not.
+     * @default false
      */
     isChecked?: boolean;
 
     /**
      * Get or set the background color of the check box in hexadecimal string format.
+     * @default 'white'
      */
     backgroundColor?: string;
 
     /**
      * Specifies whether the check box field is in read-only or read-write mode. FALSE by default.
+     * @default false
      */
     isReadOnly?: boolean;
 
     /**
      * Gets or set the visibility of the form field.
+     * @default 'visible'
      */
     visibility?: Visibility;
 
     /**
      * Get or set the boolean value to print the check box field. TRUE by default.
+     * @default false
      */
     isPrint?: boolean;
 
     /**
      * specifies the page number of the form field.
+     * @default 0
      */
     pageNumber?: number;
 
     /**
      * Get or set the text to be displayed as tooltip. By default it is empty.
+     * @default ''
      */
     tooltip?: string;
 
     /**
      * If it is set as true, consider as mandatory field in the PDF document. By default it is false.
+     * @default false
      */
     isRequired?: boolean;
 
     /**
      * Get or set the thickness of the check box field.
+     * @default 1
      */
     thickness?: number;
 
     /**
      * Get or set the border color of the check box field.
+     * @default '#303030'
      */
     borderColor?: string;
 
     /**
      * specifies the custom data of the form fields.
+     * @default null
      */
     customData?: object;
 
@@ -3477,71 +4080,85 @@ export interface RadioButtonFieldSettingsModel {
 
     /**
      * Get or set the form field bounds.
+     * @default { x: 0, y: 0, width: 0, height: 0 }
      */
     bounds?: IFormFieldBound;
 
     /**
      * Get or set the name of the form field element.
+     * @default ''
      */
     name?: string;
 
     /**
      * Get or set the value of the form field element.
+     * @default ''
      */
     value?: string;
 
     /**
      * Specifies whether the radio button is in selected state or not.
+     * @default false
      */
     isSelected?: boolean;
 
     /**
      * Get or set the background color of the radio button in hexadecimal string format.
+     * @default 'white'
      */
     backgroundColor?: string;
 
     /**
      * Specifies whether the radio button field is in read-only or read-write mode. FALSE by default.
+     * @default false
      */
     isReadOnly?: boolean;
 
     /**
      * If it is set as true, consider as mandatory field in the PDF document. By default it is false.
+     * @default false
      */
     isRequired?: boolean;
 
     /**
      * specifies the page number of the form field.
+     * @default 0
      */
     pageNumber?: number;
 
     /**
      * Gets or set the visibility of the form field.
+     * @default 'visible'
      */
     visibility?: Visibility;
 
     /**
      * Get or set the boolean value to print the radio button field. TRUE by default.
+     * @default false
      */
     isPrint?: boolean;
 
     /**
      * Get or set the text to be displayed as tooltip. By default it is empty.
+     * @default ''
      */
     tooltip?: string;
 
     /**
      * Get or set the thickness of the radio button field.
+     * @default 1
      */
     thickness?: number;
 
     /**
      * Get or set the border color of the radio button field.
+     * @default '#303030'
      */
     borderColor?: string;
 
     /**
      * specifies the custom data of the form fields.
+     * @default null
      */
     customData?: object;
 
@@ -3554,96 +4171,115 @@ export interface DropdownFieldSettingsModel {
 
     /**
      * Get or set the form field bounds.
+     * @default { x: 0, y: 0, width: 0, height: 0 }
      */
     bounds?: IFormFieldBound;
 
     /**
      * Get or set the name of the dropdown.
+     * @default ''
      */
     name?: string;
 
     /**
      * Get or set the value of the form field.
+     * @default ''
      */
     value?: string;
 
     /**
      * Get or set the font family of the dropdown field.
+     * @default 'Helvetica'
      */
     fontFamily?: string;
 
     /**
      * Get or set the font size of the dropdown field.
+     * @default 10
      */
     fontSize?: number;
 
     /**
      * specifies the page number of the form field.
+     * @default 0
      */
     pageNumber?: number;
 
     /**
      * Get or set the font style of dropdown field.
+     * @default 'None'
      */
     fontStyle?: FontStyle;
 
     /**
      * Get or set the font color of the dropdown in hexadecimal string format..
+     * @default 'black'
      */
     color?: string;
 
     /**
      * Get or set the background color of the dropdown in hexadecimal string format.
+     * @default 'white'
      */
     backgroundColor?: string;
 
     /**
      * Get or set the alignment of the text.
+     * @default 'Left'
      */
     alignment?: TextAlignment;
 
     /**
      * Specifies whether the dropdown field is in read-only or read-write mode. FALSE by default.
+     * @default false
      */
     isReadOnly?: boolean;
 
     /**
      * Gets or set the visibility of the form field.
+     * @default 'visible'
      */
     visibility?: Visibility;
 
     /**
      * If it is set as true, consider as mandatory field in the PDF document. By default it is false.
+     * @default false
      */
     isRequired?: boolean;
 
     /**
      * Get or set the boolean value to print the dropdown field. TRUE by default.
+     * @default false
      */
     isPrint?: boolean;
 
     /**
      * Get or set the text to be displayed as tooltip. By default it is empty.
+     * @default ''
      */
     tooltip?: string;
 
     /**
      * Get or set the dropdown items.
+     * @default []
      */
     options?: ItemModel[];
 
     /**
      * Get or set the thickness of the drop down field.
+     * @default 1
      */
     thickness?: number;
 
     /**
      * Get or set the border color of the drop down field.
+     * @default '#303030'
      */
     borderColor?: string;
 
     /**
      * specifies the custom data of the form fields.
+     * @default null
      */
     customData?: object;
 
@@ -3656,91 +4292,109 @@ export interface ListBoxFieldSettingsModel {
 
     /**
      * Get or set the form field bounds.
+     * @default { x: 0, y: 0, width: 0, height: 0 }
      */
     bounds?: IFormFieldBound;
 
     /**
      * Get or set the name of the form field element.
+     * @default ''
      */
     name?: string;
 
     /**
      * Get or set the value of the form field.
+     * @default ''
      */
     value?: string;
 
     /**
      * Get or set the font family of the listbox field.
+     * @default 'Helvetica'
      */
     fontFamily?: string;
 
     /**
      * Get or set the font size of the listbox field.
+     * @default 10
      */
     fontSize?: number;
 
     /**
      * specifies the page number of the form field.
+     * @default 0
      */
     pageNumber?: number;
 
     /**
      * Get or set the font Style of listbox field.
+     * @default 'None'
      */
     fontStyle?: FontStyle;
 
     /**
      * Get or set the font color of the listbox in hexadecimal string format.
+     * @default 'black'
      */
     color?: string;
 
     /**
      * Get or set the background color of the listbox in hexadecimal string format.
+     * @default 'white'
      */
     backgroundColor?: string;
 
     /**
      * Get or set the alignment of the text.
+     * @default 'Left'
      */
     alignment?: TextAlignment;
 
     /**
      * Specifies whether the listbox field is in read-only or read-write mode. FALSE by default.
+     * @default false
      */
     isReadOnly?: boolean;
 
     /**
      * Gets or set the visibility of the form field.
+     * @default 'visible'
      */
     visibility?: Visibility;
 
     /**
      * If it is set as true, consider as mandatory field in the PDF document. By default it is false.
+     * @default false
      */
     isRequired?: boolean;
 
     /**
      * Get or set the boolean value to print the listbox field. TRUE by default.
+     * @default false
      */
     isPrint?: boolean;
 
     /**
      * Get or set the text to be displayed as tool tip. By default it is empty.
+     * @default ''
      */
     tooltip?: string;
 
     /**
      * Get or set the listbox items.
+     * @default []
      */
     options?: ItemModel[];
 
     /**
      * Get or set the thickness of the list box field.
+     * @default 1
      */
     thickness?: number;
 
     /**
      * Get or set the border color of the list box field.
+     * @default '#303030'
      */
     borderColor?: string;
 
@@ -3753,11 +4407,13 @@ export interface ItemModel {
 
     /**
      * Get or set the name.
+     * @default ''
      */
     itemName?: string;
 
     /**
      * Get or set the value.
+     * @default ''
      */
     itemValue?: string;
 
@@ -3930,58 +4586,69 @@ export interface PageOrganizerSettingsModel {
 
     /**
      * Specifies whether the pages can be deleted.
+     * @default true
      */
     canDelete?: boolean;
 
     /**
      * Specifies whether the pages can be inserted.
+     * @default true
      */
     canInsert?: boolean;
 
     /**
      * Specifies whether the pages can be rotated.
+     * @default true
      */
     canRotate?: boolean;
 
     /**
      * Specifies whether the pages can be copied.
+     * @default true
      */
     canCopy?: boolean;
 
     /**
      * Specifies whether the pages can be rearranged.
+     * @default true
      */
     canRearrange?: boolean;
 
     /**
      * Specifies whether the other PDF document can be imported.
+     * @default true
      */
     canImport?: boolean;
 
     /**
      * Controls visibility of the zooming slider UI in the page organizer.
      * When enabled, a slider is shown to zoom in / out the page thumbnails
+     * @default false
      */
     showImageZoomingSlider?: boolean;
 
     /**
      * Minimum value for the image zoom scale in the page organizer view.
+     * @default 1
      */
     imageZoomMin?: number;
 
     /**
      * Maximum value for the image zoom scale in the page organizer view.
+     * @default 5
      */
     imageZoomMax?: number;
 
     /**
      * Current zoom scale of the images in the page organizer view.
+     * @default 1
      */
     imageZoom?: number;
 
     /**
      * Get or set a boolean value to show or hide the pages extract option in the page organizer dialog. TRUE by default.
      * The showExtractPagesOption API for the Extract Pages feature will be available only when the PDF Viewer is operating in Standalone Mode.
+     * @default true
      */
     showExtractPagesOption?: boolean;
 
@@ -4001,11 +4668,13 @@ export interface SearchResultModel {
 
     /**
      * Returns the page index of the search text.
+     * @default 0
      */
     pageIndex?: number;
 
     /**
      * Returns the bounds of the search text.
+     * @default []
      */
     bounds?: IPdfRectBounds[];
 
@@ -4021,6 +4690,7 @@ export interface PdfViewerModel extends ComponentModel{
      *
      * {% codeBlock src='pdfviewer/serviceUrl/index.md' %}{% endcodeBlock %}
      *
+     * @default ''
      */
     serviceUrl?: string;
 
@@ -4066,6 +4736,7 @@ export interface PdfViewerModel extends ComponentModel{
      *
      * {% codeBlock src='pdfviewer/documentPath/index.md' %}{% endcodeBlock %}
      *
+     * @default ''
      */
     documentPath?: string;
 
@@ -4074,6 +4745,7 @@ export interface PdfViewerModel extends ComponentModel{
      *
      * {% codeBlock src='pdfviewer/exportAnnotationFileName/index.md' %}{% endcodeBlock %}
      *
+     * @default null
      */
     exportAnnotationFileName?: string;
 
@@ -4082,6 +4754,7 @@ export interface PdfViewerModel extends ComponentModel{
      *
      * {% codeBlock src='pdfviewer/downloadFileName/index.md' %}{% endcodeBlock %}
      *
+     * @default ''
      */
     downloadFileName?: string;
 
@@ -4848,6 +5521,7 @@ export interface PdfViewerModel extends ComponentModel{
      *
      * {% codeBlock src='pdfviewer/dateTimeFormat/index.md' %}{% endcodeBlock %}
      *
+     * @default 'M/d/yyyy h:mm:ss a'
      */
     dateTimeFormat?: string;
 
@@ -5165,6 +5839,18 @@ export interface PdfViewerModel extends ComponentModel{
      */
 
     inkAnnotationSettings?: InkAnnotationSettingsModel;
+
+    /**
+     * Enable or disable Ink Eraser mode. When enabled, users can erase portions of ink annotations.
+     * @default false
+     */
+    enableInkEraser?: boolean;
+
+    /**
+     * Sets the current eraser size for ink annotations. By default value is 20. Range: 1-20.
+     * @default 20
+     */
+    inkEraserSize?: number;
 
     /**
      * Defines the settings of the annotations.

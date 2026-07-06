@@ -8,30 +8,30 @@ import { EMPTY_PDF_B64 } from "../../Data/pdf-data.spec";
 import { mouseClickEvent, mouseMoveEvent, mouseDownEvent, Keydown, waitFor } from "../../utils.spec";
 
 
-describe('PDF_Viewer_FormFields', () => {
-    let pdfviewer_formFields: PdfViewer = null;
+describe('PDF_Viewer_Fields_Focus', () => {
+    let pdfviewer_formFields_focus: PdfViewer = null;
     PdfViewer.Inject(Toolbar, Magnification, Navigation, LinkAnnotation, ThumbnailView, BookmarkView,
         TextSelection, TextSearch, Print, Annotation, FormFields, FormDesigner, PageOrganizer);
 
     beforeAll((done) => {
-        const element: HTMLElement = createElement('div', { id: 'pdfviewer_formFields' });
+        const element: HTMLElement = createElement('div', { id: 'pdfviewer_formFields_focus' });
         document.body.appendChild(element);
-        pdfviewer_formFields = new PdfViewer({
+        pdfviewer_formFields_focus = new PdfViewer({
             resourceUrl: window.location.origin + '/base/src/pdfviewer/ej2-pdfviewer-lib',
             documentPath: "data:application/pdf;base64," + EMPTY_PDF_B64
         });
-        pdfviewer_formFields.documentLoad = () => {
+        pdfviewer_formFields_focus.documentLoad = () => {
             done();
         }
-        pdfviewer_formFields.appendTo("#pdfviewer_formFields");
+        pdfviewer_formFields_focus.appendTo("#pdfviewer_formFields_focus");
     });
 
     afterAll(() => {
-        if (pdfviewer_formFields) {
-            pdfviewer_formFields.destroy();
-            const el = document.getElementById('pdfviewer_formFields');
+        if (pdfviewer_formFields_focus) {
+            pdfviewer_formFields_focus.destroy();
+            const el = document.getElementById('pdfviewer_formFields_focus');
             if (el && el.parentNode) { el.parentNode.removeChild(el); }
-            pdfviewer_formFields = null;
+            pdfviewer_formFields_focus = null;
         }
     });
 
@@ -41,19 +41,19 @@ describe('PDF_Viewer_FormFields', () => {
       try {
         // Open the form designer
         const formDesignerBtn = document.querySelector(
-          "#pdfviewer_formFields_formdesigner",
+          "#pdfviewer_formFields_focus_formdesigner",
         ) as HTMLElement | null;
         if (!formDesignerBtn) throw new Error("formDesignerBtn not found");
         mouseClickEvent(formDesignerBtn);
         // Click the text box
         const textBox = document.querySelector(
-          "#pdfviewer_formFields_formdesigner_textbox",
+          "#pdfviewer_formFields_focus_formdesigner_textbox",
         ) as HTMLElement | null;
         if (!textBox) throw new Error("textBox not found");
         mouseClickEvent(textBox);
         // Target
         const target = document.querySelector(
-          "#pdfviewer_formFields_textLayer_0",
+          "#pdfviewer_formFields_focus_textLayer_0",
         ) as HTMLElement | null;
         if (!target) throw new Error("Page container not found");
         const rect = target.getBoundingClientRect();
@@ -68,11 +68,11 @@ describe('PDF_Viewer_FormFields', () => {
         btn.textContent = "View";
         document.body.appendChild(btn);
         // Apply read-only to all fields
-        const formFields = (pdfviewer_formFields as any).retrieveFormFields();
+        const formFields = (pdfviewer_formFields_focus as any).retrieveFormFields();
         btn.addEventListener("click", () => {
           for (let i = 0; i < formFields.length; i++) {
-            (pdfviewer_formFields as any).formDesignerModule.updateFormField(
-              (pdfviewer_formFields as any).formFieldCollections[i],
+            (pdfviewer_formFields_focus as any).formDesignerModule.updateFormField(
+              (pdfviewer_formFields_focus as any).formFieldCollections[i],
               { isReadOnly: true },
             );
           }

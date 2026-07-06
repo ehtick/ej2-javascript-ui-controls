@@ -1,6 +1,6 @@
-@use 'ej2-base/styles/definition/bootstrap-dark' as *;
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 @use '../document-editor/bootstrap-dark-definition' as *;
-@forward 'ej2-base/styles/definition/bootstrap-dark';
+
 @forward '../document-editor/bootstrap-dark-definition';
 $de-title-bar-bg-clr: $brand-primary !default;
 $de-title-bar-font-clr: $brand-primary-font !default;
@@ -154,8 +154,8 @@ $de-ribbon-classic-editor-height-big: calc(100% - 201px) !default;
 $de-ctnr-layout-margin-bottom: 2px;
 $de-ctnr-picture-margin-bottom: 0;
 
-$de-ribbon-simplified-ctnr-collapsed-editor-height: calc(100% - 46px) !default;
-$de-ribbon-classic-collapsed-editor-height: calc(100% - 42.8px) !default;
+$de-ribbon-simplified-ctnr-collapsed-editor-height: calc(100% - 73px) !default;
+$de-ribbon-classic-collapsed-editor-height: calc(100% - 57px) !default;
 
 // layout.scss
 $de-toolbar-line-height: 0;

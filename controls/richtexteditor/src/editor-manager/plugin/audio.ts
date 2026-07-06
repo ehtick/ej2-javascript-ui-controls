@@ -138,13 +138,15 @@ export class AudioCommand {
                         if (this.parent.userAgentData.isSafari()) {
                             scrollToCursor(this.parent.currentDocument, this.parent.editableElement as HTMLElement);
                         }
-                        e.callBack({
-                            requestType: 'Audios',
-                            editorMode: 'HTML',
-                            event: e.event,
-                            range: this.parent.nodeSelection.getRange(this.parent.currentDocument),
-                            elements: [audioElm]
-                        });
+                        if (!(!isNOU(e.event as any) && !isNOU((e.event as any).name) && ((e.event as any).name) === 'drop')) {
+                            e.callBack({
+                                requestType: 'Audios',
+                                editorMode: 'HTML',
+                                event: e.event,
+                                range: this.parent.nodeSelection.getRange(this.parent.currentDocument),
+                                elements: [audioElm]
+                            });
+                        }
                     }
                 }
                 audioElm.removeEventListener('loadeddata', onAudioLoadEvent);

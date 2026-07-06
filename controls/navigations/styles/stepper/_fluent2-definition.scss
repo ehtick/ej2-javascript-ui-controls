@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/fluent2' as *;
-@forward 'ej2-base/styles/definition/fluent2';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $stepper-ol-padding: 0 !default;
 $stepper-step-radius: $radius-full !default;
 $stepper-step-width: 32px !default;

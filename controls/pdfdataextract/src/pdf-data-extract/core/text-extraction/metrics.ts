@@ -1,9 +1,34 @@
 /* eslint-disable */
 export class _PdfMetrics {
+    /**
+     * Default width value for Courier font.
+     *
+     * @private
+     */
     _courier: number = 600;
+    /**
+     * Default width value for Courier-Bold font.
+     *
+     * @private
+     */
     _courierBold: number = 600;
+    /**
+     * Default width value for Courier-BoldOblique font .
+     *
+     * @private
+     */
     _courierBoldOblique: number = 600;
+    /**
+     * Default width value for Courier-Oblique font (.
+     *
+     * @private
+     */
     _courierOblique: number = 600;
+    /**
+     * Width table for Helvetica family.
+     *
+     * @private
+     */
     _helveticaWidths: any = {
         space :  278,
         exclam :  278,
@@ -321,6 +346,11 @@ export class _PdfMetrics {
         imacron :  278,
         Euro :  556
     };
+    /**
+     * Width table for Helvetica-Bold family.
+     *
+     * @private
+     */
     _helveticaBold: any = {
         space :  278,
         exclam :  333,
@@ -638,6 +668,11 @@ export class _PdfMetrics {
         imacron :  278,
         Euro :  556
     };
+    /**
+     * Width table for Helvetica-BoldOblique family .
+     *
+     * @private
+     */
     _helveticaBoldOblique: any = {
         space :  278,
         exclam :  333,
@@ -955,6 +990,11 @@ export class _PdfMetrics {
         imacron :  278,
         Euro :  556
     };
+    /**
+     * Width table for Helvetica-Oblique family .
+     *
+     * @private
+     */
     _helveticaOblique: any = {
         space :  278,
         exclam :  278,
@@ -1272,6 +1312,11 @@ export class _PdfMetrics {
         imacron :  278,
         Euro :  556
     };
+    /**
+     * Width table for Symbol font.
+     *
+     * @private
+     */
     _symbol: any = {
         space :  250,
         exclam :  333,
@@ -1464,6 +1509,11 @@ export class _PdfMetrics {
         bracerightbt :  494,
         apple :  790
     };
+    /**
+     * Width table for Times-Roman family .
+     *
+     * @private
+     */
     _timesRoman: any = {
         space :   250,
         exclam :   333,
@@ -1781,6 +1831,11 @@ export class _PdfMetrics {
         imacron :   278,
         Euro :   500
     };
+    /**
+     * Width table for Times-Bold family.
+     *
+     * @private
+     */
     _timesBold: any = {
         space :  250,
         exclam :  333,
@@ -2098,6 +2153,11 @@ export class _PdfMetrics {
         imacron :  278,
         Euro :  500
     };
+    /**
+     * Width table for Times-BoldItalic family (maps char codes to widths).
+     *
+     * @private
+     */
     _timesBoldItalic: any = {
         space :  250,
         exclam :  389,
@@ -2415,6 +2475,11 @@ export class _PdfMetrics {
         imacron :  278,
         Euro :  500
     };
+    /**
+     * Width table for Times-Italic family (maps char codes to widths).
+     *
+     * @private
+     */
     _timesItalic: any = {
         space :  250,
         exclam :  333,
@@ -2732,6 +2797,11 @@ export class _PdfMetrics {
         imacron :  278,
         Euro :  500
     };
+    /**
+     * Width table for ZapfDingbats font (maps char codes to widths).
+     *
+     * @private
+     */
     _zapfDingbats: any = {
         space :  278,
         a1 :  974,
@@ -2937,4 +3007,3 @@ export class _PdfMetrics {
         a191 :  918
     };
 }
-/* eslint-enable */

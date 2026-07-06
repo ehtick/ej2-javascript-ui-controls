@@ -2727,4 +2727,256 @@ describe('Table Cell Selection ', () => {
             }, 100);
         });
     });
+
+    describe('1015334: Opening the table cell properties dialog does not remove the wrapper and circle icon', () => {
+        let rteObj: RichTextEditor;
+        let rteEle: HTMLElement;
+        beforeEach(() => {
+            rteObj = renderRTE({
+                toolbarSettings: {
+                    items: ['CreateTable', 'Undo', 'Redo']
+                },
+                quickToolbarSettings: {
+                    table: ['TableEditProperties', 'TableCellProperties']
+                },
+                value: '<table class="e-rte-table" style="width: 100%;"><tbody><tr><td class="e-cell-select" style="width: 50%;">Cell 1</td><td style="width: 50%;">Cell 2</td></tr><tr><td style="width: 50%;">Cell 3</td><td style="width: 50%;">Cell 4</td></tr></tbody></table><p><br></p>'
+            });
+            rteEle = rteObj.element;
+        });
+        afterEach(() => {
+            destroy(rteObj);
+        });
+        it('Wrapper icon should be removed when dialog is opened', (done: Function) => {
+            rteObj.focusIn();
+            let firstP: Element = (rteObj as any).inputElement.querySelector('tr td');
+            setCursorPoint(firstP, 0);
+            dispatchEvent(firstP, 'mousedown');
+            (firstP as HTMLElement).click();
+            dispatchEvent(firstP, 'mouseup');
+            setTimeout(() => {
+                const td = rteObj.contentModule.getEditPanel().querySelector('td') as HTMLElement;
+                setCursorPoint(td, 0);
+                // Simulate mouseover on insertion icon
+                const mouseOverEvent = new MouseEvent('mouseover', { 'view': window, 'bubbles': true, 'cancelable': true });
+                td.dispatchEvent(mouseOverEvent);
+                setTimeout(() => {
+                    const insertIcon = rteObj.contentModule.getEditPanel().querySelector('.e-tb-col-insert');
+                    expect(insertIcon).not.toBeNull();
+                    // Simulate mouseover on insertion icon
+                    const mouseOverEvent = new MouseEvent('mouseover', { 'view': window, 'bubbles': true, 'cancelable': true });
+                    insertIcon.dispatchEvent(mouseOverEvent);
+                    // Check circle icon styling
+                    setTimeout(() => {
+                        const circleIcon = rteObj.contentModule.getEditPanel().querySelector('.e-drag-and-drop') as HTMLElement;
+                        circleIcon.click();
+                        const MOUSEUP_EVENT: MouseEvent = new MouseEvent('mouseup', BASIC_MOUSE_EVENT_INIT);
+                        circleIcon.dispatchEvent(MOUSEUP_EVENT);
+                        setTimeout(() => {
+                            const tableCellPropsBtn = document.querySelector('.e-table-editCell-properties').parentElement;
+                            (tableCellPropsBtn as HTMLElement).click();
+                            setTimeout(() => {
+                                expect(document.querySelectorAll('.e-icons.e-drag-and-drop')).length === 0;
+                                done();
+                            }, 100);
+                        }, 100);
+                    }, 100);
+                }, 100);
+            }, 100);
+        });
+    });
+    
+    describe('1015135: Table selection handles remain visible after table deletion', () => {
+        let rteObj: RichTextEditor;
+        let rteEle: HTMLElement;
+        beforeEach(() => {
+            rteObj = renderRTE({
+                toolbarSettings: {
+                    items: ['CreateTable', 'Undo', 'Redo']
+                },
+                quickToolbarSettings: {
+                    table: ['Tableheader', 'TableRemove', '|', 'TableRows', 'TableColumns', 'TableCell', '|', 'TableEditProperties', 'TableCellProperties', 'Styles', 'BackgroundColor', 'Alignments', 'TableCellVerticalAlign'],
+                    text: ['Formats', '|', 'Bold', 'Italic', 'Fontcolor', 'BackgroundColor', '|', 'CreateLink', 'Image', 'CreateTable', 'Blockquote', '|', 'Unorderedlist', 'Orderedlist', 'Indent', 'Outdent'],
+                },
+                value: '<table class="e-rte-table" style="width: 100%;"><tbody><tr><td class="e-cell-select" style="width: 50%;">Cell 1</td><td style="width: 50%;">Cell 2</td></tr><tr><td style="width: 50%;">Cell 3</td><td style="width: 50%;">Cell 4</td></tr></tbody></table><p><br></p>'
+            });
+            rteEle = rteObj.element;
+        });
+        afterEach(() => {
+            destroy(rteObj);
+        });
+        it('When the table is deleted via table remove icon, the wrappers should remove', (done: Function) => {
+            rteObj.focusIn();
+            let firstP: Element = (rteObj as any).inputElement.querySelector('tr td');
+            setCursorPoint(firstP, 0);
+            dispatchEvent(firstP, 'mousedown');
+            (firstP as HTMLElement).click();
+            dispatchEvent(firstP, 'mouseup');
+            setTimeout(() => {
+                let quickPop: HTMLElement = document.querySelector('.e-rte-quick-toolbar');
+                expect(!isNullOrUndefined(quickPop)).toBe(true);
+                const mouseOverEvent = new MouseEvent('mouseover', { 'view': window, 'bubbles': true, 'cancelable': true });
+                firstP.dispatchEvent(mouseOverEvent);
+                setTimeout(() => {
+                    let deleteTable: HTMLElement = quickPop.querySelectorAll('.e-toolbar-item')[1] as HTMLElement;
+                    deleteTable.click();
+                    const rowInsert: HTMLElement = rteObj.contentModule.getEditPanel().querySelector('.e-move');
+                    expect(rowInsert).toBeNull;
+                    done();
+                }, 100);
+            }, 100);
+        });
+    });
+    describe('1015296: Table tag not removed and cursor position incorrect after Delete Column via quickToolbar when entire table is selected', () => {
+        let rteObj: RichTextEditor;
+        let rteEle: HTMLElement;
+        beforeEach(() => {
+            rteObj = renderRTE({
+                toolbarSettings: {
+                    items: ['CreateTable', 'Undo', 'Redo']
+                },
+                value: '<table class="e-rte-table" style="width: 100%;"><tbody><tr><td class="e-cell-select" style="width: 50%;">Cell 1</td><td style="width: 50%;">Cell 2</td></tr><tr><td style="width: 50%;">Cell 3</td><td style="width: 50%;">Cell 4</td></tr></tbody></table><p><br></p>'
+            });
+            rteEle = rteObj.element;
+        });
+        afterEach(() => {
+            destroy(rteObj);
+        });
+        it('select the entire table via gripper and delete the column via quicktoolbar', (done: Function) => {
+            rteObj.focusIn();
+            let firstP: Element = (rteObj as any).inputElement.querySelector('tr td');
+            setCursorPoint(firstP, 0);
+            dispatchEvent(firstP, 'mousedown');
+            (firstP as HTMLElement).click();
+            dispatchEvent(firstP, 'mouseup');
+            setTimeout(() => {
+                const td = rteObj.contentModule.getEditPanel().querySelector('td') as HTMLElement;
+                setCursorPoint(td, 0);
+                // Simulate mouseover on insertion icon
+                const mouseOverEvent = new MouseEvent('mouseover', { 'view': window, 'bubbles': true, 'cancelable': true });
+                td.dispatchEvent(mouseOverEvent);
+                setTimeout(() => {
+                    const insertIcon = rteObj.contentModule.getEditPanel().querySelector('.e-tb-col-insert');
+                    // Simulate mouseover on insertion icon
+                    const mouseOverEvent = new MouseEvent('mouseover', { 'view': window, 'bubbles': true, 'cancelable': true });
+                    insertIcon.dispatchEvent(mouseOverEvent);
+                    // Check circle icon styling
+                    setTimeout(() => {
+                        const circleIcon = rteObj.contentModule.getEditPanel().querySelector('.e-move') as HTMLElement;
+                        circleIcon.click();
+                        const MOUSEUP_EVENT: MouseEvent = new MouseEvent('mouseup', BASIC_MOUSE_EVENT_INIT);
+                        circleIcon.dispatchEvent(MOUSEUP_EVENT);
+                        setTimeout(() => {
+                            let quickPop: HTMLElement = document.querySelector('.e-rte-quick-toolbar');
+                            expect(!isNullOrUndefined(quickPop)).toBe(true);
+                            const tableColumnsBtn = quickPop.querySelector('#' + rteObj.element.id + '_quick_TableColumns');
+                            expect(tableColumnsBtn).not.toBeNull();
+                            (tableColumnsBtn as HTMLElement).click();
+                            const deleteColumnOption = document.querySelector('.e-delete-column').parentElement;
+                            expect(deleteColumnOption).not.toBeNull();
+                            (deleteColumnOption as HTMLElement).click();
+                            expect(rteObj.inputElement.querySelector('table')).toBeNull;
+                            done();
+                        }, 100);
+                    }, 100);
+                }, 100);
+            });
+        });
+    });
+    describe('1015333: Bold Italic Selection Formatting not applied when selecting single table cell with Ctrl+A', () => {
+        let editor: RichTextEditor;
+        beforeEach(() => {
+            editor = renderRTE({
+                value: `<table class="e-rte-table" style="width: 100%; min-width: 0px;"><tbody><tr><td class="e-cell-select" style="width: 50%;">Sample Text</td><td style="width: 50%;">Another Text</td></tr></tbody></table><p><br></p>`
+            });
+        });
+        afterEach(() => {
+            destroy(editor);
+        });
+        it('Select single table cell and apply bold with Ctrl+A', () => {
+            editor.focusIn();
+            const table: HTMLTableElement = editor.inputElement.querySelector('table');
+            // Simulate Ctrl+A (select all) inside the cell
+            const td = editor.inputElement.querySelector('td');
+            setCursorPoint(td, 0);
+            const keyDownEvent: KeyboardEvent = new KeyboardEvent('keydown', CONTROL_A_EVENT_INIT);
+            td.dispatchEvent(keyDownEvent);
+            // Apply bold using toolbar
+            const toolbarButtons : NodeList = editor.element.querySelectorAll('.e-tbar-btn');
+            (toolbarButtons[0] as HTMLElement).click();
+            // Verify that bold has been applied to the cell content
+            const boldElement = table.querySelector('strong');
+            expect(boldElement).not.toBeNull();
+            expect(boldElement.textContent).toContain('Sample Text');
+        });
+        it('Select single table cell and apply italic with Ctrl+A', () => {
+            editor.focusIn();
+            const table: HTMLTableElement = editor.inputElement.querySelector('table');
+            const td = editor.inputElement.querySelectorAll('td')[1];
+            setCursorPoint(td, 0);
+            const keyDownEvent: KeyboardEvent = new KeyboardEvent('keydown', CONTROL_A_EVENT_INIT);
+            td.dispatchEvent(keyDownEvent);
+            // Apply italic using toolbar
+            const toolbarButtons : NodeList = editor.element.querySelectorAll('.e-tbar-btn');
+            (toolbarButtons[1] as HTMLElement).click();
+            // Verify that italic has been applied to the cell content
+            const italicElement = table.querySelector('em');
+            expect(italicElement).not.toBeNull();
+            expect(italicElement.textContent).toContain('Sample Text');
+        });
+    });
+
+    describe('1030336: Delete Row via quick toolbar dropdown should not throw script errors', () => {
+        let rteObj: RichTextEditor;
+        let consoleSpy: jasmine.Spy;
+
+        beforeEach(() => {
+            consoleSpy = jasmine.createSpy('console');
+            rteObj = renderRTE({
+                toolbarSettings: { items: ['CreateTable'] },
+            });
+        });
+
+        afterEach(() => {
+            consoleSpy = null;
+            destroy(rteObj);
+        });
+
+        it('Should delete row via quick toolbar Insert Row dropdown without console errors', (done: DoneFn) => {
+            rteObj.focusIn();
+            const editPanel: HTMLElement = rteObj.contentModule.getEditPanel() as HTMLElement;
+            rteObj.inputElement.innerHTML = `<p>Text before table</p><table class="e-rte-table"><thead><tr><th class="e-cell-select"><br></th><th><br></th></tr></thead><tbody><tr><td class="e-cell-select">Cell content</td><td>More content</td></tr></tbody></table><p>Text after table</p>`;
+            setTimeout(() => {
+                const td = rteObj.contentModule.getEditPanel().querySelector('td') as HTMLElement;
+                const mouseOverEvent = new MouseEvent('mouseover', { 'view': window, 'bubbles': true, 'cancelable': true });
+                td.dispatchEvent(mouseOverEvent);
+                setTimeout(() => {
+                    const circleIcon = rteObj.contentModule.getEditPanel().querySelector('.e-move') as HTMLElement;
+                    const mouseDownEvent = new MouseEvent('mousedown', BASIC_MOUSE_EVENT_INIT);
+                    const mouseUpEvent = new MouseEvent('mouseup', BASIC_MOUSE_EVENT_INIT);
+                    circleIcon.dispatchEvent(mouseDownEvent);
+                    circleIcon.click();
+                    circleIcon.dispatchEvent(mouseUpEvent);
+                    setTimeout(() => {
+                        let quickToolbar = document.querySelector('.e-rte-quick-toolbar') as HTMLElement;
+                        const dropdownBtn = quickToolbar.querySelector('.e-table-rows').closest('button') as HTMLElement;
+                        dropdownBtn.click();
+                        setTimeout(() => {
+                            const popup = document.querySelector('.e-dropdown-popup.e-quick-dropdown.e-popup-open');
+                            expect(popup).not.toBeNull();
+                            const deleteOption = (document.querySelector('[aria-label="Delete row"]')) as HTMLElement;
+                            const mouseDownEvent = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+                            const mouseUpEvent = new MouseEvent('mouseup', { bubbles: true, cancelable: true });
+                            deleteOption.dispatchEvent(mouseDownEvent);
+                            deleteOption.click();
+                            deleteOption.dispatchEvent(mouseUpEvent);
+                            setTimeout(() => {
+                                expect(consoleSpy).not.toHaveBeenCalled();
+                                done();
+                            }, 400);
+                        }, 100);
+                    }, 100);
+                }, 100);
+            });
+        });
+    });
 });

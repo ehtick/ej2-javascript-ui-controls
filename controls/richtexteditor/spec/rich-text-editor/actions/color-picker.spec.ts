@@ -3,7 +3,8 @@
  */
 import { Browser, isNullOrUndefined } from "@syncfusion/ej2-base";
 import { RichTextEditor } from './../../../src/index';
-import { renderRTE, destroy, dispatchKeyEvent, dispatchEvent } from "./../render.spec";
+import { renderRTE, destroy, dispatchKeyEvent, dispatchEvent, selectTableCell, drawCellSelection } from "./../render.spec";
+import { BASIC_MOUSE_EVENT_INIT } from "../../constant.spec";
 
 function setCursorPoint(curDocument: Document, element: Element, point: number) {
     let range: Range = curDocument.createRange();
@@ -571,5 +572,49 @@ describe("EJ2-16252: 'FontColor and BackgroundColor' - Default value set", () =>
         afterAll(() => {
             destroy(rteObj);
         });
+    });
+});
+
+describe('1032508: Mobile: Applying Background Color to Table Cell via Quick Toolbar causes page unresponsive', () => {
+    let rteObj: RichTextEditor;
+    let rteEle: HTMLElement;
+    let mobileUA: string = "Mozilla/5.0 (Linux; Android 4.3; Nexus 7 Build/JWR66Y) " +
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/30.0.1599.92 Safari/537.36";
+    let defaultUA: string = navigator.userAgent;
+
+    beforeAll(() => {
+        defaultUA = navigator.userAgent;
+        Browser.userAgent = mobileUA;
+        rteObj = renderRTE({
+            quickToolbarSettings: {
+                table: [ 'BackgroundColor']
+            },
+            value: `<table border="1" cellpadding="0" cellspacing="0" valign="top" title="" summary="" style="direction: ltr; border-style: solid; border-width: 1pt;" class="e-rte-paste-table">\n <tbody><tr>\n  <td style="border-style: solid; border-width: 1pt; vertical-align: top; width: 6.6013in; padding: 4pt;">\n  <p style="margin: 0in; font-family: Calibri; font-size: 11pt;">Task</p>\n  </td>\n  <td style="border-style: solid; border-width: 1pt; vertical-align: top; width: 0.7763in; padding: 4pt;">\n  <p style="margin: 0in; font-family: Calibri; font-size: 11pt;">Status</p>\n  </td>\n </tr>\n <tr>\n  <td style="border-style: solid; border-width: 1pt; vertical-align: top; width: 6.6013in; padding: 4pt;">\n  <p style="margin: 0in; font-family: Calibri; font-size: 11pt;"><a href="https://dev.azure.com/EssentialStudio/Ej2-Web/_workitems/edit/944774">Bug\n  944774</a>: MAC - Table Quick Toolbar Fails to Open After Selecting Two Cells</p>\n  </td>\n  <td style="border-style: solid; border-width: 1pt; vertical-align: top; width: 0.7763in; padding: 4pt;">\n  <p style="margin: 0in; font-family: Calibri; font-size: 11pt;">Done</p>\n  </td>\n </tr>\n <tr>\n  <td style="border-style: solid; border-width: 1pt; vertical-align: top; width: 6.6013in; padding: 4pt;">\n  <p style="margin: 0in; font-family: Calibri; font-size: 11pt;"><a href="https://dev.azure.com/EssentialStudio/Ej2-Web/_workitems/edit/945054">Bug\n  945054</a>: MAC - Format Painter Pastes the content with formatting.</p>\n  </td>\n  <td style="border-style: solid; border-width: 1pt; vertical-align: top; width: 0.7763in; padding: 4pt;">\n  <p style="margin: 0in; font-family: Calibri; font-size: 11pt;">Done</p>\n  </td>\n </tr>\n <tr>\n  <td style="border-style: solid; border-width: 1pt; vertical-align: top; width: 6.6013in; padding: 4pt;">\n  <p style="margin: 0in; font-family: Calibri; font-size: 11pt;"><a href="https://dev.azure.com/EssentialStudio/Ej2-Web/_workitems/edit/945123">Bug\n  945123</a>: Table cell background color fails to apply.</p>\n  </td>\n  <td style="border-style: solid; border-width: 1pt; vertical-align: top; width: 0.8458in; padding: 4pt;">\n  <p style="margin: 0in; font-family: Calibri; font-size: 11pt;">In Progress</p>\n  </td>\n </tr>\n <tr>\n  <td style="border-style: solid; border-width: 1pt; vertical-align: top; width: 6.6208in; padding: 4pt;">\n  <p style="margin: 0in; font-family: Calibri; font-size: 11pt;"><a href="https://dev.azure.com/EssentialStudio/Ej2-Web/_workitems/edit/945130">Bug\n  945130</a>: MAC - Uppercase and Lowercase Formats Applied Properly, but\n  Selection Partially Cleared</p>\n  </td>\n  <td style="border-style: solid; border-width: 1pt; vertical-align: top; width: 0.7569in; padding: 4pt;" class="">\n  <p style="margin: 0in; font-family: Calibri; font-size: 11pt;">Validated</p>\n  </td>\n </tr>\n</tbody></table>`
+        });
+        rteEle = rteObj.element;
+    });
+
+    afterAll(() => {
+        destroy(rteObj);
+        Browser.userAgent = defaultUA;
+    });
+
+    it('Should editor works properly after Applying Background Color to Table Cell via Quick Toolbar', (done) => {
+        rteObj.focusIn();
+        setCursorPoint(document, rteObj.contentModule.getEditPanel().querySelector('td').firstChild as HTMLElement, 0);
+        const mouseDownEvent = new MouseEvent('mousedown', BASIC_MOUSE_EVENT_INIT);
+        rteObj.inputElement.dispatchEvent(mouseDownEvent);
+        rteObj.contentModule.getEditPanel().querySelector('td').dispatchEvent(mouseDownEvent);
+        const mouseUpEvent = new MouseEvent('mouseup', BASIC_MOUSE_EVENT_INIT);
+        rteObj.contentModule.getEditPanel().querySelector('td').dispatchEvent(mouseUpEvent);
+        setTimeout(() => {
+            const colorDropDown: HTMLElement = document.querySelector('.e-popup-open .e-rte-background-colorpicker .e-split-colorpicker .e-selected-color');
+            colorDropDown.click();
+            setTimeout(() => {
+                expect(rteObj.inputElement.querySelector('td').style.backgroundColor).toBe('rgb(255, 255, 0)');
+                expect(rteObj.contentModule.getDocument().querySelector('.e-colorpicker.e-modal')).toBe(null);
+                done();
+            }, 100);
+        }, 200);
     });
 });

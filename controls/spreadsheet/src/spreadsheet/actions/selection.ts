@@ -231,11 +231,13 @@ export class Selection {
         address: string, isInit?: boolean, inRange?: boolean, skipChecking?: boolean, isisRowHeightChanged?: boolean
     ): void {
         let sheetIdx: number = this.parent.activeSheetIndex;
+        const originalAddress: string = address;
         if (address.indexOf('!') > -1) {
             sheetIdx = getSheetIndex(this.parent as Workbook, getSheetNameFromAddress(address));
             address = address.substring(address.lastIndexOf('!') + 1);
         }
-        if (this.parent.activeSheetIndex === sheetIdx) {
+        const isSuspended: boolean = this.parent.paintSuspendCount > 0;
+        if (this.parent.activeSheetIndex === sheetIdx && !isSuspended) {
             address.split(' ').forEach((rng: string, idx: number) => {
                 this.selectRangeByIdx(
                     getRangeIndexes(rng), { type: 'mousedown', ctrlKey: idx !== 0 } as MouseEvent, null,
@@ -244,6 +246,9 @@ export class Selection {
             });
         } else {
             updateSelectedRange(this.parent as Workbook, address, this.parent.sheets[sheetIdx as number]);
+        }
+        if (isSuspended) {
+            this.parent.queuePaintAction('selectRange', (): void => { this.parent.notify(selectRange, { address: originalAddress }); });
         }
     }
 
@@ -476,7 +481,8 @@ export class Selection {
                     const preventEvt: boolean = e.ctrlKey && range && sheet.selectedRange.includes(getRangeAddress(range));
                     if (!preventEvt && mode === 'Multiple' && (!isTouchEnd(e) && (!isTouchStart(e) ||
                         (isTouchStart(e) && ((activeIdx[0] === rowIdx && activeIdx[1] === colIdx) ||
-                            this.isMergeActiveCell(sheet, activeIdx, rowIdx, colIdx)))) || isColSelected || isRowSelected)) {
+                            this.isMergeActiveCell(sheet, activeIdx, rowIdx, colIdx) || isFormulaEdit))) || isColSelected ||
+                        isRowSelected)) {
                         document.addEventListener(getMoveEvent().split(' ')[0], this.mouseMoveEvt);
                         if (!Browser.isPointer) {
                             if (Browser.isIos && isTouchStart(e) && e.target && (e.target as HTMLElement).classList.contains('e-cell')) {
@@ -533,7 +539,9 @@ export class Selection {
                     }
                     if (isTouchStart(e) && !(isColSelected || isRowSelected)) {
                         this.touchEvt = e;
-                        return;
+                        if (!isFormulaEdit) {
+                            return;
+                        }
                     }
                     const isMobileContextMenuTrigger: boolean = isTouchEnd(e) && this.isMobileContextMenuOpening(e);
                     if (isMobileContextMenuTrigger) {
@@ -875,7 +883,7 @@ export class Selection {
         }
         let size: number;
         for (let i: number = 0; ; i++) {
-            size = height += getRowHeight(sheet, i, (args.isCheckDPR || !args.isImage)) / this.parent.viewport.scaleY;
+            size = height += getRowHeight(sheet, i, (!args.isImage || args.isCheckDPR)) / this.parent.viewport.scaleY;
             if (top < (args.isImage ? Number(addDPRValue(size).toFixed(2)) : size) ||
                 (this.parent.scrollSettings.isFinite && i === sheet.rowCount - 1)) {
                 if (!args.isImage) { args.size = top; }
@@ -1227,8 +1235,11 @@ export class Selection {
         const sheet: SheetModel = this.parent.getActiveSheet();
         if (sheet.showHeaders) {
             if (!isMultiRange) {
-                removeClass(this.getSheetElement().querySelectorAll('.e-highlight'), 'e-highlight');
-                removeClass(this.getSheetElement().querySelectorAll('.e-prev-highlight'), 'e-prev-highlight');
+                const sheetElement: Element = this.getSheetElement();
+                if (sheetElement) {
+                    removeClass(sheetElement.querySelectorAll('.e-highlight'), 'e-highlight');
+                    removeClass(sheetElement.querySelectorAll('.e-prev-highlight'), 'e-prev-highlight');
+                }
             }
             const selectAllEle: Element = this.parent.element.getElementsByClassName('e-select-all-cell')[0];
             if (selectAllEle) {
@@ -1321,10 +1332,13 @@ export class Selection {
                 colHdr[0].previousElementSibling.classList.add('e-prev-highlight');
             }
             if (this.isRowSelected && this.isColSelected) {
-                if (sheet.isProtected && !sheet.protectSettings.selectCells) {
-                    document.getElementById(`${this.parent.element.id}_select_all`).classList.remove('e-highlight');
-                } else {
-                    document.getElementById(`${this.parent.element.id}_select_all`).classList.add('e-highlight');
+                const selectAllBtn: HTMLElement | null = document.getElementById(`${this.parent.element.id}_select_all`);
+                if (selectAllBtn) {
+                    if (sheet.isProtected && !sheet.protectSettings.selectCells) {
+                        selectAllBtn.classList.remove('e-highlight');
+                    } else {
+                        selectAllBtn.classList.add('e-highlight');
+                    }
                 }
             }
             if (selectAllEle) {

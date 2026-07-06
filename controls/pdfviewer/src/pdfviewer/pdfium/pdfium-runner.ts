@@ -1,4 +1,4 @@
-import { Rect, Size } from '@syncfusion/ej2-drawings';
+import { Rect, Size } from './../ej2-drawings/index';
 
 declare let importScripts: (...scripts: string[]) => void;
 /**

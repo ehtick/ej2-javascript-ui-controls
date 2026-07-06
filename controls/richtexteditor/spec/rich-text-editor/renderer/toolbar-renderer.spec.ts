@@ -1478,4 +1478,3 @@ describe('1017545: BulletFormatList/NumberFormatList dropdown active state with 
         }, 100);
     });
 });
-

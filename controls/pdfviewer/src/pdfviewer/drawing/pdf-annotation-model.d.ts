@@ -1,4 +1,4 @@
-import { ChildProperty, Property, Complex } from '@syncfusion/ej2-base';import { PointModel, DecoratorShapes } from '@syncfusion/ej2-drawings';import { Point } from '@syncfusion/ej2-drawings';import { Size } from '@syncfusion/ej2-drawings';import { Container } from '@syncfusion/ej2-drawings';import { PdfAnnotationType, FormFieldAnnotationType } from './enum';import { ICommentsCollection, IReviewCollection, AnnotationSelectorSettingsModel, AllowedInteraction, ItemModel, SignatureIndicatorSettingsModel, Visibility } from '../index';
+import { ChildProperty, Property, Complex } from '@syncfusion/ej2-base';import { Container, Size, Point, PointModel, DecoratorShapes } from './../ej2-drawings/index';import { PdfAnnotationType, FormFieldAnnotationType } from './enum';import { ICommentsCollection, IReviewCollection, AnnotationSelectorSettingsModel, AllowedInteraction, ItemModel, SignatureIndicatorSettingsModel, Visibility, AnnotationStatus } from '../index';
 
 /**
  * Interface for a class PdfBounds
@@ -476,6 +476,13 @@ export interface PdfAnnotationBaseModel {
     enableShapeLabel?: boolean;
 
     /**
+     * Represents the shape annotation label name
+     *
+     * @default 'None'
+     */
+    shapeLabelName?: string;
+
+    /**
      * Represents the shape annotation label content
      *
      * @default 'label'
@@ -638,6 +645,20 @@ export interface PdfAnnotationBaseModel {
      *
      */
     pageRotation?: number;
+
+    /**
+     * Represents the unique id of annotation
+     *
+     * @private
+     */
+    annotationIndex?: number;
+
+    /**
+     * Represents the unique id of annotation
+     *
+     * @private
+     */
+    status?: AnnotationStatus;
 
     /**
      * Represents the stamp icon name

@@ -297,7 +297,7 @@ export class UndoRedo {
                 if (args.isUndo) {
                     if (undoRedoArgs.action === 'resizeToFit' && !eventArgs.isCol) {
                         const maxHgts: { [key: number]: number } = sheet.maxHgts[eventArgs.index as number] as { [key: number]: number };
-                        if (maxHgts[-1 as number] && maxHgts[-1 as number] === parseFloat(eventArgs.oldHeight)) {
+                        if (maxHgts && maxHgts[-1 as number] && maxHgts[-1 as number] === parseFloat(eventArgs.oldHeight)) {
                             delete maxHgts[-1 as number];
                         }
                     }
@@ -310,7 +310,7 @@ export class UndoRedo {
                 } else {
                     if (undoRedoArgs.action === 'resizeToFit' && !eventArgs.isCol) {
                         const maxHgts: { [key: number]: number } = sheet.maxHgts[eventArgs.index as number] as { [key: number]: number };
-                        if (!maxHgts[-1 as number]) {
+                        if (maxHgts && !maxHgts[-1 as number]) {
                             setMaxHgt(sheet, eventArgs.index, -1, parseFloat(eventArgs.height));
                         }
                     }
@@ -485,6 +485,7 @@ export class UndoRedo {
     }
 
     private updateUndoRedoCollection(options: { args: CollaborativeEditArgs, isPublic?: boolean }): void {
+        if (!options.args) { return; }
         const actionList: string[] = ['clipboard', 'format', 'sorting', 'cellSave', 'resize', 'resizeToFit', 'wrap', 'hideShow', 'replace',
             'validation', 'merge', 'clear', 'conditionalFormat', 'clearCF', 'insertImage', 'imageRefresh', 'insertChart', 'deleteChart',
             'chartRefresh', 'filter', 'cellDelete', 'autofill', 'autofillWithCF', 'addDefinedName', 'removeValidation', 'removeHighlight',
@@ -1025,6 +1026,7 @@ export class UndoRedo {
                 if (cell.comment) { currentCell.comment = JSON.parse(JSON.stringify(cell.comment)); }
                 if (cell.isReadOnly) { currentCell.isReadOnly = cell.isReadOnly; }
                 if (cell.formattedText) { currentCell.formattedText = cell.formattedText; }
+                if (cell.richText) { currentCell.richText = JSON.parse(JSON.stringify(cell.richText)); }
                 if (cell.hyperlink) {
                     currentCell.hyperlink = (isObject(cell.hyperlink) ? extend({}, cell.hyperlink) : cell.hyperlink);
                 }
@@ -1122,7 +1124,8 @@ export class UndoRedo {
             }
             const currentCell: PreviousCellDetails = {
                 value: (
-                    cells[i as number].formula && (cells[i as number].formula.toUpperCase().includes('UNIQUE') || cells[i as number].formula.toUpperCase().includes('SORT'))
+                    cells[i as number].formula && (cells[i as number].formula.toUpperCase().includes('UNIQUE')
+                    || cells[i as number].formula.toUpperCase().includes('SORT'))
                 ) ? null : cells[i as number].value, formula: cells[i as number].formula
             };
             if (cells[i as number].format) { currentCell.format = cells[i as number].format; }
@@ -1161,6 +1164,7 @@ export class UndoRedo {
             }
             if (cells[i as number].isReadOnly) { currentCell.isReadOnly = cells[i as number].isReadOnly; }
             if (cells[i as number].formattedText) { currentCell.formattedText = cells[i as number].formattedText; }
+            if (cells[i as number].richText) { currentCell.richText = cells[i as number].richText; }
             setCell(cells[i as number].rowIndex, cells[i as number].colIndex, sheet, currentCell);
             evtArgs = {
                 action: 'updateCellValue', address: [cells[i as number].rowIndex, cells[i as number].colIndex,

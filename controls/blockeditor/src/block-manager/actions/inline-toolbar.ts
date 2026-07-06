@@ -135,8 +135,7 @@ export class InlineToolbarModule {
 
     private handleInlineToolbarItemClick(args: ClickEventArgs): void {
         const selectedItem: string = args.item.id;
-        if (selectedItem === 'color' || selectedItem === 'bgColor') {
-            // Do not proceed further for color and background color commands. It will be handled by the color picker.
+        if (selectedItem === 'color' || selectedItem === 'bgColor' || selectedItem === 'transform') {
             return;
         }
         if (selectedItem === 'link') {
@@ -192,7 +191,7 @@ export class InlineToolbarModule {
         selectedBlockModels.forEach((block: BlockModel) => {
             const blockElement: HTMLElement = this.parent.getBlockElementById(block.id);
             const blockRange: Range = getBlockSpecificRange(range, blockElement);
-            nodesInSelection.push(...getNodesInRange(blockRange));
+            if (blockRange) { nodesInSelection.push(...getNodesInRange(blockRange)); }
         });
 
         if (nodesInSelection.length === 0) { return {}; }

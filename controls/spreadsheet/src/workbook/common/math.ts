@@ -120,7 +120,7 @@ export function toDate(
     if (format) {
         dObj.dateObj = intl.parseDate(text as string, { format: format });
         if (dObj.dateObj) {
-            dObj.type = text.toString().indexOf(':') > -1 ? 'time' : 'datetime';
+            dObj.type = isDateTime ? 'datetime' : (text.toString().indexOf(':') > -1 ? 'time' : 'date');
             updateTime();
             dObj.isCustom = true;
         }

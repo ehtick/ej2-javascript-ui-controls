@@ -37,7 +37,7 @@ describe('PDF_Viewer_CustomToolbar', () => {
 
     afterEach(() => {
     });
-    it("1013457-Copy, cut & paste are working in the toolbar sample.", async (done: DoneFn) => {
+    it("1013457-Copy, cut & paste are working in the toolbar sample.", (done: DoneFn) => {
       try {
         const target = document.querySelector(
           "#pdfviewer_customToolbar_textLayer_0",
@@ -99,12 +99,6 @@ describe('PDF_Viewer_CustomToolbar', () => {
             (document.querySelector(
               "#pdfViewer_customToolbar",
             ) as HTMLElement | null);
-          await waitFor(() => {
-            const el =
-              document.querySelector("#pdfviewer_customToolbar") ||
-              document.querySelector("#pdfViewer_customToolbar");
-            return !!el;
-          });
           if (viewerElement && viewerElement.parentElement) {
             viewerElement.parentElement.insertBefore(box, viewerElement);
           }
@@ -127,33 +121,12 @@ describe('PDF_Viewer_CustomToolbar', () => {
           mouseMoveEvent(target, x, y);
         }
         mouseUpEvent(target, ex, ey);
-        await waitFor(
-          () =>
-            pdfviewer_customToolbar.annotationCollection &&
-            pdfviewer_customToolbar.annotationCollection.length > 0,
-        );
         rightClickEvent(target, sx + 20, sy + 20);
-        await waitFor(
-          () =>
-            (
-              document.querySelector(
-                "#pdfviewer_customToolbar_context_menu",
-              ) as HTMLElement
-            ).style.display === "block",
-        );
         const copyBtn = document.querySelector(
           "#pdfviewer_customToolbar_contextmenu_copy",
         ) as HTMLElement | null;
         mouseClickEvent(copyBtn);
         rightClickEvent(target, sx + 100, sy + 100);
-        await waitFor(
-          () =>
-            (
-              document.querySelector(
-                "#pdfviewer_customToolbar_context_menu",
-              ) as HTMLElement
-            ).style.display === "block",
-        );
         // set stored coords used by the paste fallback
         pdfviewer_customToolbar.viewerBase.mouseLeft = sx + 150;
         pdfviewer_customToolbar.viewerBase.mouseTop = sy + 100;

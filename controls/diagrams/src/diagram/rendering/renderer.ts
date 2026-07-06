@@ -351,11 +351,12 @@ export class DiagramRenderer {
      * @param {PointModel } position - Provide the PointModel value.
      * @param {boolean } isUml - Provide the boolean value.
      * @param {boolean } isSwimlane - Provide the boolean value.
+     * @param {boolean } isErEntity - Provide the boolean value for ER entity.
      * @private
      */
     public renderStackHighlighter(
         element: DiagramElement, canvas: SVGElement, transform: Transforms, isVertical: boolean, position: PointModel, isUml?: boolean,
-        isSwimlane?: boolean): void {
+        isSwimlane?: boolean, isErEntity?: boolean): void {
         const width: number = element.actualSize.width || 2;
         let x: number = element.offsetX - width * element.pivot.x;
         const height: number = element.actualSize.height || 2;
@@ -366,7 +367,7 @@ export class DiagramRenderer {
         let newPathString: string = '';
 
         y = (y + transform.ty) * transform.scale;
-        if (!isVertical) {
+        if (!isVertical && !isErEntity) {
             const d: number = height * transform.scale;
             data = 'M 10 -10 L 0 0 Z M -10 -10 L 0 0 Z M 0 0 L 0 ' + (d) + ' Z M 0  ' + (d) +
                 ' L -10  ' + (d + 10) + ' Z L 10  ' + (d + 10) + ' Z';
@@ -374,7 +375,7 @@ export class DiagramRenderer {
                 //879085- swimlane helper guides not rendered properly when zoomed
                 x += width * transform.scale;
             }
-        } else {
+        } else if (isVertical || isErEntity) {
             if (isUml) {
                 const d: number = width * transform.scale;
                 data = 'M 0 0 L ' + (d + 2) + ' 0 Z';
@@ -394,9 +395,14 @@ export class DiagramRenderer {
                     y += height;
                 }
             } else {
-                if (isSwimlane) {
+                if (isSwimlane && !isErEntity) {
                     if (position.y >= element.offsetY) {
                         //879085- swimlane helper guides not rendered properly when zoomed
+                        y += height * transform.scale;
+                    }
+                } else if (isErEntity) {
+                    // ER entity fields are always horizontal - position indicator at field top or bottom
+                    if (position.y >= element.offsetY) {
                         y += height * transform.scale;
                     }
                 }
@@ -1810,11 +1816,25 @@ export class DiagramRenderer {
             (element.style.textOverflow === 'Clip' || element.style.textOverflow === 'Ellipsis')) {
             options.y = options.y + (options.height - this.groupElement.actualSize.height) / 2;
         }
-        this.renderer.drawRectangle(canvas, options as RectAttributes, this.diagramId, undefined, undefined, parentSvg,
-                                    undefined, undefined, undefined, this, element);
-        this.renderer.drawText(
-            canvas, options as TextAttributes, parentSvg, ariaLabel, this.diagramId,
-            (element.isExport && Math.min(element.exportScaleValue.x || element.exportScaleValue.y)), this, element);
+        // 1018678: Native node text is not visible in Canvas mode but renders correctly in SVG mode
+        const isNativeNodeText: boolean = this.groupElement && this.groupElement.children &&
+            this.groupElement.children[0] instanceof DiagramNativeElement;
+        const instance: string = 'ej2_instances';
+        if (!this.isSvgMode && isNativeNodeText && !element.isExport && !(this.element[`${instance}`][0] instanceof Overview)) {
+            const nativeSvgTarget: SVGElement = parentSvg as SVGElement;
+            const nodeContentId: string | undefined = this.groupElement.id + '_content_groupElement';
+            const nativeContent: SVGElement = (nodeContentId && parentSvg
+                                               && parentSvg.getElementById(nodeContentId) as SVGElement) || nativeSvgTarget;
+            this.svgRenderer.drawRectangle(nativeContent, options as RectAttributes, this.diagramId, undefined, undefined, parentSvg);
+            this.svgRenderer.drawText(nativeContent, options as TextAttributes, parentSvg, ariaLabel, this.diagramId, undefined, this);
+            element.doWrap = false;
+        } else {
+            this.renderer.drawRectangle(canvas, options as RectAttributes, this.diagramId, undefined, undefined, parentSvg,
+                                        undefined, undefined, undefined, this, element);
+            this.renderer.drawText(
+                canvas, options as TextAttributes, parentSvg, ariaLabel, this.diagramId,
+                (element.isExport && Math.min(element.exportScaleValue.x || element.exportScaleValue.y)), this, element);
+        }
         if (this.isSvgMode) {
             element.doWrap = false;
         }
@@ -1898,8 +1918,9 @@ export class DiagramRenderer {
         // let sx: number; let sy: number;
         let imageWidth: number; let imageHeight: number;
         let sourceWidth: number; let sourceHeight: number;
-        const contentWidth: number = element.contentSize.width;
-        const contentHeight: number = element.contentSize.height;
+        const contentWidth: number = element.contentSize && element.contentSize.width ? element.contentSize.width : 0;
+        const contentHeight: number = element.contentSize && element.contentSize.height ? element.contentSize.height : 0;
+
         //1012009: Exception throws when drawing image node
         const hasValidContentSize: boolean =
             Number.isFinite(contentWidth) && contentWidth > 0 &&
@@ -1937,9 +1958,9 @@ export class DiagramRenderer {
             }
         }
         else {
-            // Fallback while image has no measured size yet
-            imageWidth = Number.isFinite(options.width) && options.width > 0 ? options.width : 1;
-            imageHeight = Number.isFinite(options.height) && options.height > 0 ? options.height : 1;
+            // Fallback while image has no measured size yet - use 50 as default (same as normal nodes)
+            imageWidth = Number.isFinite(options.width) && options.width > 0 ? options.width : 50;
+            imageHeight = Number.isFinite(options.height) && options.height > 0 ? options.height : 50;
         }
         options.width = imageWidth;
         options.height = imageHeight;
@@ -2518,14 +2539,16 @@ export class DiagramRenderer {
                 const instance: string = 'ej2_instances';
                 const diagram: Diagram = diagramElement[`${instance}`][0];
                 const negativeRegion: boolean = diagram.scroller.isNegativeOffset;
+                // Bug-981889: Prevent selector drift when dragging symbol with auto-scroll enabled and in negative region when pageSettings is enabled
+                // Account for scale when calculating transform difference
+                const deltaX: number = this.transform.x - (transform.tx * transform.scale);
+                const deltaY: number = this.transform.y - (transform.ty * transform.scale);
+                const hasTransformDelta: boolean = Math.abs(deltaX) > 0.001 || Math.abs(deltaY) > 0.001;
                 //1011407 - Selector of already‑selected node moves unexpectedly when dragging a node across the negative region of the diagram
-                if (diagram && diagram.currentSymbol && negativeRegion) {
+                if (diagram && diagram.currentSymbol && (negativeRegion || (hasTransformDelta && diagram.scrollSettings.canAutoScroll))) {
                     const selectorContainer: SVGElement = this.adornerSvgLayer.getElementById('diagram_SelectorElement') as SVGElement;
                     if (selectorContainer) {
                         const selectorElement: SVGElement[] = Array.from(selectorContainer.children) as SVGElement[];
-                        // Account for scale when calculating transform difference
-                        const deltaX: number = this.transform.x - (transform.tx * transform.scale);
-                        const deltaY: number = this.transform.y - (transform.ty * transform.scale);
                         // eslint-disable-next-line security/detect-unsafe-regex
                         const translateRegex: RegExp = /translate\(\s*([^,)]+)(?:\s*,\s*([^)]+))?\s*\)/;
 

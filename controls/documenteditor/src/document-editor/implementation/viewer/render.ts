@@ -2309,9 +2309,11 @@ private calculatePathBounds(data: string): Rect {
         let baselineAlignment: BaselineAlignment = format.hasValue('baselineAlignment') ? format.baselineAlignment : breakCharacterFormat.baselineAlignment;
         bold = format.hasValue('bold') ? format.bold ? 'bold' : '' : breakCharacterFormat.bold ? 'bold' : '';
         italic = format.hasValue('italic') ? format.italic ? 'italic' : '' : breakCharacterFormat.italic ? 'italic' : '';
-        if (elementBox.paragraph.paragraphFormat.listFormat.listLevel.listLevelPattern === "Bullet") {
-            italic = '';
+        if (elementBox.paragraph.paragraphFormat.listFormat.listLevel.listLevelPattern === "Bullet" && !format.bold) {
             bold = '';
+        }
+        if (elementBox.paragraph.paragraphFormat.listFormat.listLevel.listLevelPattern === "Bullet" && !format.italic) {
+            italic = '';
         }
         fontSize = fontSize === 0 ? 0.5 : fontSize / (baselineAlignment === 'Normal' ? 1 : 1.5);
         fontSize = this.isPrinting ? fontSize : fontSize * this.documentHelper.zoomFactor;

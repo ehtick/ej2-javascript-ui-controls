@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/material' as *;
-@forward 'ej2-base/styles/definition/material';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $numeric-skin-name: 'material' !default;
 $numeric-input-icon-size: 12px !default;
 $numeric-input-bigger-icon-size: 12px !default;
@@ -20,3 +20,4 @@ $numeric-bigger-prepend-outline-label-bottom-top: -6px !default;
 $numeric-bigger-prepend-outline-label-top-top: -6px !default;
 $numeric-bigger-prepend-filled-label-bottom-top: 18px !default;
 $numeric-bigger-prepend-filled-label-top-top: 10px !default;
+$numeric-box-full-border-color: rgba($grey-light-font, .42) !default;

@@ -24,7 +24,7 @@ export interface TextBoxModel extends ComponentModel{
     /**
      * Sets the content of the TextBox.
      *
-     * @default null
+     * @default ''
      */
     value?: string;
 
@@ -109,6 +109,13 @@ export interface TextBoxModel extends ComponentModel{
      * @default null
      */
     width?: number | string;
+
+    /**
+     * Specifies the maximum number of characters allowed in TextBox.
+     *
+     * @aspType int?
+     */
+    maxLength?: number;
 
     /**
      * Specifies the HTML template string for custom elements to prepend to the TextBox input.

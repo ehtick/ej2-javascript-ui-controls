@@ -1,5 +1,4 @@
-@use 'ej2-base/styles/definition/material3' as *;
-@forward 'ej2-base/styles/definition/material3';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 
 $card-img-brdr-radious: $border-radius-50p !default;
 $card-brdr-radious: $radius-12 !default;

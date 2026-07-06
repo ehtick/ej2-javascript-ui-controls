@@ -91,6 +91,7 @@ export class Edit {
         this.parent.grid.on(events.beforeBatchCancel, this.beforeBatchCancel, this);
         this.parent.grid.on('reset-edit-props', this.resetIsOnBatch, this);
         this.parent.grid.on('get-row-position', this.getRowPosition, this);
+        this.parent.grid.on('last-row-validation', this.lastRowValidation, this);
     }
     private gridDblClick(e: MouseEvent): void {
         this.doubleClickTarget = e.target as HTMLElement;
@@ -105,6 +106,7 @@ export class Edit {
                 /* eslint-disable-next-line */
                 (this.parent.grid.getDataRows()[rowIndex]as HTMLTableRowElement).dataset.uid = (this.parent.grid.contentModule.getRows()[rowIndex] as any).uid;
             }
+            this.doubleClickTarget = null;
         }
     }
     private getRowPosition(addArgs: { newRowPosition: RowPosition, addRowIndex: number, dataRowIndex: number }): void {
@@ -148,6 +150,7 @@ export class Edit {
         this.parent.grid.off('dblclick', this.gridDblClick);
         this.parent.grid.off('reset-edit-props', this.resetIsOnBatch);
         this.parent.grid.off('get-row-position', this.getRowPosition);
+        this.parent.grid.off('last-row-validation', this.lastRowValidation);
         //this.parent.grid.off('click', this.gridSingleClick);
     }
     /**
@@ -297,7 +300,7 @@ export class Edit {
     }
 
     private resetIsOnBatch(): void {
-        if (this.parent.enableVirtualization && this.parent.editSettings.mode === 'Cell') {
+        if (this.parent.enableVirtualization && this.parent.editSettings.mode === 'Cell' && !this.parent['isGantt']) {
             this.isOnBatch = false;
             this.updateGridEditMode('Normal');
         }
@@ -399,8 +402,8 @@ export class Edit {
 
     private customCellSave(args: ActionEventArgs): void {
         if (isCountRequired(this.parent) && this.parent.editSettings.mode === 'Cell' && args.action === 'edit') {
-            this.updateCell(args, args.rowIndex);
-            this.afterCellSave(args, args.row as HTMLTableRowElement);
+            this.updateCell(args as CellSaveArgs, args.rowIndex);
+            this.afterCellSave(args as CellSaveArgs, args.row as HTMLTableRowElement);
         }
     }
 
@@ -722,7 +725,9 @@ export class Edit {
                 seletedRow: 0
             };
             this.beginAddEdit(args);
-            this.batchEditModule['batchAddRowRecord'].push(this.batchEditModule['addRowRecord']);
+            if (this.batchEditModule['addRowRecord']) {
+                this.batchEditModule['batchAddRowRecord'].push(this.batchEditModule['addRowRecord']);
+            }
             this.batchEditModule['batchAddedRecords'].push(args['data']);
         } else if (this.parent.editSettings.mode === 'Batch' && this.isAddedMultipleRowsByMethod && (this.parent.editSettings.newRowPosition === 'Above' || this.parent.editSettings.newRowPosition === 'Below')) {
             index = this.multipleRowIndex;
@@ -741,7 +746,9 @@ export class Edit {
                         seletedRow: 0
                     };
                     this.beginAddEdit(args);
-                    this.batchEditModule['batchAddRowRecord'].push(this.batchEditModule['addRowRecord']);
+                    if (this.batchEditModule['addRowRecord']) {
+                        this.batchEditModule['batchAddRowRecord'].push(this.batchEditModule['addRowRecord']);
+                    }
                     this.batchEditModule['batchAddedRecords'].push(args['data']);
                 }
             }
@@ -1134,5 +1141,37 @@ export class Edit {
             this.parent.grid.editModule.editModule['cellDetails'].rowIndex = parseInt(this.parent.getRows()[this.parent.grid.editModule.editModule['cellDetails'].rowIndex].getAttribute('aria-rowIndex'), 10) - 1;
         }
         this.parent.grid.editModule.closeEdit();
+    }
+
+    /**
+     * Handles TreeGrid-specific validation for tooltip positioning on last row.
+     *
+     * @param {Object} args - Validation flags
+     * @param {boolean} args.isBeginEdit - Whether editing has begun
+     * @param {boolean} args.isAddedRow - Whether the row is newly added
+     * @param {boolean} args.isLastRow - Whether this is the last row
+     * @param {boolean} args.validationPositionResult - Validation position result
+     * @returns {void}
+     * @hidden
+     */
+    private lastRowValidation(args: {
+        isBeginEdit: boolean;
+        isAddedRow: boolean;
+        isLastRow: boolean;
+        validationPositionResult: boolean;
+    }): void {
+        if (!this.parent.enableVirtualization) {
+            return;
+        }
+        const { isBeginEdit, isAddedRow, isLastRow } = args;
+        const newRowPosition: string = this.parent.editSettings.newRowPosition;
+
+        if ((newRowPosition === 'Child' || newRowPosition === 'Below' || newRowPosition === 'Above') &&
+            isAddedRow && isLastRow) {
+            args.validationPositionResult = true;
+        }
+        else if (isBeginEdit && isLastRow) {
+            args.validationPositionResult = true;
+        }
     }
 }

@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/highcontrast' as *;
-@forward 'ej2-base/styles/definition/highcontrast';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $navigation-arrow-background: $bg-base-0 !default;
 $navigation-icon-background-hover: $selection-border !default;
 $navigation-icon-border-hover: rgba(255, 217, 57, .5) !default;

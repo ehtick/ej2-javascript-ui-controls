@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/material3-dark' as *;
-@forward 'ej2-base/styles/definition/material3-dark';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $slider-height: 4px !default;
 $slider-handle-height: 20px !default;
 $slider-handle-width: 20px !default;

@@ -27,7 +27,7 @@ import { setLinkModel, setImage, setChart, setAutoFill, BeforeCellUpdateArgs, up
 import { deleteChart, finiteAlert, formulaBarOperation, processSheetComments, processSheetNotes } from '../../spreadsheet/common/event';
 import { beginAction, WorkbookFindAndReplace, getRangeIndexes, workbookEditOperation, clearCFRule, CFArgs, setCFRule } from '../index';
 import { WorkbookConditionalFormat } from '../actions/conditional-formatting';
-import { AutoFillSettingsModel } from '../..';
+import { AutoFillSettingsModel, Spreadsheet } from '../..';
 import { CheckCellValidArgs, setVisibleMergeIndex, calculateFormula, dataSourceChanged, ExtendedChartModel } from '../common/index';
 import { IFormulaColl } from '../../calculate/common/interface';
 
@@ -672,7 +672,21 @@ export class Workbook extends Component<HTMLElement> implements INotifyPropertyC
         const sheet: SheetModel = this.getActiveSheet();
         if (sheet && (!sheet.isProtected || sheet.protectSettings.formatCells)) {
             range = range || sheet.selectedRange;
-            this.notify(setCellFormat, { style: style, range: range, refreshRibbon: range.indexOf(sheet.activeCell) > -1 ? true : false });
+            const args: SetCellFormatArgs = {
+                style: style,
+                range: range,
+                refreshRibbon: range.indexOf(sheet.activeCell) > -1 ? true : false,
+                modelUpdateOnly: false,
+                onActionUpdate: false
+            };
+
+            if (this.paintSuspendCount > 0) {
+                args.modelUpdateOnly = true;
+                this.notify(setCellFormat, args);
+                return;
+            }
+
+            this.notify(setCellFormat, args);
         }
     }
 
@@ -850,7 +864,7 @@ export class Workbook extends Component<HTMLElement> implements INotifyPropertyC
     public setBorder(style: CellStyleModel, range?: string, type?: BorderType, isUndoRedo?: boolean): void {
         this.notify(setCellFormat, <SetCellFormatArgs>{
             style: style, borderType: type, range:
-                range || this.getActiveSheet().selectedRange, isUndoRedo: isUndoRedo
+                range || this.getActiveSheet().selectedRange, isUndoRedo: isUndoRedo, modelUpdateOnly: this.paintSuspendCount > 0
         });
     }
 
@@ -866,8 +880,10 @@ export class Workbook extends Component<HTMLElement> implements INotifyPropertyC
      * @returns {void} - To insert rows in to the spreadsheet.
      */
     public insertRow(startRow?: number | RowModel[], endRow?: number, sheet?: number | string): void {
-        this.notify(insertModel, <InsertDeleteModelArgs>{ model: this.getSheetModel(sheet), start: startRow, end: endRow,
-            modelType: 'Row', insertType: 'below' });
+        if ((typeof startRow !== 'number' || startRow >= 0) && (isNullOrUndefined(endRow) || endRow >= 0)) {
+            this.notify(insertModel, <InsertDeleteModelArgs>{ model: this.getSheetModel(sheet), start: startRow, end: endRow,
+                modelType: 'Row', insertType: 'below' });
+        }
     }
 
     /**
@@ -882,8 +898,10 @@ export class Workbook extends Component<HTMLElement> implements INotifyPropertyC
      * @returns {void} - To insert columns in to the spreadsheet.
      */
     public insertColumn(startColumn?: number | ColumnModel[], endColumn?: number, sheet?: number | string): void {
-        this.notify(insertModel, <InsertDeleteModelArgs>{ model: this.getSheetModel(sheet), start: startColumn, end: endColumn,
-            modelType: 'Column', insertType: 'after' });
+        if ((typeof startColumn !== 'number' || startColumn >= 0) && (isNullOrUndefined(endColumn) || endColumn >= 0)) {
+            this.notify(insertModel, <InsertDeleteModelArgs>{ model: this.getSheetModel(sheet), start: startColumn, end: endColumn,
+                modelType: 'Column', insertType: 'after' });
+        }
     }
 
     /**
@@ -896,7 +914,7 @@ export class Workbook extends Component<HTMLElement> implements INotifyPropertyC
      * @returns {void} - To insert sheets in to the spreadsheet.
      */
     public insertSheet(startSheet?: number | SheetModel[], endSheet?: number): void {
-        if (this.isProtected) {
+        if (this.isProtected || ((typeof startSheet === 'number' && startSheet < 0) || endSheet < 0)) {
             return;
         }
         this.notify(insertModel, <InsertDeleteModelArgs>{ model: this, start: startSheet, end: endSheet, modelType: 'Sheet' });
@@ -974,7 +992,7 @@ export class Workbook extends Component<HTMLElement> implements INotifyPropertyC
             return this.getActiveSheet();
         } else {
             const index: number = typeof sheet === 'string' ? getSheetIndex(this, sheet) : sheet;
-            if (isNullOrUndefined(index) || index >= this.sheets.length) {
+            if (isNullOrUndefined(index) || index < 0 || index >= this.sheets.length) {
                 return null;
             }
             return this.sheets[index as number];
@@ -1493,22 +1511,24 @@ export class Workbook extends Component<HTMLElement> implements INotifyPropertyC
                 rules.value2 = parseLocaleNumber([rules.value2], this)[0];
             }
         }
-        this.notify(events.cellValidation, { rules: rules, range: range || getUpdatedRange(this.getActiveSheet()) });
+        this.notify(events.cellValidation, {
+            rules: rules, range: range || getUpdatedRange(this.getActiveSheet()), modelUpdateOnly: this.paintSuspendCount > 0
+        });
     }
 
     public removeDataValidation(range?: string): void {
         this.notify(events.cellValidation, {
             range: range || getUpdatedRange(this.getActiveSheet()),
-            isRemoveValidation: true
+            isRemoveValidation: true, modelUpdateOnly: this.paintSuspendCount > 0
         });
     }
 
     public addInvalidHighlight(range?: string): void {
-        this.notify(events.addHighlight, { range: range });
+        this.notify(events.addHighlight, { range: range, modelUpdateOnly: this.paintSuspendCount > 0 });
     }
 
     public removeInvalidHighlight(range?: string): void {
-        this.notify(events.removeHighlight, { range: range });
+        this.notify(events.removeHighlight, { range: range, modelUpdateOnly: this.paintSuspendCount > 0 });
     }
 
     /**
@@ -1565,7 +1585,11 @@ export class Workbook extends Component<HTMLElement> implements INotifyPropertyC
             parseLocaleNumber(cfValues, this);
             conditionalFormat.value = cfValues.join(',');
         }
-        this.notify(setCFRule, <CFArgs>{ cfModel: conditionalFormat });
+        const isSuspended: boolean = this.paintSuspendCount > 0;
+        if (isSuspended) {
+            (this as unknown as Spreadsheet).pendingPaintRefresh = 'fullSheet';
+        }
+        this.notify(setCFRule, <CFArgs>{ cfModel: conditionalFormat, modelUpdateOnly: isSuspended });
     }
 
     public clearConditionalFormat(range: string): void {
@@ -1578,6 +1602,8 @@ export class Workbook extends Component<HTMLElement> implements INotifyPropertyC
             clearCFArgs.range = range.substring(lastIndex + 1);
             clearCFArgs.sheetIdx = getSheetIndex(this, range.substring(0, lastIndex));
         }
+        clearCFArgs.isClear = true;
+        clearCFArgs.modelUpdateOnly = this.paintSuspendCount > 0;
         this.notify(clearCFRule, clearCFArgs);
     }
 
@@ -1716,26 +1742,36 @@ export class Workbook extends Component<HTMLElement> implements INotifyPropertyC
             delete cellModel.formattedText;
         }
         if (sheetIdx === this.activeSheetIndex) {
-            const eventArgs: { sheet: SheetModel, cell: CellModel, rowIdx: number, colIdx: number, td?: HTMLElement,
-                validation?: ValidationModel, isRefresh?: boolean } = { sheet: sheet, cell: cellModel, rowIdx: range[0], colIdx: range[1] };
-            if (cellModel.rowSpan > 1 || cellModel.colSpan > 1) {
-                setVisibleMergeIndex(eventArgs);
-            }
-            const cellEle: HTMLElement = !isHiddenRow(sheet, eventArgs.rowIdx) && !isHiddenCol(sheet, eventArgs.colIdx) &&
-                this.getCell(eventArgs.rowIdx, eventArgs.colIdx);
-            if (cellEle) {
-                this.serviceLocator.getService<{ refresh: Function }>('cell').refresh(
-                    eventArgs.rowIdx, eventArgs.colIdx, true, cellEle, valChange, valChange, false, false, undefined, undefined,
-                    undefined, isPublic);
-            }
-            const activeCellIdx: number[] = getCellIndexes(sheet.activeCell);
-            if (range[0] === activeCellIdx[0] && range[1] === activeCellIdx[1]) {
-                this.notify(refreshRibbonIcons, null);
-                this.notify(formulaBarOperation, { action: 'refreshFormulabar', cell: cellModel });
-                if (cellEle && cell.validation) {
-                    eventArgs.validation = cellModel.validation; eventArgs.td = cellEle; eventArgs.isRefresh = true;
-                    this.notify(addListValidationDropdown, eventArgs);
+            const isSuspended: boolean = this.paintSuspendCount > 0;
+            const refreshFn: () => void = () => {
+                const eventArgs: {
+                    sheet: SheetModel, cell: CellModel, rowIdx: number, colIdx: number, td?: HTMLElement,
+                    validation?: ValidationModel, isRefresh?: boolean }
+                    = { sheet: sheet, cell: cellModel, rowIdx: range[0], colIdx: range[1] };
+                if (cellModel.rowSpan > 1 || cellModel.colSpan > 1) {
+                    setVisibleMergeIndex(eventArgs);
                 }
+                const cellEle: HTMLElement = !isHiddenRow(sheet, eventArgs.rowIdx) && !isHiddenCol(sheet, eventArgs.colIdx) &&
+                    this.getCell(eventArgs.rowIdx, eventArgs.colIdx);
+                if (cellEle) {
+                    this.serviceLocator.getService<{ refresh: Function }>('cell').refresh(
+                        eventArgs.rowIdx, eventArgs.colIdx, true, cellEle, valChange, valChange, false, false, undefined, undefined,
+                        undefined, isPublic);
+                }
+                const activeCellIdx: number[] = getCellIndexes(sheet.activeCell);
+                if (range[0] === activeCellIdx[0] && range[1] === activeCellIdx[1]) {
+                    this.notify(refreshRibbonIcons, null);
+                    this.notify(formulaBarOperation, { action: 'refreshFormulabar', cell: cellModel });
+                    if (cellEle && cell.validation) {
+                        eventArgs.validation = cellModel.validation; eventArgs.td = cellEle; eventArgs.isRefresh = true;
+                        this.notify(addListValidationDropdown, eventArgs);
+                    }
+                }
+            };
+            if (!isSuspended) {
+                refreshFn();
+            } else {
+                (this as unknown as Spreadsheet).queuePaintAction('updateCellDetails', refreshFn);
             }
         }
         if (!valChange && cell.comment || cell.notes) {
@@ -1770,9 +1806,7 @@ export class Workbook extends Component<HTMLElement> implements INotifyPropertyC
      */
     public updateRange(range: RangeModel, sheetIndex: number = this.activeSheetIndex): void {
         const sheet: SheetModel = getSheet(this, sheetIndex);
-        if (!sheet) {
-            return;
-        }
+        if (!sheet || !range) { return; }
         if (!range.startCell) {
             range.startCell = 'A1';
         }
@@ -1786,6 +1820,9 @@ export class Workbook extends Component<HTMLElement> implements INotifyPropertyC
         this.setSheetPropertyOnMute(sheet, 'ranges', sheet.ranges);
         if (range.dataSource) {
             this.notify(dataSourceChanged, { sheetIdx: sheetIndex, rangeIdx: sheet.ranges.length - 1, changedData: range.dataSource });
+        }
+        if (this.paintSuspendCount > 0) {
+            (this as unknown as Spreadsheet).pendingPaintRefresh = 'fullSheet';
         }
     }
 
@@ -1860,12 +1897,14 @@ export class Workbook extends Component<HTMLElement> implements INotifyPropertyC
      * @returns {void} - To perform autofill action based on the specified range in spreadsheet.
      */
     public autoFill(fillRange: string, dataRange?: string,  direction?: AutoFillDirection, fillType?: AutoFillType): void {
-        const options: { dataRange: string, fillRange: string, direction: AutoFillDirection, fillType: AutoFillType } = {
+        const options: { dataRange: string, fillRange: string, direction: AutoFillDirection, fillType: AutoFillType,
+            modelUpdateOnly?: boolean } = {
             dataRange: dataRange ? dataRange : this.getActiveSheet().selectedRange,
             fillRange: fillRange,
             direction: direction ? direction : 'Down',
             fillType: fillType ? fillType : 'FillSeries'
         };
+        options.modelUpdateOnly = this.paintSuspendCount > 0;
         this.notify(setAutoFill, options);
     }
 
@@ -1878,7 +1917,9 @@ export class Workbook extends Component<HTMLElement> implements INotifyPropertyC
      * @returns {void} - To set the chart in spreadsheet.
      */
     public insertChart(chart?: ChartModel[]): void {
-        this.notify(setChart, { chart: chart });
+        if (chart) {
+            this.notify(setChart, { chart: chart });
+        }
     }
 
     /**
@@ -1925,6 +1966,7 @@ export class Workbook extends Component<HTMLElement> implements INotifyPropertyC
      */
     public addCustomFunction(functionHandler: string | Function, functionName?: string,
                              formulaDescription?: string, category?: string): void {
+        if (!functionHandler) { return; }
         functionName = functionName ? functionName : typeof functionHandler === 'string' ? functionHandler :
             functionHandler.name.replace('bound ', '');
         const eventArgs: { [key: string]: Object } = {
@@ -1979,12 +2021,17 @@ export class Workbook extends Component<HTMLElement> implements INotifyPropertyC
      */
     public freezePanes(row: number = 1, column: number = 1, sheet?: number | string): void {
         const model: SheetModel = this.getSheetModel(sheet);
-        if (!this.allowFreezePane || (model.frozenRows === row && model.frozenColumns === column)) {
+        if (!this.allowFreezePane || !model || (model.frozenRows === row && model.frozenColumns === column)) {
             return;
         }
+        const isSuspended: boolean = this.paintSuspendCount > 0;
         this.setSheetPropertyOnMute(model, 'frozenRows', row);
         this.setSheetPropertyOnMute(model, 'frozenColumns', column);
         this.updateTopLeftCell();
+        if (isSuspended) {
+            (this as unknown as Spreadsheet).pendingPaintRefresh = 'fullSheet';
+            return;
+        }
         if (model.id === this.getActiveSheet().id && this.getModuleName() === 'spreadsheet') {
             /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
             (<any>this).renderModule.refreshSheet();
@@ -2263,5 +2310,31 @@ export class Workbook extends Component<HTMLElement> implements INotifyPropertyC
         if (!formatType || formatType === 'General') {
             setCell(rowIndex, colIndex, sheet, { format: getFormatFromType('ShortDate') }, true);
         }
+    }
+
+    /**
+     * UI actions that must run only after painting resumes and DOM is stable.
+     *
+     * @hidden
+     */
+    protected pendingPaintUiActions: Array<{ actionName: string, execute: () => void }> = [];
+
+    /**
+     * Tracks nested paint suspension requests.
+     *
+     * @hidden
+     */
+    public paintSuspendCount: number = 0;
+
+    /**
+     * Queues a UI action to run after `resumeRefresh` completes.
+     *
+     * @param {string} actionName - The deferred action name.
+     * @param {Function} execute - The action to execute after paint resumes.
+     * @returns {void} - Queues the deferred UI action.
+     * @hidden
+     */
+    public queuePaintAction(actionName: string, execute: () => void): void {
+        this.pendingPaintUiActions.push({ actionName: actionName, execute: execute });
     }
 }

@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/tailwind3' as *;
-@forward 'ej2-base/styles/definition/tailwind3';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $acrdn-skin: 'tailwind3' !default;
 $acrdn-icon-font-size: $text-lg !default;
 $acrdn-slct-header-font-weight: $font-weight-medium;

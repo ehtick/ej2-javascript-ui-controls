@@ -395,7 +395,7 @@ describe('Link Module', () => {
             destroy(rteObj);
         });
 
-        it('link dialog', () => {
+        it('link dialog', (done: DoneFn) => {
             expect(rteObj.toolbarSettings.items[10]).toBe("CreateLink");
             (rteObj.contentModule.getEditPanel() as HTMLElement).focus();
             let args: any = { preventDefault: function () { }, originalEvent: { target: rteObj.toolbarModule.getToolbarElement() }, item: { command: 'Links', subCommand: 'CreateLink' } };
@@ -482,6 +482,7 @@ describe('Link Module', () => {
                 (<any>rteObj).linkModule.linkDialog(evnArg);
                 eventsArgs = { which: 2, pageX: 50, pageY: 300, ctrlKey: false, target: selectParent[0], preventDefault: function () { } };
                 (<any>rteObj).linkModule.editAreaClickHandler({ args: eventsArgs });
+                done();
             }, 0);
         });
     });
@@ -2398,10 +2399,10 @@ describe('Link Module', () => {
         });
         it('Open the Link Quick Toolbar using Keyboard Shortcut', (done: Function) => {
             (rteObj.contentModule.getEditPanel() as HTMLElement).focus();
-            const link = rteObj.inputElement.querySelector('a');
+            const link =  rteObj.inputElement.querySelector('a');
             setCursorPoint(link.firstChild, 1);
             link.dispatchEvent(INIT_MOUSEDOWN_EVENT);
-            const shortCutKeyDownEvent: KeyboardEvent = new KeyboardEvent('keydown', TOOLBAR_FOCUS_SHORTCUT_EVENT_INIT);
+            const shortCutKeyDownEvent: KeyboardEvent =  new KeyboardEvent('keydown', TOOLBAR_FOCUS_SHORTCUT_EVENT_INIT);
             link.dispatchEvent(shortCutKeyDownEvent);
             setTimeout(() => {
                 expect(document.querySelectorAll('.e-rte-quick-popup')[0].id.indexOf('Link_Quick_Popup') >= 0).toBe(true);

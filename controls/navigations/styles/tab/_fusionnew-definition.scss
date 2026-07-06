@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/fusionnew' as *;
-@forward 'ej2-base/styles/definition/fusionnew';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $tab-skin: 'bootstrap5' !default;
 $tab-font-family: $font-family !default;
 $tab-big-vertical-nav-arrow-font-size: 12px !default;

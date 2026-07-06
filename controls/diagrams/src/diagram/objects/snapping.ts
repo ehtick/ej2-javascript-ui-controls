@@ -1166,14 +1166,10 @@ export class Snapping {
     public removeGuidelines(diagram: Diagram): void {
         const selectionRect: SVGElement =
             (this.getAdornerLayerSvg() as SVGSVGElement).getElementById('_SnappingLines') as SVGElement;
-        const line: SVGElement =
-            (this.getAdornerLayerSvg() as SVGSVGElement).getElementById('pivotLine') as SVGElement;
         if (selectionRect) {
             selectionRect.parentNode.removeChild(selectionRect);
         }
-        if (line) {
-            line.parentNode.removeChild(line);
-        }
+        // Only clean up transient snapping guidelines; pivot line lifecycle is managed by selection state (see event-handlers.ts)
     }
 
     //Sort the objects by its distance

@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/fusionnew' as *;
-@forward 'ej2-base/styles/definition/fusionnew';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $acrdn-skin: 'bootstrap5' !default;
 $acrdn-icon-font-size: $text-lg !default;
 $acrdn-slct-header-font-weight: $font-weight-normal;

@@ -348,3 +348,36 @@ describe('TreeGrid clipboard copy testing', () => {
         destroy(gridObj);
     });
 });
+
+describe('Clipboard uncovered branches', () => {
+    let gridObj: TreeGrid;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: sampleData,
+            childMapping: 'subtasks',
+            treeColumnIndex: 1,
+            columns: [
+                { field: 'taskID', headerText: 'Task ID', textAlign: 'Right', width: 80 },
+                { field: 'taskName', headerText: 'Task Name', width: 200 },
+                { field: 'startDate', headerText: 'Start Date', textAlign: 'Right', width: 100, format: { skeleton: 'yMd', type: 'date' } },
+                { field: 'duration', headerText: 'Duration', textAlign: 'Right', width: 90 },
+                { field: 'progress', headerText: 'Progress', textAlign: 'Right', width: 90 }
+            ]
+        }, done);
+    });
+
+    it('iOS path: calls setSelectionRange when userAgent indicates iPad/iPhone', () => {
+        const oldUA = (Browser as any).userAgent;
+        try {
+            (Browser as any).userAgent = 'Mozilla/5.0 (iPad; CPU OS 13_2 like Mac OS X)';
+            gridObj.selectRow(0);
+            gridObj.copy();
+        } finally {
+            (Browser as any).userAgent = oldUA;
+        }
+    });
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});

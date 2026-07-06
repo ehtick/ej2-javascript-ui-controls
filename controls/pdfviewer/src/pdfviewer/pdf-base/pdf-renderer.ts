@@ -1,9 +1,9 @@
 import { PageRenderer, FormFieldsBase, AnnotationRenderer, PdfRenderedFields, SignatureBase, BookmarkStyles, BookmarkDestination, BookmarkBase, AnnotBounds } from './index';
 import { Browser, isBlazor, isNullOrUndefined } from '@syncfusion/ej2-base';
 import { DataFormat, PdfAnnotationExportSettings, PdfBookmark, PdfBookmarkBase, PdfDocument, PdfPage, PdfRotationAngle, PdfTextStyle, PdfDocumentLinkAnnotation, PdfTextWebLinkAnnotation, PdfUriAnnotation, PdfDestination, PdfPermissionFlag, PdfFormFieldExportSettings, _bytesToString, _encode, PdfPageSettings, PdfSignatureField, PdfForm, PdfPageImportOptions, _decode } from '@syncfusion/ej2-pdf';
-import { ExtractTextOption, PdfViewer, PdfViewerBase, SearchResultModel } from '../index';
+import { AnnotationStatus, ExtractTextOption, PdfViewer, PdfViewerBase, SearchResultModel } from '../index';
 import { TextDataSettingsModel } from '../pdfviewer-model';
-import { Rect, Size } from '@syncfusion/ej2-drawings';
+import { Rect, Size } from './../ej2-drawings/index';
 import { PdfViewerUtils, TaskPriorityLevel } from '../base/pdfviewer-utlis';
 import { PdfRedactor } from '@syncfusion/ej2-pdf-data-extract';
 
@@ -392,6 +392,7 @@ export class PdfRenderer {
             const annotationRenderer: AnnotationRenderer = new AnnotationRenderer(this.pdfViewer, this.pdfViewerBase);
             const formfields: FormFieldsBase = new FormFieldsBase(this.pdfViewer, this.pdfViewerBase);
             // create object for form fields signature
+            this.updateAnnotations(jsonObject);
             annotationRenderer.removeSignatureTypeAnnot(jsonObject, this.loadedDocument);
             this.orderAnnotations(jsonObject);
             if (Object.prototype.hasOwnProperty.call(jsonObject, 'isFormFieldAnnotationsExist') && jsonObject.isFormFieldAnnotationsExist) {
@@ -787,147 +788,324 @@ export class PdfRenderer {
         if (Object.prototype.hasOwnProperty.call(jsonObject, 'isAnnotationsExist') && jsonObject.isAnnotationsExist) {
             if (Object.prototype.hasOwnProperty.call(jsonObject, 'annotationCollection')) {
                 const annotationDetails: any = JSON.parse(jsonObject.annotationCollection);
-                const count: number = annotationDetails.length;
-                for (let i: number = 0; i < count; i++) {
-                    let annotationType: any = annotationDetails[parseInt(i.toString(), 10)].shapeAnnotationType;
-                    let details: any = annotationDetails[parseInt(i.toString(), 10)];
-                    if (Object.prototype.hasOwnProperty.call(details, 'calibrate') && (details['shapeAnnotationType'] === 'Circle' || details['shapeAnnotationType'] === 'Line' || details['shapeAnnotationType'] === 'Polygon' || details['shapeAnnotationType'] === 'Polyline')) {
-                        annotationType = 'measureShapes';
-                    }
-                    else if (!(Object.prototype.hasOwnProperty.call(details, 'calibrate')) && (details['shapeAnnotationType'] === 'Line' || details['shapeAnnotationType'] === 'Circle' || details['shapeAnnotationType'] === 'Polygon' || details['shapeAnnotationType'] === 'Square' || details['shapeAnnotationType'] === 'Polyline')) {
-                        annotationType = 'shapeAnnotation';
-                    }
-                    switch (annotationType) {
-                    case 'textMarkup':
-                        if (Object.prototype.hasOwnProperty.call(jsonObject, 'textMarkupAnnotations')) {
-                            const textMarkupDetails: any = JSON.parse(jsonObject.textMarkupAnnotations);
-                            const pageNumber: string = details['pageNumber'].toString();
-                            const annotationCount: { [key: string]: object } = textMarkupDetails[parseInt(pageNumber, 10)];
-                            const pageAnnotations: any = annotationCount;
-                            const textMarkup: any = pageAnnotations.find((obj: any) => obj['annotName'].toString() === details['annotationId'].toString());
-                            if (textMarkup) {
-                                details = textMarkup;
-                                annotationRenderer.addTextMarkup(details, this.loadedDocument);
-                            }
-                        }
-                        break;
-                    case 'shapeAnnotation':
-                        if (Object.prototype.hasOwnProperty.call(jsonObject, 'shapeAnnotations')) {
-                            const shapeDetails: any = JSON.parse(jsonObject.shapeAnnotations);
-                            const pageNumber: string = details['pageNumber'].toString();
-                            const annotationCount: { [key: string]: object } = shapeDetails[parseInt(pageNumber, 10)];
-                            const pageAnnotations: any = annotationCount;
-                            const page: PdfPage = this.loadedDocument.getPage(parseInt(pageNumber, 10));
-                            const shape: any = pageAnnotations.find((obj: any) => obj['annotName'].toString() === details['annotationId'].toString());
-                            if (shape) {
-                                details = shape;
-                                annotationRenderer.addShape(details, page);
-                            }
-                        }
-                        break;
-                    case 'Redaction':
-                        if (Object.prototype.hasOwnProperty.call(jsonObject, 'redactionAnnotations')) {
-                            const redactionDetails: any = JSON.parse(jsonObject.redactionAnnotations);
-                            const canRedact: boolean = jsonObject.canRedact ? JSON.parse(jsonObject.canRedact) : false;
-                            const pageNumber: string = details['pageNumber'].toString();
-                            const annotationCount: { [key: string]: object } = redactionDetails[parseInt(pageNumber, 10)];
-                            const pageAnnotations: any = annotationCount;
-                            const page: PdfPage = this.loadedDocument.getPage(parseInt(pageNumber, 10));
-                            const redact: any = pageAnnotations.find((obj: any) => obj['annotName'].toString() === details['annotationId'].toString());
-                            if (redact) {
-                                details = redact;
-                                annotationRenderer.addRedact(details, page, canRedact);
-                            }
-                        }
-                        break;
-                    case 'stamp':
-                        if (Object.prototype.hasOwnProperty.call(jsonObject, 'stampAnnotations')) {
-                            const stampdetails: any = JSON.parse(jsonObject.stampAnnotations);
-                            const pageNumber: string = details['pageNumber'].toString();
-                            const annotationCount: { [key: string]: object } = stampdetails[parseInt(pageNumber, 10)];
-                            const pageAnnotations: any = annotationCount;
-                            const page: PdfPage = this.loadedDocument.getPage(parseInt(pageNumber, 10));
-                            const stamp: any = pageAnnotations.find((obj: any) => obj['annotName'].toString() === details['annotationId'].toString());
-                            if (stamp) {
-                                details = stamp;
-                                annotationRenderer.addCustomStampAnnotation(details, page);
-                            }
-                        }
-                        break;
-                    case 'measureShapes':
-                        if (Object.prototype.hasOwnProperty.call(jsonObject, 'measureShapeAnnotations')) {
-                            const shapeDetails: any = JSON.parse(jsonObject.measureShapeAnnotations);
-                            const pageNumber: string = details['pageNumber'].toString();
-                            const annotationCount: { [key: string]: object } = shapeDetails[parseInt(pageNumber, 10)];
-                            const pageAnnotations: any = annotationCount;
-                            const page: PdfPage = this.loadedDocument.getPage(parseInt(pageNumber, 10));
-                            const shape: any = pageAnnotations.find((obj: any) => obj['annotName'].toString() === details['annotationId'].toString());
-                            if (shape) {
-                                details = shape;
-                                annotationRenderer.addMeasure(details, page);
-                            }
-                        }
-                        break;
-                    case 'sticky':
-                        if (Object.prototype.hasOwnProperty.call(jsonObject, 'stickyNotesAnnotation')) {
-                            const shapeDetails: any = JSON.parse(jsonObject.stickyNotesAnnotation);
-                            const pageNumber: string = details['pageNumber'].toString();
-                            const annotationCount: { [key: string]: object } = shapeDetails[parseInt(pageNumber, 10)];
-                            const pageAnnotations: any = annotationCount;
-                            const page: PdfPage = this.loadedDocument.getPage(parseInt(pageNumber, 10));
-                            const shape: any = pageAnnotations.find((obj: any) => obj['annotName'].toString() === details['annotationId'].toString());
-                            if (shape) {
-                                details = shape;
-                                annotationRenderer.addStickyNotes(details, page);
-                            }
-                        }
-                        break;
-                    case 'Ink':
-                        if (Object.prototype.hasOwnProperty.call(jsonObject, 'inkSignatureData')) {
-                            const shapeDetails: any = JSON.parse(jsonObject.inkSignatureData);
-                            const pageNumber: string = details['pageNumber'].toString();
-                            const annotationCount: { [key: string]: object } = shapeDetails[parseInt(pageNumber, 10)];
-                            const pageAnnotations: any = annotationCount;
-                            const page: PdfPage = this.loadedDocument.getPage(parseInt(pageNumber, 10));
-                            const shape: any = pageAnnotations.find((obj: any) => obj['annotName'].toString() === details['annotationId'].toString());
-                            if (shape) {
-                                details = shape;
-                                annotationRenderer.saveInkSignature(details, page);
-                            }
-                        }
-                        break;
-                    case 'FreeText':
-                        if (Object.prototype.hasOwnProperty.call(jsonObject, 'freeTextAnnotation')) {
-                            const freeTextDetails: any = JSON.parse(jsonObject.freeTextAnnotation);
-                            const pageNumber: string = details['pageNumber'].toString();
-                            const annotationCount: { [key: string]: object } = freeTextDetails[parseInt(pageNumber, 10)];
-                            const pageAnnotations: any = annotationCount;
-                            const page: PdfPage = this.loadedDocument.getPage(parseInt(pageNumber, 10));
-                            const defaultFonts: string[] = ['Helvetica', 'Times New Roman', 'Courier', 'Symbol', 'ZapfDingbats'];
-                            const freeText: any = pageAnnotations.find((obj: any) => obj['annotName'].toString() === details['annotationId'].toString());
-                            if (!isNullOrUndefined(freeText)) {
-                                details = freeText;
-                                if (!isNullOrUndefined(this.FallbackFontCollection) &&
-                                    Object.keys(this.FallbackFontCollection).length !== 0 &&
-                                    defaultFonts.indexOf(details.fontFamily) === -1) {
-                                    annotationRenderer.addFreeText(details, page, this.FallbackFontCollection);
-                                }
-                                else {
-                                    annotationRenderer.addFreeText(details, page);
-                                }
-                            }
-                        }
-                        break;
-                    default:
-                        break;
-                    }
-                }
-                if (jsonObject.signatureData) {
-                    if (jsonObject.isSignatureEdited) {
-                        signatureModule.saveSignatureAsAnnotatation(jsonObject, this.loadedDocument);
+                if (Object.prototype.hasOwnProperty.call(jsonObject, 'newAnnotations')) {
+                    let newAnnotations: any;
+                    if (jsonObject['action'] === 'ExportAnnotations') {
+                        newAnnotations = annotationDetails;
                     }
                     else {
-                        signatureModule.saveSignatureData(jsonObject, this.loadedDocument);
+                        newAnnotations = JSON.parse(jsonObject.newAnnotations);
+                    }
+                    for (let details of newAnnotations) {
+                        let annotationType: any = details.shapeAnnotationType;
+                        if (Object.prototype.hasOwnProperty.call(details, 'calibrate') && (details['shapeAnnotationType'] === 'Circle' || details['shapeAnnotationType'] === 'Line' || details['shapeAnnotationType'] === 'Polygon' || details['shapeAnnotationType'] === 'Polyline')) {
+                            annotationType = 'measureShapes';
+                        }
+                        else if (!(Object.prototype.hasOwnProperty.call(details, 'calibrate')) && (details['shapeAnnotationType'] === 'Line' || details['shapeAnnotationType'] === 'Circle' || details['shapeAnnotationType'] === 'Polygon' || details['shapeAnnotationType'] === 'Square' || details['shapeAnnotationType'] === 'Polyline')) {
+                            annotationType = 'shapeAnnotation';
+                        }
+                        switch (annotationType) {
+                        case 'textMarkup':
+                            if (Object.prototype.hasOwnProperty.call(jsonObject, 'textMarkupAnnotations')) {
+                                const textMarkupDetails: any = JSON.parse(jsonObject.textMarkupAnnotations);
+                                const pageNumber: string = details['pageNumber'].toString();
+                                const annotationCount: { [key: string]: object } = textMarkupDetails[parseInt(pageNumber, 10)];
+                                const pageAnnotations: any = annotationCount;
+                                const textMarkup: any = pageAnnotations.find((obj: any) => obj['annotName'].toString() === details['annotationId'].toString());
+                                if (textMarkup) {
+                                    details = textMarkup;
+                                    annotationRenderer.addTextMarkup(details, this.loadedDocument);
+                                }
+                            }
+                            break;
+                        case 'shapeAnnotation':
+                            if (Object.prototype.hasOwnProperty.call(jsonObject, 'shapeAnnotations')) {
+                                const shapeDetails: any = JSON.parse(jsonObject.shapeAnnotations);
+                                const pageNumber: string = details['pageNumber'].toString();
+                                const annotationCount: { [key: string]: object } = shapeDetails[parseInt(pageNumber, 10)];
+                                const pageAnnotations: any = annotationCount;
+                                const page: PdfPage = this.loadedDocument.getPage(parseInt(pageNumber, 10));
+                                const shape: any = pageAnnotations.find((obj: any) => obj['annotName'].toString() === details['annotationId'].toString());
+                                if (shape) {
+                                    details = shape;
+                                    annotationRenderer.addShape(details, page);
+                                }
+                            }
+                            break;
+                        case 'Redaction':
+                            if (Object.prototype.hasOwnProperty.call(jsonObject, 'redactionAnnotations')) {
+                                const redactionDetails: any = JSON.parse(jsonObject.redactionAnnotations);
+                                const canRedact: boolean = jsonObject.canRedact ? JSON.parse(jsonObject.canRedact) : false;
+                                const pageNumber: string = details['pageNumber'].toString();
+                                const annotationCount: { [key: string]: object } = redactionDetails[parseInt(pageNumber, 10)];
+                                const pageAnnotations: any = annotationCount;
+                                const page: PdfPage = this.loadedDocument.getPage(parseInt(pageNumber, 10));
+                                const redact: any = pageAnnotations.find((obj: any) => obj['annotName'].toString() === details['annotationId'].toString());
+                                if (redact) {
+                                    details = redact;
+                                    annotationRenderer.addRedact(details, page, canRedact);
+                                }
+                            }
+                            break;
+                        case 'stamp':
+                            if (Object.prototype.hasOwnProperty.call(jsonObject, 'stampAnnotations')) {
+                                const stampdetails: any = JSON.parse(jsonObject.stampAnnotations);
+                                const pageNumber: string = details['pageNumber'].toString();
+                                const annotationCount: { [key: string]: object } = stampdetails[parseInt(pageNumber, 10)];
+                                const pageAnnotations: any = annotationCount;
+                                const page: PdfPage = this.loadedDocument.getPage(parseInt(pageNumber, 10));
+                                const stamp: any = pageAnnotations.find((obj: any) => obj['annotName'].toString() === details['annotationId'].toString());
+                                if (stamp) {
+                                    details = stamp;
+                                    annotationRenderer.addCustomStampAnnotation(details, page);
+                                }
+                            }
+                            break;
+                        case 'measureShapes':
+                            if (Object.prototype.hasOwnProperty.call(jsonObject, 'measureShapeAnnotations')) {
+                                const shapeDetails: any = JSON.parse(jsonObject.measureShapeAnnotations);
+                                const pageNumber: string = details['pageNumber'].toString();
+                                const annotationCount: { [key: string]: object } = shapeDetails[parseInt(pageNumber, 10)];
+                                const pageAnnotations: any = annotationCount;
+                                const page: PdfPage = this.loadedDocument.getPage(parseInt(pageNumber, 10));
+                                const shape: any = pageAnnotations.find((obj: any) => obj['annotName'].toString() === details['annotationId'].toString());
+                                if (shape) {
+                                    details = shape;
+                                    annotationRenderer.addMeasure(details, page);
+                                }
+                            }
+                            break;
+                        case 'sticky':
+                            if (Object.prototype.hasOwnProperty.call(jsonObject, 'stickyNotesAnnotation')) {
+                                const shapeDetails: any = JSON.parse(jsonObject.stickyNotesAnnotation);
+                                const pageNumber: string = details['pageNumber'].toString();
+                                const annotationCount: { [key: string]: object } = shapeDetails[parseInt(pageNumber, 10)];
+                                const pageAnnotations: any = annotationCount;
+                                const page: PdfPage = this.loadedDocument.getPage(parseInt(pageNumber, 10));
+                                const shape: any = pageAnnotations.find((obj: any) => obj['annotName'].toString() === details['annotationId'].toString());
+                                if (shape) {
+                                    details = shape;
+                                    annotationRenderer.addStickyNotes(details, page);
+                                }
+                            }
+                            break;
+                        case 'Ink':
+                            if (Object.prototype.hasOwnProperty.call(jsonObject, 'inkSignatureData')) {
+                                const shapeDetails: any = JSON.parse(jsonObject.inkSignatureData);
+                                const pageNumber: string = details['pageNumber'].toString();
+                                const annotationCount: { [key: string]: object } = shapeDetails[parseInt(pageNumber, 10)];
+                                const pageAnnotations: any = annotationCount;
+                                const page: PdfPage = this.loadedDocument.getPage(parseInt(pageNumber, 10));
+                                const shape: any = pageAnnotations.find((obj: any) => obj['annotName'].toString() === details['annotationId'].toString());
+                                if (shape) {
+                                    details = shape;
+                                    annotationRenderer.saveInkSignature(details, page);
+                                }
+                            }
+                            break;
+                        case 'FreeText':
+                            if (Object.prototype.hasOwnProperty.call(jsonObject, 'freeTextAnnotation')) {
+                                const freeTextDetails: any = JSON.parse(jsonObject.freeTextAnnotation);
+                                const pageNumber: string = details['pageNumber'].toString();
+                                const annotationCount: { [key: string]: object } = freeTextDetails[parseInt(pageNumber, 10)];
+                                const pageAnnotations: any = annotationCount;
+                                const page: PdfPage = this.loadedDocument.getPage(parseInt(pageNumber, 10));
+                                const defaultFonts: string[] = ['Helvetica', 'Times New Roman', 'Courier', 'Symbol', 'ZapfDingbats'];
+                                const freeText: any = pageAnnotations.find((obj: any) => obj['annotName'].toString() === details['annotationId'].toString());
+                                if (!isNullOrUndefined(freeText)) {
+                                    details = freeText;
+                                    if (!isNullOrUndefined(this.FallbackFontCollection) &&
+                                        Object.keys(this.FallbackFontCollection).length !== 0 &&
+                                        defaultFonts.indexOf(details.fontFamily) === -1) {
+                                        annotationRenderer.addFreeText(details, page, this.FallbackFontCollection);
+                                    }
+                                    else {
+                                        annotationRenderer.addFreeText(details, page);
+                                    }
+                                }
+                            }
+                            break;
+                        default:
+                            break;
+                        }
+                    }
+                    if (jsonObject.signatureData) {
+                        if (jsonObject.isSignatureEdited) {
+                            signatureModule.saveSignatureAsAnnotatation(jsonObject, this.loadedDocument);
+                        }
+                        else {
+                            signatureModule.saveSignatureData(jsonObject, this.loadedDocument);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private updateAnnotations(jsonObject: { [key: string]: string }): void {
+        const annotationRenderer: AnnotationRenderer = new AnnotationRenderer(this.pdfViewer, this.pdfViewerBase);
+        const signatureModule: SignatureBase = new SignatureBase(this.pdfViewer, this.pdfViewerBase);
+        if (Object.prototype.hasOwnProperty.call(jsonObject, 'isAnnotationsExist') && jsonObject.isAnnotationsExist) {
+            if (Object.prototype.hasOwnProperty.call(jsonObject, 'annotationCollection')) {
+                const annotationDetails: any = JSON.parse(jsonObject.annotationCollection);
+                if (Object.prototype.hasOwnProperty.call(jsonObject, 'modifiedAnnotations')) {
+                    const updatedAnnotations: any = JSON.parse(jsonObject.modifiedAnnotations);
+                    for (let details of updatedAnnotations) {
+                        let annotationType: any = details.shapeAnnotationType;
+                        if (Object.prototype.hasOwnProperty.call(details, 'calibrate') && (details['shapeAnnotationType'] === 'Circle' || details['shapeAnnotationType'] === 'Line' || details['shapeAnnotationType'] === 'Polygon' || details['shapeAnnotationType'] === 'Polyline')) {
+                            annotationType = 'measureShapes';
+                        }
+                        else if (!(Object.prototype.hasOwnProperty.call(details, 'calibrate')) && (details['shapeAnnotationType'] === 'Line' || details['shapeAnnotationType'] === 'Circle' || details['shapeAnnotationType'] === 'Polygon' || details['shapeAnnotationType'] === 'Square' || details['shapeAnnotationType'] === 'Polyline')) {
+                            annotationType = 'shapeAnnotation';
+                        }
+                        switch (annotationType) {
+                        case 'textMarkup':
+                            if (Object.prototype.hasOwnProperty.call(jsonObject, 'textMarkupAnnotations')) {
+                                const textMarkupDetails: any = JSON.parse(jsonObject.textMarkupAnnotations);
+                                const pageNumber: string = details['pageNumber'].toString();
+                                const annotationCount: { [key: string]: object } = textMarkupDetails[parseInt(pageNumber, 10)];
+                                const pageAnnotations: any = annotationCount;
+                                const textMarkup: any = pageAnnotations.find((obj: any) => obj['annotName'].toString() === details['annotationId'].toString());
+                                if (textMarkup) {
+                                    details = textMarkup;
+                                    if (details.status === AnnotationStatus.ExistingModified) {
+                                        annotationRenderer.updateTextMarkup(details, this.loadedDocument);
+                                    }
+                                }
+                            }
+                            break;
+                        case 'shapeAnnotation':
+                            if (Object.prototype.hasOwnProperty.call(jsonObject, 'shapeAnnotations')) {
+                                const shapeDetails: any = JSON.parse(jsonObject.shapeAnnotations);
+                                const pageNumber: string = details['pageNumber'].toString();
+                                const annotationCount: { [key: string]: object } = shapeDetails[parseInt(pageNumber, 10)];
+                                const pageAnnotations: any = annotationCount;
+                                const page: PdfPage = this.loadedDocument.getPage(parseInt(pageNumber, 10));
+                                const shape: any = pageAnnotations.find((obj: any) => obj['annotName'].toString() === details['annotationId'].toString());
+                                if (shape) {
+                                    details = shape;
+                                    if (details.status === AnnotationStatus.ExistingModified) {
+                                        annotationRenderer.updateShape(details, page);
+                                    }
+                                }
+                            }
+                            break;
+                        case 'Redaction':
+                            if (Object.prototype.hasOwnProperty.call(jsonObject, 'redactionAnnotations')) {
+                                const redactionDetails: any = JSON.parse(jsonObject.redactionAnnotations);
+                                const canRedact: boolean = jsonObject.canRedact ? JSON.parse(jsonObject.canRedact) : false;
+                                const pageNumber: string = details['pageNumber'].toString();
+                                const annotationCount: { [key: string]: object } = redactionDetails[parseInt(pageNumber, 10)];
+                                const pageAnnotations: any = annotationCount;
+                                const page: PdfPage = this.loadedDocument.getPage(parseInt(pageNumber, 10));
+                                const redact: any = pageAnnotations.find((obj: any) => obj['annotName'].toString() === details['annotationId'].toString());
+                                if (redact) {
+                                    details = redact;
+                                    if (details.status === AnnotationStatus.ExistingModified) {
+                                        annotationRenderer.updateRedact(details, page, canRedact);
+                                    }
+                                }
+                            }
+                            break;
+                        case 'stamp':
+                            if (Object.prototype.hasOwnProperty.call(jsonObject, 'stampAnnotations')) {
+                                const stampdetails: any = JSON.parse(jsonObject.stampAnnotations);
+                                const pageNumber: string = details['pageNumber'].toString();
+                                const annotationCount: { [key: string]: object } = stampdetails[parseInt(pageNumber, 10)];
+                                const pageAnnotations: any = annotationCount;
+                                const page: PdfPage = this.loadedDocument.getPage(parseInt(pageNumber, 10));
+                                const stamp: any = pageAnnotations.find((obj: any) => obj['annotName'].toString() === details['annotationId'].toString());
+                                if (stamp) {
+                                    details = stamp;
+                                    if (details.status === AnnotationStatus.ExistingModified) {
+                                        annotationRenderer.updateCustomStampAnnotation(details, page);
+                                    }
+                                }
+                            }
+                            break;
+                        case 'measureShapes':
+                            if (Object.prototype.hasOwnProperty.call(jsonObject, 'measureShapeAnnotations')) {
+                                const shapeDetails: any = JSON.parse(jsonObject.measureShapeAnnotations);
+                                const pageNumber: string = details['pageNumber'].toString();
+                                const annotationCount: { [key: string]: object } = shapeDetails[parseInt(pageNumber, 10)];
+                                const pageAnnotations: any = annotationCount;
+                                const page: PdfPage = this.loadedDocument.getPage(parseInt(pageNumber, 10));
+                                const shape: any = pageAnnotations.find((obj: any) => obj['annotName'].toString() === details['annotationId'].toString());
+                                if (shape) {
+                                    details = shape;
+                                    if (details.status === AnnotationStatus.ExistingModified) {
+                                        annotationRenderer.updateMeasure(details, page);
+                                    }
+                                }
+                            }
+                            break;
+                        case 'sticky':
+                            if (Object.prototype.hasOwnProperty.call(jsonObject, 'stickyNotesAnnotation')) {
+                                const shapeDetails: any = JSON.parse(jsonObject.stickyNotesAnnotation);
+                                const pageNumber: string = details['pageNumber'].toString();
+                                const annotationCount: { [key: string]: object } = shapeDetails[parseInt(pageNumber, 10)];
+                                const pageAnnotations: any = annotationCount;
+                                const page: PdfPage = this.loadedDocument.getPage(parseInt(pageNumber, 10));
+                                const shape: any = pageAnnotations.find((obj: any) => obj['annotName'].toString() === details['annotationId'].toString());
+                                if (shape) {
+                                    details = shape;
+                                    if (details.status === AnnotationStatus.ExistingModified) {
+                                        annotationRenderer.updateStickyNotes(details, page);
+                                    }
+                                }
+                            }
+                            break;
+                        case 'Ink':
+                            if (Object.prototype.hasOwnProperty.call(jsonObject, 'inkSignatureData')) {
+                                const shapeDetails: any = JSON.parse(jsonObject.inkSignatureData);
+                                const pageNumber: string = details['pageNumber'].toString();
+                                const annotationCount: { [key: string]: object } = shapeDetails[parseInt(pageNumber, 10)];
+                                const pageAnnotations: any = annotationCount;
+                                const page: PdfPage = this.loadedDocument.getPage(parseInt(pageNumber, 10));
+                                const shape: any = pageAnnotations.find((obj: any) => obj['annotName'].toString() === details['annotationId'].toString());
+                                if (shape) {
+                                    details = shape;
+                                    if (details.status === AnnotationStatus.ExistingModified) {
+                                        annotationRenderer.updateInkSignature(details, page);
+                                    }
+                                }
+                            }
+                            break;
+                        case 'FreeText':
+                            if (Object.prototype.hasOwnProperty.call(jsonObject, 'freeTextAnnotation')) {
+                                const freeTextDetails: any = JSON.parse(jsonObject.freeTextAnnotation);
+                                const pageNumber: string = details['pageNumber'].toString();
+                                const annotationCount: { [key: string]: object } = freeTextDetails[parseInt(pageNumber, 10)];
+                                const pageAnnotations: any = annotationCount;
+                                const page: PdfPage = this.loadedDocument.getPage(parseInt(pageNumber, 10));
+                                const defaultFonts: string[] = ['Helvetica', 'Times New Roman', 'Courier', 'Symbol', 'ZapfDingbats'];
+                                const freeText: any = pageAnnotations.find((obj: any) => obj['annotName'].toString() === details['annotationId'].toString());
+                                if (!isNullOrUndefined(freeText)) {
+                                    details = freeText;
+                                    if (details.status === AnnotationStatus.ExistingModified) {
+                                        if (!isNullOrUndefined(this.FallbackFontCollection) &&
+                                            Object.keys(this.FallbackFontCollection).length !== 0 &&
+                                            defaultFonts.indexOf(details.fontFamily) === -1) {
+                                            annotationRenderer.updateFreeText(details, page, this.FallbackFontCollection);
+                                        }
+                                        else {
+                                            annotationRenderer.updateFreeText(details, page);
+                                        }
+                                    }
+                                }
+                            }
+                            break;
+                        default:
+                            break;
+                        }
+                    }
+                    if (jsonObject.signatureData) {
+                        if (jsonObject.isSignatureEdited) {
+                            signatureModule.updateSignatureAsAnnotatation(jsonObject, this.loadedDocument);
+                        }
+                        else {
+                            signatureModule.updateSignatureData(jsonObject, this.loadedDocument);
+                        }
                     }
                 }
             }
@@ -1243,18 +1421,18 @@ export class PdfRenderer {
                                     this.convertPointToPixel(bounds.width), this.convertPointToPixel(bounds.height));
         }
         else if (pageRotation === PdfRotationAngle.angle90){
-            bound = new AnnotBounds(pageSize.width - this.convertPointToPixel(bounds.y - bounds.height),
+            bound = new AnnotBounds(pageSize.width - this.convertPointToPixel(bounds.y + bounds.height),
                                     this.convertPointToPixel(bounds.x), this.convertPointToPixel(bounds.height),
                                     this.convertPointToPixel(bounds.width));
         }
         else if (pageRotation === PdfRotationAngle.angle180){
-            bound = new AnnotBounds(pageSize.width - this.convertPointToPixel(bounds.x - bounds.width),
-                                    pageSize.height - this.convertPointToPixel(bounds.y - bounds.height),
+            bound = new AnnotBounds(pageSize.width - this.convertPointToPixel(bounds.x + bounds.width),
+                                    pageSize.height - this.convertPointToPixel(bounds.y + bounds.height),
                                     this.convertPointToPixel(bounds.width), this.convertPointToPixel(bounds.height));
         }
         else if (pageRotation === PdfRotationAngle.angle270){
             bound = new AnnotBounds(this.convertPointToPixel(bounds.y), pageSize.height -
-            this.convertPointToPixel(bounds.x - bounds.width), this.convertPointToPixel(bounds.height),
+            this.convertPointToPixel(bounds.x + bounds.width), this.convertPointToPixel(bounds.height),
                                     this.convertPointToPixel(bounds.width));
         }
         return bound;

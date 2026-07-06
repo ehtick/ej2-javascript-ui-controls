@@ -1,4 +1,4 @@
-@use 'ej2-base/styles/common/mixin' as *;
+@use 'variables' as *;
 @include export-module('document-editor-container-bigger') {
   /* stylelint-disable */
   @if $skin-name =='FluentUI' {
@@ -550,17 +550,17 @@
         padding: 0 1px;
         padding-bottom: 6px;
 
-        #{if(&, '&', '*')}:focus {
+        &:focus {
           padding: 0;
           padding-bottom: 6px;
         }
 
-        #{if(&, '&', '*')}:active {
+        &:active {
           padding: 0;
           padding-bottom: 6px;
         }
 
-        #{if(&, '&', '*')}:hover {
+        &:hover {
           padding: 0;
           padding-bottom: 6px;
         }
@@ -574,17 +574,17 @@
         padding: $de-toolbar-padding;
         padding-bottom: $de-toolbar-padding-bottom-bg;
 
-        #{if(&, '&', '*')}:focus {
+        &:focus {
           padding: $de-toolbar-padding;
           padding-bottom: $de-toolbar-padding-bottom-bg;
         }
 
-        #{if(&, '&', '*')}:active {
+        &:active {
           padding: $de-toolbar-padding;
           padding-bottom: $de-toolbar-padding-bottom-bg;
         }
 
-        #{if(&, '&', '*')}:hover {
+        &:hover {
           padding: $de-toolbar-padding;
           padding-bottom: $de-toolbar-padding-bottom-bg;
         }
@@ -598,17 +598,17 @@
         padding: 0 1px;
         padding-bottom: 6px;
 
-        #{if(&, '&', '*')}:focus {
+        &:focus {
           padding: 0;
           padding-bottom: 6px;
         }
 
-        #{if(&, '&', '*')}:active {
+        &:active {
           padding: 0;
           padding-bottom: 6px;
         }
 
-        #{if(&, '&', '*')}:hover {
+        &:hover {
           padding: 0;
           padding-bottom: 6px;
         }
@@ -644,15 +644,15 @@
         min-height: $e-de-ctnr-properties-pane-btn-min-height;
         min-width: 100%;
 
-        #{if(&, '&', '*')}:focus {
+        &:focus {
           box-shadow: none;
         }
 
-        #{if(&, '&', '*')}:active {
+        &:active {
           box-shadow: none;
         }
 
-        #{if(&, '&', '*')}:hover {
+        &:hover {
           box-shadow: none;
         }
 
@@ -722,15 +722,15 @@
         padding-left: 1px;
       }
 
-      #{if(&, '&', '*')}:focus {
+      &:focus {
         box-shadow: none;
       }
 
-      #{if(&, '&', '*')}:active {
+      &:active {
         box-shadow: none;
       }
 
-      #{if(&, '&', '*')}:hover {
+      &:hover {
         box-shadow: none;
       }
     }
@@ -746,15 +746,15 @@
 
       box-shadow: none;
 
-      #{if(&, '&', '*')}:focus {
+      &:focus {
         box-shadow: none;
       }
 
-      #{if(&, '&', '*')}:active {
+      &:active {
         box-shadow: none;
       }
 
-      #{if(&, '&', '*')}:hover {
+      &:hover {
         box-shadow: none;
       }
     }
@@ -763,15 +763,15 @@
       box-shadow: none;
       height: $de-group-btn-hgt-big;
 
-      #{if(&, '&', '*')}:focus {
+      &:focus {
         box-shadow: none;
       }
 
-      #{if(&, '&', '*')}:active {
+      &:active {
         box-shadow: none;
       }
 
-      #{if(&, '&', '*')}:hover {
+      &:hover {
         box-shadow: none;
       }
     }
@@ -890,7 +890,7 @@
       outline: $de-toggle-btn-outline;
       outline-offset: 0;
 
-      #{if(&, '&', '*')}:hover {
+      &:hover {
         background-color: $de-toggle-bg-color !important;
 
         @if $skin-name=='fabric' {

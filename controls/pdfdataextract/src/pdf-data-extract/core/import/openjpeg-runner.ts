@@ -1,6 +1,9 @@
 declare let importScripts: (...scripts: string[]) => void;
 /**
- *@returns {void}
+ * OpenJPEG worker entry point. Loads the OpenJPEG WASM/JS bundle and decodes JPX payloads.
+ *
+ * @private
+ * @returns {void} nothing.
  */
 export function _PdfOpenJpegRunner(): void {
     let baseUrl: string = '';
@@ -10,13 +13,19 @@ export function _PdfOpenJpegRunner(): void {
     const OpenJpegModule: any = pdfiumWindow[moduleString] || {}; //eslint-disable-line
     const ctx: Worker = self as any; //eslint-disable-line
     /**
-     *@returns {void}
+     * Notifies the main thread that the OpenJPEG module has finished loading.
+     *
+     * @private
+     * @returns {void} nothing.
      */
     function postLoaded(): void {
         ctx.postMessage({ message: 'loaded' });
     }
     /**
-     *@returns {void}
+     * Posts `loaded` when the OpenJPEG module is ready.
+     *
+     * @private
+     * @returns {void} nothing.
      */
     function checkIfEverythingWasLoaded(): void {
         if (moduleLoaded) {

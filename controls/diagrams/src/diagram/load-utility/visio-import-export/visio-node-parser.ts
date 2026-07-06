@@ -1,7 +1,7 @@
 import { VisioNodeAnnotation } from './visio-annotations';
 import { getCellValue, isConnectorShape } from './visio-connectors';
 import { applyParentTransformToCellMap, ensureArray, getCellMap, getNumberFromCellMap, inchToPx, isGroupShape, mapCellValues, mergeCellMaps, toCamelCase } from './visio-core';
-import { ParsingContext } from './visio-import-export';
+import { ParsingContext, ParentStyleMap, buildVisioStyleFromElement, ContextWithParsedStyleSheets, VisioStyle } from './visio-import-export';
 import { getVisioPorts, parseVisioNodeShadow, parseVisioNodeStyle } from './visio-model-parsers';
 import { VisioLayer, VisioNodeStyle, VisioShape } from './visio-models';
 import { allGeometrySectionsNoFill, allGeometrySectionsNoLine, areAllGeometrySectionsHidden, determineDefaultNodeShape, mergeGeometrySectionsByIndex, resolveMasterSourceForNode, resolveShapeNameForMapping, tryDetermineSemanticGroupShape } from './visio-nodes';
@@ -21,9 +21,10 @@ import {
     VisioMedia,
     ParsedXmlObject,
     ForeignDataBlock,
-    XmlStringMap
+    XmlStringMap,
+    QuickStyleValues
 } from './visio-types';
-
+import { NodeInput } from './visio-theme';
 /**
  * Parses Visio shape elements into EJ2 diagram shapes.
  * Iterates through shape nodes, delegates parsing to `parserVisioShapeNode`,
@@ -166,7 +167,12 @@ function parseGroupShape(
     groupShape.id = (groupAttributes && (groupAttributes as ShapeAttributes).ID != null)
         ? String((groupAttributes as ShapeAttributes).ID)
         : ('group_' + Math.random().toString(36).slice(2));
-
+    groupShape.xmlShapeData = groupNode.xmlShapeData;
+    const visioParentStyles: VisioStyle = getParentStyle(groupNode, context);
+    if (visioParentStyles) {
+        groupNode.visioParentStyles = visioParentStyles;
+        groupNode.quickStyleValues = getQuickStyleValues(groupNode.visioParentStyles, groupNode, context);
+    }
     applyCommonNodeProperties(groupShape, {
         cellMap: groupMergedCellMap,
         attributes: groupAttributes as ShapeAttributes,
@@ -379,7 +385,12 @@ function parseVertexShape(
 
     const node: VisioShape = new VisioShape();
     node.id = shapeId;
-
+    node.xmlShapeData = pageNode.xmlShapeData;
+    const visioParentStyles: VisioStyle = getParentStyle(pageNode, context);
+    if (visioParentStyles) {
+        pageNode.visioParentStyles = visioParentStyles;
+        pageNode.quickStyleValues = getQuickStyleValues(pageNode.visioParentStyles, pageNode, context);
+    }
     // ==================== Handle Special Shape Type: Solid ====================
     // Solid shapes are background/fill-only shapes with minimal properties
     if (shapeAttributes.Name === 'Solid') {
@@ -435,13 +446,13 @@ function parseVertexShape(
     );
     node.shape = finalShape;
 
-    const isStrokeOnlyNode: boolean = allGeometrySectionsNoFill(geomSections) && !allGeometrySectionsNoLine(geomSections);
-
-    // ---- Enforce geometry-driven fill/line semantics (stroke-only paths) ----
-    if (isStrokeOnlyNode && node && (node as VisioShape).shape && ((node as VisioShape).shape).type === 'Path') {
+    // If geometry has NoFill='1', make fill transparent regardless of line state
+    const hasNoFill: boolean = allGeometrySectionsNoFill(geomSections);
+    if (hasNoFill) {
         node.style.fillColor = 'transparent';
         (node.style as VisioNodeStyle).opacity = 0;
     }
+
     // If geometry says no line, also honor it robustly (avoid accidental strokes)
     if (allGeometrySectionsNoLine(geomSections)) {
         (node.style as VisioNodeStyle).strokeColor = 'transparent';
@@ -458,6 +469,193 @@ function parseVertexShape(
 
     out.push(node);
     return out;
+}
+
+/**
+ * Builds a parent VisioStyle for a shape if its <StyleSheet> DOM element is available.
+ * @param {VisioShapeNode} visioShape - The shape object containing xmlShapeData
+ * @param {ParsingContext} context - Parsing context
+ * @returns {VisioStyle | null} Built parent style or null if unavailable
+ * @private
+ */
+export function getParentStyle(visioShape: VisioShapeNode, context: ParsingContext): VisioStyle | null {
+    const parentStyle: VisioStyle = buildVisioStyleFromElement(visioShape.xmlShapeData, context as ContextWithParsedStyleSheets);
+    return parentStyle;
+}
+
+/**
+ * Computes numeric quick style values by reading and parsing relevant cells.
+ * Inheritance and master fallback are honored by getCellElement().
+ * @param {VisioStyle} parentStyle - Parent style to read from
+ * @param {VisioShapeNode} visioShapeData - Shape used for master fallback
+ * @param {ParsingContext} context - Parsing context
+ * @returns {QuickStyleValues} Populated quick style values
+ * @private
+ */
+export function getQuickStyleValues(parentStyle: VisioStyle, visioShapeData: VisioShapeNode, context: ParsingContext): QuickStyleValues {
+
+    // Initialize with default values
+    const values: QuickStyleValues = {
+        quickStyleEffectsMatrix: 0,
+        quickStyleFillColor: 0,
+        quickStyleFillMatrix: 0,
+        quickStyleFontColor: 0,
+        quickStyleFontMatrix: 0,
+        quickStyleLineColor: 0,
+        quickStyleLineMatrix: 0,
+        quickStyleShadowColor: 0,
+        quickStyleVariation: 0,
+        quickStyleType: 0
+    };
+
+    const quickStyleEffectsMatrix: string = getValue(getCellElement(parentStyle, visioShapeData, context, 'QuickStyleEffectsMatrix'), '0');
+    const quickStyleFillColor: string = getValue(getCellElement(parentStyle, visioShapeData, context, 'QuickStyleFillColor'), '1');
+    const quickStyleFillMatrix: string = getValue(getCellElement(parentStyle, visioShapeData, context, 'QuickStyleFillMatrix'), '0');
+    const quickStyleFontColor: string = getValue(getCellElement(parentStyle, visioShapeData, context, 'QuickStyleFontColor'), '1');
+    const quickStyleFontMatrix: string = getValue(getCellElement(parentStyle, visioShapeData, context, 'QuickStyleFontMatrix'), '0');
+    const quickStyleLineColor: string = getValue(getCellElement(parentStyle, visioShapeData, context, 'QuickStyleLineColor'), '1');
+    const quickStyleLineMatrix: string = getValue(getCellElement(parentStyle, visioShapeData, context, 'QuickStyleLineMatrix'), '0');
+    const quickStyleShadowColor: string = getValue(getCellElement(parentStyle, visioShapeData, context, 'QuickStyleShadowColor'), '1');
+    const quickStyleVariation: string = getValue(getCellElement(parentStyle, visioShapeData, context, 'QuickStyleVariation'), '0');
+    const quickStyleType: string = getValue(getCellElement(parentStyle, visioShapeData, context, 'QuickStyleType'), '0');
+
+    values.quickStyleEffectsMatrix = parseInt(quickStyleEffectsMatrix, 10);
+    values.quickStyleFillColor = parseInt(quickStyleFillColor, 10);
+    values.quickStyleFillMatrix = parseInt(quickStyleFillMatrix, 10);
+    values.quickStyleFontColor = parseInt(quickStyleFontColor, 10);
+    values.quickStyleFontMatrix = parseInt(quickStyleFontMatrix, 10);
+    values.quickStyleLineColor = parseInt(quickStyleLineColor, 10);
+    values.quickStyleLineMatrix = parseInt(quickStyleLineMatrix, 10);
+    values.quickStyleShadowColor = parseInt(quickStyleShadowColor, 10);
+    values.quickStyleVariation = parseInt(quickStyleVariation, 10);
+    values.quickStyleType = parseInt(quickStyleType, 10);
+
+    return values;
+}
+
+/**
+ * Reads the 'V' attribute from a <Cell> element with a safe default.
+ * @param {Element | null | undefined} cellElement - The Cell element
+ * @param {string} defaultValue - The default to return if missing/empty
+ * @returns {string} The attribute value or the default
+ * @private
+ */
+export function getValue(cellElement: Element | null, defaultValue: string): string {
+    if (cellElement != null) {
+        return cellElement.getAttribute('V') || '';
+    }
+    return defaultValue;
+}
+
+/**
+ * Resolves a <Cell> element by name from a style, or from the master’s parent style as a fallback.
+ * @param {VisioStyle} shape - The starting style shape for lookup
+ * @param {VisioShapeNode | NodeInput} visioShapeData - Shape used to resolve the master fallback
+ * @param {ParsingContext} context - Parsing context
+ * @param {string} cellName - Cell name to find
+ * @param {string} sectionCellName - Cell from Section to find
+ * @returns {Element | null} Resolved Cell element or null
+ * @private
+ */
+export function getCellElement(shape: VisioStyle, visioShapeData: VisioShapeNode | NodeInput,
+                               context: ParsingContext, cellName: string, sectionCellName?: string): Element {
+    const element: Element | null = findStyleElement(shape, context, cellName, sectionCellName);
+    const masterShape: VisioShapeNode | null = resolveMasterSourceForNode(visioShapeData as VisioShapeNode, context);
+    let parentStyleFromMaster: VisioStyle;
+    if (masterShape) {
+        parentStyleFromMaster = getParentStyle(masterShape, context);
+    }
+    //parsedShapes[0].parentStyle = parentStyle;
+    if (element == null && masterShape != null && parentStyleFromMaster != null) {
+        return findStyleElement(parentStyleFromMaster, context, cellName, sectionCellName);
+    }
+    return element;
+}
+
+/**
+ * Walks the style inheritance chain to resolve a <Cell> by name from the provided style.
+ * @param {VisioStyle | null | undefined} shape - Starting style shape
+ * @param {ParsingContext} context - Parsing context (kept for signature parity)
+ * @param {string} cellName - Cell name to resolve
+ * @param {string} sectionCellName - Cell from Section to find
+ * @returns {Element | null} Resolved Cell element or null
+ * @private
+ */
+function findStyleElement(shape: VisioStyle, context: ParsingContext, cellName: string, sectionCellName: string): Element | null {
+    let styleType: string;
+    switch (cellName) {
+    case 'QuickStyleFillColor':
+    case 'QuickStyleFillMatrix':
+        styleType = 'FillStyle';
+        break;
+    case 'QuickStyleFontColor':
+    case 'QuickStyleFontMatrix':
+    case 'Character':
+        styleType = 'TextStyle';
+        break;
+    case 'QuickStyleLineColor':
+    case 'QuickStyleLineMatrix':
+        styleType = 'LineStyle';
+        break;
+    }
+    const section: Element = shape ? shape.sections[`${cellName}`] : undefined;
+    if (section) {
+        const sectionCellElement: Element = getSectionCellElement(section, sectionCellName);
+        if (sectionCellElement) {
+            return sectionCellElement;
+        }
+    }
+    // Direct lookup on current style
+    const element: Element = shape ? shape.cellElements[`${cellName}`] : undefined;
+    if (element == null) {
+        // Traverse to the parent style for that styleType
+        const parentStyle: VisioStyle = shape ? shape.parentStyles[`${styleType}`] : null;
+        if (parentStyle != null) {
+            const parentElement: Element = findStyleElement(parentStyle, context, cellName, sectionCellName);
+            if (parentElement != null) {
+                return parentElement;
+            }
+        }
+    }
+    return element;
+}
+
+/**
+ * Returns the first <Cell> element under the given section whose N attribute
+ * matches the provided sectionCellName; otherwise null.
+ *
+ * @param {Element} section - The <Section> element.
+ * @param {string} [sectionCellName] - The target cell N attribute to match.
+ * @returns {Element | null} The matching <Cell> element or null.
+ *
+ * @private
+ *
+ */
+function getSectionCellElement(section: Element, sectionCellName?: string): Element | null {
+    // Collect only <Row> elements; avoids ChildNode typing issues.
+    const rowElements: HTMLCollectionOf<Element> = section.getElementsByTagName('Row');
+
+    for (let rowIndex: number = 0; rowIndex < rowElements.length; rowIndex++) {
+        const rowElement: Element | null = rowElements.item(parseInt(rowIndex.toString(), 10));
+        if (!rowElement) {
+            continue;
+        }
+        // Collect only <Cell> elements within this <Row>.
+        const cellElements: HTMLCollectionOf<Element> = rowElement.getElementsByTagName('Cell');
+        for (let cellIndex: number = 0; cellIndex < cellElements.length; cellIndex++) {
+            const cellElement: Element | null = cellElements.item(parseInt(cellIndex.toString(), 10));
+            if (!cellElement) {
+                continue;
+            }
+            // Read the Visio cell name (N attribute).
+            const cellName: string | null = cellElement.getAttribute('N');
+            // Return the first cell that matches the requested name.
+            if (sectionCellName && cellName === sectionCellName) {
+                return cellElement;
+            }
+        }
+    }
+    return null;
 }
 
 /**
@@ -714,7 +912,7 @@ function applyCommonNodeProperties(
     shape.pinY = pinYPixels;
 
     // ==================== Set Text Annotation ====================
-    shape.annotation = VisioNodeAnnotation.fromJs(shapeData, (defaultData as ParsedXmlObject));
+    shape.annotation = VisioNodeAnnotation.fromJs(shapeData, (defaultData as ParsedXmlObject), context);
 
     // ==================== Set Quick Style Colors ====================
     shape.QuickLineColor = cellMap.get('QuickStyleLineColor') != null
@@ -772,7 +970,10 @@ function applyCommonNodeProperties(
 
     // Extract glue type (determines connector attachment behavior)
     shape.glueValue = cellMap.get('GlueType') != null ? Number(cellMap.get('GlueType')) : undefined;
-
+    // ==================== Set visioParentStyles ====================
+    shape.visioParentStyles = shapeData.visioParentStyles;
+    // ==================== Set quickStyleValues ====================
+    shape.quickStyleValues = shapeData.quickStyleValues;
     // ==================== Set Visual Styling ====================
     shape.style = parseVisioNodeStyle(shapeData, context, defaultShapeStyle, shape, undefined);
 
@@ -1121,6 +1322,17 @@ function findAllDefaultStyles(shapeData: VisioShapeNode | null | undefined): Sty
     // FillForegndTrans cell defines foreground fill transparency (0-100% or 0-1)
     const FillForegndTrans: string = getCellValue(cells, 'FillForegndTrans');
     defaultStyles('FillForegndTrans', Number(FillForegndTrans), 0);
+
+    // ==================== master defaults (style ids, cells, sections) ====================
+    if (Object.prototype.hasOwnProperty.call(shapeData.$, 'FillStyle') && shapeData.$.FillStyle != null) {
+        defaultStyles('FillStyle', String(shapeData.$.FillStyle), undefined);
+    }
+    if (Object.prototype.hasOwnProperty.call(shapeData.$, 'LineStyle') && shapeData.$.LineStyle != null) {
+        defaultStyles('LineStyle', String(shapeData.$.LineStyle), undefined);
+    }
+    if (Object.prototype.hasOwnProperty.call(shapeData.$, 'TextStyle') && shapeData.$.TextStyle != null) {
+        defaultStyles('TextStyle', String(shapeData.$.TextStyle), undefined);
+    }
     return entries;
 }
 

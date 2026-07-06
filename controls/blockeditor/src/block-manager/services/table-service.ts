@@ -9,6 +9,7 @@ import { BlockFactory } from './block-factory';
 import { findClosestParent } from '../../common/utils/dom';
 import { ITableColumnDeletionOptions, ITableColumnInsertOptions, ITableRowDeletionOptions, ITableRowInsertOptions, PayloadCell } from '../base/interface';
 import { TableUIManager } from '../plugins/table/ui-manager';
+import { ITriggerBlockChangeOptions } from '../../common/interface';
 
 
 /**
@@ -93,7 +94,7 @@ export class TableService {
      * @hidden
      */
     public addRowAt(options: ITableRowInsertOptions): void {
-        const { blockId, rowIndex, rowModel, isUndoRedoAction } = options;
+        const { blockId, rowIndex, rowModel, preventTracking } = options;
         const oldBlock: BlockModel = decoupleReference(getBlockModelById(blockId, this.parent.getEditorBlocks()));
         const blockElement: HTMLElement = this.parent.getBlockElementById(blockId);
         const table: HTMLTableElement = blockElement.querySelector('table.e-table-element');
@@ -123,9 +124,9 @@ export class TableService {
         this.updateRowNumbers(table, settings);
         const deCoupledRowModel: TableRowModel = decoupleReference(newTableRowModel);
         this.parent.undoRedoAction.trackTableRowInsertionForUndoRedo({
-            blockId, rowIndex, rowModel: deCoupledRowModel, isUndoRedoAction
+            blockId, rowIndex, rowModel: deCoupledRowModel, preventTracking
         });
-        this.triggerBlockUpdate(block, oldBlock);
+        this.triggerBlockUpdate({ block, oldBlock, preventTracking });
     }
 
     /**
@@ -138,7 +139,7 @@ export class TableService {
      * @hidden
      */
     public addColumnAt(options: ITableColumnInsertOptions): void {
-        const { blockId, colIndex, columnModel, columnCells, isUndoRedoAction } = options;
+        const { blockId, colIndex, columnModel, columnCells, preventTracking } = options;
         const oldBlock: BlockModel = decoupleReference(getBlockModelById(blockId, this.parent.getEditorBlocks()));
         const blockElement: HTMLElement = this.parent.getBlockElementById(blockId);
         const table: HTMLTableElement = blockElement.querySelector('table.e-table-element');
@@ -238,9 +239,9 @@ export class TableService {
         }
         const deCoupledColModel: TableColumnModel = decoupleReference(newColModel);
         this.parent.undoRedoAction.trackTableColumnInsertionForUndoRedo({
-            blockId, colIndex: targetColIndex, columnModel: deCoupledColModel, columnCells: newColCells, isUndoRedoAction
+            blockId, colIndex: targetColIndex, columnModel: deCoupledColModel, columnCells: newColCells, preventTracking
         });
-        this.triggerBlockUpdate(block, oldBlock);
+        this.triggerBlockUpdate({ block, oldBlock, preventTracking });
     }
 
     /**
@@ -253,7 +254,7 @@ export class TableService {
      * @hidden
      */
     public deleteRowAt(options: ITableRowDeletionOptions): void {
-        const { blockId , modelIndex, isUndoRedoAction  } = options;
+        const { blockId , modelIndex, preventTracking } = options;
         const oldBlock: BlockModel = decoupleReference(getBlockModelById(blockId, this.parent.getEditorBlocks()));
         const blockElement: HTMLElement = this.parent.getBlockElementById(blockId);
         const table: HTMLTableElement = blockElement.querySelector('table');
@@ -295,9 +296,9 @@ export class TableService {
         this.updateRowNumbers(table, props);
         const deCoupledRowModel: TableRowModel = decoupleReference(rowModel);
         this.parent.undoRedoAction.trackTableRowDeletionForUndoRedo({
-            blockId, rowIndex: modelIndex, rowModel: deCoupledRowModel, isUndoRedoAction
+            blockId, rowIndex: modelIndex, rowModel: deCoupledRowModel, preventTracking
         });
-        this.triggerBlockUpdate(block, oldBlock);
+        this.triggerBlockUpdate({ block, oldBlock, preventTracking });
     }
 
     /**
@@ -310,7 +311,7 @@ export class TableService {
      * @hidden
      */
     public deleteColumnAt(options: ITableColumnDeletionOptions): void {
-        const { blockId, colIndex, isUndoRedoAction } = options;
+        const { blockId, colIndex, preventTracking } = options;
         const oldBlock: BlockModel = decoupleReference(getBlockModelById(blockId, this.parent.getEditorBlocks()));
         const blockElement: HTMLElement = this.parent.getBlockElementById(blockId);
         const table: HTMLTableElement = blockElement.querySelector('table');
@@ -367,9 +368,9 @@ export class TableService {
         this.updateDataColCount(table, true);
         const deCoupledColModel: TableColumnModel = decoupleReference(colModel);
         this.parent.undoRedoAction.trackTableColumnDeletionForUndoRedo({
-            blockId, colIndex: colIndex, columnModel: deCoupledColModel, columnCells: deletedColCells, isUndoRedoAction
+            blockId, colIndex: colIndex, columnModel: deCoupledColModel, columnCells: deletedColCells, preventTracking
         });
-        this.triggerBlockUpdate(block, oldBlock);
+        this.triggerBlockUpdate({ block, oldBlock, preventTracking });
     }
 
     private assertColDataset(table: HTMLTableElement): void {
@@ -422,7 +423,7 @@ export class TableService {
         payloadCells.forEach((cell: PayloadCell) => this.applyCellChange(table, cell, 'clear'));
 
         this.parent.undoRedoAction.trackTableCellsClearForUndoRedo({ blockId, cells: payloadCells });
-        this.triggerBlockUpdate(block, oldBlock);
+        this.triggerBlockUpdate({ block, oldBlock });
     }
 
     public applyCellChange(table: HTMLTableElement, cell: PayloadCell, mode: 'clear' | 'restore'): void {
@@ -456,7 +457,7 @@ export class TableService {
 
         const cell: TableCellModel = props.rows[dataRowIndex as number].cells[dataColIndex as number];
         cell.blocks = blocks && blocks.length
-            ? BlockFactory.populateBlockProperties(blocks, cell.id)
+            ? BlockFactory.populateBlockProperties(blocks, this.parent, cell.id)
             : [BlockFactory.createParagraphBlock({ parentId: cell.id })];
 
         const domColIndex: number = (props.enableRowNumbers ? dataColIndex + 1 : dataColIndex);
@@ -548,20 +549,22 @@ export class TableService {
     /**
      * Triggers the block update event.
      *
-     * @param {BlockModel} block - the block with updated changes.
-     * @param {BlockModel} oldBlock - old block
+     * @param {ITriggerBlockChangeOptions} args - Options
      * @returns {void}
      *
      * @hidden
      */
-    public triggerBlockUpdate(block: BlockModel, oldBlock: BlockModel): void {
+    public triggerBlockUpdate(args: ITriggerBlockChangeOptions): void {
+        if (args.preventTracking) { return; }
+
         this.parent.eventService.addChange({
             action: 'Update',
             data: {
-                block: block,
-                prevBlock: oldBlock
+                block: args.block,
+                prevBlock: args.oldBlock
             }
         });
+
         this.parent.observer.notify('triggerBlockChange', this.parent.eventService.getChanges());
     }
 
@@ -572,17 +575,6 @@ export class TableService {
             this.parent.setFocusToBlock(innerBlockEl);
             setCursorPosition(contentEl, cursorAtStart ? 0 : contentEl.textContent.length);
         }
-    }
-
-    private setColumnWidth(colgroup: HTMLElement, isAdd?: boolean): string {
-        const colChildren: HTMLElement[] = Array.from(colgroup.children).filter(
-            (col: HTMLElement) => !col.classList.contains('e-col-row-number')) as HTMLElement[];
-        const totalCols: number = colChildren.length + (isAdd ? 1 : 0);
-        const newWidth: string = 100 / totalCols + '%';
-        colChildren.forEach((col: HTMLElement) => {
-            (col as HTMLTableColElement).style.width = newWidth;
-        });
-        return newWidth;
     }
 
     private createRowModel(settings: ITableBlockSettings): TableRowModel {
@@ -612,7 +604,7 @@ export class TableService {
         });
     }
 
-    private createTableCell(columnId: string): TableCellModel {
+    public createTableCell(columnId: string): TableCellModel {
         const cellId: string = generateUniqueId('cell_');
         return {
             id: cellId,

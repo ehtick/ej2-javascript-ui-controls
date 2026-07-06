@@ -2,12 +2,49 @@ import { _bytesToString, _defineProperty, _stringToBytes, FormatError } from '@s
 import { _expertEncoding, _standardEncoding, _getEncoding, _getGlyphsUnicode } from './encoding-utils';
 import { _FontStructure } from './font-structure';
 import { _recoverGlyphName } from './font-utils';
+/**
+ * Parser for Compact Font Format data used to extract font
+ * structures, encodings and glyph charstrings.
+ *
+ * @private
+ */
 export class _PdfCompactFontParser {
+    /**
+     * Raw bytes of the compact font file.
+     *
+     * @private
+     */
     _bytes: Uint8Array;
+    /**
+     * External properties passed in during parsing.
+     *
+     * @private
+     */
     _properties: any; //eslint-disable-line
+    /**
+     * When true, additional analysis (e.g., standardCharacter detection)
+     * will be performed while parsing.
+     *
+     * @private
+     */
     _isAnalysisEnabled: boolean;
+    /**
+     * Resulting compact font structure built by the parser.
+     *
+     * @private
+     */
     _compactFontFormat: _PdfCompactFormatFont;
-    _values: any; //eslint-disable-line
+    /**
+     * Temporary storage used during parsing.
+     *
+     * @private
+     */
+    _values: any; //eslint-disable-line  
+    /**
+     * Validation table for Type1/Type2 charstring operators.
+     *
+     * @private
+     */
     _characterValidationData: any = [ //eslint-disable-line
         null,
         { id: 'hstem', min: 2, stackClearing: true, stem: true },
@@ -42,6 +79,11 @@ export class _PdfCompactFontParser {
         { id: 'vhcurveto', min: 4, resetStack: true },
         { id: 'hvcurveto', min: 4, resetStack: true }
     ];
+    /**
+     * Extended validation table for Type2 charstring “12” escape operators.
+     *
+     * @private
+     */
     _characterValidationData12: any = [ //eslint-disable-line
         null,
         null,
@@ -117,11 +159,21 @@ export class _PdfCompactFontParser {
         { id: 'hflex1', min: 9, resetStack: true },
         { id: 'flex1', min: 11, resetStack: true }
     ];
+    /**
+     * Predefined CFF charset types.
+     *
+     * @private
+     */
     _compactCharSetPredefinedTypes: any = { //eslint-disable-line
         standard: 0,
         expert: 1,
         expertSubset: 2
     };
+    /**
+     * Standard PostScript character set.
+     *
+     * @private
+     */
     _standardCharSet: string[] = [
         '.notdef', 'space', 'exclam', 'quotedbl', 'numbersign', 'dollar',
         'percent', 'ampersand', 'quoteright', 'parenleft', 'parenright',
@@ -158,6 +210,11 @@ export class _PdfCompactFontParser {
         'ograve', 'otilde', 'scaron', 'uacute', 'ucircumflex', 'udieresis',
         'ugrave', 'yacute', 'ydieresis', 'zcaron'
     ];
+    /**
+     * Expert PostScript character set.
+     *
+     * @private
+     */
     _expertCharSet: string[] = [
         '.notdef', 'space', 'exclamsmall', 'Hungarumlautsmall', 'dollaroldstyle',
         'dollarsuperior', 'ampersandsmall', 'Acutesmall', 'parenleftsuperior',
@@ -197,6 +254,11 @@ export class _PdfCompactFontParser {
         'Ucircumflexsmall', 'Udieresissmall', 'Yacutesmall', 'Thornsmall',
         'Ydieresissmall'
     ];
+    /**
+     * Expert subset PostScript charset.
+     *
+     * @private
+     */
     _expertSubsetCharSet: string[] = [
         '.notdef', 'space', 'dollaroldstyle', 'dollarsuperior',
         'parenleftsuperior', 'parenrightsuperior', 'twodotenleader',
@@ -219,14 +281,47 @@ export class _PdfCompactFontParser {
         'eightinferior', 'nineinferior', 'centinferior', 'dollarinferior',
         'periodinferior', 'commainferior'
     ];
+    /**
+     * Temporary list of encoding glyph names.
+     *
+     * @private
+     */
     _standardEncodingChars: any = []; //eslint-disable-line
+    /**
+     * Width array parsed from font data.
+     *
+     * @private
+     */
     _widths: any = []; //eslint-disable-line
+    /**
+     * Internal read position used during font parsing.
+     *
+     * @private
+     */
     _pos: number = 0;
+    /**
+     * Initializes the compact font parser with a file-like object and
+     * parsing options.
+     *
+     * @private
+     * @param {any} file Source file object exposing `getBytes()`.
+     * @param {any} properties External properties for parsing/context.
+     * @param {boolean} isAnalysisEnabled Enable deeper analysis during parsing.
+     * @returns {void} nothing.
+     */
     constructor(file: any, properties: any, isAnalysisEnabled: boolean) { //eslint-disable-line
         this._bytes = file.getBytes();
         this._properties = properties;
         this._isAnalysisEnabled = isAnalysisEnabled;
     }
+    /**
+     * Parse and attach the private dictionary from the top-level dictionary
+     * if present, otherwise create an empty private dictionary.
+     *
+     * @private
+     * @param {any} parentDictionary Parent dictionary object to inspect/attach to.
+     * @returns {void} nothing.
+     */
     _parsePrivateDictionary(parentDictionary: any): any { //eslint-disable-line
         if (!parentDictionary._hasName('Private')) {
             this._emptyPrivateDictionary(parentDictionary);
@@ -260,6 +355,13 @@ export class _PdfCompactFontParser {
         const subroutineIndex: any = this._parseIndex(relativeOffset); //eslint-disable-line
         privateDictionary.subroutineIndex = subroutineIndex.obj;
     }
+    /**
+     * Parse the entire compact font and return a structured font object.
+     *
+     * @private
+     * @param {any} [properties] Optional properties passed through parsing.
+     * @returns {_PdfCompactFormatFont} The parsed compact font structure.
+     */
     _parse(properties?: any): _PdfCompactFormatFont { //eslint-disable-line
         const compactFontFormat: _PdfCompactFormatFont = new _PdfCompactFormatFont();
         this._compactFontFormat = compactFontFormat;
@@ -343,6 +445,19 @@ export class _PdfCompactFontParser {
         compactFontFormat.widths = charStringsAndSeacs.widths;
         return compactFontFormat;
     }
+    /**
+     * Parse the CharStrings index and populate widths and standard encoding
+     * character arrays.
+     *
+     * @private
+     * @param {any} charStrings Index object of charstrings.
+     * @param {any} localSubroutineIndex Local subroutines index to use.
+     * @param {any} globalSubroutineIndex Global subroutines index.
+     * @param {any} fontDictionarySelect Optional FDSelect structure.
+     * @param {any} fontDictionaryArray Array of font dictionaries when CID fonts used.
+     * @param {any} privateDictionary Private dictionary object used as fallback.
+     * @returns {any} Object containing `charStrings`, `this` (standardEncodingChars) and `widths`.
+     */
     _parseCharStrings(charStrings: any,localSubroutineIndex: any,globalSubroutineIndex: any, fontDictionarySelect: any, fontDictionaryArray: any, //eslint-disable-line
                       privateDictionary: any): any { //eslint-disable-line
         const count: number = charStrings.count;
@@ -404,6 +519,14 @@ export class _PdfCompactFontParser {
         }
         return { charStrings, this: this._standardEncodingChars, widths: this._widths };
     }
+    /**
+     * Parse an FDSelect structure which maps glyph ranges to font dictionary indices.
+     *
+     * @private
+     * @param {number} pos Offset into the bytes where FDSelect begins.
+     * @param {number} length Number of glyphs expected.
+     * @returns {any} A `_PdfCompactFontSelect` instance representing the FDSelect.
+     */
     _parseFontDictionarySelect(pos: number, length: number): any { //eslint-disable-line
         const bytes: any = this._bytes; //eslint-disable-line
         const format: any = bytes[pos++]; //eslint-disable-line
@@ -440,6 +563,16 @@ export class _PdfCompactFontParser {
         }
         return new _PdfCompactFontSelect(format, fontDictionarySelect);
     }
+    /**
+     * Parse the charsets table returning a character set descriptor.
+     *
+     * @private
+     * @param {any} pos Byte offset or predefined id for charsets.
+     * @param {any} length Number of glyphs expected.
+     * @param {any} strings String index for resolving SIDs.
+     * @param {any} characterIdentifier Whether this font uses CIDs.
+     * @returns {any} A `_PdfCompactFontCharacterSet` describing the charSet.
+     */
     _parseCharSets(pos: any, length: any, strings: any, characterIdentifier: any): any { //eslint-disable-line
         if (pos === 0) {
             return new _PdfCompactFontCharacterSet(
@@ -500,6 +633,17 @@ export class _PdfCompactFontParser {
         const raw: any = bytes.subarray(start, end); //eslint-disable-line
         return new _PdfCompactFontCharacterSet(false, format, charSet, raw);
     }
+    /**
+     * Read extra supplement entries for an encoding and apply them.
+     *
+     * @private
+     * @param {Uint8Array} bytes Raw bytes buffer.
+     * @param {number} pos Current offset into `bytes` where supplements start.
+     * @param {any} encoding Encoding map to update.
+     * @param {any} charSet The charSet to reference SIDs.
+     * @param {any} strings String index used to resolve SIDs.
+     * @returns {any} The updated encoding map.
+     */
     _readSupplement(bytes: any, pos: number, encoding: any, charSet: any, strings: any): any {; //eslint-disable-line
         const supplementsCount: number = bytes[pos++];
         for (let i: number = 0; i < supplementsCount; i++) {
@@ -509,6 +653,17 @@ export class _PdfCompactFontParser {
         }
         return encoding;
     }
+    /**
+     * Parse the encoding table for the compact font returning an encoding
+     * descriptor object.
+     *
+     * @private
+     * @param {any} pos Position or predefined id of the encoding.
+     * @param {any} properties Properties passed during parsing.
+     * @param {any} strings String index for SID lookup.
+     * @param {any} charSet Character set used for this font.
+     * @returns {any} A `_PdfCompactFontEncoding` describing the encoding.
+     */
     _parseEncoding(pos: any, properties: any, strings: any, charSet: any): any { //eslint-disable-line
         let encoding: any = Object.create(null); //eslint-disable-line
         const bytes: any = this._bytes; //eslint-disable-line
@@ -564,6 +719,12 @@ export class _PdfCompactFontParser {
         format &= 0x7f;
         return new _PdfCompactFontEncoding(predefined, format, encoding, raw);
     }
+    /**
+     * Find and parse the compact font header at the beginning of the byte stream.
+     *
+     * @private
+     * @returns {any} Object with parsed header instance and end position.
+     */
     private _parseHeader(): any { //eslint-disable-line
         let bytes: any = this._bytes; //eslint-disable-line
         const bytesLength: number = bytes.length;
@@ -585,6 +746,13 @@ export class _PdfCompactFontParser {
         const header: _PdfCompactFontHeader = new _PdfCompactFontHeader(major, minor, headerSize, offSize);
         return { obj: header, endPos: headerSize };
     }
+    /**
+     * Parse a single operand value from the CFF operand encoding.
+     *
+     * @private
+     * @param {any} dictionary Array of operand bytes to read from.
+     * @returns {number} Parsed operand (integer or NaN for invalid types).
+     */
     _parseOperand(dictionary: any): number { //eslint-disable-line
         let value: number = dictionary[this._pos++];
         if (value === 30) {
@@ -608,6 +776,13 @@ export class _PdfCompactFontParser {
         }
         return NaN;
     }
+    /**
+     * Parse a floating point operand encoded in CFF nibble-pairs.
+     *
+     * @private
+     * @param {any} dictionary Byte array holding the float operand.
+     * @returns {number} Parsed floating-point value.
+     */
     _parseFloatOperand(dictionary: any): number { //eslint-disable-line
         let str: string = '';
         const eof: number = 15;
@@ -628,6 +803,13 @@ export class _PdfCompactFontParser {
         }
         return parseFloat(str);
     }
+    /**
+     * Parse a CFF dictionary (sequence of key/operands pairs) into entries.
+     *
+     * @private
+     * @param {any} dictionary Raw dictionary bytes.
+     * @returns {[number, number[]][]} Array of entries with opcode and operands.
+     */
     _parseDictionary(dictionary: any): [number, number[]][] { //eslint-disable-line
         let operands: number[] = [];
         const entries: [number, number[]][] = [];
@@ -648,9 +830,17 @@ export class _PdfCompactFontParser {
         }
         return entries;
     }
+    /* eslint-disable */
+    /**
+     * Parse a CFF index structure at the given position.
+     *
+     * @private
+     * @param {number} pos Offset where the index begins.
+     * @returns {{ obj: _PdfCompactFontIndex; endPos: number }} Parsed index and end offset.
+     */
     _parseIndex(pos: number): { obj: _PdfCompactFontIndex; endPos: number } {
         const compactFontIndex: _PdfCompactFontIndex = new _PdfCompactFontIndex();
-        const bytes: any = this._bytes; //eslint-disable-line
+        const bytes: any = this._bytes;
         const count: number = (bytes[pos++] << 8) | bytes[pos++];
         const offsets: number[] = [];
         let end: number = pos;
@@ -674,22 +864,46 @@ export class _PdfCompactFontParser {
         }
         return { obj: compactFontIndex, endPos: end };
     }
+    /**
+     * Convert a name index into an array of string names.
+     *
+     * @private
+     * @param {any} index Name index object.
+     * @returns {string[]} Array of name strings.
+     */
     _parseNameIndex(index: { count: number; _get: (i: number) => Uint8Array }): string[] {
         const names: string[] = [];
         for (let i: number = 0, ii: number = index.count; i < ii; ++i) {
-            const name: any = index._get(i); //eslint-disable-line
+            const name: any = index._get(i);
             names.push(_bytesToString(name));
         }
         return names;
     }
+    /**
+     * Convert a string index into a `_PdfCompactFontStrings` helper.
+     *
+     * @private
+     * @param {any} index String index object.
+     * @returns {_PdfCompactFontStrings} Helper wrapping the parsed strings.
+     */
     _parseStringIndex(index: { count: number; _get: (i: number) => Uint8Array }): _PdfCompactFontStrings {
         const strings: _PdfCompactFontStrings = new _PdfCompactFontStrings();
         for (let i: number = 0, ii: number = index.count; i < ii; ++i) {
-            const data: any = index._get(i); //eslint-disable-line
+            const data: any = index._get(i);
             strings._add(_bytesToString(data));
         }
         return strings;
     }
+    /* eslint-enable */
+    /**
+     * Create a compact-font dictionary wrapper from parsed entries.
+     *
+     * @private
+     * @param {any} type Constructor function for the dictionary wrapper.
+     * @param {[number, number[]][]} dictionary Parsed entries to set.
+     * @param {_PdfCompactFontStrings} strings String table used for SID lookups.
+     * @returns {any} An instance of the requested dictionary wrapper type.
+     */
     _createDictionary(type: any, dictionary: [number, number[]][], strings: _PdfCompactFontStrings): any { //eslint-disable-line
         const compactFontDict: any = new type(strings); //eslint-disable-line
         for (const [key, value] of dictionary) {
@@ -697,21 +911,33 @@ export class _PdfCompactFontParser {
         }
         return compactFontDict;
     }
+    /* eslint-disable */
+    /**
+     * Parse a single charstring sequence validating stack behaviour and
+     * optionally extracting metrics and standard character sequences.
+     *
+     * @private
+     * @param {any} state Parser state object tracking stack and hints.
+     * @param {number[]} data Array of charstring bytes to parse.
+     * @param {any} localSubroutineIndex Local subr index.
+     * @param {any} globalSubroutineIndex Global subr index.
+     * @returns {any} True when successfully parsed otherwise false.
+     */
     _parseCharString(
-        state: any, //eslint-disable-line
+        state: any,
         data: number[],
         localSubroutineIndex: { count: number; get: (index: number) => number[] },
         globalSubroutineIndex: { count: number; get: (index: number) => number[] }
-    ): any { //eslint-disable-line
+    ): any {
         if (!data || state.callDepth > 1000) {
             return false;
         }
         let stackSize: number = state.stackSize;
-        const stack: any = state.stack; //eslint-disable-line
+        const stack: any = state.stack;
         let length: number = data.length;
         for (let j: number = 0; j < length;) {
             const value: number = data[j++];
-            let validationCommand: any = null; //eslint-disable-line
+            let validationCommand: any = null;
             if (value === 12) {
                 const q: number = data[j++];
                 if (q === 0) {
@@ -763,7 +989,7 @@ export class _PdfCompactFontParser {
                 stackSize %= 2;
                 validationCommand = this._characterValidationData[Number.parseInt(value.toString(), 10)];
             } else if (value === 10 || value === 29) {
-                const subroutineIndex: any = value === 10 ? localSubroutineIndex : globalSubroutineIndex; //eslint-disable-line
+                const subroutineIndex: any = value === 10 ? localSubroutineIndex : globalSubroutineIndex;
                 if (!subroutineIndex) {
                     validationCommand = this._characterValidationData[Number.parseInt(value.toString(), 10)];
                     return false;
@@ -854,25 +1080,53 @@ export class _PdfCompactFontParser {
         state.stackSize = stackSize;
         return true;
     }
+    /* eslint-enable */
+    /**
+     * Create and attach an empty private dictionary when none is present.
+     *
+     * @private
+     * @param {any} parentDictionary Parent dictionary to modify.
+     * @returns {void} nothing.
+     */
     _emptyPrivateDictionary(parentDictionary: any): void { //eslint-disable-line
         const privateDictionary: any = this._createDictionary(_PdfCompactFontPrivateDictionary, [], parentDictionary.strings); //eslint-disable-line
         parentDictionary._setByKey(18, [0, 0]);
         parentDictionary.privateDictionary = privateDictionary;
     }
 }
+/**
+ * In-memory representation of a parsed Compact Font (CFF) used by the parser
+ * and subsequent consumers. Holds header, name/table indices, charstrings,
+ * encodings and helper structures.
+ *
+ * @private
+ */
 export class _PdfCompactFormatFont {
+    /** Parsed header object. @private */
     header: any; //eslint-disable-line
+    /** Name strings parsed from the name index. @private */
     names: any; //eslint-disable-line
+    /** Top-level dictionary describing the font. @private */
     topDictionary: any; //eslint-disable-line
+    /** String table helper for resolving SIDs. @private */
     strings: _PdfCompactFontStrings;
+    /** Global subroutine index. @private */
     globalSubroutineIndex: any; //eslint-disable-line
+    /** Parsed encoding descriptor. @private */
     encoding: any; //eslint-disable-line
+    /** Parsed charset descriptor. @private */
     charSet: any; //eslint-disable-line
+    /** Parsed charStrings table. @private */
     charStrings: any; //eslint-disable-line
+    /** Font dictionary array for CID fonts. @private */
     fontDictionaryArray: any; //eslint-disable-line
+    /** FDSelect structure when CID fonts are used. @private */
     fontDictionarySelect: any; //eslint-disable-line
+    /** True when font uses CIDs rather than glyph names. @private */
     isCharacterIdentifierFont: boolean = false;
+    /** Standard encoding characters discovered while parsing. @private */
     standardEncodingChars: any = []; //eslint-disable-line
+    /** Glyph widths parsed from private dictionaries. @private */
     widths: any = []; //eslint-disable-line
     constructor() {
         this.header = null;
@@ -887,6 +1141,13 @@ export class _PdfCompactFormatFont {
         this.fontDictionarySelect = null;
         this.isCharacterIdentifierFont = false;
     }
+    /**
+     * Duplicate the first glyph to work around fonts that index glyphs starting
+     * at 1 instead of 0. Ensures charStrings count stays within limits.
+     *
+     * @private
+     * @returns {void} nothing.
+     */
     _duplicateFirstGlyph(): void {
         if (this.charStrings.count >= 65535) {
             return;
@@ -897,6 +1158,14 @@ export class _PdfCompactFormatFont {
             this.fontDictionarySelect.fontDictionarySelect.push(this.fontDictionarySelect.fontDictionarySelect[0]);
         }
     }
+
+    /**
+     * Check whether a glyph id exists in the parsed charStrings table.
+     *
+     * @param {any} id - Glyph id to test.
+     * @returns {boolean} True if glyph exists and contains data.
+     * @private
+     */
     _hasGlyphId(id: any): boolean {  //eslint-disable-line
         if (id < 0 || id >= this.charStrings.count) {
             return false;
@@ -905,10 +1174,19 @@ export class _PdfCompactFormatFont {
         return glyph.length > 0;
     }
 }
+/**
+ * Compact font header descriptor.
+ *
+ * @private
+ */
 export class _PdfCompactFontHeader {
+    /** Major version number. @private */
     major: any; //eslint-disable-line
+    /** Minor version number. @private */
     minor: any; //eslint-disable-line
+    /** Size of the header block. @private */
     headerSize: any; //eslint-disable-line
+    /** Offset size field. @private */
     offSize: any; //eslint-disable-line
     constructor(major: any, minor: any, headerSize: any, offSize: any) { //eslint-disable-line
         this.major = major;
@@ -917,9 +1195,18 @@ export class _PdfCompactFontHeader {
         this.offSize = offSize;
     }
 }
+/**
+ * Helper storing standard and extra string table entries for CFF fonts.
+ * Provides SID resolution and insertion utilities.
+ *
+ * @private
+ */
 export class _PdfCompactFontStrings {
+    /** Custom strings appended after standard names. @private */
     strings: any;  //eslint-disable-line
+    /** Number of predefined standard strings. @private */
     _numberOfStandardCompactFontStrings: number = 391;
+    /** Array containing the standard CFF strings. @private */
     _compactFontStandardStrings: string[] = [
         '.notdef', 'space', 'exclam', 'quotedbl', 'numbersign', 'dollar', 'percent',
         'ampersand', 'quoteright', 'parenleft', 'parenright', 'asterisk', 'plus',
@@ -990,6 +1277,14 @@ export class _PdfCompactFontStrings {
     constructor() {
         this.strings = [];
     }
+
+    /**
+     * Retrieve a string by SID.
+     *
+     * @private
+     * @param {number} index - SID index to resolve.
+     * @returns {any} The resolved string.
+     */
     _get(index: number): any { //eslint-disable-line
         if (index >= 0 && index <= this._numberOfStandardCompactFontStrings - 1) {
             return this._compactFontStandardStrings[Number.parseInt(index.toString(), 10)];
@@ -999,6 +1294,14 @@ export class _PdfCompactFontStrings {
         }
         return this._compactFontStandardStrings[0];
     }
+
+    /**
+     * Return the SID for a given text, searching standard then custom strings.
+     *
+     * @private
+     * @param {any} text - The string to find.
+     * @returns {number} SID index or -1 when not found.
+     */
     _fetchStringIdentifier(text: any): number { //eslint-disable-line
         let index: number = this._compactFontStandardStrings.indexOf(text);
         if (index !== -1) {
@@ -1010,6 +1313,14 @@ export class _PdfCompactFontStrings {
         }
         return -1;
     }
+
+    /**
+     * Append a new custom string to the string table.
+     *
+     * @private
+     * @param {any} value - String value to add.
+     * @returns {void} nothing.
+     */
     _add(value: any): void { //eslint-disable-line
         this.strings.push(value);
     }
@@ -1017,6 +1328,11 @@ export class _PdfCompactFontStrings {
         return this.strings.length;
     }
 }
+/**
+ * Represents the pdf compact font index.
+ *
+ * @private
+ */
 export class _PdfCompactFontIndex {
     objects: any; //eslint-disable-line
     length: number;
@@ -1024,21 +1340,57 @@ export class _PdfCompactFontIndex {
         this.objects = [];
         this.length = 0;
     }
+
+    /**
+     * Append a new object to the index.
+     *
+     * @private
+     * @param {any} data - Raw bytes for the object.
+     * @returns {void} nothing.
+     */
     add(data: any): void { //eslint-disable-line
         this.length += data.length;
         this.objects.push(data);
     }
+
+    /**
+     * Replace an existing index entry.
+     *
+     * @private
+     * @param {number} index - Entry index to replace.
+     * @param {any} data - New raw bytes for the entry.
+     * @returns {void} nothing.
+     */
     set(index: number, data: any): void { //eslint-disable-line
         this.length += data.length - this.objects[Number.parseInt(index.toString(), 10)].length;
         this.objects[Number.parseInt(index.toString(), 10)] = data;
     }
+
+    /**
+     * Retrieve an object by index.
+     *
+     * @private
+     * @param {number} index - Object index to return.
+     * @returns {any} The raw object bytes.
+     */
     _get(index: number): any { //eslint-disable-line
         return this.objects[Number.parseInt(index.toString(), 10)];
     }
+
+    /** Number of objects in the index.
+     *
+     * @private
+     * @returns {number} as number of objects in the index.
+     */
     get count(): number {
         return this.objects.length;
     }
 }
+/**
+ * Represents mapping dictionaries for compact font entries.
+ *
+ * @private
+ */
 export class _PdfCompactFontDictionary {
     keyToNameMap: any; //eslint-disable-line
     nameToKeyMap: any; //eslint-disable-line
@@ -1058,6 +1410,14 @@ export class _PdfCompactFontDictionary {
         this.strings = strings;
         this.values = Object.create(null);
     }
+    /**
+     * Set a dictionary entry by numeric key using parsed operand values.
+     *
+     * @private
+     * @param {any} key - Numeric key opcode for the dictionary entry.
+     * @param {any} value - Operand array to set for the key.
+     * @returns {boolean} True when the value was accepted.
+     */
     _setByKey(key: any, value: any): boolean { //eslint-disable-line
         if (!this.keyToNameMap && (key in this.keyToNameMap)) {
             return false;
@@ -1077,15 +1437,37 @@ export class _PdfCompactFontDictionary {
         this.values[Number.parseInt(key.toString(), 10)] = value;
         return true;
     }
+    /**
+     * Set a dictionary value by its human-readable name.
+     *
+     * @private
+     * @param {any} name - Dictionary entry name.
+     * @param {any} value - Value to set for the named entry.
+     * @returns {void} nothing.
+     */
     _setByName(name: any, value: any): void { //eslint-disable-line
         if (!(name in this.nameToKeyMap)) {
             throw new FormatError(`Invalid dictionary name '${name}'`);
         }
         this.values[this.nameToKeyMap[Number.parseInt(name.toString(), 10)]] = value;
     }
+    /**
+     * Test whether a named dictionary entry is present.
+     *
+     * @private
+     * @param {any} name - Name to test for.
+     * @returns {any} True when the name exists in the values.
+     */
     _hasName(name: any): any { //eslint-disable-line
         return this.nameToKeyMap[Number.parseInt(name.toString(), 10)] in this.values;
     }
+    /**
+     * Get a dictionary value by name, returning defaults when missing.
+     *
+     * @private
+     * @param {string} name - Name of the entry to retrieve.
+     * @returns {any} The stored value or the configured default.
+     */
     _getByName(name: string): any { //eslint-disable-line
         if (!(name in this.nameToKeyMap)) {
             throw new FormatError(`Invalid dictionary name ${name}'`);
@@ -1096,9 +1478,25 @@ export class _PdfCompactFontDictionary {
         }
         return this.values[key]; //eslint-disable-line
     }
-    _removeByName(name: any): any { //eslint-disable-line
+    /* eslint-disable */
+    /**
+     * Remove an entry by its name.
+     *
+     * @private
+     * @param {any} name - Entry name to remove.
+     * @returns {any} returns font after removing entry.
+     */
+    _removeByName(name: any): any {
         delete this.values[this.nameToKeyMap[Number.parseInt(name.toString(), 10)]];
     }
+    /* eslint-enable */
+    /**
+     * Build lookup tables from a layout description.
+     *
+     * @private
+     * @param {any} layout  - Array describing dictionary layout entries.
+     * @returns {any} The constructed tables object.
+     */
     _createTables(layout: any) { //eslint-disable-line
         const tables: any = { //eslint-disable-line
             keyToNameMap: {},
@@ -1122,6 +1520,11 @@ export class _PdfCompactFontDictionary {
         return tables;
     }
 }
+/**
+ * Represents the top-level compact font dictionary used internally.
+ *
+ * @private
+ */
 export class _PdfCompactFontTopDictionary extends _PdfCompactFontDictionary {
     privateDictionary: any; //eslint-disable-line  
     static get _tables(): any { //eslint-disable-line
@@ -1131,6 +1534,12 @@ export class _PdfCompactFontTopDictionary extends _PdfCompactFontDictionary {
         super(_PdfCompactFontTopDictionary._createTables(), strings);
         this.privateDictionary = null;
     }
+    /**
+     * It creates table for the font.
+     *
+     * @private
+     * @returns {any} returns any values.
+     */
     static _createTables(): any { //eslint-disable-line
         let layout: any = [ //eslint-disable-line
             [[12, 30], 'ROS', ['sid', 'sid', 'num'], null],
@@ -1272,6 +1681,13 @@ export class _PdfCompactFontSelect {
         this.format = format;
         this.fontDictionarySelect = fontDictionarySelect;
     }
+    /**
+     * Return the FDArray index for a glyph.
+     *
+     * @private
+     * @param {number} glyphIndex - Glyph id to query.
+     * @returns {any} Font dictionary index or -1 when out of range.
+     */
     _getFontDictionaryIndex(glyphIndex: number): any { //eslint-disable-line
         if (glyphIndex < 0 || glyphIndex >= this.fontDictionarySelect.length) {
             return -1;
@@ -1279,20 +1695,47 @@ export class _PdfCompactFontSelect {
         return this.fontDictionarySelect[Number.parseInt(glyphIndex.toString(), 10)];
     }
 }
+/**
+ * Compact font offset tracker for text.
+ *
+ * @private
+ */
 export class _PdfCompactFontOffsetTracker {
     offsets: any; //eslint-disable-line
     constructor() {
         this.offsets = Object.create(null);
     }
+    /**
+     * Check whether a named entry is currently being tracked.
+     *
+     * @param {any} key - Name/key being tracked.
+     * @returns {boolean} True when tracking exists.
+     * @private
+     */
     _isTracking(key: any): boolean { //eslint-disable-line
         return key in this.offsets;
     }
+    /**
+     * Begin tracking an entry location for later patching.
+     *
+     * @private
+     * @param {any} key - Entry name to track.
+     * @param {any} location - Location index to track.
+     * @returns {void} nothing.
+     */
     _track(key: any, location: any): void { //eslint-disable-line
         if (key in this.offsets) {
             throw new FormatError(`Already tracking location of ${key}`);
         }
         this.offsets[Number.parseInt(key.toString(), 10)] = location;
     }
+    /**
+     * Add a delta to all tracked offsets.
+     *
+     * @private
+     * @param {any} value - Amount to add to each tracked offset.
+     * @returns {void} nothing.
+     */
     _offset(value: any): void { //eslint-disable-line
         const keys: any = Object.keys(this.offsets); //eslint-disable-line
         for (let i: number = 0; i < keys.length; i++) {
@@ -1301,6 +1744,15 @@ export class _PdfCompactFontOffsetTracker {
             this.offsets[Number.parseInt(numericKey.toString(), 10)] += value;
         }
     }
+    /**
+     * Write the actual offset entries into an output buffer for a tracked key.
+     *
+     * @private
+     * @param {any} key - Tracked entry name.
+     * @param {any} values - Array of numeric offsets to write.
+     * @param {any} output - Output object containing `data` and `length`.
+     * @returns {void} nothing.
+     */
     _setEntryLocation(key: any, values: any, output: any): void { //eslint-disable-line
         if (!(key in this.offsets)) {
             throw new FormatError(`Not tracking location of ${key}`);
@@ -1328,11 +1780,23 @@ export class _PdfCompactFontOffsetTracker {
         }
     }
 }
+/**
+ * Compiler for producing serialized CFF data from a parsed compact-font.
+ * All methods are internal implementation details used when emitting a CFF.
+ *
+ * @private
+ */
 export class _PdfCompactFontCompiler {
     compactFont: any; //eslint-disable-line
     constructor(compactFont: any) { //eslint-disable-line
         this.compactFont = compactFont;
     }
+    /**
+     * Compile the in-memory compact font into a byte array.
+     *
+     * @private
+     * @returns {any} Compiled byte array of the CFF font.
+     */
     compile(): any { //eslint-disable-line
         const compactFont: any = this.compactFont; //eslint-disable-line
         const output: any = { //eslint-disable-line
@@ -1410,6 +1874,14 @@ export class _PdfCompactFontCompiler {
         output.add([0]);
         return output.data;
     }
+    /**
+     * Multiply two 2x3 font matrices.
+     *
+     * @private
+     * @param {any} m1 - Left matrix.
+     * @param {any} m2 - Right matrix.
+     * @returns {any} The transformed matrix.
+     */
     _transform(m1: any, m2: any): any { //eslint-disable-line
         return [
             m1[0] * m2[0] + m1[2] * m2[1],
@@ -1420,12 +1892,27 @@ export class _PdfCompactFontCompiler {
             m1[1] * m2[4] + m1[3] * m2[5] + m1[5]
         ];
     }
+    /**
+     * Encode a numeric operand as CFF bytes.
+     *
+     * @private
+     * @param {any} value - Numeric value to encode.
+     * @returns {any} Encoded byte sequence for the operand.
+     */
     _encodeNumber(value: any): any { //eslint-disable-line
         if (Number.isInteger(value)) {
             return this._encodeInteger(value);
         }
         return this._encodeFloat(value);
     }
+
+    /**
+     * Encode a floating-point number to CFF float nibble encoding.
+     *
+     * @private
+     * @param {any} count - Floating point value to encode.
+     * @returns {number} Byte array for the float operand.
+     */
     _encodeFloat(count: any): number[] { //eslint-disable-line
         let value: string = count.toString();
         const m: any = _defineProperty(this, 'EncodeFloatRegExp', /\.(\d*?)(?:9{5,20}|0{5,20})\d{0,2}(?:e(.+)|$)/).exec(value); //eslint-disable-line
@@ -1453,6 +1940,13 @@ export class _PdfCompactFontCompiler {
         }
         return result;
     }
+    /**
+     * Encode an integer using compact CFF integer encoding.
+     *
+     * @private
+     * @param {number} value - Integer value.
+     * @returns {number} Encoded byte array for the integer.
+     */
     _encodeInteger(value: number): number[] {
         let code: number[];
         if (value >= -107 && value <= 107) {
@@ -1476,9 +1970,23 @@ export class _PdfCompactFontCompiler {
         }
         return code;
     }
+    /**
+     * Compile the CFF header for the font.
+     *
+     * @private
+     * @param {any} header - Parsed header object.
+     * @returns {any} Header byte array.
+     */
     _compileHeader(header: any): any { //eslint-disable-line
         return [header.major, header.minor, 4, header.offSize];
     }
+    /**
+     * Compile the name index for the font.
+     *
+     * @private
+     * @param {any} names - Array of font name strings.
+     * @returns {any} Compiled name index bytes.
+     */
     _compileNameIndex(names: any): any { //eslint-disable-line
         const nameIndex: _PdfCompactFontIndex = new _PdfCompactFontIndex();
         for (const name of names) {
@@ -1512,6 +2020,15 @@ export class _PdfCompactFontCompiler {
         }
         return this._compileIndex(nameIndex);
     }
+    /**
+     * Compile one or more top-level font dictionaries into an index.
+     *
+     * @private
+     * @param {any} dictionary - Array of font dictionary wrappers.
+     * @param {any} length - Current output length used for offset adjustments.
+     * @param {any} removeCidKeys - Remove CID-specific keys when true.
+     * @returns {any} Object with trackers and compiled output.
+     */
     _compileTopDictionary(dictionary: any, length: any, removeCidKeys: any): any { //eslint-disable-line
         const fontDictTrackers: any = []; //eslint-disable-line
         let fontDictionaryArrayIndex: _PdfCompactFontIndex = new _PdfCompactFontIndex();
@@ -1535,6 +2052,15 @@ export class _PdfCompactFontCompiler {
             output: fontDictionaryArrayIndex
         };
     }
+    /**
+     * Compile private dictionaries and patch their offsets into trackers.
+     *
+     * @private
+     * @param {any} dictionary - Array of font dictionaries with `privateDictionary` fields.
+     * @param {any} trackers - Array of offset trackers to update.
+     * @param {any} output - Output buffer object used for writing compiled bytes.
+     * @returns {void} nothing.
+     */
     _compilePrivateDictionary(dictionary: any, trackers: any, output: any): void { //eslint-disable-line
         for (let i: number = 0, ii: number = dictionary.length; i < ii; ++i) {
             const fontDict: any = dictionary[Number.parseInt(i.toString(), 10)]; //eslint-disable-line
@@ -1566,6 +2092,14 @@ export class _PdfCompactFontCompiler {
             }
         }
     }
+    /**
+     * Compile a single dictionary into operator/operand byte sequences.
+     *
+     * @private
+     * @param {any} dictionary - Dictionary wrapper instance.
+     * @param {any} offsetTracker - Offset tracker used for deferred offsets.
+     * @returns {any} Array of bytes representing the compiled dictionary.
+     */
     _compileDictionary(dictionary: any, offsetTracker: any): any { //eslint-disable-line
         const out = []; //eslint-disable-line
         for (const key of dictionary.order) {
@@ -1618,6 +2152,13 @@ export class _PdfCompactFontCompiler {
         }
         return out;
     }
+    /**
+     * Compile a string index from an array of JavaScript strings.
+     *
+     * @private
+     * @param {any} strings - Array of string values.
+     * @returns {void} Compiled string index bytes.
+     */
     _compileStringIndex(strings: any) { //eslint-disable-line
         const stringIndex: _PdfCompactFontIndex = new _PdfCompactFontIndex();
         for (const string of strings) {
@@ -1625,6 +2166,13 @@ export class _PdfCompactFontCompiler {
         }
         return this._compileIndex(stringIndex);
     }
+    /**
+     * Compile the charStrings index from parsed glyph byte arrays.
+     *
+     * @private
+     * @param {any} charStrings - Container with glyph byte arrays.
+     * @returns {any} Compiled charStrings index bytes.
+     */
     _compileCharStrings(charStrings: any): any { //eslint-disable-line
         const charStringsIndex: _PdfCompactFontIndex = new _PdfCompactFontIndex();
         for (let i: number = 0; i < charStrings.count; i++) {
@@ -1637,6 +2185,16 @@ export class _PdfCompactFontCompiler {
         }
         return this._compileIndex(charStringsIndex);
     }
+    /**
+     * Compile the charSet table for the font.
+     *
+     * @private
+     * @param {any} charSet - CharSet descriptor.
+     * @param {any} glyphCount - Number of glyphs to encode.
+     * @param {any} strings - String table helper for SID resolution.
+     * @param {any} isCharacterIdentifierFont - True for CID-keyed fonts.
+     * @returns {any} Compiled charSet bytes.
+     */
     _compileCharSet(charSet: any, glyphCount: any, strings: any, isCharacterIdentifierFont: any): any { //eslint-disable-line
         let out: any; //eslint-disable-line
         const glyphCountLessNotDef: number = glyphCount - 1;
@@ -1667,9 +2225,23 @@ export class _PdfCompactFontCompiler {
         }
         return this._compileTypedArray(out);
     }
+    /**
+     * Compile encoding data into bytes.
+     *
+     * @private
+     * @param {any} encoding - Encoding descriptor.
+     * @returns {void} Compiled encoding bytes.
+     */
     _compileEncoding(encoding: any) { //eslint-disable-line
         return this._compileTypedArray(encoding.raw);
     }
+    /**
+     * Compile FDSelect structure used for CID fonts.
+     *
+     * @private
+     * @param {any} fontDictionarySelect - FDSelect descriptor.
+     * @returns {void} nothing.
+     */
     _compileFontDictionarySelect(fontDictionarySelect: any) { //eslint-disable-line
         const format: any = fontDictionarySelect.format; //eslint-disable-line
         let out: Uint8Array;
@@ -1704,9 +2276,24 @@ export class _PdfCompactFontCompiler {
         }
         return this._compileTypedArray(out);
     }
+    /**
+     * Convert a typed array to a normal array of bytes.
+     *
+     * @private
+     * @param {any} data - Typed array to convert.
+     * @returns {any} Array of bytes.
+     */
     _compileTypedArray(data: any): any { //eslint-disable-line
         return Array.from(data);
     }
+    /**
+     * Compile a generic CFF INDEX object.
+     *
+     * @private
+     * @param {any} index - _PdfCompactFontIndex instance.
+     * @param {any} trackers - Optional array of trackers to patch offsets.
+     * @returns {any} Compiled index bytes.
+     */
     _compileIndex(index: any, trackers: any = []): any { //eslint-disable-line
         const objects: any = index.objects; //eslint-disable-line
         const count: number = objects.length;
@@ -1763,12 +2350,40 @@ export class _PdfCompactFontCompiler {
         return data;
     }
 }
+/**
+ * Wrapper around a parsed compact (CFF) font providing convenient access to
+ * glyph counts, mappings and compiled font data.
+ *
+ * @private
+ */
 export class _PdfCompactFont {
+    /** External runtime font properties.
+     *
+     * @private
+     */
     properties: _FontStructure;
+    /** Parsed compact font structure.
+     *
+     * @private
+     */
     compactFont: any; //eslint-disable-line
+    /** Standard character mapping discovered during parsing. @private */
     standardCharacter: any; //eslint-disable-line
+    /** Compiled font data or original input when compilation fails. @private */
     data: any; //eslint-disable-line
+    /** Built-in encoding map (charCode -> glyphName) when available.
+     *
+     *  @private
+     */
     _builtInEncoding: any;  //eslint-disable-line
+    /**
+     * Create a compact font wrapper by parsing/compiling the provided font.
+     *
+     * @param {any} file - Font source to parse.
+     * @param {any} properties - External properties used during parsing (contains fontStructure).
+     *
+     * @private
+     */
     constructor(file: any, properties: any) { //eslint-disable-line
         this.properties = properties;
         const parser: _PdfCompactFontParser = new _PdfCompactFontParser(file, properties, true);
@@ -1783,12 +2398,32 @@ export class _PdfCompactFont {
         }
         this._createBuiltInEncoding();
     }
+    /**
+     * Number of glyphs contained in the compact font.
+     *
+     * @private
+     * @returns {number} Glyph count.
+     */
     get _glyphCount(): number {
         return this.compactFont.charStrings.count;
     }
+    /**
+     * Get the character set array used by the compact font.
+     *
+     * @private
+     * @returns {any} Array of glyph names or CIDs depending on font type.
+     */
     _getCharSet(): any { //eslint-disable-line
         return this.compactFont.charSet.charSet;
     }
+    /* eslint-disable */
+    /**
+     * Build a mapping from character codes to glyph ids suitable for text extraction.
+     * @returns {[key: number]: number} Object mapping character codes to glyph id numbers.
+     *
+     * @private
+     */
+    /* eslint-enable */
     _getGlyphMapping(): { [key: number]: number } {
         const compactFont: any = this.compactFont; //eslint-disable-line
         const properties: any = this.properties; //eslint-disable-line
@@ -1833,9 +2468,27 @@ export class _PdfCompactFont {
         charCodeToGlyphId = this._type1FontGlyphMapping(properties, encoding, charSets);
         return charCodeToGlyphId;
     }
+    /**
+     * Check whether the compact font contains the given glyph id.
+     *
+     * @param {number} id - Glyph id to check.
+     * @returns {boolean} True when the glyph exists.
+     *
+     * @private
+     */
     _hasGlyphId(id: number): boolean {
         return this.compactFont.hasGlyphId(id);
     }
+    /**
+     * Build a charCode glyphId mapping for Type1-like fonts including
+     * handling differences and base encodings.
+     *
+     * @private
+     * @param {any} properties - Parsing properties containing font flags and differences.
+     * @param {any} builtInEncoding - Built-in encoding map from the font or external source.
+     * @param {any} glyphNames - Array of glyph names present in the charstrings table.
+     * @returns {any} Mapping object charCode.
+     */
     _type1FontGlyphMapping(properties: any, builtInEncoding: any, glyphNames: any): any { //eslint-disable-line
         const charCodeToGlyphId: any = Object.create(null); //eslint-disable-line
         let glyphId: number;
@@ -1902,6 +2555,13 @@ export class _PdfCompactFont {
         }
         return charCodeToGlyphId;
     }
+    /**
+     * Build a built-in encoding map from parsed charSet/encoding information.
+     * Populates `_builtInEncoding` when mapping entries are found.
+     *
+     * @private
+     * @returns {void} nothing.
+     */
     _createBuiltInEncoding(): void {
         const { charSet, encoding } = this.compactFont;
         if (!charSet || !encoding) {

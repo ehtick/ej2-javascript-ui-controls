@@ -1,6 +1,5 @@
 @use 'sass:color';
-@use 'ej2-base/styles/definition/bootstrap5-dark' as *;
-@forward 'ej2-base/styles/definition/bootstrap5-dark';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 
 /*! TreeView's bootstrap5 theme wise override definitions and variables */
 /* stylelint-disable */
@@ -52,9 +51,9 @@ $treeview-icon-img-wrap-width: calc(100% - 60px) !default;
 
 $treeview-big-font-size: $text-base !default;
 $treeview-big-icon-font-size: $text-2xl !default;
-$treeview-big-item-height: 40px !default;
-$treeview-big-text-line-height: 40px !default;
-$treeview-big-text-min-height: 40px !default;
+$treeview-big-item-height: 42px !default;
+$treeview-big-text-line-height: 24px !default;
+$treeview-big-text-min-height: 24px !default;
 $treeview-big-input-height: 36px !default;
 $treeview-big-text-padding: 0 12px !default;
 $treeview-big-input-padding: 0 9px !default;

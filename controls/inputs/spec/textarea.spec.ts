@@ -1846,7 +1846,7 @@ describe('TextArea Component', () => {
             textareaObj = new TextArea({ 
                 value: undefined
             },'#textarea');
-            expect(textareaObj.value).toBe(null);
+            expect(textareaObj.value).toBe('');
             textareaObj.destroy();
          });
          it('width',function() {

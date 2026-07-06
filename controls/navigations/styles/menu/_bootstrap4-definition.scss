@@ -1,7 +1,7 @@
 @use 'sass:color';
-@use 'ej2-base/styles/definition/bootstrap4' as *;
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 @use '../context-menu/bootstrap4-definition' as *;
-@forward 'ej2-base/styles/definition/bootstrap4';
+
 @forward '../context-menu/bootstrap4-definition';
 
 $menu-bigger-caret-font-size: 12px !default;

@@ -1,5 +1,5 @@
-import { Diagram } from '../diagram';import { ConnectorConstraints, NodeConstraints} from '../enum/enum';import { Rect } from '../primitives/rect';import { Node } from '../objects/node';import { Connector } from '../objects/connector';import { ShapeAnnotationModel } from '../objects/annotation-model';import { ShapeStyleModel, ShapeAnnotation, PathPortModel, PathPort, PathModel, PointPort, PointPortModel, StrokeStyleModel, randomId } from '../index';import { ChildProperty, Collection, Property } from '@syncfusion/ej2-base';import { PointModel } from '../../diagram/primitives/point-model';
-import {UmlSequenceMessageType,UmlSequenceFragmentType} from "./sequence-diagram";
+import { Diagram } from '../diagram';import { ConnectorConstraints, NodeConstraints, PortVisibility} from '../enum/enum';import { Rect } from '../primitives/rect';import { Node } from '../objects/node';import { Connector } from '../objects/connector';import { ShapeAnnotationModel } from '../objects/annotation-model';import { ShapeStyleModel, ShapeAnnotation, PathPortModel, PathPort, PathModel, PointPort, PointPortModel, StrokeStyleModel, randomId, DecoratorModel } from '../index';import { ChildProperty, Collection, Property } from '@syncfusion/ej2-base';import { PointModel } from '../../diagram/primitives/point-model';
+import {UmlSequenceParticipantStereotype,UmlSequenceMessageType,UmlSequenceFragmentType} from "./sequence-diagram";
 
 /**
  * Interface for a class UmlSequenceActivationBox
@@ -36,53 +36,84 @@ export interface UmlSequenceActivationBoxModel {
 export interface UmlSequenceParticipantModel {
 
     /**
-     * A unique identifier for the participant.
+     * A unique identifier for this participant.
      *
-     * This ID is used to reference the participant in messages and other diagram elements.
+     * Used to reference this participant from messages, activation boxes, and fragments.
+     * Must be unique within the diagram.
      *
      * @default undefined
      */
     id?: string | number;
 
     /**
-     * The display content of the participant (e.g., class name or actor label).
+     * The display label shown in the participant's header box.
+     *
+     * Corresponds to the `as <content>` clause in Mermaid syntax.
+     * When omitted, the `id` value is used as the display label.
      *
      * @default ''
      */
     content?: string;
 
     /**
-     * Indicates whether the participant is an actor.
+     * Indicates whether this participant is rendered as a stick-figure actor.
      *
-     * If `true`, the participant is rendered using an actor (stick figure) symbol.
-     * If `false`, the participant is rendered as a rectangle (object lifeline).
+     * @deprecated Use `stereotype = UmlSequenceParticipantStereotype.Actor` instead.
+     * This property is maintained for backward compatibility and will be removed in a future release.
+     * When `stereotype` is defined, this property is ignored.
      *
      * @default false
      */
     isActor?: boolean;
 
     /**
+     * The visual stereotype that determines how this participant is rendered.
+     *
+     * When specified, this property takes precedence over the legacy `isActor`
+     * property. To render a participant as an actor, use
+     * `UmlSequenceParticipantStereotype.Actor` instead of setting `isActor` to `true`.
+     *
+     * If this property is not set, rendering falls back to `isActor`. If neither
+     * `stereotype` nor `isActor` is set, the participant is rendered as a standard
+     * rectangular lifeline header.
+     *
+     * @default undefined
+     *
+     * @example
+     * ```typescript
+     * // Render the participant as a database stereotype.
+     * {
+     *   id: 'DB',
+     *   content: 'UserStore',
+     *   stereotype: UmlSequenceParticipantStereotype.Database
+     * }
+     * ```
+     */
+    stereotype?: UmlSequenceParticipantStereotype;
+
+    /**
      * Specifies whether to show a destruction marker (X) at the end of the participant's lifeline.
      *
-     * When enabled, the participant is considered to be destroyed at the end of the sequence.
+     * When `true`, a destruction marker (×) is rendered at the bottom of this lifeline,
+     * indicating the participant is terminated during the sequence.
      *
      * @default false
      */
     showDestructionMarker?: boolean;
 
     /**
-     * A list of activation boxes for this participant.
+     * The activation boxes (focus-of-control rectangles) drawn on this participant's lifeline.
      *
-     * Activation boxes represent the time periods during which a participant is active
-     * (e.g., executing a method or processing a message).
-     *
-     * ```typescript
-     * activationBoxes: [
-     *     { id: 'act1', startMessageID: 'MSG1', endMessageID: 'MSG3' }
-     * ]
-     * ```
+     * Each entry defines a time range during which the participant is actively processing a message.
      *
      * @default []
+     *
+     * @example
+     * ```typescript
+     * activationBoxes: [
+     *   { id: 'act1', startMessageID: 'msg1', endMessageID: 'msg3' }
+     * ]
+     * ```
      */
     activationBoxes?: UmlSequenceActivationBoxModel[];
 
@@ -127,8 +158,19 @@ export interface UmlSequenceMessageModel {
     content?: string;
 
     /**
-     * Specifies the type of the message, such as synchronous, asynchronous, reply, etc.
-     * Determines how the message line is styled and interpreted in the diagram.
+     * The semantic type of this message.
+     *
+     * Determines the default line style and arrowhead unless overridden by
+     * `lineStyle`, `sourceArrow`, or `targetArrow`.
+     *
+     * | Type          | Default line | Default target arrow |
+     * |---------------|--------------|----------------------|
+     * | Synchronous   | Solid        | Arrow (`>>`)         |
+     * | Asynchronous  | Solid        | OpenArrow (`)`)      |
+     * | Reply         | Dashed       | Arrow (`>>`)         |
+     * | Create        | Solid        | OpenArrow (`)`)      |
+     * | Delete        | Solid        | Arrow (`>>`)         |
+     * | Self          | Solid        | Arrow (`>>`)         |
      *
      * @default UmlSequenceMessageType.Synchronous
      */

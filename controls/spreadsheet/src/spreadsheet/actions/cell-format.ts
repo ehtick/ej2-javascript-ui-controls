@@ -52,7 +52,7 @@ export class CellFormat {
                     this.setLeftBorder(
                         args.style.border, cell, args.rowIdx, args.colIdx,
                         args.colIdx === this.parent.frozenColCount(sheet) ? args.hRow :
-                            args.row, args.onActionUpdate, args.first, sheet, args.prevCell);
+                            args.row, args.onActionUpdate, args.first, sheet, args.prevCell, <CellRenderArgs>args);
                     this.setTopBorder(
                         args.style.border, cell, args.rowIdx, args.colIdx, args.pRow, args.pHRow, args.onActionUpdate, args.first,
                         args.lastCell, args.manualUpdate, sheet, <CellRenderArgs>args);
@@ -68,7 +68,7 @@ export class CellFormat {
                     this.setLeftBorder(
                         args.style.borderLeft, cell, args.rowIdx, args.colIdx,
                         args.colIdx === this.parent.frozenColCount(sheet) ? args.hRow :
-                            args.row, args.onActionUpdate, args.first, sheet, args.prevCell);
+                            args.row, args.onActionUpdate, args.first, sheet, args.prevCell, <CellRenderArgs>args);
                     delete curStyle.borderLeft;
                 }
                 if (Object.keys(curStyle).length) {
@@ -271,7 +271,7 @@ export class CellFormat {
     }
     private setLeftBorder(
         border: string, cell: HTMLElement, rowIdx: number, colIdx: number, row: Element, actionUpdate: boolean, first: string,
-        sheet: SheetModel, prevCell: HTMLElement): void {
+        sheet: SheetModel, prevCell: HTMLElement, args: CellRenderArgs): void {
         const applyAccountingFormats: Function = (
             cell: HTMLElement, colIdx: number, cellModel: CellModel = getCell(rowIdx, colIdx, sheet, null, true)): void => {
             if (actionUpdate && cellModel.format && cellModel.format.includes('*') && parseInt(border, 10) > 1) {
@@ -287,17 +287,22 @@ export class CellFormat {
             prevCell = this.parent.getCell(rowIdx, prevColIdx, <HTMLTableRowElement>row);
         }
         if (prevCell) {
-            let model: CellModel = getCell(rowIdx, prevColIdx, sheet, false, true);
-            if ((!!model.rowSpan && model.rowSpan !== 1) || (!!model.colSpan && model.colSpan !== 1)) {
+            const prevCellModel: CellModel = getCell(rowIdx, prevColIdx, sheet, false, true);
+            if ((!!prevCellModel.rowSpan && prevCellModel.rowSpan !== 1) || (!!prevCellModel.colSpan && prevCellModel.colSpan !== 1)) {
                 const mergeArgs: { range: number[] } = { range: [rowIdx, prevColIdx, rowIdx, prevColIdx] };
                 this.parent.notify(activeCellMergedRange, mergeArgs);
-                model = getCell(mergeArgs.range[0], mergeArgs.range[1], sheet, false, true);
-                if (model.style && model.style.borderRight && model.style.borderRight !== 'none') {
+                const prevMergedCell: CellModel = getCell(mergeArgs.range[0], mergeArgs.range[1], sheet, false, true);
+                if (prevMergedCell.style && prevMergedCell.style.borderRight && prevMergedCell.style.borderRight !== 'none') {
                     return;
                 } else {
-                    model = getCell(mergeArgs.range[0], mergeArgs.range[3], sheet, null, true);
-                    if (model.style && model.style.borderRight && model.style.borderRight !== 'none') { return; }
+                    const lastMergedCell: CellModel = getCell(mergeArgs.range[0], mergeArgs.range[3], sheet, null, true);
+                    if (lastMergedCell.style && lastMergedCell.style.borderRight && lastMergedCell.style.borderRight !== 'none') {
+                        return;
+                    }
                     cell.style.borderLeft = border;
+                    if (args.mergeBorderCols !== undefined && args.mergeBorderCols.indexOf(colIdx) === -1) {
+                        args.mergeBorderCols.push(colIdx);
+                    }
                     applyAccountingFormats(cell, colIdx);
                 }
             } else {
@@ -305,7 +310,7 @@ export class CellFormat {
                     this.parent.getMainContent().scrollLeft -= this.getBorderSize(border);
                 }
                 prevCell.style.borderRight = (border === 'none') ? prevCell.style.borderRight : border;
-                applyAccountingFormats(prevCell, prevColIdx, model);
+                applyAccountingFormats(prevCell, prevColIdx, prevCellModel);
             }
         } else if (!isRtl || (this.parent.scrollSettings.isFinite && colIdx === sheet.colCount - 1)) {
             cell.style.borderLeft = border;
@@ -446,6 +451,7 @@ export class CellFormat {
 
     private clearObj(args: { options: ClearOptions, isAction?: boolean, isFromUpdateAction?: boolean }): void {
         const options: ClearOptions = args.options;
+        const isModelOnly: boolean = this.parent.paintSuspendCount > 0;
         const range: string = options.range ? (options.range.indexOf('!') > 0) ?
             options.range.substring(options.range.lastIndexOf('!') + 1) : options.range : this.parent.getActiveSheet().selectedRange;
         const sheetIndex: number = (options.range && options.range.indexOf('!') > 0) ?
@@ -453,8 +459,9 @@ export class CellFormat {
             this.parent.activeSheetIndex;
         const rangeIdx: number[] = getSwapRange(getRangeIndexes(range));
         const isRangeReadOnly: boolean = isReadOnlyCells(this.parent, rangeIdx);
+        const isSuspended: boolean = this.parent.paintSuspendCount > 0;
         if (isRangeReadOnly) {
-            if (args.isAction) {
+            if (args.isAction && !isModelOnly) {
                 this.parent.notify(readonlyAlert, null);
             }
             return;
@@ -471,12 +478,12 @@ export class CellFormat {
         let eventArgs: { [key: string]: object | string | number } = { range: range, type: options.type, requestType: 'clear',
             sheetIndex: sheetIndex };
         const actionBegin: Function = (): void => {
-            if (args.isAction) {
+            if (args.isAction && !isModelOnly) {
                 this.parent.notify(beginAction, { action: 'beforeClear', eventArgs: eventArgs });
             }
         };
         const actionComplete: Function = (): void => {
-            if (args.isAction) {
+            if (args.isAction && !isModelOnly) {
                 eventArgs = { range: sheet.name + '!' + range, type: options.type, sheetIndex: sheetIndex };
                 if (clearCFArgs) {
                     eventArgs.cfClearActionArgs = clearCFArgs.cfClearActionArgs;
@@ -485,6 +492,9 @@ export class CellFormat {
             }
         };
         const isClearAll: boolean = options.type === 'Clear All';
+        if (isSuspended) {
+            this.parent.pendingPaintRefresh = 'fullSheet';
+        }
         if (isOverlay) {
             if (options.type === 'Clear Contents' || isClearAll) {
                 actionBegin();
@@ -494,7 +504,7 @@ export class CellFormat {
                     });
                 } else {
                     this.parent.notify(deleteImage, {
-                        id: overlayElements[0].id, sheetIdx: this.parent.activeSheetIndex + 1, clearAction: true
+                        id: overlayElements[0].id, sheetIdx: this.parent.activeSheetIndex + 1, clearAction: true, isClearObj: true
                     });
                 }
                 actionComplete();
@@ -525,7 +535,7 @@ export class CellFormat {
                                 this.parent.notify(wrapEvent, { range: [sRIdx, sCIdx, sRIdx, sCIdx], wrap: false, sheet: sheet });
                             }
                             if (cell.hyperlink) {
-                                if (cellElem) {
+                                if (cellElem && !isSuspended) {
                                     removeClass(cellElem.querySelectorAll('.e-hyperlink'), 'e-hyperlink-style');
                                 }
                                 if (isClearAll) {
@@ -541,13 +551,22 @@ export class CellFormat {
             }
             this.parent.notify(clear, { range: sheet.name + '!' + range, type: options.type,
                 isAction: args.isAction === true || args.isFromUpdateAction === false });
-            this.parent.serviceLocator.getService<ICellRenderer>('cell').refreshRange(
-                getSwapRange(getRangeIndexes(range)), false, false, false, options.type === 'Clear Hyperlinks' ? true : false, isImported(this.parent), !isClearAll,
-                null, true, null, isSelectAll);
-            if (!args.isFromUpdateAction) {
-                this.parent.notify(selectRange, { address: range });
+            if (!isSuspended) {
+                this.parent.serviceLocator.getService<ICellRenderer>('cell').refreshRange(
+                    getSwapRange(getRangeIndexes(range)), false, false, false, options.type === 'Clear Hyperlinks' ? true : false, isImported(this.parent), !isClearAll,
+                    null, true, null, isSelectAll);
+                if (!args.isFromUpdateAction) {
+                    this.parent.notify(selectRange, { address: range });
+                }
+                this.parent.notify(activeCellChanged, null);
+            } else {
+                this.parent.queuePaintAction('clear_selectRange' + range, () => {
+                    if (!args.isFromUpdateAction) {
+                        this.parent.notify(selectRange, { address: range });
+                    }
+                    this.parent.notify(activeCellChanged, null);
+                });
             }
-            this.parent.notify(activeCellChanged, null);
             actionComplete();
         }
     }

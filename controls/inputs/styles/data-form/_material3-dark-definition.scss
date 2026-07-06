@@ -1,5 +1,4 @@
-@use 'ej2-base/styles/definition/material3-dark' as *;
-@forward 'ej2-base/styles/definition/material3-dark';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 
 /*! Form material 3 theme wise override definitions and variables */
 $field-label-color: $content-text-color-alt1 !default;

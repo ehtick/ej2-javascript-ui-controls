@@ -1,4 +1,4 @@
-@use 'ej2-base/styles/common/mixin' as *;
+@use 'variables' as *;
 @include export-module('grid-chart-bigger') {
 
   /*! Grid Chart bigger */
@@ -7,15 +7,15 @@
     &.e-dialog .e-btn .e-btn-icon {
       &.e-grid-chart-min-icon,
       &.e-grid-chart-max-icon {
-        @if $grid-skin =='bootstrap5.3' or $grid-skin == 'bootstrap5' or $grid-skin =='tailwind3' {
+        @if $grid-chart-skin =='bootstrap5.3' or $grid-chart-skin == 'bootstrap5' or $grid-chart-skin =='tailwind3' {
           font-size: 15px;
         }
 
-        @if $grid-skin =='bootstrap5' {
+        @if $grid-chart-skin =='bootstrap5' {
           margin-top: -1.5px;
         }
 
-        @if $grid-skin =='tailwind3' {
+        @if $grid-chart-skin =='tailwind3' {
           margin-top: -24.5px;
         }
       }
@@ -37,7 +37,7 @@
       font-size: 15px;
     }
 
-    @if $grid-skin =='material3' {
+    @if $grid-chart-skin =='material3' {
       .e-grid-dialog-format-tab-container .e-accordion .e-acrdn-item .e-acrdn-header {
         margin: 5px;
         padding: 7px;

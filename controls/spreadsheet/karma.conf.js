@@ -17,6 +17,7 @@ module.exports = function (config) {
             //custom css to set height for parent element.
             "spec/spreadsheet/util/spreadsheet.css",
             "demos/common/themes/material.css",
+            { pattern: "styles/material.css*", watched: false, included: false, served: true, nocache: false },
             { pattern: "src/**/*.js", included: false },
             { pattern: "demos/common/data-source.js", included: false },
             { pattern: "spec/**/*.spec.js", included: false },
@@ -38,8 +39,13 @@ module.exports = function (config) {
             { pattern: "node_modules/@syncfusion/ej2-grids/**/*.js", included: false },
             { pattern: "node_modules/@syncfusion/ej2-charts/**/*.js", included: false },
             { pattern: "node_modules/@syncfusion/ej2-svg-base/**/*.js", included: false },
+            { pattern: "node_modules/@syncfusion/ej2-interactive-chat/**/*.js", included: false },
+            { pattern: "node_modules/@syncfusion/ej2-markdown-converter/**/*.js", included: false },
+            { pattern: "node_modules/@syncfusion/ej2-layouts/**/*.js", included: false },
             { pattern: 'node_modules/es6-promise/dist/es6-promise.js', included: false },
-            { pattern: 'spec/**/*.json', included: false }
+            { pattern: 'spec/**/*.json', included: false },
+            // Include all material.css files from @syncfusion packages
+            { pattern: "node_modules/@syncfusion/*/styles/material.css", watched: false, included: false, served: true, nocache: false },
             // Add dependent package's script files here              
         ],
 

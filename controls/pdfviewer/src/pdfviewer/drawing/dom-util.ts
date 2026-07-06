@@ -1,5 +1,4 @@
-import { createHtmlElement, getDiagramElement } from '@syncfusion/ej2-drawings';
-import { setAttributeSvg, createSvgElement } from '@syncfusion/ej2-drawings';
+import { createHtmlElement, getDiagramElement, setAttributeSvg, createSvgElement } from './../ej2-drawings/index';
 import { PdfViewer } from '../index';
 
 /**

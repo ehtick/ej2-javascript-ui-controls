@@ -91,9 +91,9 @@ export class TextBox extends Component<HTMLInputElement | HTMLTextAreaElement> i
     /**
      * Sets the content of the TextBox.
      *
-     * @default null
+     * @default ''
      */
-    @Property(null)
+    @Property('')
     public value: string;
 
     /**
@@ -187,6 +187,14 @@ export class TextBox extends Component<HTMLInputElement | HTMLTextAreaElement> i
      */
     @Property(null)
     public width: number | string;
+
+    /**
+     * Specifies the maximum number of characters allowed in TextBox.
+     *
+     * @aspType int?
+     */
+    @Property(null)
+    public maxLength: number;
 
     /**
      * Specifies the HTML template string for custom elements to prepend to the TextBox input.
@@ -294,6 +302,11 @@ export class TextBox extends Component<HTMLInputElement | HTMLTextAreaElement> i
                 break;
             case 'width':
                 Input.setWidth(newProp.width, this.textboxWrapper.container);
+                break;
+            case 'maxLength':
+                if (this.maxLength) {
+                    this.element.setAttribute('maxlength', this.maxLength.toString());
+                }
                 break;
             case 'value': {
                 const prevOnChange: boolean = this.isProtectedOnChange;
@@ -442,6 +455,9 @@ export class TextBox extends Component<HTMLInputElement | HTMLTextAreaElement> i
         }
         if (!this.element.hasAttribute('name')) {
             this.element.setAttribute('name', this.element.getAttribute('id'));
+        }
+        if (this.maxLength) {
+            this.element.setAttribute('maxlength', this.maxLength.toString());
         }
         if (this.element.tagName === 'INPUT' && this.multiline) {
             this.isHiddenInput = true;

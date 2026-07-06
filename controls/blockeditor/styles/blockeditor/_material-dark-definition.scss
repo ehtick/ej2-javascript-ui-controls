@@ -1,5 +1,4 @@
-@use 'ej2-base/styles/definition/material-dark' as *;
-@forward 'ej2-base/styles/definition/material-dark';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 
 /* ======== BlockEditor Styles ======== */
 $be-font-family: $font-family !default;
@@ -517,3 +516,6 @@ $be-table-popup-icon-size: 16px !default;
 $be-table-popup-icon-size-bigger: 18px !default;
 $be-table-popup-icon-padding: 8px !default;
 $be-table-popup-icon-padding-bigger: 11px !default;
+
+/* ======== Collaborative Styles ======== */
+$be-cursor-label-transition: max-width 180ms cubic-bezier(.4, 0, .2, 1), opacity 150ms cubic-bezier(.4, 0, .2, 1), padding 180ms cubic-bezier(.4, 0, .2, 1) !default;

@@ -1,4 +1,4 @@
-@use 'ej2-base/styles/common/mixin' as *;
+@use 'variables' as *;
 @include export-module('input-layout') {
 
   /*! input layout */
@@ -4091,7 +4091,7 @@
       font-size: $outline-float-label-top-font-size;
     }
   }
-  
+
   .e-outline.e-float-input textarea:not(:focus):valid ~ label.e-float-text.e-label-bottom,
   .e-outline.e-float-input.e-control-wrapper textarea:not(:focus):valid ~ label.e-float-text.e-label-bottom,
   .e-outline label.e-float-text,

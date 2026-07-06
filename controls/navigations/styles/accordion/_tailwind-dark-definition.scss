@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/tailwind-dark' as *;
-@forward 'ej2-base/styles/definition/tailwind-dark';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $acrdn-skin: 'tailwind' !default;
 $acrdn-slct-header-font-weight: $font-weight-medium;
 $acrdn-nrml-header-minheight: 38px !default;

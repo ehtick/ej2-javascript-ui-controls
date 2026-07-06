@@ -1,10 +1,12 @@
-import { AnnotationDataFormat, PdfViewer } from '../index';
+import { AnnotationDataFormat, CommentFilterSettings, PdfViewer } from '../index';
 import { PdfViewerBase } from '../index';
 import { createElement, Browser, isBlazor, initializeCSPTemplate, isNullOrUndefined } from '@syncfusion/ej2-base';
 import { Toolbar as Tool, ItemModel, ClickEventArgs, MenuItemModel, ContextMenu as Context } from '@syncfusion/ej2-navigations';
-import { Tooltip, TooltipEventArgs } from '@syncfusion/ej2-popups';
+import { Tooltip, TooltipEventArgs, Dialog } from '@syncfusion/ej2-popups';
 import { Toast, ToastCloseArgs } from '@syncfusion/ej2-notifications';
+import { MultiSelect, CheckBoxSelection } from '@syncfusion/ej2-dropdowns';
 import { _decode } from '@syncfusion/ej2-pdf';
+MultiSelect.Inject(CheckBoxSelection);
 
 /**
  * The `NavigationPane` module is used to handle navigation pane for thumbnail and bookmark navigation of PDF viewer.
@@ -41,6 +43,10 @@ export class NavigationPane {
     private isCommentPanelShow: boolean = false;
     private commentPanelWidthMin: number = 300;
     private commentPanelResizeIcon: HTMLElement;
+    private filterMultiSelectInstances: { [key: string]: MultiSelect } = {};
+    private includeRepliesCheckbox: HTMLElement;
+    private filterDocumentCheckbox: HTMLElement;
+    private commentFilterPanel: HTMLElement;
     /**
      * @private
      */
@@ -61,6 +67,10 @@ export class NavigationPane {
      * @private
      */
     public annotationMenuObj: Context;
+    /**
+     * @private
+     */
+    public commentFilterDialog: Dialog;
     /**
      * @private
      */
@@ -474,6 +484,14 @@ export class NavigationPane {
         } else {
             commentpanelTilte.innerText = this.pdfViewer.localeObj.getConstant('Comments');
         }
+        // Create filter icon button
+        const filterButton: HTMLElement = createElement('button', { id: this.pdfViewer.element.id + '_annotation_filter_btn' });
+        filterButton.setAttribute('aria-label', 'filter button');
+        filterButton.setAttribute('type', 'button');
+        filterButton.className = 'e-btn e-pv-tbar-btn e-pv-comment-panel-filter-btn e-btn';
+        const filterIconSpan: HTMLElement = createElement('span', { id: this.pdfViewer.element.id + '_annotation_filter_icon', className: 'e-pv-filter-icon e-pv-icon' });
+        filterButton.appendChild(filterIconSpan);
+
         const annotationButton: HTMLElement = createElement('button', { id: this.pdfViewer.element.id + '_annotations_btn' });
         annotationButton.setAttribute('aria-label', 'annotation button');
         annotationButton.setAttribute('type', 'button');
@@ -495,9 +513,11 @@ export class NavigationPane {
             commentPanelTitleContainer.appendChild(commentCloseIconDiv);
         }
         commentPanelTitleContainer.appendChild(commentpanelTilte);
+        commentPanelTitleContainer.appendChild(filterButton);
         commentPanelTitleContainer.appendChild(annotationButton);
         this.commentPanelContainer.appendChild(commentPanelTitleContainer);
         this.createAnnotationContextMenu();
+        filterButton.addEventListener('click', this.openCommentFilterPopup.bind(this));
         annotationButton.addEventListener('click', this.openAnnotationContextMenu.bind(this));
     }
 
@@ -513,9 +533,808 @@ export class NavigationPane {
     }
 
     /**
+     * Opens the comment filter dialog popup
      * @private
      * @returns {void}
      */
+    private openCommentFilterPopup(): void {
+        if (Browser.isDevice && !this.pdfViewer.enableDesktopMode) {
+            this.createCommentFilterDialogMobile();
+        } else {
+            this.createCommentFilterDialog();
+        }
+    }
+
+    /**
+     * Creates and displays the comment filter dialog
+     * @private
+     * @returns {void}
+     */
+    private createCommentFilterDialog(): void {
+        if (!this.commentFilterDialog) {
+            const dialogDiv: HTMLElement = createElement('div', { id: this.pdfViewer.element.id + '_comment_filter_dialog', className: 'e-pv-comment-filter-dialog' });
+            this.pdfViewerBase.pageContainer.appendChild(dialogDiv);
+
+            // Create filter dialog content
+            const filterContent: HTMLElement = this.createFilterDialogContent();
+            this.commentFilterDialog = new Dialog({
+                header: this.pdfViewer.localeObj.getConstant('Comment filter'),
+                showCloseIcon: true,
+                closeOnEscape: true,
+                isModal: true,
+                target: this.pdfViewer.element,
+                content: filterContent,
+                width: 448,
+                height: 'auto',
+                open: (): void => {
+                    // Placeholder for future implementation
+                },
+                close: (): void => {
+                    // Destroy dialog and cleanup when closed
+                    this.destroyCommentFilterDialog();
+                }
+            });
+            if (this.pdfViewer.enableRtl) {
+                this.commentFilterDialog.enableRtl = true;
+            }
+            this.commentFilterDialog.appendTo(dialogDiv);
+        } else {
+            // If dialog already exists, just show it
+            if (!this.commentFilterDialog.visible) {
+                this.commentFilterDialog.show();
+            }
+        }
+    }
+
+    /**
+     * Creates and displays the mobile comment filter panel (full-page panel instead of dialog)
+     * @private
+     * @returns {void}
+     */
+    private createCommentFilterDialogMobile(): void {
+        // Create the mobile filter panel container (full-page panel)
+        const mobileFilterPanel: HTMLElement = createElement('div', {
+            id: this.pdfViewer.element.id + '_comment_filter_panel',
+            className: 'e-pv-comment-filter-panel-mobile e-pv-block'
+        });
+
+        // Append to the main container
+        this.pdfViewerBase.mainContainer.appendChild(mobileFilterPanel);
+
+        // Set panel positioning and styling
+        mobileFilterPanel.style.position = 'absolute';
+        mobileFilterPanel.style.top = '0px';
+        mobileFilterPanel.style.left = '0px';
+        mobileFilterPanel.style.right = '0px';
+        mobileFilterPanel.style.bottom = '0px';
+        mobileFilterPanel.style.zIndex = '1001';
+        if (this.pdfViewer.enableRtl) {
+            mobileFilterPanel.style.direction = 'rtl';
+        }
+
+        // Create mobile filter dialog content and append to panel
+        const mobileFilterContent: HTMLElement = this.createFilterDialogContentMobile();
+        mobileFilterPanel.appendChild(mobileFilterContent);
+
+        // Insert before the toolbar to maintain proper z-index ordering
+        const viewer: HTMLElement = document.getElementById(this.pdfViewer.element.id + '_viewerMainContainer');
+        if (viewer) {
+            viewer.insertBefore(mobileFilterPanel, this.toolbarElement);
+        }
+
+        // Store reference for closing later
+        this.commentFilterPanel = mobileFilterPanel;
+    }
+
+    /**
+     * Closes the mobile filter panel
+     * @private
+     * @returns {void}
+     */
+    private closeCommentFilterPanelMobile(): void {
+        const filterPanel: HTMLElement = document.getElementById(this.pdfViewer.element.id + '_comment_filter_panel');
+        if (filterPanel) {
+            filterPanel.style.display = 'none';
+            filterPanel.remove();
+            this.commentFilterPanel = null;
+            if (this.pdfViewerBase) {
+                this.pdfViewerBase.updateZoomValue();
+            }
+        }
+    }
+
+    /**
+     * Destroys the comment filter dialog/panel and cleans up resources
+     * Follows the pattern used in form-designer.ts destroyPropertiesWindow()
+     * @private
+     * @returns {void}
+     */
+    private destroyCommentFilterDialog(): void {
+        // Destroy all MultiSelect instances
+        if (this.filterMultiSelectInstances) {
+            for (const key in this.filterMultiSelectInstances) {
+                if (this.filterMultiSelectInstances.hasOwnProperty(key)) {
+                    const instance: MultiSelect | null = this.filterMultiSelectInstances[(key as any)];
+                    if (instance) {
+                        instance.destroy();
+                        this.filterMultiSelectInstances[key as any] = null;
+                    }
+                }
+            }
+            this.filterMultiSelectInstances = {};
+        }
+
+        // Clear checkbox references
+        this.includeRepliesCheckbox = null;
+        this.filterDocumentCheckbox = null;
+
+        // Destroy the dialog instance if it exists (for desktop mode)
+        if (this.commentFilterDialog) {
+            this.commentFilterDialog.destroy();
+            this.commentFilterDialog = null;
+        }
+
+        // Remove the dialog element from DOM (for desktop mode)
+        const dialogElement: HTMLElement = this.pdfViewerBase.getElement('_comment_filter_dialog');
+        if (dialogElement && dialogElement.parentElement) {
+            dialogElement.parentElement.removeChild(dialogElement);
+        }
+
+        // Close and cleanup mobile panel if it exists
+        this.closeCommentFilterPanelMobile();
+    }
+
+    /**
+     * Extracts unique filter values from annotationCollection in a single pass.
+     * Includes author names from both annotations and reply comments.
+     * Normalizes colors to hex format and extracts annotation types with measurement type mapping.
+     * @private
+     * @returns {Object} Object containing uniqueAuthors, uniqueAnnotationTypes, uniqueStatuses, uniqueColors, uniqueDates
+     */
+    private extractFilterValuesFromAnnotations(): {
+        uniqueAuthors: string[]; uniqueAnnotationTypes: string[];
+        uniqueStatuses: string[]; uniqueColors: string[]; uniqueDates: string[]
+    } {
+        const uniqueAuthors: Set<string> = new Set();
+        const uniqueAnnotationTypes: Set<string> = new Set();
+        const uniqueStatuses: Set<string> = new Set();
+        const uniqueColors: Set<string> = new Set();
+        const uniqueDates: Set<string> = new Set();
+        const annotationCollection: any[] = this.pdfViewer.annotationCollection || [];
+
+        // Helper: Reverse map measurement types to user-friendly names
+        const mapMeasurementTypeReverse: (indent: any) => string = (indent: any): string => {
+            // Handle case when object is received instead of string
+            if (typeof indent === 'object' && indent !== null) {
+                return 'Radius';
+            }
+
+            // Handle string cases
+            if (typeof indent === 'string') {
+                switch (indent) {
+                case 'LineDimension': return 'Distance';
+                case 'PolyLineDimension': return 'Perimeter';
+                case 'PolygonDimension': return 'Area';
+                case 'PolygonRadius': return 'Radius';
+                case 'PolygonVolume': return 'Volume';
+                case 'Square': return 'Rectangle';
+                default: return indent;
+                }
+            }
+            return String(indent);
+        };
+
+        // Helper: Normalize color to hex format
+        const normalizeColorToHex: (colorValue: any) => string = (colorValue: any): string => {
+            if (typeof colorValue !== 'string' || !colorValue || colorValue === '') {
+                return '';
+            }
+            const colorStr : any = String(colorValue).trim();
+            if (colorStr.indexOf('#') === 0) {
+                if (colorStr.length === 9) {
+                    return colorStr.substring(0, 7).toLowerCase();
+                }
+                return colorStr.toLowerCase();
+            }
+            // eslint-disable-next-line security/detect-unsafe-regex
+            const rgbaMatch: RegExpMatchArray | null = colorStr.match(/rgba?\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+))?\s*\)/i);
+            if (rgbaMatch) {
+                const padWithZeros: (str: string, len: number) => string = (str: string, len: number): string => {
+                    while (str.length < len) {
+                        str = '0' + str;
+                    }
+                    return str;
+                };
+                const r: string = padWithZeros(parseInt(rgbaMatch[1], 10).toString(16), 2);
+                const g: string = padWithZeros(parseInt(rgbaMatch[2], 10).toString(16), 2);
+                const b: string = padWithZeros(parseInt(rgbaMatch[3], 10).toString(16), 2);
+                return ('#' + r + g + b).toLowerCase();
+            }
+            return colorStr.toLowerCase();
+        };
+
+        // Helper: Get annotation type
+        const getAnnotationType: (annotation: any) => string = (annotation: any): string => {
+            const indent: string | undefined = annotation.indent || annotation.Indent;
+            if (indent) {
+                return indent;
+            }
+            const textMarkupType: string | undefined = annotation.textMarkupAnnotationType || annotation.TextMarkupAnnotationType;
+            if (textMarkupType) {
+                return textMarkupType;
+            }
+            const freeTextType: string | undefined = annotation.freeTextAnnotationType || annotation.FreeTextAnnotationType;
+            if (freeTextType) {
+                return freeTextType;
+            }
+            const shapeType: string = annotation.shapeAnnotationType || annotation.ShapeAnnotationType || '';
+
+            // Special handling for Arrow annotation: distinguish arrows from lines
+            // Arrows have shapeAnnotationType === 'line' but with lineHeadStart/lineHeadEnd !== "none"
+            if (shapeType === 'Line' && annotation.lineHeadStart !== 'None' && annotation.lineHeadEnd !== 'None') {
+                return 'Arrow';
+            }
+            return shapeType;
+        };
+
+        // Single pass through annotationCollection
+        for (const annotation of annotationCollection) {
+            // Extract author (from annotation)
+            const author: string | undefined = annotation.author || annotation.Author;
+            if (author) {
+                uniqueAuthors.add(author);
+            }
+
+            // Extract authors from comments/replies
+            const comments: any[] = annotation.comments || annotation.Comments;
+            if (Array.isArray(comments)) {
+                for (const comment of comments) {
+                    const commentAuthor: string | undefined = comment.author || comment.Author;
+                    if (commentAuthor) {
+                        uniqueAuthors.add(commentAuthor);
+                    }
+                    // Extract status from replies
+                    const commentStatus: string | undefined = comment.state || comment.State || comment.stateModel ||
+                        comment.StateModel || (comment.review && comment.review.state);
+                    if (
+                        commentStatus &&
+                        commentStatus.toString().trim().toLowerCase() !== 'unmarked'
+                    ) {
+                        uniqueStatuses.add(commentStatus);
+                    }
+
+                    // Extract date from replies (date only, no time)
+                    const commentModifiedDate: string | undefined = comment.modifiedDate || comment.ModifiedDate;
+                    if (commentModifiedDate) {
+                        const dateOnly: string = new Date(commentModifiedDate).toLocaleDateString(
+                            'en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+                        uniqueDates.add(dateOnly);
+                    }
+                }
+            }
+
+            // Extract annotation type (with measurement type mapping)
+            const annotType: string = getAnnotationType(annotation);
+            if (annotType) {
+                const userFriendlyType: string = mapMeasurementTypeReverse(annotType);
+                uniqueAnnotationTypes.add(userFriendlyType);
+            }
+
+            // Extract status
+            const status: string | undefined = annotation.state || annotation.State || annotation.stateModel ||
+                annotation.StateModel || annotation.review.state;
+            if (
+                status &&
+                status.toString().trim().toLowerCase() !== 'unmarked'
+            ) {
+                uniqueStatuses.add(status);
+            }
+
+            // Extract color (try multiple fields)
+            const colorValue: string | undefined = annotation.color || annotation.Color ||
+                annotation.strokeColor || annotation.StrokeColor ||
+                annotation.fillColor || annotation.FillColor ||
+                annotation.fontColor || annotation.FontColor;
+            if (colorValue) {
+                const normalizedColor: string = normalizeColorToHex(colorValue);
+                if (normalizedColor) {
+                    uniqueColors.add(normalizedColor);
+                }
+            }
+
+            // Extract date (date only, no time)
+            const modifiedDate: string | undefined = annotation.modifiedDate || annotation.ModifiedDate;
+            if (modifiedDate) {
+                const dateOnly: string = new Date(modifiedDate).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+                uniqueDates.add(dateOnly);
+            }
+        }
+
+        // Convert sets to sorted arrays
+        return {
+            uniqueAuthors: Array.from(uniqueAuthors).sort(),
+            uniqueAnnotationTypes: Array.from(uniqueAnnotationTypes).sort(),
+            uniqueStatuses: Array.from(uniqueStatuses).sort(),
+            uniqueColors: Array.from(uniqueColors).sort(),
+            uniqueDates: Array.from(uniqueDates).sort()
+        };
+    }
+
+    /**
+     * Helper method to create mobile MultiSelect dropdown with optimized layout
+     * @private
+     * @param {string} label - Label text for the dropdown
+     * @param {string} placeholder - Placeholder text
+     * @param {string[]} options - Array of option strings
+     * @param {string} uniqueId - Unique identifier for the MultiSelect instance
+     * @param {string} filterKey - Filter key identifier (e.g., 'author', 'type', 'status', 'modifiedDate', 'color')
+     * @param {any} state - Filter state to maintain previously selected values (optional)
+     * @returns {HTMLElement} - The dropdown group container optimized for mobile
+     */
+    private createFilterDropdownMobile(label: string, placeholder: string, options: string[],
+                                       uniqueId: string, filterKey: string, state?: CommentFilterSettings): HTMLElement {
+        const groupContainer: HTMLElement = createElement('div', { className: 'e-pv-filter-group-mobile' });
+        const labelElement: HTMLElement = createElement('label', { className: 'e-pv-filter-label-mobile' });
+        labelElement.innerText = label;
+        groupContainer.appendChild(labelElement);
+        const multiSelectContainer: HTMLElement = createElement('input', { id: uniqueId, className: 'e-pv-filter-multiselect-mobile' });
+        groupContainer.appendChild(multiSelectContainer);
+
+        // Create data source for MultiSelect
+        const dataSource: Array<{ text: string; value: string }> = options.map((option: string) => ({ text: option, value: option }));
+
+        // Determine selected values based on state and filterKey
+        let selectedValues: any[] = null;
+        if (state != null) {
+            switch (filterKey) {
+            case 'author':
+                selectedValues = state.author || null;
+                break;
+            case 'type':
+                selectedValues = state.type ? (Array.isArray(state.type) ? state.type : [state.type]) : null;
+                break;
+            case 'status':
+                selectedValues = state.status ? (Array.isArray(state.status) ? state.status : [state.status]) : null;
+                break;
+            case 'modifiedDate':
+                selectedValues = state.modifiedDate || null;
+                break;
+            case 'color':
+                selectedValues = state.color || null;
+                break;
+            }
+        }
+
+        // Initialize MultiSelect component configuration
+        const multiSelectConfig: any = {
+            dataSource: dataSource,
+            fields: { text: 'text', value: 'value' },
+            placeholder: placeholder,
+            mode: 'CheckBox',
+            showDropDownIcon: true,
+            showSelectAll: true,
+            popupHeight: '200px',
+            popupWidth: '100%',
+            maximumSelectionCharacters: 1,
+            enableRtl: this.pdfViewer.enableRtl
+        };
+
+        // Add custom templates for Color dropdown - show only circular color swatch
+        if (label === this.pdfViewer.localeObj.getConstant('Color')) {
+            multiSelectConfig.itemTemplate = '<div style="width:16px;height:16px;border-radius:50%;background-color:${value};border:1px solid #999;display:inline-block;vertical-align:middle;"></div>';
+            multiSelectConfig.valueTemplate = '<div style="width:14px;height:14px;border-radius:50%;background-color:${value};border:1px solid #999;display:inline-block;vertical-align:middle;"></div>';
+        }
+
+        // Initialize MultiSelect component optimized for mobile
+        const multiSelectInstance: MultiSelect = new MultiSelect(multiSelectConfig);
+        multiSelectInstance.appendTo(multiSelectContainer);
+
+        // Set selected values AFTER appending to ensure proper display format (count mode)
+        if (selectedValues && selectedValues.length > 0) {
+            multiSelectInstance.value = selectedValues;
+        }
+
+        // Store instance for later reference
+        this.filterMultiSelectInstances[uniqueId as any] = multiSelectInstance;
+        return groupContainer;
+    }
+
+    /**
+     * Creates the content for the mobile filter panel (full-page panel instead of dialog)
+     * @private
+     * @returns {HTMLElement} - The mobile filter panel content
+     */
+    private createFilterDialogContentMobile(): HTMLElement {
+        const content: HTMLElement = createElement('div', { className: 'e-pv-filter-dialog-content-mobile' });
+
+        // Extract dynamic filter values from annotationCollection (single pass)
+        const filterValues: {
+            uniqueAuthors: string[]; uniqueAnnotationTypes: string[]; uniqueStatuses: string[];
+            uniqueColors: string[]; uniqueDates: string[]
+        } = this.extractFilterValuesFromAnnotations();
+
+        // Get current filter state
+        const filterState: CommentFilterSettings = this.pdfViewer.annotation ? this.pdfViewer.annotation.getCurrentFilterState() : null;
+
+        // ===== HEADER SECTION =====
+        const header: HTMLElement = createElement('div', { className: 'e-pv-filter-header-mobile' });
+
+        // Back button with close icon
+        const backButton: HTMLElement = createElement('button', { className: 'e-pv-filter-back-btn' });
+        backButton.setAttribute('type', 'button');
+        backButton.setAttribute('aria-label', 'Back');
+        const backIcon: HTMLElement = createElement('span', { className: 'e-pv-backward-icon e-pv-icon' });
+        backButton.appendChild(backIcon);
+        backButton.addEventListener('click', () => {
+            this.closeCommentFilterPanelMobile();
+            this.destroyCommentFilterDialog();
+        });
+        header.appendChild(backButton);
+
+        // Title
+        const headerTitle: HTMLElement = createElement('div', { className: 'e-pv-filter-header-title-mobile' });
+        headerTitle.innerText = this.pdfViewer.localeObj.getConstant('Comment filter');
+        header.appendChild(headerTitle);
+        content.appendChild(header);
+
+        // ===== BODY SECTION =====
+        const body: HTMLElement = createElement('div', { className: 'e-pv-filter-body-mobile' });
+
+        // ===== AUTHOR DROPDOWN (MULTI-SELECT) =====
+        const authorDropdown: HTMLElement = this.createFilterDropdownMobile(this.pdfViewer.localeObj.getConstant('Author'), this.pdfViewer.localeObj.getConstant('Select author'), filterValues.uniqueAuthors, 'filter_author_multiselect', 'author', filterState);
+        body.appendChild(authorDropdown);
+
+        // ===== INCLUDE REPLIES CHECKBOX =====
+        const includeRepliesContainer: HTMLElement = createElement('div', { className: 'e-pv-filter-group-mobile e-pv-filter-checkbox-container-mobile' });
+        this.includeRepliesCheckbox = createElement('input', { className: 'e-pv-filter-checkbox-mobile', attrs: { 'type': 'checkbox' } });
+        // Maintain state for includeReplies (default true if no state or true in state)
+        (this.includeRepliesCheckbox as any).checked = filterState == null || filterState.includeReplies !== false;
+        const includeRepliesLabel: HTMLElement = createElement('label', { className: 'e-pv-filter-option-label-mobile' });
+        includeRepliesLabel.innerText = this.pdfViewer.localeObj.getConstant('Include Replies');
+        includeRepliesContainer.appendChild(this.includeRepliesCheckbox as any);
+        includeRepliesContainer.appendChild(includeRepliesLabel);
+        body.appendChild(includeRepliesContainer);
+
+        // ===== ANNOTATION TYPE DROPDOWN =====
+        const annotationTypeDropdown: HTMLElement = this.createFilterDropdownMobile(this.pdfViewer.localeObj.getConstant('Annotation type'), this.pdfViewer.localeObj.getConstant('Select annotation type'), filterValues.uniqueAnnotationTypes, 'filter_annotation_type_multiselect', 'type', filterState);
+        body.appendChild(annotationTypeDropdown);
+
+        // ===== STATUS DROPDOWN =====
+        const statusDropdown: HTMLElement = this.createFilterDropdownMobile(this.pdfViewer.localeObj.getConstant('Status'), this.pdfViewer.localeObj.getConstant('Select status'), filterValues.uniqueStatuses, 'filter_status_multiselect', 'status', filterState);
+        body.appendChild(statusDropdown);
+
+        // ===== DATE DROPDOWN =====
+        const dateDropdown: HTMLElement = this.createFilterDropdownMobile(this.pdfViewer.localeObj.getConstant('Date'), this.pdfViewer.localeObj.getConstant('Select a date'), filterValues.uniqueDates, 'filter_date_multiselect', 'modifiedDate', filterState);
+        body.appendChild(dateDropdown);
+
+        // ===== COLOR DROPDOWN =====
+        const colorDropdown: HTMLElement = this.createFilterDropdownMobile(this.pdfViewer.localeObj.getConstant('Color'), this.pdfViewer.localeObj.getConstant('Select color'), filterValues.uniqueColors, 'filter_color_multiselect', 'color', filterState);
+        body.appendChild(colorDropdown);
+
+        // ===== DIVIDER =====
+        const divider: HTMLElement = createElement('div', { className: 'e-pv-filter-divider-mobile' });
+        body.appendChild(divider);
+
+        // ===== FILTER SETTINGS SECTION =====
+        const filterSettingsSection: HTMLElement = createElement('div', { className: 'e-pv-filter-settings-section-mobile' });
+        const filterSettingsHeading: HTMLElement = createElement('div', { className: 'e-pv-filter-settings-heading-mobile' });
+        filterSettingsHeading.innerText = this.pdfViewer.localeObj.getConstant('Filter settings');
+        filterSettingsSection.appendChild(filterSettingsHeading);
+        const filterDocumentCheckboxContainer: HTMLElement = createElement('div', { className: 'e-pv-filter-checkbox-container-mobile' });
+        this.filterDocumentCheckbox = createElement('input', { className: 'e-pv-filter-checkbox-mobile', attrs: { 'type': 'checkbox' } });
+        // Maintain state for applyToDocument (default false if no state or false in state)
+        (this.filterDocumentCheckbox as any).checked = filterState != null && filterState.applyToDocument === true;
+        const filterDocumentLabel: HTMLElement = createElement('label', { className: 'e-pv-filter-option-label-mobile' });
+        filterDocumentLabel.innerText = this.pdfViewer.localeObj.getConstant('Filter document and comments panel');
+        filterDocumentCheckboxContainer.appendChild(this.filterDocumentCheckbox as any);
+        filterDocumentCheckboxContainer.appendChild(filterDocumentLabel);
+        filterSettingsSection.appendChild(filterDocumentCheckboxContainer);
+        body.appendChild(filterSettingsSection);
+        content.appendChild(body);
+
+        // ===== FOOTER SECTION =====
+        const footer: HTMLElement = createElement('div', { className: 'e-pv-filter-footer-mobile' });
+        const clearButton: HTMLElement = createElement('button', { className: 'e-pv-filter-clear-btn-mobile' });
+        clearButton.setAttribute('type', 'button');
+        clearButton.innerText = this.pdfViewer.localeObj.getConstant('Clear');
+        clearButton.addEventListener('click', () => {
+            // Call applyCommentFilter with null to clear filters
+            if (this.pdfViewer.annotation) {
+                this.pdfViewer.annotation.applyCommentFilter(null);
+            }
+
+            // Clear all MultiSelect instances
+            if (this.filterMultiSelectInstances) {
+                for (const key in this.filterMultiSelectInstances) {
+                    if (this.filterMultiSelectInstances.hasOwnProperty(key)) {
+                        const instance : any = this.filterMultiSelectInstances[key as any];
+                        if (instance) {
+                            instance.value = null;
+                        }
+                    }
+                }
+            }
+
+            // Clear checkboxes
+            if (this.includeRepliesCheckbox) {
+                (this.includeRepliesCheckbox as any).checked = false;
+            }
+            if (this.filterDocumentCheckbox) {
+                (this.filterDocumentCheckbox as any).checked = false;
+            }
+
+            // Close and destroy panel
+            this.closeCommentFilterPanelMobile();
+            this.destroyCommentFilterDialog();
+        });
+        footer.appendChild(clearButton);
+        const applyButton: HTMLElement = createElement('button', { className: 'e-pv-filter-apply-btn-mobile' });
+        applyButton.setAttribute('type', 'button');
+        applyButton.innerText = this.pdfViewer.localeObj.getConstant('Apply');
+        applyButton.addEventListener('click', () => {
+            // Collect selected filter values from MultiSelect instances
+            const typeValues: any | undefined = this.filterMultiSelectInstances['filter_annotation_type_multiselect'].value as any | undefined;
+            const authorValues: string[] | undefined = this.filterMultiSelectInstances['filter_author_multiselect'].value as string[] | undefined;
+            const colorValues: string[] | undefined = this.filterMultiSelectInstances['filter_color_multiselect'].value as string[] | undefined;
+            const statusValues: any = this.filterMultiSelectInstances['filter_status_multiselect'].value as any;
+            const dateValues: string[] | undefined = this.filterMultiSelectInstances['filter_date_multiselect'].value as string[] | undefined;
+
+            // Collect checkbox values
+            const includeReplies : boolean = (this.includeRepliesCheckbox as any).checked;
+            const applyToDocument : boolean = (this.filterDocumentCheckbox as any).checked;
+
+            // Call applyCommentFilter with collected values
+            if (this.pdfViewer.annotation) {
+                this.pdfViewer.annotation.applyCommentFilter({
+                    type: typeValues,
+                    author: authorValues,
+                    color: colorValues,
+                    status: statusValues,
+                    modifiedDate: dateValues,
+                    includeReplies: includeReplies,
+                    applyToDocument: applyToDocument
+                } as CommentFilterSettings);
+            }
+
+            // Close and destroy panel
+            this.closeCommentFilterPanelMobile();
+            this.destroyCommentFilterDialog();
+        });
+        footer.appendChild(applyButton);
+        content.appendChild(footer);
+        return content;
+    }
+
+    /**
+     * Helper method to create and setup a MultiSelect dropdown with multi-select functionality
+     * @private
+     * @param {string} label - Label text for the dropdown
+     * @param {string} placeholder - Placeholder text
+     * @param {string[]} options - Array of option strings
+     * @param {string} uniqueId - Unique identifier for the MultiSelect instance
+     * @param {string} filterKey - Filter key identifier (e.g., 'author', 'type', 'status', 'modifiedDate', 'color')
+     * @param {any} state - Filter state to maintain previously selected values
+     * @returns {HTMLElement} - The dropdown group container
+     */
+    private createFilterDropdown(label: string, placeholder: string, options: string[], uniqueId: string,
+                                 filterKey: string, state: CommentFilterSettings): HTMLElement {
+        const groupContainer: HTMLElement = createElement('div', { className: 'e-pv-filter-group' });
+        const labelElement: HTMLElement = createElement('label', { className: 'e-pv-filter-label' });
+        labelElement.innerText = label;
+        groupContainer.appendChild(labelElement);
+        const multiSelectContainer: HTMLElement = createElement('input', { id: uniqueId, className: 'e-pv-filter-multiselect' });
+        groupContainer.appendChild(multiSelectContainer);
+
+        // Create data source for MultiSelect
+        const dataSource: Array<{ text: string; value: string }> = options.map((option: string) => ({ text: option, value: option }));
+
+        // Determine selected values based on state and filterKey
+        let selectedValues: any[] = null;
+        if (state != null) {
+            switch (filterKey) {
+            case 'author':
+                selectedValues = state.author || null;
+                break;
+            case 'type':
+                selectedValues = state.type ? (Array.isArray(state.type) ? state.type : [state.type]) : null;
+                break;
+            case 'status':
+                selectedValues = state.status ? (Array.isArray(state.status) ? state.status : [state.status]) : null;
+                break;
+            case 'modifiedDate':
+                selectedValues = state.modifiedDate || null;
+                break;
+            case 'color':
+                selectedValues = state.color || null;
+                break;
+            }
+        }
+
+        // Initialize MultiSelect component configuration
+        const multiSelectConfig: any = {
+            dataSource: dataSource,
+            fields: { text: 'text', value: 'value' },
+            placeholder: placeholder,
+            mode: 'CheckBox',
+            showDropDownIcon: true,
+            showSelectAll: true,
+            popupHeight: '200px',
+            popupWidth: '100%',
+            maximumSelectionCharacters: 1,
+            enableRtl: this.pdfViewer.enableRtl
+        };
+
+        // Add custom templates for Color dropdown - show only circular color swatch
+        // Note: ${value} is Syncfusion's own template engine syntax, not JS eval
+        if (label === this.pdfViewer.localeObj.getConstant('Color')) {
+            multiSelectConfig.itemTemplate = '<div style="width:16px;height:16px;border-radius:50%;background-color:${value};border:1px solid #999;display:inline-block;vertical-align:middle;"></div>';
+            multiSelectConfig.valueTemplate = '<div style="width:14px;height:14px;border-radius:50%;background-color:${value};border:1px solid #999;display:inline-block;vertical-align:middle;"></div>';
+        }
+        const multiSelectInstance: MultiSelect = new MultiSelect(multiSelectConfig);
+        multiSelectInstance.appendTo(multiSelectContainer);
+
+        // Set selected values AFTER appending to ensure proper display format (count mode)
+        if (selectedValues && selectedValues.length > 0) {
+            multiSelectInstance.value = selectedValues;
+        }
+
+        // Store instance for later reference
+        this.filterMultiSelectInstances[uniqueId as any] = multiSelectInstance;
+        return groupContainer;
+    }
+
+    /**
+     * Creates the content for the filter dialog
+     * @private
+     * @returns {HTMLElement} - The filter dialog content
+     */
+    private createFilterDialogContent(): HTMLElement {
+        const content: HTMLElement = createElement('div', { className: 'e-pv-filter-dialog-content' });
+
+        // Extract dynamic filter values from annotationCollection (single pass)
+        const filterValues: {
+            uniqueAuthors: string[]; uniqueAnnotationTypes: string[]; uniqueStatuses: string[];
+            uniqueColors: string[]; uniqueDates: string[]
+        } = this.extractFilterValuesFromAnnotations();
+        const filterState: CommentFilterSettings = this.pdfViewer.annotation.getCurrentFilterState();
+        // ===== BODY SECTION =====
+        const body: HTMLElement = createElement('div', { className: 'e-pv-filter-body' });
+
+        // ===== AUTHOR DROPDOWN (MULTI-SELECT) =====
+        const authorDropdown: HTMLElement = this.createFilterDropdown(this.pdfViewer.localeObj.getConstant('Author'), this.pdfViewer.localeObj.getConstant('Select author'), filterValues.uniqueAuthors, 'filter_author_multiselect', 'author', filterState);
+        body.appendChild(authorDropdown);
+
+        // ===== INCLUDE REPLIES CHECKBOX =====
+        const includeRepliesContainer: HTMLElement = createElement('div', { className: 'e-pv-filter-group e-pv-filter-checkbox-container' });
+
+        this.includeRepliesCheckbox = createElement('input', { className: 'e-pv-filter-checkbox', attrs: { 'type': 'checkbox' } });
+        // Maintain state for includeReplies (default true if no state or true in state)
+        (this.includeRepliesCheckbox as any).checked = filterState == null || filterState.includeReplies !== false;
+        const includeRepliesLabel: HTMLElement = createElement('label', { className: 'e-pv-filter-option-label' });
+        includeRepliesLabel.innerText = this.pdfViewer.localeObj.getConstant('Include Replies');
+        includeRepliesContainer.appendChild(this.includeRepliesCheckbox as any);
+        includeRepliesContainer.appendChild(includeRepliesLabel);
+        body.appendChild(includeRepliesContainer);
+
+        // ===== ROW 1: ANNOTATION TYPE + STATUS =====
+        const row1Container: HTMLElement = createElement('div', { className: 'e-pv-filter-row' });
+        const annotationTypeDropdown: HTMLElement = this.createFilterDropdown(this.pdfViewer.localeObj.getConstant('Annotation type'), this.pdfViewer.localeObj.getConstant('Select annotation type'), filterValues.uniqueAnnotationTypes, 'filter_annotation_type_multiselect', 'type', filterState);
+        row1Container.appendChild(annotationTypeDropdown);
+        const statusDropdown: HTMLElement = this.createFilterDropdown(this.pdfViewer.localeObj.getConstant('Status'), this.pdfViewer.localeObj.getConstant('Select status'), filterValues.uniqueStatuses, 'filter_status_multiselect', 'status', filterState);
+        row1Container.appendChild(statusDropdown);
+        body.appendChild(row1Container);
+
+        // ===== ROW 2: DATE + COLOR =====
+        const row2Container: HTMLElement = createElement('div', { className: 'e-pv-filter-row' });
+        const dateDropdown: HTMLElement = this.createFilterDropdown(this.pdfViewer.localeObj.getConstant('Date'), this.pdfViewer.localeObj.getConstant('Select a date'), filterValues.uniqueDates, 'filter_date_multiselect', 'modifiedDate', filterState);
+        row2Container.appendChild(dateDropdown);
+        const colorDropdown: HTMLElement = this.createFilterDropdown(this.pdfViewer.localeObj.getConstant('Color'), this.pdfViewer.localeObj.getConstant('Select color'), filterValues.uniqueColors, 'filter_color_multiselect', 'color', filterState);
+        row2Container.appendChild(colorDropdown);
+        body.appendChild(row2Container);
+
+        // ===== DIVIDER =====
+        const divider: HTMLElement = createElement('div', { className: 'e-pv-filter-divider' });
+
+        // ===== FILTER SETTINGS SECTION =====
+        const filterSettingsSection: HTMLElement = createElement('div', { className: 'e-pv-filter-settings-section' });
+        const filterSettingsHeading: HTMLElement = createElement('div', { className: 'e-pv-filter-settings-heading' });
+        filterSettingsHeading.innerText = this.pdfViewer.localeObj.getConstant('Filter settings');
+        filterSettingsSection.appendChild(filterSettingsHeading);
+        const filterDocumentCheckboxContainer: HTMLElement = createElement('div', { className: 'e-pv-filter-checkbox-container' });
+        this.filterDocumentCheckbox = createElement('input', { className: 'e-pv-filter-checkbox', attrs: { 'type': 'checkbox' } });
+        // Maintain state for applyToDocument (default false if no state or false in state)
+        (this.filterDocumentCheckbox as any).checked = filterState != null && filterState.applyToDocument === true;
+        const filterDocumentLabel: HTMLElement = createElement('label', { className: 'e-pv-filter-option-label' });
+        filterDocumentLabel.innerText = this.pdfViewer.localeObj.getConstant('Filter document and comments panel');
+        filterDocumentCheckboxContainer.appendChild(this.filterDocumentCheckbox as any);
+        filterDocumentCheckboxContainer.appendChild(filterDocumentLabel);
+        filterSettingsSection.appendChild(filterDocumentCheckboxContainer);
+        content.appendChild(body);
+        content.appendChild(divider);
+        content.appendChild(filterSettingsSection);
+
+        // ===== FOOTER SECTION =====
+        const footer: HTMLElement = createElement('div', { className: 'e-pv-filter-footer' });
+        const clearButton: HTMLElement = createElement('button', { className: 'e-pv-filter-clear-btn e-btn' });
+        clearButton.setAttribute('type', 'button');
+        clearButton.innerText = this.pdfViewer.localeObj.getConstant('Clear');
+        clearButton.addEventListener('click', () => {
+            // Call applyCommentFilter with null to clear filters
+            if (this.pdfViewer.annotation) {
+                this.pdfViewer.annotation.applyCommentFilter(null);
+            }
+
+            // Clear all MultiSelect instances
+            if (this.filterMultiSelectInstances) {
+                for (const key in this.filterMultiSelectInstances) {
+                    if (this.filterMultiSelectInstances.hasOwnProperty(key)) {
+                        const instance : any = this.filterMultiSelectInstances[key as any];
+                        if (instance) {
+                            instance.value = null;
+                        }
+                    }
+                }
+            }
+
+            // Clear checkboxes
+            if (this.includeRepliesCheckbox) {
+                (this.includeRepliesCheckbox as any).checked = false;
+            }
+            if (this.filterDocumentCheckbox) {
+                (this.filterDocumentCheckbox as any).checked = false;
+            }
+
+            // Close and destroy dialog
+            if (this.commentFilterDialog) {
+                this.commentFilterDialog.hide();
+                this.destroyCommentFilterDialog();
+            }
+        });
+        footer.appendChild(clearButton);
+        const applyButton: HTMLElement = createElement('button', { className: 'e-pv-filter-apply-btn e-btn' });
+        applyButton.setAttribute('type', 'button');
+        applyButton.innerText = this.pdfViewer.localeObj.getConstant('Apply');
+        applyButton.addEventListener('click', () => {
+            // Collect selected filter values from MultiSelect instances
+            const typeValues : any = this.filterMultiSelectInstances['filter_annotation_type_multiselect'].value as string[] | undefined;
+            const authorValues : any = this.filterMultiSelectInstances['filter_author_multiselect'].value as string[] | undefined;
+            const colorValues : any = this.filterMultiSelectInstances['filter_color_multiselect'].value as string[] | undefined;
+            const statusValues : any = this.filterMultiSelectInstances['filter_status_multiselect'].value as any;
+            const dateValues : any = this.filterMultiSelectInstances['filter_date_multiselect'].value as string[] | undefined;
+
+            // Collect checkbox values
+            const includeReplies : boolean = (this.includeRepliesCheckbox as any).checked;
+            const applyToDocument : boolean = (this.filterDocumentCheckbox as any).checked;
+
+            // Call applyCommentFilter with collected values
+            if (this.pdfViewer.annotation) {
+                this.pdfViewer.annotation.applyCommentFilter({
+                    type: typeValues,
+                    author: authorValues,
+                    color: colorValues,
+                    status: statusValues,
+                    modifiedDate: dateValues,
+                    includeReplies: includeReplies,
+                    applyToDocument: applyToDocument
+                } as CommentFilterSettings);
+            }
+
+            // Close and destroy dialog
+            if (this.commentFilterDialog) {
+                this.commentFilterDialog.hide();
+                this.destroyCommentFilterDialog();
+            }
+        });
+        footer.appendChild(applyButton);
+        content.appendChild(footer);
+        return content;
+    }
+
+    /**
+     * @private
+     * @returns {void}
+     */
+
     public createAnnotationContextMenu(): void {
         this.annotationContextMenu = [
             { text: this.pdfViewer.localeObj.getConstant('Export Annotations') },

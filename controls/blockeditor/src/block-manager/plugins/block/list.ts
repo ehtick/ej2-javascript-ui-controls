@@ -4,6 +4,8 @@ import { getBlockContentElement, getBlockModelById, isListTypeBlock } from '../.
 import { BlockModel } from '../../../models/index';
 import * as constants from '../../../common/constant';
 import { BlockManager } from '../../base/block-manager';
+import { BlockFactory } from '../../services/block-factory';
+import { decoupleReference } from '../../../common/utils/common';
 
 export class ListPlugin {
     private parent: BlockManager;
@@ -109,6 +111,9 @@ export class ListPlugin {
         }
         else {
             this.parent.execCommand({ command: 'SplitBlock' });
+            if (this.parent.inlineToolbarModule) {
+                this.parent.inlineToolbarModule.hideInlineToolbar();
+            }
         }
     }
 
@@ -125,13 +130,22 @@ export class ListPlugin {
 
     private transformBlockToList(blockElement: HTMLElement, blockModel: BlockModel, listType: string): void {
         if (blockModel.content.length > 0) {
-            blockModel.content[0].content = '';
+            const oldBlock: BlockModel = decoupleReference(blockModel);
+
+            // Remove the list trigger('*', '-', '1.', '[]') content from the block model and trigger change event
+            this.parent.blockService.updateContent(blockModel.id, [BlockFactory.createTextContent()]);
+            this.parent.observer.notify('modelChanged', { type: 'ReRenderBlockContent', state: {
+                data: [ { block: blockModel, oldBlock: oldBlock } ],
+                preventEventTrigger: false,
+                excludeDomUpdate: false
+            }});
         }
 
         const newBlockElement: HTMLElement = this.parent.blockCommand.transformBlock({
             block: blockModel,
             blockElement: blockElement,
-            newBlockType: listType
+            newBlockType: listType,
+            ignoreContentUpdateFromLiveDOM: true
         });
 
         const contentElement: HTMLElement = getBlockContentElement(newBlockElement);

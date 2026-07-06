@@ -569,11 +569,41 @@ export interface ArrowStyle{
 export interface FlowChartData{
     id: string;
     name: string;
-    shape: BasicShapeModel | FlowShapeModel | PathModel | string;
+    shape: BasicShapeModel | FlowShapeModel | PathModel | BpmnShapeModel | string;
     color: string;
     label: string[] | string;
     parentId: string[] | number[] | null;
     arrowType: string;
     stroke: string;
     strokeWidth: number;
+    modernShapeName?: string; // Enhancement 2: Track if node was created from modern @{...} syntax
+    showLabel?: boolean; // Phase 2: Track whether to display annotation for this node
+    bpmnEvent?: string; // Phase 2: BPMN event type (Start, Intermediate, End)
+    // Task 4: Image node support - parsed from @{ img: "url", w: 60, h: 60 } syntax
+    imageSource?: string;  // URL of the image (e.g. "image.png")
+    imageWidth?: number;   // Explicit width in px; defaults to 60 if omitted
+    imageHeight?: number;  // Explicit height in px; defaults to 60 if omitted
+    imageConstraint?: string; // Constraint setting for image aspect ratio (on/off)
+    imageLabelPos?: string | undefined; // Task 4 Extended: Label position for image nodes (t=top, b=bottom)
+    // Shape sizing - default dimensions for visual consistency
+    width?: number;        // Width of the shape (default: 90 for most shapes, 90 for process)
+    height?: number;       // Height of the shape (default: 90 for most shapes, 45 for process)
+    // Annotation margin - support for shapes that need margin for proper annotation positioning
+    annotationMargin?: { left?: number; right?: number; top?: number; bottom?: number };
+    // Corner radius for rounded shapes
+    cornerRadius?: number;
+    // Task 6: Bidirectional & Multi-Endpoint Arrows support
+    // CHANGED: Now arrays to support n-number of connections with individual decorators
+    // Each array element corresponds to a parent in parentId array
+    sourceDecorators?: string[];  // Array of 'Arrow'|'Circle'|'Cross' for source end of each connector
+    sourceDecoratorPathDatas?: string[];  // Array of SVG pathData for Custom decorators per parent
+    targetDecorators?: string[];  // Array of 'Arrow'|'Circle'|'Cross' for target end of each connector
+    targetDecoratorPathDatas?: string[];  // Array of SVG pathData for Custom decorators per parent
+    clickUrl?: string;  // URL to open when node is clicked
+    clickTooltip?: string;  // Tooltip text to display on click
+    clickTarget?: string;  // Target for hyperlink (_self, _blank, _parent, _top)
+    // Task 11: Text color styling support
+    textColor?: string;  // Node text annotation color (e.g., "#f00", "#fff")
+    // Task 12: Dashed border styling support
+    strokeDashArray?: string;  // Stroke dash pattern (e.g., "5 5", "5 7 18 9")
 }

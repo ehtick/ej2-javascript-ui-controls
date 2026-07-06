@@ -1,13 +1,36 @@
 import { _defineLazyProperty, _mathClamp, _PdfCrossReference, _PdfDictionary, _PdfName, _PdfReference } from '@syncfusion/ej2-pdf';
 import { _PdfAlternateCS, _PdfCalGrayCS, _PdfColorRgbConverter, _PdfDeviceCmykCS, _PdfDeviceGrayCS, _PdfDeviceRgbaCS, _PdfDeviceRgbCS, _PdfIndexedCS, _PdfLabCS, _PdfPatternCS } from './colorspace';
 import { _PdfIccColorSpace } from './icc-based-colorspace';
+/**
+ * Utilities for parsing and resolving PDF color spaces and producing color space objects.
+ *
+ * @private
+ */
 export class _PdfColorSpaceUtils {
+    /**
+     * Canvas or rendering environment callback surface used by color-space helpers.
+     *
+     * @private
+     */
     _canvasRenderCallback: any; // eslint-disable-line
     constructor();
     constructor(callback: any); // eslint-disable-line
     constructor(callback?: any) { // eslint-disable-line
         this._canvasRenderCallback = callback;
     }
+    /**
+     * Parses an arbitrary color space value or reference and returns a resolved color space instance.
+     *
+     * @private
+     * @param {any} colorSpace The raw color space name/array/reference to parse. // eslint-disable-line
+     * @param {_PdfCrossReference} xref Cross-reference context to fetch indirect objects.
+     * @param {any} resources The resource dictionary used to resolve named color spaces. // eslint-disable-line
+     * @param {any} pdfFunctionFactory Factory to create PDF functions used by certain color spaces. // eslint-disable-line
+     * @param {any} globalColorSpaceCache Global cache for resolved color spaces. // eslint-disable-line
+     * @param {any} localColorSpaceCache Local cache for resolved color spaces within the scope. // eslint-disable-line
+     * @param {boolean} asyncIfNotCached If `true`, wraps the result in a resolved Promise for async paths.
+     * @returns {Promise<any>} A promise that resolves to the parsed color space instance. // eslint-disable-line
+     */
     async _parse(colorSpace: any, xref: _PdfCrossReference, resources: any, pdfFunctionFactory: any, // eslint-disable-line
         globalColorSpaceCache: any, localColorSpaceCache: any, asyncIfNotCached: boolean): Promise<any> {  // eslint-disable-line
         const options: any = {xref, resources, pdfFunctionFactory, globalColorSpaceCache, localColorSpaceCache}; // eslint-disable-line
@@ -25,6 +48,14 @@ export class _PdfColorSpaceUtils {
         const parsedCS: any = await this._parseColorspace(colorSpace, options); // eslint-disable-line
         return asyncIfNotCached ? Promise.resolve(parsedCS) : parsedCS;
     }
+    /**
+     * Parses a nested/base color space, consulting caches when available.
+     *
+     * @private
+     * @param {any} cs The color space object/name/reference to be sub-parsed.
+     * @param {any} options Shared options including xref, resources, and caches.
+     * @returns {Promise<any>} A promise that resolves to the parsed color space.
+     */
     async _subParse(cs: any, options: any): Promise<any> { // eslint-disable-line
         const { globalColorSpaceCache }: any = options; // eslint-disable-line
         let csRef: any; // eslint-disable-line
@@ -41,6 +72,14 @@ export class _PdfColorSpaceUtils {
         }
         return parsedCS;
     }
+    /**
+     * Core parser that resolves named, array, ICC-based, and pattern color spaces into implementations.
+     *
+     * @private
+     * @param {any} cs A color space descriptor to parse.
+     * @param {any} options Parsing context including xref, resources, and caches.
+     * @returns {Promise<any>} A promise that resolves to a color space implementation or a fallback.
+     */
     async _parseColorspace(cs: any, options: any): Promise<any> { // eslint-disable-line
         const { xref, resources } = options;
         if (cs instanceof _PdfReference) {

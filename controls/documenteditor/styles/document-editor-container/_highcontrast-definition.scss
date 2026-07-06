@@ -1,6 +1,6 @@
-@use 'ej2-base/styles/definition/highcontrast' as *;
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 @use '../document-editor/highcontrast-definition' as *;
-@forward 'ej2-base/styles/definition/highcontrast';
+
 @forward '../document-editor/highcontrast-definition';
 $de-title-bar-bg-clr: $selection-bg !default;
 $de-title-bar-font-clr: $bg-base-0 !default;
@@ -157,8 +157,8 @@ $de-ribbon-classic-editor-height-big: calc(100% - 214px) !default;
 $de-ctnr-layout-margin-bottom: 2px;
 $de-ctnr-picture-margin-bottom: 0;
 
-$de-ribbon-simplified-ctnr-collapsed-editor-height: calc(100% - 44px) !default;
-$de-ribbon-classic-collapsed-editor-height: calc(100% - 42.8px) !default;
+$de-ribbon-simplified-ctnr-collapsed-editor-height: calc(100% - 76px) !default;
+$de-ribbon-classic-collapsed-editor-height: calc(100% - 63px) !default;
 
 // layout.scss
 $de-toolbar-line-height: 0;

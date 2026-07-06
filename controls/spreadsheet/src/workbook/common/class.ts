@@ -915,6 +915,29 @@ export class Image extends ChildProperty<CellModel> {
     public left: number;
 }
 
+
+/**
+ * Represents a segment of rich text within a cell.
+ */
+export class RichText extends ChildProperty<RichText> {
+    /**
+     * Specifies the text content of the segment.
+     *
+     * @default ''
+     */
+    @Property('')
+    public text: string;
+
+    /**
+     * Specifies the style of the segment using CellStyleModel, which represents the general cell styling configuration.
+     * However, in a rich text segment, only the superscript or subscript options are supported.
+     *
+     * @default {}
+     */
+    @Complex<CellStyleModel>({}, CellStyle)
+    public style: CellStyleModel;
+}
+
 /**
  * Represents a reply in a cell comment.
  */

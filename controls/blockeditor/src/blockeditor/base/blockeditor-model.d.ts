@@ -1,4 +1,4 @@
-import { Component, getUniqueID, INotifyPropertyChanged, NotifyPropertyChanges, Property, isNullOrUndefined as isNOU, formatUnit, Collection, EmitType, Complex, Event, append, L10n, addClass, updateCSSText } from '@syncfusion/ej2-base';import { UserModel, CommandMenuSettingsModel, InlineToolbarSettingsModel, PasteCleanupSettingsModel, BlockActionMenuSettingsModel, ContextMenuSettingsModel, LabelSettingsModel, ImageBlockSettingsModel, CodeBlockSettingsModel, TransformSettingsModel } from '../../models/index';import { BlockModel } from '../../models/block/block-model';import { User } from '../../models/common/user';import { CommandMenuSettings } from '../../models/menus/command-menu-settings';import { InlineToolbarSettings } from '../../models/menus/inline-toolbar-settings';import { ContextMenuSettings } from '../../models/menus/context-menu-settings';import { BlockActionMenuSettings } from '../../models/menus/blockaction-menu-settings';import { PasteCleanupSettings } from '../../models/common/paste-settings';import { LabelSettings } from '../../models/common/label-settings';import { FocusEventArgs, BlurEventArgs, SelectionChangedEventArgs, BlockDragEventArgs, BlockDropEventArgs, BeforePasteCleanupEventArgs, AfterPasteCleanupEventArgs, BlockChangedEventArgs, FileUploadSuccessEventArgs } from '../../models/eventargs';import { getBlockModelById } from '../../common/utils/block';import { getTemplateFunction } from '../../common/utils/common';import { getCurrentLocaleJson, getLocaleItems } from '../../common/utils/data';import { CommandName } from '../../models/enums';import { events } from '../../common/constant';import * as constants from '../../common/constant';import { MentionRenderer, MenuBarRenderer, TooltipRenderer, DialogRenderer, FloatingIconRenderer, DropDownListRenderer, TabRenderer, UploaderRenderer, ProgressBarRenderer, ImageUploaderRenderer } from '../renderer/index';import { EventManager, Intermediate } from '../managers/index';import { InlineContentInsertionModule, SlashCommandModule, ContextMenuModule, BlockActionMenuModule, InlineToolbarModule, LinkModule } from '../renderer/index';import { BlockManager } from '../../block-manager/base/block-manager';import { ImageBlockSettings, CodeBlockSettings, FontColorSettingsModel, FontColorSettings, BackgroundColorSettingsModel, BackgroundColorSettings } from '../../models/common/index';import { TransformSettings } from '../../models/menus/transform-settings';import { BeforeUploadEventArgs, FailureEventArgs, UploadingEventArgs } from '@syncfusion/ej2-inputs';
+import { Component, getUniqueID, INotifyPropertyChanged, NotifyPropertyChanges, Property, isNullOrUndefined as isNOU, formatUnit, Collection, EmitType, Complex, Event, append, L10n, addClass, updateCSSText, extend, ModuleDeclaration } from '@syncfusion/ej2-base';import { UserModel, CommandMenuSettingsModel, InlineToolbarSettingsModel, PasteCleanupSettingsModel, BlockActionMenuSettingsModel, ContextMenuSettingsModel, LabelSettingsModel, ImageBlockSettingsModel, CodeBlockSettingsModel, TransformSettingsModel, CollaborationSettingsModel, IVersionHistory } from '../../models/index';import { BlockModel } from '../../models/block/block-model';import { User } from '../../models/common/user';import { CommandMenuSettings } from '../../models/menus/command-menu-settings';import { InlineToolbarSettings } from '../../models/menus/inline-toolbar-settings';import { ContextMenuSettings } from '../../models/menus/context-menu-settings';import { BlockActionMenuSettings } from '../../models/menus/blockaction-menu-settings';import { PasteCleanupSettings } from '../../models/common/paste-settings';import { LabelSettings } from '../../models/common/label-settings';import { CollaborationSettings } from '../../models/collaboration/collaboration-settings';import { FocusEventArgs, BlurEventArgs, SelectionChangedEventArgs, BlockDragEventArgs, BlockDropEventArgs, BeforePasteCleanupEventArgs, AfterPasteCleanupEventArgs, BlockChangedEventArgs, FileUploadSuccessEventArgs } from '../../models/eventargs';import { getBlockModelById } from '../../common/utils/block';import { getTemplateFunction } from '../../common/utils/common';import { getCurrentLocaleJson, getLocaleItems } from '../../common/utils/data';import { CommandName } from '../../models/enums';import { events } from '../../common/constant';import * as constants from '../../common/constant';import { MentionRenderer, MenuBarRenderer, TooltipRenderer, DialogRenderer, FloatingIconRenderer, DropDownListRenderer, TabRenderer, UploaderRenderer, ProgressBarRenderer, ImageUploaderRenderer } from '../renderer/index';import { EventManager, Intermediate } from '../managers/index';import { InlineContentInsertionModule, SlashCommandModule, ContextMenuModule, BlockActionMenuModule, InlineToolbarModule, LinkModule } from '../renderer/index';import { BlockManager } from '../../block-manager/base/block-manager';import { ImageBlockSettings, CodeBlockSettings, FontColorSettingsModel, FontColorSettings, BackgroundColorSettingsModel, BackgroundColorSettings } from '../../models/common/index';import { TransformSettings } from '../../models/menus/transform-settings';import { BeforeUploadEventArgs, FailureEventArgs, UploadingEventArgs } from '@syncfusion/ej2-inputs';import { sanitizeUserModel } from '../../common/utils/transform';import { Collaboration } from '../../collaboration/y-blockeditor/base/collaboration';import { VersionHistory } from '../../collaboration/y-blockeditor/plugins/version-plugin';
 import {ComponentModel} from '@syncfusion/ej2-base';
 
 /**
@@ -117,6 +117,13 @@ export interface BlockEditorModel extends ComponentModel{
      * @default []
      */
     users?: UserModel[];
+
+    /**
+     * Specifies the unique identifier of the currently active user.
+     *
+     * @default ''
+     */
+    currentUserId?: string;
 
     /**
      * Specifies configuration options for editor commands.
@@ -250,6 +257,17 @@ export interface BlockEditorModel extends ComponentModel{
      * }
      */
     backgroundColorSettings?: BackgroundColorSettingsModel;
+
+    /**
+     * Configures settings for collaborative editing using Yjs.
+     * When configured, enables multiplayer editing with selective undo/redo that only affects the local user's changes.
+     * The editor automatically manages Yjs bindings, undo managers, and synchronization.
+     *
+     * {% codeBlock src='blockeditor/collaboration-settings/index.md' %}{% endcodeBlock %}
+     *
+     * @default {}
+     */
+    collaborationSettings?: CollaborationSettingsModel;
 
     /**
      * Event triggered after the Blockeditor is rendered completely.

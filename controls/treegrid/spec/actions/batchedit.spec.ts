@@ -9,6 +9,8 @@ import { Sort } from '../../src/treegrid/actions/sort';
 import { Filter } from '../../src/treegrid/actions/filter';
 import { isNullOrUndefined, select } from '@syncfusion/ej2-base';
 import { ITreeData } from '../../src';
+import { DataManager } from '@syncfusion/ej2-data';
+import * as crudActions from '../../src/treegrid/actions/crud-actions';
 
 /**
  * Grid Batch Edit spec
@@ -2744,6 +2746,393 @@ describe('1006333-AddRecord method not working when adding as child in checkbox 
     (<any>gridObj.grid.toolbarModule).toolbarClickHandler({ item: { id: gridObj.grid.element.id + '_update' } });
     select('#' + gridObj.element.id + '_gridcontrol' + 'EditConfirm', gridObj.element).querySelectorAll('button')[0].click();
     });
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+describe('BatchEdit - Additional Coverage', () => {
+  let gridObj: TreeGrid;
+  let bem: any;
+
+  beforeAll((done: Function) => {
+    gridObj = createGrid({
+      dataSource: sampleData,
+      childMapping: 'subtasks',
+      editSettings: { allowAdding: true, allowEditing: true, allowDeleting: true, mode: 'Batch', newRowPosition: 'Below' },
+      treeColumnIndex: 1,
+      columns: [{ field: 'taskID', isPrimaryKey: true }, { field: 'taskName' }]
+    }, done);
+    bem = (gridObj.editModule as any).batchEditModule;
+  });
+
+  afterAll(() => {
+    destroy(gridObj);
+  });
+
+  it('batchPageAction: removes entries from grid data when batchAddedRecords populated', () => {
+    const pk = gridObj.grid.getPrimaryKeyFieldNames()[0];
+    const temp = { taskID: 9999, taskName: 'temp' } as any;
+    (gridObj.grid.dataSource as any).push(temp);
+    bem.batchAddedRecords = [{ [pk]: 9999 }];
+    bem.batchPageAction();
+
+    expect(bem.batchAddedRecords.length).toBe(0);
+    expect((gridObj.grid.dataSource as any).findIndex((r: any) => r[pk] === 9999)).toBe(-1);
+  });
+
+  it('beforeBatchAdd: cancels when mode is Cell and isTabLastRow flag true', () => {
+    const e: any = { cancel: false };
+    gridObj.editSettings.mode = 'Cell';
+    (gridObj.editModule as any)['isTabLastRow'] = true;
+
+    bem.beforeBatchAdd(e);
+
+    expect(e.cancel).toBe(true);
+    expect((gridObj.editModule as any)['isTabLastRow']).toBe(false);
+    gridObj.editSettings.mode = 'Batch';
+  });
+
+  it('batchAdd: exercises deletedRecords + newRowPosition === "Above" branch', () => {
+    type AnyRecord = Record<string, unknown>;
+    (gridObj as any).getBatchChanges = (): { addedRecords: AnyRecord[]; deletedRecords: AnyRecord[] } => ({ addedRecords: [], deletedRecords: [{ dummy: true }] });
+    gridObj.editSettings.newRowPosition = 'Above';
+    const e: any = { row: { rowIndex: 42 } };
+    bem.batchAdd(e);
+    expect(bem.isAdd).toBe(true);
+    expect(bem.newBatchRowAdded).toBe(true);
+  });
+
+  it('nextCellIndex: assigns from selected record when isAdd + deletedRecords present', () => {
+    (gridObj as any).getSelectedRows = () => [{}, {}];
+    (gridObj as any).getSelectedRecords = () => [{ index: 5 }];
+    (gridObj as any).getBatchChanges = () => ({ deletedRecords: [1] });
+    bem.isAdd = true;
+    const args: any = {};
+    bem.nextCellIndex(args);
+    expect(args.index).toBe(5);
+    (gridObj as any).getSelectedRows = (): unknown[] => [];
+    bem.batchIndex = 7;
+    const args2: any = {};
+    bem.nextCellIndex(args2);
+    expect(args2.index).toBe(7);
+  });
+
+  it('onCellFocused: handles shiftEnter (prevents default and ends edit)', () => {
+    gridObj.editSettings.mode = 'Cell';
+    (gridObj.grid as any).isEdit = true;
+
+    let prevented = false;
+    const keyArgs: any = { action: 'shiftEnter', preventDefault: () => { prevented = true; } };
+    let ended = false;
+    (gridObj as any).endEdit = () => { ended = true; };
+
+    bem.onCellFocused({ keyArgs } as any);
+
+    expect(prevented).toBe(true);
+    expect(ended).toBe(true);
+    gridObj.editSettings.mode = 'Batch';
+  });
+
+  it('deleteUniqueID: removes keys from uniqueID collections', () => {
+    const uid = 'u-abc';
+    (gridObj as any)['uniqueIDFilterCollection'] = { [uid]: 'x' };
+    (gridObj as any)['uniqueIDCollection'] = { [uid]: { index: 1 } };
+
+    bem.deleteUniqueID(uid);
+
+    expect((gridObj as any)['uniqueIDFilterCollection'][uid]).toBeUndefined();
+    expect((gridObj as any)['uniqueIDCollection'][uid]).toBeUndefined();
+  });
+
+  it('batchCancelAction: clears batch arrays when batchAddedRecords/batchDeletedRecords exist', () => {
+    const pk = gridObj.grid.getPrimaryKeyFieldNames()[0];
+    const temp = { [pk]: 8888, taskName: 'tempcancel' } as any;
+    (gridObj.grid.dataSource as any).push(temp);
+    bem.batchAddedRecords = [{ [pk]: 8888 }];
+    bem.batchDeletedRecords = [{ [pk]: 1, parentItem: { [pk]: gridObj.getCurrentViewRecords()[0][pk] }, index: 0 }];
+    bem.batchCancelAction();
+    expect(Array.isArray(bem.batchAddedRecords)).toBe(true);
+    expect(Array.isArray(bem.batchDeletedRecords)).toBe(true);
+    expect(Array.isArray(bem.batchRecords)).toBe(true);
+  });
+
+});
+
+//Need to improve coverage
+
+describe('BatchEdit - Extra coverage tests', () => {
+  let gridObj: TreeGrid;
+  let bem: any;
+  beforeAll((done: Function) => {
+    gridObj = createGrid({
+      dataSource: sampleData,
+      childMapping: 'subtasks',
+      editSettings: { allowAdding: true, allowEditing: true, allowDeleting: true, mode: 'Batch', newRowPosition: 'Child' },
+      treeColumnIndex: 1,
+      columns: [{ field: 'taskID', isPrimaryKey: true }, { field: 'taskName' }]
+    }, done);
+    bem = (gridObj.editModule as any).batchEditModule;
+  });
+
+  afterAll(() => {
+    destroy(gridObj);
+  });
+
+  it('beforeBatchAdd cancels when cell mode and tab last row flag set', () => {
+    gridObj.editSettings.mode = 'Cell' as any;
+    gridObj.editModule['isTabLastRow'] = true;
+    const e: any = { cancel: false };
+    (bem as any).beforeBatchAdd(e);
+    expect(e.cancel).toBe(true);
+    expect(gridObj.editModule['isTabLastRow']).toBe(false);
+  });
+
+  it('beforeBatchAdd sets indices when added by method', () => {
+    gridObj.editModule['isAddedRowByMethod'] = true;
+    gridObj.editModule['addRowIndex'] = 1;
+    gridObj.editModule['isAddedRowByContextMenu'] = false;
+    gridObj.editModule['selectedIndex'] = 1;
+    bem.batchRecords = (gridObj.grid.getCurrentViewRecords() as any).slice();
+    (bem as any).beforeBatchAdd({});
+    expect(bem.getSelectedIndex()).toBeDefined();
+    expect(bem.getAddRowIndex()).toBeDefined();
+  });
+
+  it('updateChildCount increments batchChildCount based on addedRecords', () => {
+    const primary = gridObj.grid.getPrimaryKeyFieldNames()[0];
+    const records: any = gridObj.grid.getCurrentViewRecords();
+    bem.addRowIndex = 0;
+    gridObj.getBatchChanges = () => ({ addedRecords: [{ parentItem: { [primary]: records[0][primary] } }] } as any);
+    (bem as any).updateChildCount(records);
+    expect(bem.getBatchChildCount()).toBeGreaterThanOrEqual(0);
+  });
+
+  it('beforeBatchSave deletes unique ids for deleted records', () => {
+    const parent: any = gridObj as any;
+    parent.uniqueIDCollection = { u1: { index: 0 } };
+    parent.uniqueIDFilterCollection = { u1: {} };
+    const deleted = [{ uniqueID: 'u1' }];
+    const e: any = { batchChanges: { changedRecords: [], deletedRecords: deleted } };
+    (bem as any).beforeBatchSave(e);
+    expect(parent.uniqueIDCollection['u1']).toBeUndefined();
+    expect(parent.uniqueIDFilterCollection['u1']).toBeUndefined();
+  });
+
+  it('immutableBatchAction removes added record rows', () => {
+    const changes: any = { addedRecords: [{ index: 0 }, { index: 2 }] };
+    gridObj.grid.getBatchChanges = () => changes;
+    const rows = [0, 1, 2, 3, 4];
+    const e: any = { rows: rows, args: {} };
+    (bem as any).immutableBatchAction(e);
+    expect(e.rows.length).toBeLessThan(5);
+  });
+
+  it('onCellFocused with shiftEnter calls endEdit and preventDefault', () => {
+    gridObj.editSettings.mode = 'Cell' as any;
+    gridObj.grid.isEdit = true as any;
+    const preventSpy = jasmine.createSpy('preventDefault');
+    const e: any = { keyArgs: { action: 'shiftEnter', preventDefault: preventSpy } };
+    const endSpy = spyOn(gridObj, 'endEdit');
+    (bem as any).onCellFocused(e);
+    expect(preventSpy).toHaveBeenCalled();
+    expect(endSpy).toHaveBeenCalled();
+  });
+
+    it('batchPageAction with DataManager datasource removes batchAddedRecords', () => {
+        const pk = gridObj.grid.getPrimaryKeyFieldNames()[0];
+        const dataArr: any = Array.isArray(gridObj.grid.dataSource) ? gridObj.grid.dataSource :
+          ((gridObj.grid.dataSource as any).dataSource ? (gridObj.grid.dataSource as any).dataSource.json : gridObj.grid.dataSource);
+        dataArr.push({ [pk]: 7777, taskName: 'toRemove' });
+        bem.batchAddedRecords = [{ [pk]: 7777 }];
+        (bem as any).batchPageAction();
+        expect(bem.batchAddedRecords.length).toBe(0);
+        expect(dataArr.findIndex((r: any) => r[pk] === 7777)).toBe(-1);
+    });
+
+        it('batchCancelAction handles targetElement and restores child records', () => {
+            const tr = gridObj.getRows()[0] as HTMLTableRowElement;
+            const child = document.createElement('div');
+            tr.appendChild(child);
+            (gridObj as any)['targetElement'] = child;
+            spyOn(gridObj, 'collapseRow').and.callFake(() => {});
+            const pk = gridObj.grid.getPrimaryKeyFieldNames()[0];
+            bem.batchAddedRecords = [{ [pk]: (sampleData as any)[0][pk] }];
+            (bem as any).batchCancelAction();
+            expect((gridObj as any)['targetElement']).toBeNull();
+            expect(Array.isArray(bem.batchRecords)).toBe(true);
+        });
+
+    it('batchSave with updatedRecords (context menu) exercises reverse and clearing', () => {
+        const pk = gridObj.grid.getPrimaryKeyFieldNames()[0];
+        const add1: any = { [pk]: 500, taskName: 'a' };
+        const add2: any = { [pk]: 501, taskName: 'b' };
+        const args: any = { updatedRecords: { addedRecords: [add1, add2], deletedRecords: [] }, index: 0 };
+        (bem as any).batchAddRowRecord = [];
+        gridObj.editModule['isAddedRowByContextMenu'] = true;
+        (bem as any).batchSave(args);
+        expect((bem as any).batchAddRowRecord.length >= 0).toBe(true);
+        gridObj.editModule['isAddedRowByContextMenu'] = false;
+    });
+
+    it('beforeBatchSave calls editAction for changedRecords', () => {
+        const changed = [{ taskID: 1 }];
+        const e: any = { batchChanges: { changedRecords: changed, deletedRecords: [] } };
+        const spy = spyOn(crudActions, 'editAction');
+        (bem as any).beforeBatchSave(e);
+        expect(spy).toHaveBeenCalled();
+    });
+
+    it('batchAdd handles deletedRecords + Above position and frozenRows path', () => {
+        gridObj.editSettings.newRowPosition = 'Above' as any;
+        gridObj.getBatchChanges = () => ({ deletedRecords: [1] } as any);
+        (gridObj as any).frozenRows = true;
+        const e: any = { row: { rowIndex: 2 }, index: 0 };
+        (bem as any).matrix = [[0]];
+        (bem as any).batchAdd(e);
+        expect((bem as any).isAdd).toBe(true);
+    });
+
+    it('beforeBatchDelete handles provided row element and frozen header branch', () => {
+        const fakeRow: any = document.createElement('tr');
+        fakeRow.setAttribute('data-uid', 'uid-test');
+        const args: any = { row: fakeRow, rowData: { taskID: 1 } };
+        gridObj.getSelectedRows = () => [] as any;
+        gridObj.grid.getRowElementByUID = () => { const el: any = document.createElement('tr'); el.setAttribute('aria-rowindex', '2'); return el; };
+        (gridObj as any).frozenRows = true;
+        (gridObj as any).frozenColumns = true;
+        const focusStub: any = { getContent: (): any => ({ matrix: { matrix: [] } }), destroy: (): void => {}, setFirstFocusableTabIndex: (): void => {} };
+        gridObj.grid.focusModule = focusStub as any;
+        (gridObj as any).focusModule = focusStub as any;
+        (bem as any).beforeBatchDelete(args);
+        expect(Array.isArray((bem as any).batchDeletedRecords)).toBe(true);
+    });
+
+    it('getActualRowObjectIndex else path adjusts by children when no batch changes', () => {
+        gridObj.editSettings.newRowPosition = 'Below' as any;
+        (bem as any).selectedIndex = 0;
+        (bem as any).addRowIndex = 0;
+        (bem as any).batchRecords = [{ expanded: true, childRecords: [{}, {}], taskID: 1 }];
+        gridObj.getBatchChanges = () => ({ addedRecords: [], deletedRecords: [] } as any);
+        (gridObj.grid as any).getDataRows = () => [{}, {} , {} , {}];
+        const focusStub2: any = { setFirstFocusableTabIndex: (): void => {}, destroy: (): void => {} };
+        (gridObj as any).focusModule = focusStub2 as any;
+        (gridObj.grid as any).focusModule = focusStub2 as any;
+        const idx = (bem as any).getActualRowObjectIndex(0);
+        expect(typeof idx).toBe('number');
+    });
+
+    it('batchPageAction removes batchAddedRecords from data source', () => {
+        const pk = gridObj.grid.getPrimaryKeyFieldNames()[0];
+        let data: any = Array.isArray(gridObj.grid.dataSource) ? gridObj.grid.dataSource :
+          ((gridObj.grid.dataSource as any).dataSource ? (gridObj.grid.dataSource as any).dataSource.json : gridObj.grid.dataSource);
+        data.push({ [pk]: 7777, taskName: 'toRemove' });
+        bem.batchAddedRecords = [{ [pk]: 7777 }];
+        (bem as any).batchPageAction();
+        expect(bem.batchAddedRecords.length).toBe(0);
+        expect(data.findIndex((r: any) => r[pk] === 7777)).toBe(-1);
+    });
+
+    it('cellSaved triggers cellRender when column is treeColumnIndex and handles new batch row add', () => {
+        const args: any = { column: { index: gridObj.treeColumnIndex }, rowData: {}, cell: {}, row: {} };
+        const renderSpy = spyOn(gridObj.renderModule, 'cellRender');
+        (bem as any).cellSaved(args);
+        expect(renderSpy).toHaveBeenCalled();
+        (bem as any).isAdd = true;
+        gridObj.editSettings.mode = 'Batch' as any;
+        gridObj.editSettings.newRowPosition = 'Child' as any;
+        (bem as any).newBatchRowAdded = true;
+        (bem as any).batchRecords = [{ taskID: 999 }];
+        (bem as any).batchAddedRecords = [];
+        (bem as any).batchAddRowRecord = [];
+        (bem as any).addRowIndex = 0;
+        (bem as any).batchIndex = 0;
+        (bem as any).selectedIndex = -1;
+        (gridObj.grid as any).getRowsObject = () => [{ changes: {}}];
+        (gridObj as any).uniqueIDCollection = {};
+        (gridObj as any).uniqueIDFilterCollection = {};
+        const args2: any = { column: { index: gridObj.treeColumnIndex }, rowData: {}, cell: {}, row: {} };
+        (bem as any).cellSaved(args2);
+        expect((bem as any).batchAddedRecords.length).toBeGreaterThanOrEqual(0);
+    });
+
+    it('getActualRowObjectIndex adjusts index when expanded and batch children exist', () => {
+        gridObj.editSettings.newRowPosition = 'Below' as any;
+        (bem as any).selectedIndex = 0;
+        (bem as any).addRowIndex = 0;
+        (bem as any).batchRecords = [{ expanded: true, childRecords: [{}, {}], taskID: 1 }];
+        gridObj.getBatchChanges = () => ({ addedRecords: [1, 2], deletedRecords: [] } as any);
+        (gridObj.grid as any).getDataRows = () => [{}, {} , {}];
+        const idx = (bem as any).getActualRowObjectIndex(0);
+        expect(typeof idx).toBe('number');
+    });
+});
+describe('Batch Adding - with Frozen Rows', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: sampleData,
+                childMapping: 'subtasks',
+                allowPaging: true,
+                pageSettings: { pageSize: 7 },
+                editSettings: {
+                    allowEditing: true,
+                    allowAdding: true,
+                    allowDeleting: true,
+                    mode: 'Batch',
+                    newRowPosition: "Above"
+                },
+                toolbar: ["Add", "Edit", "Delete", "Update", "Cancel"],
+                frozenRows: 2,
+                treeColumnIndex: 1,
+                columns: [
+                    {
+                        field: 'taskID',
+                        headerText: 'Task ID',
+                        isPrimaryKey: true,
+                        width: 90,
+                        textAlign: 'Right',
+                    },
+                    {
+                        field: 'taskName',
+                        headerText: 'Task Name',
+                        width: 180,
+                        textAlign: 'Left',
+                    },
+                    {
+                        field: 'startDate',
+                        headerText: 'Start Date',
+                        width: 90,
+                        editType: 'datePickeredit',
+                        textAlign: 'Right',
+                        type: 'date',
+                        format: 'yMd',
+                    },
+                    {
+                        field: 'duration',
+                        headerText: 'Duration',
+                        width: 80,
+                        editType: 'numericedit',
+                        textAlign: 'Right',
+                    },
+                ]
+            },
+            done
+        );
+    });
+
+    it('Should not throw script error when calling addRecord method', () => {
+        gridObj.addRecord();
+        expect(gridObj.getHeaderTable().getElementsByClassName('e-insertedrow').length > 0).toBe(true);
+
+    });
+    it('Should not throw script error when selection mode is both', () => {
+        gridObj.selectionSettings = { type: 'Multiple', mode: 'Both' },
+        gridObj.addRecord();
+        expect(gridObj.getHeaderTable().getElementsByClassName('e-insertedrow').length > 0).toBe(true);
+    });
+
     afterAll(() => {
         destroy(gridObj);
     });

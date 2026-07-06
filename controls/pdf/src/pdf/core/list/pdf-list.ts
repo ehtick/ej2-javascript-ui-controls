@@ -1661,6 +1661,7 @@ export class _PdfListLayouter {
         this._bounds = parameter._bounds.slice();
         if (this._currentPage) {
             if (parameter._bounds[2] === 0 && parameter._bounds[3] === 0) {
+                this._currentPage.graphics._isLayouter = true;
                 const pageSize: Size = this._currentPage.graphics.clientSize;
                 this._bounds[2] = pageSize.width - this._bounds[0];
                 this._bounds[3] = pageSize.height - this._bounds[1];
@@ -1694,6 +1695,7 @@ export class _PdfListLayouter {
             }
             this._graphics = this._currentPage.graphics;
             if (parameter._bounds[2] === 0 && parameter._bounds[3] === 0) {
+                this._currentPage.graphics._isLayouter = true;
                 const pageSize: Size = this._currentPage.graphics.clientSize;
                 this._bounds[2] = pageSize.width - this._bounds[0];
                 this._bounds[3] = pageSize.height - this._bounds[1];

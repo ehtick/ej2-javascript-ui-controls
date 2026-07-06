@@ -238,7 +238,6 @@ export class Canvas extends GroupableView {
 
         x += (child.margin.left - child.margin.right) * factor;
         y += child.margin.top - child.margin.bottom;
-
         switch (child.horizontalAlignment) {
         case 'Auto':
         case 'Left':

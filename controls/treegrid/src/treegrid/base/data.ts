@@ -107,12 +107,10 @@ export class DataManipulation {
             if (this.parent.parentIdMapping) {
                 this.parent.query = isNullOrUndefined(this.parent.query) ?
                     new Query() : this.parent.query;
-                if (this.parent.parentIdMapping) {
-                    const filterKey: Object[] = this.parent.query.params.filter((param: ParamOption) => param.key === 'IdMapping');
-                    if (this.parent.initialRender && !filterKey.length) {
-                        this.parent.query.where(this.parent.parentIdMapping, 'equal', null);
-                        this.parent.query.addParams('IdMapping', this.parent.idMapping);
-                    }
+                const filterKey: Object[] = this.parent.query.params.filter((param: ParamOption) => param.key === 'IdMapping');
+                if (this.parent.initialRender && !filterKey.length) {
+                    this.parent.query.where(this.parent.parentIdMapping, 'equal', null);
+                    this.parent.query.addParams('IdMapping', this.parent.idMapping);
                 }
                 if (!this.parent.hasChildMapping) {
                     let qry: Query = this.parent.query.clone();
@@ -671,9 +669,6 @@ export class DataManipulation {
                         ? currentData[this.parent.expandStateMapping] : true;
                 }
             }
-            if (!Object.prototype.hasOwnProperty.call(currentData, 'index')) {
-                currentData.index =  currentData.hasChildRecords ? this.storedIndex : this.storedIndex;
-            }
             if (this.isSelfReference && isNullOrUndefined(currentData[this.parent.parentIdMapping])) {
                 this.parent.parentData.push(currentData);
             }
@@ -847,8 +842,7 @@ export class DataManipulation {
             count = this.dataResults.count;
         }
         const isPdfExport: string = 'isPdfExport'; const isCollapsedStatePersist: string = 'isCollapsedStatePersist';
-        if ((isPrinting === true || (args[`${isPdfExport}`] && (isNullOrUndefined(args[`${isCollapsedStatePersist}`])
-       || args[`${isCollapsedStatePersist}`]))) && this.parent.printMode === 'AllPages') {
+        if ((isPrinting === true || (args[`${isPdfExport}`] && args[`${isCollapsedStatePersist}`] === true)) && this.parent.printMode === 'AllPages') {
             const actualResults: ITreeData[] = [];
             for (let i: number = 0; i < results.length; i++) {
                 const expandStatus: boolean = getExpandStatus(this.parent, results[parseInt(i.toString(), 10)], this.parent.parentData);

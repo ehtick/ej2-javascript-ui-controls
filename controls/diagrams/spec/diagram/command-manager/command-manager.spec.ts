@@ -1732,5 +1732,125 @@ describe('copy paste node and connector', () => {
         expect(diagram.connectors.length === 4).toBe(true);
         done();
     });
+});
 
+describe('moveObjects - Layer Management Tests', () => {
+    let diagram: Diagram;
+    let ele: HTMLElement;
+
+    beforeEach((): void => {
+        ele = createElement('div', { id: 'diagram_moveobjects' });
+        document.body.appendChild(ele);
+    });
+
+    afterEach((): void => {
+        if (diagram) {
+            diagram.destroy();
+        }
+        document.body.removeChild(ele);
+    });
+
+    it('should not duplicate child nodes when moving group with NodeConstraints.None', (done: Function) => {
+        const nodes: NodeModel[] = [
+            {
+                id: 'node1',
+                width: 100,
+                height: 100,
+                offsetX: 100,
+                offsetY: 100,
+                constraints: NodeConstraints.None,
+            },
+            {
+                id: 'node2',
+                width: 100,
+                height: 100,
+                offsetX: 100,
+                offsetY: 300,
+                constraints: NodeConstraints.None,
+            },
+            { id: 'group', children: ['node1', 'node2'] },
+        ];
+
+        diagram = new Diagram({
+            width: '1000px',
+            height: '600px',
+            nodes: nodes,
+            layers: [
+                { id: 'layer1', objects: ['group'] },
+                { id: 'layer2' },
+            ],
+        });
+        diagram.appendTo(ele);
+
+        const beforeLength = diagram.nodes.length;
+        expect(beforeLength).toBe(3);
+
+        diagram.moveObjects(['group'], 'layer2');
+
+        const afterLength = diagram.nodes.length;
+        expect(afterLength).toBe(3); // Should remain 3, not become 5
+        expect(diagram.nameTable['node1'].parentId).toBe('group');
+        expect(diagram.nameTable['node2'].parentId).toBe('group');
+        done();
+    });
+
+    it('should move group with normal constraints correctly', (done: Function) => {
+        const nodes: NodeModel[] = [
+            { id: 'node1', width: 100, height: 100, offsetX: 100, offsetY: 100 },
+            { id: 'node2', width: 100, height: 100, offsetX: 100, offsetY: 300 },
+            { id: 'group', children: ['node1', 'node2'] },
+        ];
+
+        diagram = new Diagram({
+            width: '1000px',
+            height: '600px',
+            nodes: nodes,
+            layers: [
+                { id: 'layer1', objects: ['group'] },
+                { id: 'layer2' },
+            ],
+        });
+        diagram.appendTo(ele);
+
+        const beforeLength = diagram.nodes.length;
+        diagram.moveObjects(['group'], 'layer2');
+
+        expect(diagram.nodes.length).toBe(beforeLength);
+        expect(diagram.nameTable['group'].parentId).toBe('');
+        expect(diagram.nameTable['node1'].parentId).toBe('group');
+        expect(diagram.nameTable['node2'].parentId).toBe('group');
+        done();
+    });
+
+    it('should maintain parent-child relationships after moving', (done: Function) => {
+        const nodes: NodeModel[] = [
+            {
+                id: 'child1',
+                width: 100,
+                height: 100,
+                offsetX: 50,
+                offsetY: 50,
+                constraints: NodeConstraints.None,
+            },
+            { id: 'parent', children: ['child1'] },
+        ];
+
+        diagram = new Diagram({
+            width: '1000px',
+            height: '600px',
+            nodes: nodes,
+            layers: [
+                { id: 'layer1', objects: ['parent'] },
+                { id: 'layer2' },
+            ],
+        });
+        diagram.appendTo(ele);
+
+        diagram.moveObjects(['parent'], 'layer2');
+
+        const parentNode: NodeModel = diagram.nameTable['parent'] as NodeModel;
+        expect(parentNode.children).toContain('child1');
+        expect(parentNode.children.length).toBe(1);
+        done();
+    });
 });

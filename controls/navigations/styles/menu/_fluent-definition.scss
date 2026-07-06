@@ -1,6 +1,6 @@
-@use 'ej2-base/styles/definition/fluent' as *;
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 @use '../context-menu/fluent-definition' as *;
-@forward 'ej2-base/styles/definition/fluent';
+
 @forward '../context-menu/fluent-definition';
 $menu-bigger-caret-font-size: $cmenu-bigger-caret-font-size !default;
 $menu-bigger-caret-li-padding: 32px !default;

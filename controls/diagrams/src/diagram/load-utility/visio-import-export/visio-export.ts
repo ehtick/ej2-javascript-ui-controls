@@ -30,6 +30,7 @@ import { SegmentInfo } from '../../rendering/canvas-interface';
 import { IExportingEventArgs } from '../../objects/interface/IElement';
 import { serializeJsToXmlString } from './zipReader';
 import { ParsedXmlObject, RetirevedData, ShapeAddInfo, ShapeAttributes, VisioCell, VisioShapeNode, XmlRelationship } from './visio-types';
+import { PointPortModel } from '../../objects/port-model';
 
 /**
  * Module-level variable to store global image mappings for the export session.
@@ -2924,18 +2925,62 @@ function generatePageContentWithMasterRefs(visioData: visioData, diagram: Diagra
                 const addInfo: ShapeAddInfo = node.addInfo as ShapeAddInfo;
                 (addInfo.data.$ as ShapeAttributes).ID = (++idAlloc.value).toString();
                 shapeIdMap.set(node.id, idAlloc.value);
+                if (node.children && node.children.length > 0 && addInfo.data.Shapes && (addInfo.data.Shapes as any).Shape.length > 0) {
+                    const shapesArray: ParsedXmlObject[] = (addInfo.data.Shapes as ParsedXmlObject).Shape as ParsedXmlObject[];
+                    for (let idx: number = 0; idx < shapesArray.length && idx < node.children.length; idx++) {
+                        const shape: ParsedXmlObject = shapesArray[parseInt(idx.toString(), 10)];
+                        (shape.$ as ShapeAttributes).ID = (++idAlloc.value).toString();
+                        shapeIdMap.set(node.children[parseInt(idx.toString(), 10)], idAlloc.value);
+                    }
+                }
                 const data: string = serializeJsToXmlString(addInfo.data as ParsedXmlObject, 'Shape');
                 writer.writeRaw(data);
 
-                // Define port connection points for this shape based on its ports for connection use
-                let connectionRowIndex: number = 4; // Start after default connection points (0-3)
+                // Extract port-to-connection-index mapping from preserved Visio XML
                 const nodePortsMap: Map<string, number> = new Map<string, number>();
 
-                node.ports.forEach((port: PointPort) => {
-                    // Store port index for later reference in connector connections
-                    nodePortsMap.set(port.id, connectionRowIndex);
-                    connectionRowIndex++;
-                });
+                // Parse the Connection section from preserved data to get actual Visio connection indices
+                // Match ports by their offset (position) to Connection Row X/Y coordinates
+                if (addInfo.data.Section && Array.isArray(addInfo.data.Section)) {
+                    for (const section of addInfo.data.Section) {
+                        if (section.$ && section.$.N === 'Connection' && section.Row && Array.isArray(section.Row)) {
+                            // Map each port to its actual Visio connection IX value by matching coordinates
+                            for (const row of section.Row) {
+                                if (row.$ && row.$.IX && row.Cell && Array.isArray(row.Cell)) {
+                                    const ixValue: number = parseInt(row.$.IX, 10);
+                                    // Extract X and Y coordinates from Connection Row
+                                    let connectionX: number | null = null;
+                                    let connectionY: number | null = null;
+                                    for (const cell of row.Cell) {
+                                        if (cell.$ && cell.$.V) {
+                                            if (cell.$.N === 'X') {
+                                                connectionX = parseFloat(cell.$.V);
+                                            } else if (cell.$.N === 'Y') {
+                                                connectionY = parseFloat(cell.$.V);
+                                            }
+                                        }
+                                    }
+                                    // Match port by offset coordinates (normalized 0-1 range)
+                                    if (node.ports && connectionX !== null && connectionY !== null) {
+                                        for (const port of node.ports) {
+                                            if (port.offset) {
+                                                // Connection coords are in normalized 0-1 range, match with tolerance
+                                                const offsetTolerance: number = 0.05;
+                                                if (Math.abs(port.offset.x - connectionX) < offsetTolerance &&
+                                                    Math.abs(port.offset.y - connectionY) < offsetTolerance) {
+                                                    if (port.id) {
+                                                        nodePortsMap.set(port.id, ixValue);
+                                                    }
+                                                    break; // Found matching port
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 // Store the port map for use in generating connector connects
                 portConnectionsMap.set(node.id, nodePortsMap);
             } else {

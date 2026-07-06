@@ -1,11 +1,11 @@
 import { isNullOrUndefined } from '@syncfusion/ej2-base';
-import { BeforePasteCleanupEventArgs, BlockModel, ContentModel, ITableBlockSettings, TableCellModel, TableRowModel } from '../../models/index';
+import { BaseChildrenProp, BeforePasteCleanupEventArgs, BlockModel, ContentModel, ITableBlockSettings, SaveFormat, TableCellModel, TableRowModel } from '../../models/index';
 import { BlockType } from '../../models/enums';
-import { decoupleReference, getAbsoluteOffset, isNodeAroundSpecialElements } from '../../common/utils/common';
+import { convertToBlob, decoupleReference, getAbsoluteOffset, isBase64DataUrl, isNodeAroundSpecialElements } from '../../common/utils/common';
 import { findCellById, getBlockContentElement, getBlockModelById, isAtStartOfBlock } from '../../common/utils/block';
 import { findClosestParent, isElementEmpty } from '../../common/utils/dom';
 import { convertHtmlElementToBlocks, getBlockDataAsHTML, convertInlineElementsToContentModels, renderElementWithWrapper, renderContentAsHTML } from '../../common/utils/html-parser';
-import { getSelectedRange, setCursorPosition } from '../../common/utils/selection';
+import { captureSelectionState, getSelectedRange, setCursorPosition } from '../../common/utils/selection';
 import { BeforePasteEventProps, IClipboardPayloadOptions, ISplitContentData } from '../../common/interface';
 import { ClipboardCleanupModule } from '../plugins/common/clipboard-cleanup';
 import { actionType, events } from '../../common/constant';
@@ -139,6 +139,27 @@ export class ClipboardAction {
     }
 
     /**
+     * Filters out nested child blocks that are already represented in their parent's properties.children.
+     * Prevents duplication when copying container blocks (Quote, Callout, Collapsible*, Toggle, etc.)
+     * along with their children.
+     *
+     * @param {BlockModel[]} blocks - The selected blocks to filter.
+     * @returns {BlockModel[]} - Filtered blocks excluding children of selected containers.
+     * @private
+     */
+    private filterChildrenOfSelectedContainers(blocks: BlockModel[]): BlockModel[] {
+        if (!blocks || blocks.length === 0) {
+            return blocks;
+        }
+
+        const selectedBlockIds: Set<string> = new Set(blocks.map((b: BlockModel) => b.id));
+        return blocks.filter((block: BlockModel) => {
+            // Keep the block if it has no parent, or if its parent is NOT in the selected blocks
+            return !block.parentId || !selectedBlockIds.has(block.parentId);
+        });
+    }
+
+    /**
      * Gets the clipboard payload for the current selection.
      *
      * @returns {IClipboardPayloadOptions} - The clipboard payload containing HTML, text, and Block Editor data.
@@ -149,7 +170,9 @@ export class ClipboardAction {
             const tempDiv: HTMLElement = document.createElement('div');
             tempDiv.appendChild(getSelectedRange().cloneContents());
 
-            const selectedBlocks: BlockModel[] = this.parent.editorMethods.getSelectedBlocks();
+            let selectedBlocks: BlockModel[] = this.parent.editorMethods.getSelectedBlocks();
+            // Filter out nested children that are already represented in their parent containers
+            selectedBlocks = this.filterChildrenOfSelectedContainers(selectedBlocks);
             const blocks: BlockModel[] = this.createPartialBlockModels(tempDiv, selectedBlocks);
 
             return {
@@ -186,12 +209,19 @@ export class ClipboardAction {
     }
 
     private createPartialBlockModels(selectionContainer: HTMLElement, originalBlocks: BlockModel[]): BlockModel[] {
-        return originalBlocks.length === 0 ? [] : originalBlocks.map((block: BlockModel) => {
+        if (originalBlocks.length === 0) { return []; }
+
+        // Single-block: fall back to container if .e-block wrapper missing
+        // Multi-block: skip fallback to avoid pulling text from adjacent blocks
+        const isSingleBlock: boolean = originalBlocks.length === 1;
+
+        return originalBlocks.map((block: BlockModel) => {
             const blockElement: HTMLElement = selectionContainer.querySelector('.e-block#' + block.id) as HTMLElement;
-            const contentElement: HTMLElement = getBlockContentElement(blockElement) || selectionContainer;
+            const contentElement: HTMLElement = getBlockContentElement(blockElement)
+                || (isSingleBlock ? selectionContainer : null);
             return BlockFactory.createBlockFromPartial({
                 ...decoupleReference(block),
-                content: this.createPartialContentModels(contentElement)
+                content: contentElement ? this.createPartialContentModels(contentElement) : []
             });
         });
     }
@@ -220,6 +250,7 @@ export class ClipboardAction {
     }
 
     public performPasteOperation(args: IClipboardPayloadOptions): void {
+        if (this.parent.blockRenderer.imageRenderer.isUploadPopupOpen) { return; }
         const { blockeditorData, html, text, file }: IClipboardPayloadOptions = args;
 
         // (Taking a snip in windows, automatically gets copied as file and not HTML. Hence below handling)
@@ -332,6 +363,8 @@ export class ClipboardAction {
                     insertionType: 'block',
                     isSelectivePaste: this.isSelectivePaste
                 });
+
+                this.parent.observer.notify('triggerBlockChange', this.parent.eventService.getChanges());
                 break;
             }
             case 'contents':
@@ -409,6 +442,9 @@ export class ClipboardAction {
 
         const range: Range = this.parent.nodeSelection.getRange();
         if (!range) { return; }
+
+        // Update image block sources to match saveFormat setting
+        this.updateImageBlockSrc(blocks);
 
         const editorBlocks: BlockModel[] = this.parent.getEditorBlocks();
         let cursorBlockElement: HTMLElement = findClosestParent(range.startContainer, '.' + constants.BLOCK_CLS);
@@ -497,6 +533,69 @@ export class ClipboardAction {
         this.handleAutoFocusAfterImagePaste(allPastedBlocks);
     }
 
+    /**
+     * Normalizes image block source formats to match the editor's saveFormat setting.
+     * For HTML clipboard paste, images always come as base64 format, so:
+     * - If saveFormat is 'Blob': converts base64 → blob
+     * - If saveFormat is 'Base64': no conversion needed (already in target format)
+     *
+     * Recursively searches for Image blocks in:
+     * - Direct block array
+     * - Children blocks (Callout, Quote, Collapsible blocks)
+     * - Table cell blocks
+     *
+     * @param {BlockModel[]} blocks - The blocks to normalize (can be root blocks or nested).
+     * @returns {void}
+     */
+    private updateImageBlockSrc(blocks: BlockModel[]): void {
+        if (!blocks || blocks.length === 0) { return; }
+
+        const saveFormat: SaveFormat = this.parent.imageBlockSettings.saveFormat;
+        // - If target is 'Base64': skip conversion (already in target format)
+        if (saveFormat === 'Base64') {
+            return; // No conversion needed for Base64 (HTML images already come as base64)
+        }
+
+        // Recursive function to process blocks at any nesting level
+        const processBlocksRecursively: (blockArray: BlockModel[]) => void = (blockArray: BlockModel[]) => {
+            for (const block of blockArray) {
+                // 1. Check if this block is an Image block
+                if (block.blockType === BlockType.Image && block.properties) {
+                    const imageProps: any = block.properties;
+                    const currentSrc: string = imageProps.src;
+
+                    // Only process base64 images (HTML clipboard images are always base64)
+                    if (currentSrc && isBase64DataUrl(currentSrc)) {
+                        imageProps.src = URL.createObjectURL(convertToBlob(currentSrc));
+                    }
+                }
+
+                // 2. Check if block has children (Callout, Quote, Collapsible blocks)
+                const childrenProp: BaseChildrenProp = block.properties as BaseChildrenProp;
+                if (childrenProp && childrenProp.children && childrenProp.children.length > 0) {
+                    processBlocksRecursively(childrenProp.children);
+                }
+
+                // 3. Check if block is a Table and process all cell blocks
+                if (block.blockType === BlockType.Table && block.properties) {
+                    const tableProps: ITableBlockSettings = block.properties as ITableBlockSettings;
+                    if (tableProps.rows && Array.isArray(tableProps.rows)) {
+                        for (const row of tableProps.rows) {
+                            if (row.cells && Array.isArray(row.cells)) {
+                                for (const cell of row.cells) {
+                                    if (cell.blocks && Array.isArray(cell.blocks)) {
+                                        processBlocksRecursively(cell.blocks);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+        processBlocksRecursively(blocks);
+    }
+
     private handleCodeBlockContentPaste(content: string, blockModel: BlockModel): void {
         const codeBlockContentElement: HTMLElement = document.getElementById(blockModel.id).querySelector('.e-code-content');
         // Store the old block state for undo/redo tracking
@@ -570,6 +669,7 @@ export class ClipboardAction {
         if (!(payload.cells && payload.cells.length)) { return; }
 
         // Snapshot old blocks and track structure delta for undo/redo
+        const oldBlockModel: BlockModel = decoupleReference(getBlockModelById(ctx.tableBlockEl.id, this.parent.getEditorBlocks()));
         const oldNewPairs: Array<{ dataRow: number; dataCol: number; oldBlocks: BlockModel[]; newBlocks: BlockModel[] }> = [];
         const structureDelta: { rowsAdded?: number[]; colsAdded?: number[] } = {};
 
@@ -579,7 +679,9 @@ export class ClipboardAction {
             for (let i: number = 0; i < needRows; i++) {
                 const at: number = ctx.props.rows.length;
                 structureDelta.rowsAdded.push(at);
-                this.parent.tableService.addRowAt({ blockId: ctx.tableBlockEl.id, rowIndex: at });
+                this.parent.tableService.addRowAt({
+                    blockId: ctx.tableBlockEl.id, rowIndex: at, preventTracking: true
+                });
             }
         }
         const needCols: number = Math.max(0, (ctx.startDataCol + payload.cells[0].length) - ctx.props.columns.length);
@@ -588,7 +690,9 @@ export class ClipboardAction {
             for (let i: number = 0; i < needCols; i++) {
                 const at: number = ctx.props.columns.length;
                 structureDelta.colsAdded.push(at);
-                this.parent.tableService.addColumnAt({ blockId: ctx.tableBlockEl.id, colIndex: at });
+                this.parent.tableService.addColumnAt({
+                    blockId: ctx.tableBlockEl.id, colIndex: at, preventTracking: true
+                });
             }
         }
 
@@ -617,6 +721,10 @@ export class ClipboardAction {
             cells: oldNewPairs,
             structureDelta
         });
+
+        // Trigger block update
+        const updatedBlock: BlockModel = getBlockModelById(ctx.tableBlockEl.id, this.parent.getEditorBlocks());
+        this.parent.tableService.triggerBlockUpdate({ block: updatedBlock, oldBlock: oldBlockModel });
     }
 
     private performCellCut(tableCtx: TableContext): void {
@@ -625,6 +733,7 @@ export class ClipboardAction {
         );
         const tableEl: HTMLTableElement = tableCtx.tableEl;
         const props: ITableBlockSettings = tableCtx.props;
+        const oldBlockModel: BlockModel = decoupleReference(getBlockModelById(tableCtx.tableBlockEl.id, this.parent.getEditorBlocks()));
 
         if (!selectedCells.length) { return; }
 
@@ -662,10 +771,6 @@ export class ClipboardAction {
                 index: r,
                 rowModel: decoupleReference(props.rows[r as number])
             }));
-            // Push single undo entry for all rows
-            this.parent.undoRedoAction.trackBulkRowDeletionForUndoRedo({
-                blockId: tableCtx.tableBlockEl.id, rows: rowsMeta
-            });
 
             const rowsToDeleteDom: number[] = fullRows
                 .map((r: number) => (props.enableHeader ? r + 1 : r))
@@ -673,8 +778,17 @@ export class ClipboardAction {
             rowsToDeleteDom.forEach((domRowIdx: number) => this.parent.tableService.deleteRowAt({
                 blockId: tableCtx.tableBlockEl.id,
                 modelIndex: toModelRow(domRowIdx, props.enableHeader),
-                isUndoRedoAction: true
+                preventTracking: true
             }));
+
+            // Push single undo entry for all rows
+            this.parent.undoRedoAction.trackBulkRowDeletionForUndoRedo({
+                blockId: tableCtx.tableBlockEl.id, rows: rowsMeta
+            });
+
+            // Trigger block update after batch deletion
+            const updatedBlock: BlockModel = getBlockModelById(tableCtx.tableBlockEl.id, this.parent.getEditorBlocks());
+            this.parent.tableService.triggerBlockUpdate({ block: updatedBlock, oldBlock: oldBlockModel });
             return;
         }
         if (onlyFullColsSelected) {
@@ -683,17 +797,20 @@ export class ClipboardAction {
                 columnModel: decoupleReference(props.columns[c as number]),
                 columnCells: props.rows.map((r: TableRowModel) => decoupleReference(r.cells[c as number]))
             }));
-            this.parent.undoRedoAction.trackBulkColumnDeletionForUndoRedo({
-                blockId: tableCtx.tableBlockEl.id, cols: colsMeta
-            });
 
             // Delete columns from right to left (data col indices)
             fullCols.sort((a: number, b: number) => b - a).forEach((dataColIdx: number) =>
                 this.parent.tableService.deleteColumnAt({
                     blockId: tableCtx.tableBlockEl.id,
                     colIndex: dataColIdx,
-                    isUndoRedoAction: true
+                    preventTracking: true
                 }));
+            this.parent.undoRedoAction.trackBulkColumnDeletionForUndoRedo({
+                blockId: tableCtx.tableBlockEl.id, cols: colsMeta
+            });
+            // Trigger block update after batch deletion
+            const updatedBlock: BlockModel = getBlockModelById(tableCtx.tableBlockEl.id, this.parent.getEditorBlocks());
+            this.parent.tableService.triggerBlockUpdate({ block: updatedBlock, oldBlock: oldBlockModel });
             return;
         }
 
@@ -712,18 +829,29 @@ export class ClipboardAction {
      * @hidden
      */
     public async isClipboardEmpty(): Promise<boolean> {
-        const clipboardItems: ClipboardItem[] = await (navigator as any).clipboard.read();
-        return clipboardItems.length === 0;
+        try {
+            const clipboardItems: ClipboardItem[] = await (navigator as any).clipboard.read();
+            if (clipboardItems.length === 0) { return true; }
+
+            const hasAnyData: boolean = clipboardItems.some((item: ClipboardItem) => item.types.length > 0);
+            return !hasAnyData;
+        } catch {
+            // fallback
+            return false;
+        }
     }
 
     /**
      * Handles the context copy operation.
      *
+     * @param {string} [plainText] - Specifies the plain text content to copy.
      * @returns {Promise<void>} - A promise that resolves when the copy operation is complete.
      * @hidden
      */
-    public async handleContextCopy(): Promise<void> {
-        const { html, text }: IClipboardPayloadOptions = this.getClipboardPayload();
+    public async handleContextCopy(plainText?: string): Promise<void> {
+        const { html, text }: IClipboardPayloadOptions = plainText
+            ? { html: plainText, text: plainText }
+            : this.getClipboardPayload();
 
         await (navigator as any).clipboard.write([
             new ClipboardItem({
@@ -740,6 +868,10 @@ export class ClipboardAction {
      * @hidden
      */
     public async handleContextCut(): Promise<void> {
+        this.parent.previousSelection = captureSelectionState();
+        /* Collaboration Start */
+        this.parent.preCaptureSelection(this.parent.previousSelection);
+        /* Collaboration End */
         await this.handleContextCopy();
         this.performCutOperation();
     }

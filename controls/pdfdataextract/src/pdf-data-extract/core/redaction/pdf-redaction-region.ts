@@ -25,11 +25,41 @@ import { PdfAppearance, PdfTemplate, Rectangle, PdfColor } from '@syncfusion/ej2
  * ```
  */
 export class PdfRedactionRegion {
+    /**
+     * Internal page index on which the redaction should be applied.
+     *
+     * @private
+     */
     _pageIndex: number;
+    /**
+     * Internal appearance container for custom redaction visuals.
+     *
+     * @private
+     */
     _appearance: PdfAppearance;
+    /**
+     * Internal rectangle bounds of the redaction region.
+     *
+     * @private
+     */
     _bounds: Rectangle;
+    /**
+     * Internal flag to indicate text-only redaction.
+     *
+     * @private
+     */
     _isTextOnly: boolean = false;
+    /**
+     * Internal fill color to paint the redaction overlay.
+     *
+     * @private
+     */
     _fillColor: PdfColor;
+    /**
+     * Internal flag indicating whether appearance is created/used.
+     *
+     * @private
+     */
     _appearanceEnabled: boolean = false;
     /*
      * Initialize a new instance of the `PdfRedactionRegion` class.

@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/bds' as *;
-@forward 'ej2-base/styles/definition/bds';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $numeric-skin-name: $skin-name !default;
 $numeric-input-icon-size: 18px !default;
 $numeric-input-bigger-icon-size: 22px !default;
@@ -20,3 +20,4 @@ $numeric-bigger-prepend-outline-label-bottom-top: -10px !default;
 $numeric-bigger-prepend-outline-label-top-top: -15px !default;
 $numeric-bigger-prepend-filled-label-bottom-top: 18px !default;
 $numeric-bigger-prepend-filled-label-top-top: -15px !default;
+$numeric-box-full-border-color: $border !default;

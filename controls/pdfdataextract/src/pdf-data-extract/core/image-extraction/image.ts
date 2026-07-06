@@ -9,6 +9,11 @@ import { _PdfColorPalette } from './colorspace';
 import { _base64ToUint8Array } from '../utils';
 import { _PdfJpegImage } from './jpeg-image';
 import { PdfRedactionRegion } from '../redaction/pdf-redaction-region';
+/**
+ * Internal PDF image helper that decodes, colors, resizes, and exports image data.
+ *
+ * @private
+ */
 export class _PdfImage {
     private image: any; // eslint-disable-line
     private width: number;
@@ -24,17 +29,61 @@ export class _PdfImage {
     private decodeCoefficients: number[];
     private decodeAddends: number[];
     private smask: _PdfImage | null;
-    _canvasRenderCallback: any; // eslint-disable-line 
+    /**
+     * Optional callback surface and platform details usable for canvas operations.
+     *
+     * @private
+     */
+    _canvasRenderCallback: any; // eslint-disable-line
+    /**
+     * Preferred output image format for encoding.
+     *
+     * @private
+     */
     _imageFormat: ImageFormat;
     private imageResizer: _PdfImageResizer = new _PdfImageResizer();
     private mask: _PdfImage | any; // eslint-disable-line 
     private jpxDecoderOptions: any; // eslint-disable-line
     forceRgba: boolean;
     forceRgb: boolean;
+    /**
+     * Page-relative bounds used for redaction mapping.
+     *
+     * @private
+     */
     _bounds: number[];
+    /**
+     * Page reference used for redaction mapping.
+     *
+     * @private
+     */
     _page: PdfPage;
+    /**
+     * Redaction regions to process against this image.
+     *
+     * @private
+     */
     _options: PdfRedactionRegion[];
+    /**
+     * Indicates whether the image has intersections with any redaction region.
+     *
+     * @private
+     */
     _isIntersect: boolean;
+    /**
+     * Initializes the image from the given PDF image stream/dictionary, resolving color space, masks, and dimensions.
+     *
+     * @private
+     * @param {any} xref Cross-reference for object fetching.
+     * @param {any} image Source image stream or wrapper.
+     * @param {boolean} isInline Whether the image is inline.
+     * @param {any} callBack Canvas/platform callback provider.
+     * @param {any} [smask] Optional soft mask stream.
+     * @param {any} [mask] Optional hard mask stream or range.
+     * @param {boolean} [isMask] Whether this call initializes an image mask.
+     * @returns {Promise<any>} Resolves to the current `_PdfImage` instance.
+     * @throws {FormatError} When required image dimensions are invalid.
+     */
     async _initializeFromImage(xref: any, image: any, isInline: boolean, callBack: any, // eslint-disable-line 
         smask?: any, mask?: any, isMask?: boolean): Promise<any> { // eslint-disable-line
         if (image) {
@@ -196,6 +245,17 @@ export class _PdfImage {
         }
         return this;
     }
+    /** Resizes a single-channel buffer using nearest-neighbor sampling.
+     *
+     * @private
+     * @param {Uint8Array | Uint16Array | Uint32Array} src Source mask buffer.
+     * @param {number} bpc Bits per component.
+     * @param {number} w1 Source width.
+     * @param {number} h1 Source height.
+     * @param {number} w2 Target width.
+     * @param {number} h2 Target height.
+     * @returns {Uint8Array | Uint16Array | Uint32Array} Resized buffer with same component width.
+     */
     _resizeImageMask(src: Uint8Array | Uint16Array | Uint32Array, bpc: number, w1: number,
                      h1: number, w2: number, h2: number): Uint8Array | Uint16Array | Uint32Array {
         const length: number = w2 * h2;
@@ -229,6 +289,12 @@ export class _PdfImage {
         }
         return dest;
     }
+    /**
+     * Determines whether the current decode array is default for masks when color space is not resolved.
+     *
+     * @private
+     * @returns {boolean} `true` if decode map is default otherwise, `false`.
+     */
     _isDefaultDecode(): boolean {
         if (typeof(this.colorSpace) === 'undefined') {
             const colorPalette: _PdfColorPalette = new _PdfColorPalette('ColorSpace', undefined);
@@ -236,6 +302,14 @@ export class _PdfImage {
         }
         return false;
     }
+    /**
+     * Retrieves image raw data bytes based on the underlying stream type.
+     *
+     * @private
+     * @param {number} length Expected number of bytes to read.
+     * @param {any} decoderOptions Decoder options and image context.
+     * @returns {any} Raw bytes buffer or decoded result depending on stream type.
+     */
     _getImageData(length: number, decoderOptions: any): any { // eslint-disable-line
         const stream: any = decoderOptions.image; // eslint-disable-line
         if (stream instanceof _PdfJpegStream) {
@@ -260,6 +334,14 @@ export class _PdfImage {
         }
         return decoderOptions.image.decodeImage(data, decoderOptions);
     }
+    /**
+     * Creates RGBA/RGB image data for drawing/encoding; handles color conversion, decode array, smask/mask, resize, and export.
+     *
+     * @private
+     * @param {boolean} [forceRGBA=false] If `true`, allocate RGBA output even without masks.
+     * @param {boolean} [isOffscreenCanvasSupported=false] If `true`, use canvas to encode/export when available.
+     * @returns {Promise<any>} Image data or encoded bytes depending on environment and options.
+     */
     async _createImageData(forceRGBA: boolean = false, isOffscreenCanvasSupported: boolean = false): Promise<any> { // eslint-disable-line
         const drawWidth: number = this.drawWidth;
         const drawHeight: number = this.drawHeight;
@@ -375,6 +457,13 @@ export class _PdfImage {
         }
         return imgData;
     }
+    /**
+     * Maps an `ImageFormat` value to a canvas MIME type string.
+     *
+     * @private
+     * @param {ImageFormat} format Target image format.
+     * @returns {string} Canvas MIME string for encoding.
+     */
     _findImageFormat(format: ImageFormat): string {
         if (ImageFormat.png === format) {
             return 'image/png';
@@ -382,6 +471,16 @@ export class _PdfImage {
             return 'image/jpeg';
         }
     }
+    /**
+     * Builds a `_PdfImage` from a raw image stream, wiring SMask/Mask entries.
+     *
+     * @private
+     * @param {_PdfCrossReference} xref Cross-reference.
+     * @param {any} image Source image stream.
+     * @param {boolean} isInline Whether inline.
+     * @param {any} callBack Canvas/platform callback.
+     * @returns {Promise<_PdfImage>} The initialized `_PdfImage`.
+     */
     async _buildImage(xref: _PdfCrossReference, image: any, isInline: boolean, callBack: any): Promise<_PdfImage> { // eslint-disable-line
         const imageData: any = image; // eslint-disable-line
         let smaskData: any = null; // eslint-disable-line
@@ -399,6 +498,15 @@ export class _PdfImage {
         }
         return await new _PdfImage()._initializeFromImage(xref, imageData, isInline, callBack, smaskData, maskData);
     }
+    /**
+     * Creates an 8-bit per channel alpha mask for 1bpp mask streams.
+     *
+     * @private
+     * @param {any} image Source mask stream.
+     * @param {boolean} isOffscreenCanvasSupported Whether canvas export is available.
+     * @returns {any} Encoded bytes or raw buffer depending on environment.
+     * @throws {FormatError} When an unknown mask format is provided.
+     */
     _createMask(image: any, isOffscreenCanvasSupported: boolean): any { // eslint-disable-line
         const dict: _PdfDictionary = image.dictionary;
         const width: number = dict.get('W', 'Width');
@@ -463,6 +571,13 @@ export class _PdfImage {
     get drawHeight(): number {
         return Math.max(this.height, this.smask && this.smask.height || 0, this.mask && this.mask.height || 0);
     }
+    /**
+     * Applies the decode array mapping in-place to the provided buffer.
+     *
+     * @private
+     * @param {Uint8Array} buffer Component buffer to transform.
+     * @returns {void} nothing.
+     */
     _decodeBuffer(buffer: Uint8Array): void {
         const bpc: number = this.bpc;
         const numComps: number = this.numComps;
@@ -487,6 +602,13 @@ export class _PdfImage {
             }
         }
     }
+    /**
+     * Expands packed/bpc component data into a typed array with one value per component.
+     *
+     * @private
+     * @param {Uint8Array} buffer Packed source buffer.
+     * @returns {Uint8Array | Uint16Array | Uint32Array} Expanded component buffer.
+     */
     _getComponents(buffer: Uint8Array): Uint8Array | Uint16Array | Uint32Array {
         const bpc: number = this.bpc;
         if (bpc === 8) {
@@ -564,6 +686,18 @@ export class _PdfImage {
         }
         return output;
     }
+    /**
+     * Fills the alpha channel for RGBA output using SMask/Mask or default opaque alpha.
+     *
+     * @private
+     * @param {Uint8ClampedArray} rgbaBuf Target RGBA buffer.
+     * @param {number} width Output width.
+     * @param {number} height Output height.
+     * @param {number} actualHeight Actual populated rows.
+     * @param {Uint8ClampedArray} image Component buffer.
+     * @returns {Promise<void>} Resolves when alpha is filled.
+     * @throws {FormatError} On unknown mask formats.
+     */
     async _fillOpacity(rgbaBuf: Uint8ClampedArray, width: number, height: number, actualHeight: number,
                        image: Uint8ClampedArray
     ): Promise<void> {
@@ -626,6 +760,15 @@ export class _PdfImage {
             }
         }
     }
+    /**
+     * Reverses matte preblend from smask+matte to restore unblended RGB.
+     *
+     * @private
+     * @param {Uint8ClampedArray} buffer RGBA buffer in-place.
+     * @param {number} width Image width.
+     * @param {number} height Effective height to process.
+     * @returns {void} nothing.
+     */
     _undoPreblend(buffer: Uint8ClampedArray, width: number, height: number): void {
         const matte: any = this.smask && this.smask.matte; // eslint-disable-line
         if (!matte) {
@@ -650,6 +793,14 @@ export class _PdfImage {
             buffer[i + 2] = (buffer[i + 2] - matteB) * k + matteB;
         }
     }
+    /**
+     * Fills a gray buffer from the image data.
+     *
+     * @private
+     * @param {Uint8ClampedArray} buffer Output grayscale buffer .
+     * @returns {Promise<void>} Resolves when gray values are computed.
+     * @throws {FormatError} If called for non-grayscale images.
+     */
     async _fillGrayBuffer(buffer: Uint8ClampedArray): Promise<void> {
         const numComps: number = this.numComps;
         if (numComps !== 1) {
@@ -687,6 +838,17 @@ export class _PdfImage {
             buffer[<number>i] = scale * comps[<number>i];
         }
     }
+    /**
+     * Composes a bitmap from raw pixel data using canvas, and returns encoded bytes.
+     *
+     * @private
+     * @param {any} kind Image kind `imageKind.rgba32BPP` or `imageKind.rgb24BPP`.
+     * @param {number} width Image width.
+     * @param {number} height Image height.
+     * @param {Uint8ClampedArray} src Pixel data.
+     * @returns {Promise<any>} Encoded image bytes.
+     * @throws {Error} If no canvas is available from the callback.
+     */
     async _createBitmap(kind: any, width: number, height: number, src: Uint8ClampedArray): Promise<any> { // eslint-disable-line
         let imgData: any; // eslint-disable-line
         let canvas: any; // eslint-disable-line
@@ -714,9 +876,23 @@ export class _PdfImage {
         const bytes: Uint8Array = _base64ToUint8Array(base64);
         return bytes;
     }
+    /**
+     * Returns a transferable image handle if the environment provides one.
+     *
+     * @private
+     * @returns {any} Transferable bitmap or `null` if not available.
+     */
     _getTransferableImage(): any { // eslint-disable-line
         return null;
     }
+    /**
+     * Wraps a transferable bitmap into an image-like object for direct consumption.
+     *
+     * @private
+     * @param {number} width Image width.
+     * @param {number} height Image height.
+     * @returns {any} Image wrapper with `bitmap`, `width`, `height`, and `interpolate` or `null` if not available.
+     */
     _getImage(width: number, height: number): any { // eslint-disable-line
         const bitmap: any =  this._getTransferableImage(); // eslint-disable-line 
         if (!bitmap) {
@@ -730,6 +906,14 @@ export class _PdfImage {
             interpolate: this.interpolate
         };
     }
+    /**
+     * Reads and returns image bytes, optionally decoding JPX via worker/processor or returning Flate/DecodeStream bytes.
+     *
+     * @private
+     * @param {number} length Number of bytes to read.
+     * @param {any} options Decode and draw options.
+     * @returns {Promise<Uint8Array>} Raw or decoded image bytes.
+     */
     async _getImageBytes(length: number, {drawWidth, drawHeight, forceRGBA = false, forceRGB = false, internal = false}: {
         drawWidth?: number, drawHeight?: number, forceRGBA?: boolean, forceRGB?: boolean, internal?: boolean }): Promise<Uint8Array> {
         this.image.reset();
@@ -753,6 +937,13 @@ export class _PdfImage {
         }
         return new Uint8Array(imageBytes);
     }
+    /**
+     * Applies region-based redaction to the canvas image data in-place.
+     *
+     * @private
+     * @param {any} canvasImgData Canvas `ImageData` to redact.
+     * @returns {void} nothing.
+     */
     _processImageRedaction(canvasImgData: any): void { // eslint-disable-line
         const pt: number = 1.3333;
         const bounds: number[] = this._bounds;
@@ -828,7 +1019,15 @@ export class _PdfImage {
             }
         }
     }
-    _intersect(a: Rectangle, b: Rectangle): any { // eslint-disable-line       
+    /**
+     * Computes the intersection rectangle of two rectangles.
+     *
+     * @private
+     * @param {Rectangle} a First rectangle.
+     * @param {Rectangle} b Second rectangle.
+     * @returns {any} The intersection rectangle or `null` when disjoint.
+     */
+    _intersect(a: Rectangle, b: Rectangle): any { // eslint-disable-line 
         const x1: number = Math.max(a.x, b.x);
         const x2: number = Math.min(a.x + a.width, b.x + b.width);
         const y1: number = Math.max(a.y, b.y);
@@ -838,6 +1037,17 @@ export class _PdfImage {
         }
         return null;
     }
+    /**
+     * Applies a white fill over the specified rectangle on the image data.
+     *
+     * @private
+     * @param {ImageData} imageData Canvas image data to modify.
+     * @param {number} x Left position.
+     * @param {number} y Top position.
+     * @param {number} w Width of the rectangle.
+     * @param {number} h Height of the rectangle.
+     * @returns {void} nothing.
+     */
     _applyRedaction(imageData: ImageData, x: number, y: number, w: number, h: number): void {
         const { width, height, data } = imageData;
         const x0: number = Math.max(0, Math.floor(x));

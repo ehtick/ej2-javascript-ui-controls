@@ -708,3 +708,63 @@ describe('Bug: 924053 TreeGrid Toolbar Actions - Collapse All and Delete', () =>
     gridObj = null;
   });
 });
+
+describe('Page - missing branches coverage tests', () => {
+
+  describe('updateExternalMessage null handling', () => {
+    let gridObj: TreeGrid;
+    let page: Page;
+    beforeAll((done: Function) => {
+      gridObj = createGrid({
+        dataSource: sampleData,
+        childMapping: 'subtasks',
+        treeColumnIndex: 1,
+        allowPaging: true,
+        columns: ['taskID', 'taskName', 'startDate', 'endDate']
+      }, done);
+    });
+
+    it('should trigger actionFailure when message is null', (done: Function) => {
+      debugger
+      (gridObj as any).trigger = (event: string, args: any) => {
+        expect(event).toBe('actionFailure');
+        expect(args.error).toContain('The provided value for the message');
+        done();
+      };
+      page = new Page(gridObj);
+      page.updateExternalMessage((null as any));
+    });
+
+    afterAll(() => { destroy(gridObj); page.destroy(); });
+  });
+
+
+  describe('pageAction Root propname branch (filterLevel / level)', () => {
+    let gridObj: TreeGrid;
+
+    beforeAll((done: Function) => {
+      gridObj = createGrid({
+        dataSource: sampleData,
+        childMapping: 'subtasks',
+        treeColumnIndex: 1,
+        allowPaging: true,
+        allowFiltering: true,
+        pageSettings: { pageSizeMode: 'Root', pageSize: 1, currentPage: 1 },
+        filterSettings: { hierarchyMode: 'None', columns: [{ field: 'taskName', operator: 'contains', value: 'Phase' }] },
+        columns: ['taskID', 'taskName', 'startDate', 'endDate']
+      }, done);
+    });
+
+    it('pageAction with pageSizeMode=Root and hierarchyMode=None uses filterLevel path', () => {
+      const pageModule = new Page((gridObj as any));
+      (gridObj as any).filterSettings = { hierarchyMode: 'None' };
+      const details: any = { result: (gridObj.getCurrentViewRecords() as any[]).slice(), count: 0, actionArgs: { action: 'paging' } };
+      (pageModule as any).pageAction(details);
+      expect(typeof details.count).toBe('number');
+      expect(details.count).toBeLessThanOrEqual(1);
+      pageModule.destroy();
+    });
+
+    afterAll(() => { destroy(gridObj); });
+  });
+});

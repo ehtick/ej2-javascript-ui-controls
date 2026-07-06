@@ -256,7 +256,7 @@ export class ClearFormat {
                             target.removeAttribute('style'); // Remove style if present
                         }
                         if (target.hasAttribute('class')) {
-                            const allowedClasses: Set<string> = new Set(['e-rte-table', 'e-rte-paste-table', 'e-rte-custom-table']);
+                            const allowedClasses: Set<string> = new Set(['e-rte-table', 'e-rte-paste-table', 'e-rte-custom-table', 'e-cell-select', 'e-multi-cells-select']);
                             const filteredClasses: string[] = target.className
                                 .split(/\s+/)
                                 .filter((cls: string) => allowedClasses.has(cls));
@@ -266,7 +266,11 @@ export class ClearFormat {
                                 target.removeAttribute('class');
                             }
                         }
-                        if (!target.closest('table').classList.contains('e-rte-table-processed')) {
+                        const currentTable: HTMLElement = target.closest('table');
+                        if (target.nodeName === 'TH' && target.closest('tr') && target.closest('thead') && target.closest('table')) {
+                            this.convertHeaderToBodyRow(target, docElement);
+                        }
+                        if (currentTable && !currentTable.classList.contains('e-rte-table-processed')) {
                             this.addEligibleParentsUpToTable(target, parentNodes);
                         }
                     }
@@ -335,6 +339,47 @@ export class ClearFormat {
             }
             currentNode = parentNodeRef;
         }
+    }
+
+    private static convertHeaderToBodyRow(target: Node, docElement: Document): void {
+        const table: HTMLTableElement = (target as HTMLElement).closest('table');
+        if (!table) {
+            return;
+        }
+        const tbody: HTMLTableSectionElement = table.querySelector('tbody');
+        const rowsToMove: HTMLElement[] = [];
+        if (target.nodeName === 'TH') {
+            const tableRow: HTMLElement = (target as HTMLElement).closest('tr');
+            if (tableRow && tableRow.parentElement.nodeName === 'THEAD') {
+                rowsToMove.push(tableRow);
+            }
+        } else if (target.nodeName === 'TR') {
+            rowsToMove.push(target as HTMLElement);
+        }
+        rowsToMove.forEach((tr: HTMLElement) => {
+            const cells: Node[] = Array.from(tr.childNodes);
+            cells.forEach((cell: Node) => {
+                if (cell.nodeName === 'TH') {
+                    const td: HTMLElement = docElement.createElement('td');
+                    while (cell.firstChild) {
+                        td.appendChild(cell.firstChild);
+                    }
+                    Array.from((cell as HTMLElement).attributes).forEach((attr: Attr) => {
+                        td.setAttribute(attr.name, attr.value);
+                    });
+                    tr.replaceChild(td, cell);
+                }
+            });
+            const thead: HTMLTableSectionElement = tr.parentElement as HTMLTableSectionElement;
+            if (tbody.firstChild) {
+                tbody.insertBefore(tr, tbody.firstChild);
+            } else {
+                tbody.appendChild(tr);
+            }
+            if (thead && thead.nodeName === 'THEAD' && (thead as HTMLElement).innerText.trim() === '') {
+                thead.remove();
+            }
+        });
     }
 
     private static clearInlines(

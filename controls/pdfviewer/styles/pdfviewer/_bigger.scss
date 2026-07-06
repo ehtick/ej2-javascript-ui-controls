@@ -1,4 +1,4 @@
-@use 'ej2-base/styles/common/mixin' as *;
+@use 'variables' as *;
 @include export-module('pdfviewer-bigger') {
   .e-bigger .e-pv-icon-search {
     font-size: $pv-icon-font-size;
@@ -147,7 +147,7 @@
   }
 
   .e-bigger .e-pv-toolbar.e-toolbar .e-toolbar-items .e-toolbar-item .e-pv-tbar-btn.e-btn,
-  .e-bigger .e-pv-annotation-toolbar.e-toolbar .e-toolbar-items .e-toolbar-item .e-pv-tbar-btn.e-btn,
+  .e-bigger .e-pv-annotation-toolbar.e-toolbar .e-toolbar-items .e-toolbar-item .e-pv-tbar-btn.e-btn:not(.e-pv-annotation-eraser-container),
   .e-bigger .e-pv-mobile-annotation-toolbar.e-toolbar .e-toolbar-items .e-toolbar-item .e-pv-tbar-btn.e-btn,
   .e-bigger .e-pv-formdesigner-toolbar.e-toolbar .e-toolbar-items .e-toolbar-item .e-pv-tbar-btn.e-btn {
     @if ($skin-name == 'bootstrap5' or $skin-name == 'bootstrap5.3') {
@@ -366,6 +366,8 @@
   .e-bigger .e-pv-custom-annotation-thickness-container.e-icon-btn,
   .e-bigger .e-pv-custom-annotation-opacity-container.e-icon-btn,
   .e-bigger .e-pv-annotation-thickness-container.e-icon-btn,
+  .e-bigger .e-pv-annotation-eraser-container.e-icon-btn,
+  .e-bigger .e-split-btn-wrapper.e-pv-annotation-eraser-container .e-dropdown-btn,
   .e-bigger .e-pv-annotation-textcolor-container.e-icon-btn,
   .e-bigger .e-pv-annotation-textalign-container.e-icon-btn,
   .e-bigger .e-pv-annotation-textprop-container.e-icon-btn {
@@ -549,7 +551,7 @@
   }
 
   .e-bigger .e-pv-toolbar.e-toolbar .e-toolbar-items .e-toolbar-item .e-tbar-btn.e-btn,
-  .e-bigger .e-pv-annotation-toolbar.e-toolbar .e-toolbar-items .e-toolbar-item .e-pv-tbar-btn.e-btn {
+  .e-bigger .e-pv-annotation-toolbar.e-toolbar .e-toolbar-items .e-toolbar-item .e-pv-tbar-btn.e-btn:not(.e-pv-annotation-eraser-container) {
     height: $pv-toolbar-btn-height-big;
     line-height: $pv-toolbar-btn-line-height;
     margin: $pv-toolbar-btn-margin;
@@ -829,6 +831,21 @@
     @if $skin-name =='fluent2' {
       padding-top: $pv-spacing-7 !important;/* stylelint-disable-line declaration-no-important */
     }
+  }
+
+  .e-bigger .e-split-btn-wrapper .e-pv-annotation-eraser-container.e-split-btn.e-icon-btn {
+    padding-left: $pv-spacing-0;
+    padding-right: $pv-spacing-0;
+  }
+
+  .e-bigger .e-split-btn-wrapper .e-pv-annotation-eraser-container.e-split-btn.e-icon-btn {
+    border-top-right-radius: $pv-spacing-0;
+    border-bottom-right-radius: $pv-spacing-0;
+  }
+
+  .e-bigger .e-split-btn-wrapper.e-pv-annotation-eraser-container .e-dropdown-btn {
+    border-top-left-radius: $pv-spacing-0;
+    border-bottom-left-radius: $pv-spacing-0;
   }
 
   .e-bigger .e-pv-accordion-container.e-accordion .e-acrdn-item .e-acrdn-header .e-acrdn-header-content,

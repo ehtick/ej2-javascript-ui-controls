@@ -6,6 +6,7 @@ import { NodeSelection } from '../../../src/selection/selection';
 import { ClearFormat } from '../../../src/editor-manager/plugin/clearformat';
 import { selectTableCell, drawCellSelection, renderRTE, destroy } from "../../rich-text-editor/render.spec";
 import { RichTextEditor } from "../../../src/rich-text-editor/base/rich-text-editor";
+import { BASIC_MOUSE_EVENT_INIT } from '../../constant.spec';
 
 // describe('Clear multiple formats', () => {
 //     let innervalue: string = '<p>Th<strong><em><span style="text-decoration: underline;"><span style="text-decoration: line-through;"><span style="color: rgb(255, 0, 0); text-decoration: inherit;"><span id="selectId" style="background-color: rgb(255, 255, 0);">is is a rich text editor content with style formats to be cleare</span></span></span></span></em></strong>d</p>'
@@ -527,6 +528,7 @@ describe('Clear Format tests', ()=> {
             expect(document.getElementById('divElement').innerHTML === `<p>First line</p>\n        <table data-mc-module-version="2019-10-22" data-muid="65921ceb-990e-4437-838c-c7b8ba7a420d" width="100%" cellspacing="0" cellpadding="0" border="0" data-type="text" role="module" class="e-rte-paste-table">\n        <tbody>\n            <tr>\n                <td role="module-content" bgcolor="#ffffff" valign="top" height="100%">\n                    <p><br></p>\n                    <p>Thank you for choosing BoldDesk. We're happy to have you.</p>\n                    <p><br></p>\n                </td>\n            </tr>\n            <tr>\n                <td role="module-content" bgcolor="#ffffff" valign="top" height="100%">\n                    <p><br></p>\n                    <p>Please verify your email address to activate your BoldDesk account.</p>\n                    <p><br></p>\n                </td>\n            </tr>\n        </tbody>\n        </table>\n        <p>Last line</p>`).toBe(true);
         });
     });
+
 describe('Bug 1020265: Clear Format Completely Converts Content to Plain Text without Preserving Hyperlinks in RichTextEditor', () => {
     let rteObj: RichTextEditor;
     let controlId: string;
@@ -546,7 +548,7 @@ describe('Bug 1020265: Clear Format Completely Converts Content to Plain Text wi
     afterAll(() => {
         destroy(rteObj);
     });
-    it('Apply clearformat to the hyperlink and it should not remove', (done) => {
+    it('Apply clearformat to the hyperlink and it should not remove', () => {
         rteObj.focusIn();
         rteObj.selectAll();
         const clearFormatButton = rteElement.querySelector(`#${controlId}_toolbar_ClearFormat`) as HTMLElement;
@@ -554,7 +556,39 @@ describe('Bug 1020265: Clear Format Completely Converts Content to Plain Text wi
         clearFormatButton.dispatchEvent(mouseEvent);
         clearFormatButton.click();
         expect(rteObj.inputElement.innerHTML).toEqual('<p>Ticket: <a class="e-rte-anchor" href="https://support.syncfusion.com/agent/tickets/826956" title="https://support.syncfusion.com/agent/tickets/826956" target="_blank" aria-label="Open in new window">https://support.syncfusion.com/agent/tickets/826956</a></p><p>Sample: <a class="e-rte-anchor" href="https://ej2.syncfusion.com/angular/demos/#/tailwind3/rich-text-editor/tools" title="https://ej2.syncfusion.com/angular/demos/#/tailwind3/rich-text-editor/tools" target="_blank" aria-label="Open in new window">https://ej2.syncfusion.com/angular/demos/#/tailwind3/rich-text-editor/tools</a></p>');
-        done();
     });
 });
+
+    describe('1030250: Script error occurs after clearing format on selected table cell', () => {
+        let domSelection: NodeSelection = new NodeSelection();
+        let rteObj: RichTextEditor;
+        let controlId: string;
+        let rteElement: HTMLElement;
+
+        beforeEach(() => {
+            rteObj = renderRTE({
+                value: `<table class="e-rte-table"><thead><tr><th id="th1">Header</th></tr></thead><tbody><tr><td id="td1">Cell</td></tr></tbody></table>`,
+                toolbarSettings: { items: ['ClearFormat'] }
+            });
+            controlId = rteObj.element.id;
+            rteElement = rteObj.element;
+        });
+
+        afterEach(() => {
+            destroy(rteObj);
+        });
+
+        it('Selecting a table header and applying ClearFormat toolbar should convert th to td inside tbody tr', () => {
+            rteObj.focusIn();
+            let thTextNode: Node = document.getElementById('th1').childNodes[0];
+            domSelection.setSelectionText(document, thTextNode, thTextNode, 0, thTextNode.textContent.length);
+            const clearFormatButton = rteElement.querySelector(`#${controlId}_toolbar_ClearFormat`) as HTMLElement;
+            let mouseEvent = new MouseEvent('mousedown', BASIC_MOUSE_EVENT_INIT);
+            clearFormatButton.dispatchEvent(mouseEvent);
+            clearFormatButton.click();
+            expect(document.querySelector('tbody tr').children[0].nodeName.toLowerCase()).toBe('td');
+            expect(document.querySelectorAll('th').length).toBe(0);
+        });
+    });
+
 }); // Do Not Add tests below this line.

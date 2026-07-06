@@ -1347,7 +1347,7 @@ export class Toolbar {
             if (isNullOrUndefined(this.pdfViewer.toolbarSettings.annotationToolbarItems)) {
                 this.pdfViewer.toolbarSettings.annotationToolbarItems = ['HighlightTool', 'UnderlineTool', 'StrikethroughTool', 'SquigglyTool',
                     'ColorEditTool', 'OpacityEditTool', 'AnnotationDeleteTool', 'StampAnnotationTool', 'HandWrittenSignatureTool',
-                    'InkAnnotationTool', 'ShapeTool', 'CalibrateTool', 'StrokeColorEditTool', 'ThicknessEditTool',
+                    'InkAnnotationTool', 'InkEraserTool', 'ShapeTool', 'CalibrateTool', 'StrokeColorEditTool', 'ThicknessEditTool',
                     'FreeTextAnnotationTool', 'FontFamilyAnnotationTool', 'FontSizeAnnotationTool', 'FontStylesAnnotationTool',
                     'FontAlignAnnotationTool', 'FontColorAnnotationTool', 'CommentPanelTool'];
             }
@@ -2160,6 +2160,8 @@ export class Toolbar {
             this.pdfViewerBase.isAddComment = true;
             this.pdfViewerBase.isCommentIconAdded = true;
             this.annotationToolbarModule.deselectAllItems();
+            this.pdfViewerBase.initiateTextSelectMode();
+            this.updateInteractionTools(true);
             this.pdfViewer.annotation.triggerAnnotationUnselectEvent();
             this.pdfViewer.annotation.triggerSignatureUnselectEvent();
             this.addComments(args.originalEvent.target as HTMLElement);

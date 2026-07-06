@@ -1,4 +1,4 @@
-@use 'ej2-base/styles/common/mixin' as *;
+@use 'variables' as *;
 @include export-module('spreadsheet-ribbon-theme') {
   .e-spreadsheet .e-ribbon {
     background-color: $spreadsheet-ribbon-header-bg-color;
@@ -71,6 +71,19 @@
           background-color: $spreadsheet-ribbon-header-bg-color;
         }
       }
+    }
+
+    & .e-ribbon-action {
+      @if $skin-name == 'Material3' {
+        background: $ribbon-tab-bg-color;
+      }
+      border-width: $spreadsheet-ribbon-action-border-width;
+      border-style: $spreadsheet-ribbon-action-border-style;
+      border-color: $spreadsheet-ribbon-action-border-color;
+    }
+
+    & .e-spreadsheet-ai-btn {
+      border-color: $spreadsheet-ai-btn-border-color;
     }
 
     & .e-drop-icon {

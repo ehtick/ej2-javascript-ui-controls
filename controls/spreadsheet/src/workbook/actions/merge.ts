@@ -3,6 +3,7 @@ import { setMerge, MergeArgs, getSwapRange, getRangeIndexes, mergedRange, applyM
 import { insertMerge, activeCellChanged, checkIsFormula, applyCF, ApplyCFArgs, updateCell, CellUpdateArgs } from './../common/index';
 import { refreshChart } from './../common/index';
 import { extend, isNullOrUndefined, isUndefined } from '@syncfusion/ej2-base';
+import { Spreadsheet } from '../../spreadsheet';
 
 /**
  * The `WorkbookMerge` module is used to merge the range of cells.
@@ -21,11 +22,15 @@ export class WorkbookMerge {
     }
     private merge(args: MergeArgs): void {
         args.sheetIndex = isUndefined(args.sheetIndex) ? this.parent.activeSheetIndex : args.sheetIndex;
-        if (args.isAction) {
+        const isModelOnly: boolean = this.parent.paintSuspendCount > 0;
+        if (isModelOnly) {
+            (this.parent as Spreadsheet).pendingPaintRefresh = 'fullSheet';
+        }
+        if (args.isAction && !isModelOnly) {
             this.parent.notify('actionBegin', { eventArgs: args, action: 'merge' });
-            if (!args.model) {
-                args.model = [];
-            }
+        }
+        if (!args.model) {
+            args.model = [];
         }
         if (typeof args.range === 'string') {
             args.range = getRangeIndexes(args.range);
@@ -35,34 +40,47 @@ export class WorkbookMerge {
             this.mergedRange(args);
         }
         if (!args.merge || args.type === 'All') {
-            this.mergeAll(args);
+            this.mergeAll(args, 0, 0, isModelOnly);
             if (args.refreshRibbon) {
-                this.parent.notify(activeCellChanged, null);
+                if (!isModelOnly) {
+                    this.parent.notify(activeCellChanged, null);
+                } else {
+                    this.parent.queuePaintAction('merge_activeCell', (): void => { this.parent.notify(activeCellChanged, null); });
+                }
             }
         } else if (args.type === 'Horizontally') {
             for (let rowIdx: number = args.range[0], endIdx: number = args.range[2]; rowIdx <= endIdx; rowIdx++) {
                 args.range = [rowIdx, range[1], rowIdx, range[3]];
-                this.mergeAll(args, rowIdx - range[0]);
+                this.mergeAll(args, rowIdx - range[0], 0, isModelOnly);
             }
         } else if (args.type === 'Vertically') {
             for (let colIdx: number = args.range[1], endIdx: number = args.range[3]; colIdx <= endIdx; colIdx++) {
                 args.range = [range[0], colIdx, range[2], colIdx];
-                this.mergeAll(args, 0, colIdx - range[1]);
+                this.mergeAll(args, 0, colIdx - range[1], isModelOnly);
             }
         }
         args.range = range;
         this.parent.setUsedRange(args.range[2], args.range[3]);
-        if (args.isAction) {
+        if (args.isAction && !isModelOnly) {
             this.parent.notify('actionComplete', { eventArgs: args, action: 'merge' });
         }
         if (args.sheetIndex === this.parent.activeSheetIndex) {
-            this.parent.notify('selectRange', { address: getSheet(this.parent, args.sheetIndex).selectedRange, skipChecking: true });
-            if (this.parent.chartColl && this.parent.chartColl.length) {
-                this.parent.notify(refreshChart, { range: args.range });
+            const selectedRange: string = getSheet(this.parent, args.sheetIndex).selectedRange;
+            const hasCharts: boolean = !!(this.parent.chartColl && this.parent.chartColl.length);
+            const refreshSelection: () => void = (): void => {
+                this.parent.notify('selectRange', { address: selectedRange, skipChecking: true });
+                if (hasCharts) {
+                    this.parent.notify(refreshChart, { range: args.range });
+                }
+            };
+            if (!isModelOnly) {
+                refreshSelection();
+            } else {
+                this.parent.queuePaintAction('merge_selectRange', refreshSelection);
             }
         }
     }
-    private mergeAll(args: MergeArgs, startRow: number = 0, startCol: number = 0): void {
+    private mergeAll(args: MergeArgs, startRow: number = 0, startCol: number = 0, isModelOnly: boolean = false): void {
         let rowSpan: number = 0; let cell: CellModel; args.range = args.range as number[]; let colSpan: number; let cellValue: string;
         let refreshAllCF: boolean; let format: string; let modelCell: CellModel;
         const sheet: SheetModel = isUndefined(args.sheetIndex) ? this.parent.getActiveSheet() : getSheet(this.parent, args.sheetIndex);
@@ -96,7 +114,8 @@ export class WorkbookMerge {
                             modelCell.value = cell.value;
                         }
                         setCell(rowIdx, colIdx, sheet, modelCell);
-                    } else if (args.model && args.model[rIdx as number].cells[cIdx as number] && isManualCalcMode) {
+                    } else if (args.model && args.model[rIdx as number] && args.model[rIdx as number].cells[cIdx as number]
+                        && isManualCalcMode) {
                         args.model[rIdx as number].cells[cIdx as number].value = cell.value;
                     }
                 }
@@ -108,7 +127,11 @@ export class WorkbookMerge {
                         if (args.range[2] - args.range[0] > 0) {
                             updateObj.cell.rowSpan = (args.range[2] - args.range[0]) + 1;
                         }
-                        updateCell(this.parent, sheet, updateObj);
+                        if (isModelOnly) {
+                            setCell(updateObj.rowIdx, updateObj.colIdx, sheet, updateObj.cell, !updateObj.pvtExtend);
+                        } else {
+                            updateCell(this.parent, sheet, updateObj);
+                        }
                         updateObj.valChange = updateObj.mergedCells = true;
                         continue;
                     }
@@ -125,7 +148,11 @@ export class WorkbookMerge {
                         }
                     }
                 }
-                updateCell(this.parent, sheet, updateObj);
+                if (isModelOnly) {
+                    setCell(updateObj.rowIdx, updateObj.colIdx, sheet, updateObj.cell, !updateObj.pvtExtend);
+                } else {
+                    updateCell(this.parent, sheet, updateObj);
+                }
                 if (!refreshAllCF) {
                     refreshAllCF = updateObj.isFormulaDependent;
                 }
@@ -148,12 +175,16 @@ export class WorkbookMerge {
                     }
                 }
                 updateObj.rowIdx = args.range[0]; updateObj.colIdx = args.range[1];
-                updateCell(this.parent, sheet, updateObj);
-            } else if (!args.preventRefresh) {
+                if (isModelOnly) {
+                    setCell(updateObj.rowIdx, updateObj.colIdx, sheet, updateObj.cell, !updateObj.pvtExtend);
+                } else {
+                    updateCell(this.parent, sheet, updateObj);
+                }
+            } else if (!args.preventRefresh && !isModelOnly) {
                 this.parent.notify(applyMerge, { rowIdx: args.range[0], colIdx: args.range[1] });
             }
         }
-        if (!args.preventRefresh) {
+        if (!args.preventRefresh && !isModelOnly) {
             this.refreshCF(sheet, [...args.range], refreshAllCF, args.merge);
         }
     }
@@ -583,7 +614,8 @@ export class WorkbookMerge {
             args.range[3] += args.insertCount;
         }
         args.preventRefresh = true; args.merge = true;
-        this.mergeAll(args);
+        const isModelOnly: boolean = (this.parent.paintSuspendCount > 0);
+        this.mergeAll(args, 0, 0, isModelOnly);
     }
 
     private updateMergedCellsFromSheet(): void {

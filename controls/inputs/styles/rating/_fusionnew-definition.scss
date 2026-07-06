@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/fusionnew' as *;
-@forward 'ej2-base/styles/definition/fusionnew';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $rating-li-font-size: 22px !default;
 $rating-li-padding: 4px !default;
 $rating-li-line-height: 13px !default;

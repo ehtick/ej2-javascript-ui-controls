@@ -1,6 +1,6 @@
 import { Browser, isBlazor, isNullOrUndefined } from '@syncfusion/ej2-base';
 import { Annotation, cloneObject, PdfViewer, PdfViewerBase, TileRenderingSettingsModel } from '../index';
-import { getDiagramElement, PointModel, Rect } from '@syncfusion/ej2-drawings';
+import { getDiagramElement, PointModel, Rect } from './../ej2-drawings/index';
 
 /**
  * Magnification module
@@ -27,7 +27,10 @@ export class Magnification {
     private magnifyPageRerenderTimer: any = null;
     private rerenderOnScrollTimer: any = null;
     private rerenderInterval: any = null;
-    private previousTouchDifference: number;
+    /**
+     * @private
+     */
+    public previousTouchDifference: number;
     private touchCenterX: number = 0;
     private touchCenterY: number = 0;
     private mouseCenterX: number = 0;
@@ -324,11 +327,19 @@ export class Magnification {
 
     /**
      * Performs pinch in operation
-     *
+     * @private
      * @returns {void}
      */
-    private pinchIn(): void {
+    public pinchIn(): void {
         this.fitType = null;
+        // Validate and swap min/max zoom if necessary
+        let minZoomPercentage: number = this.pdfViewer.minZoom > 10 ? this.pdfViewer.minZoom : 10;
+        let maxZoomPercentage: number = this.pdfViewer.maxZoom < 400 ? this.pdfViewer.maxZoom : 400;
+        if (minZoomPercentage != null && maxZoomPercentage != null && minZoomPercentage > maxZoomPercentage) {
+            const tempZoomValue: number = maxZoomPercentage;
+            maxZoomPercentage = minZoomPercentage;
+            minZoomPercentage = tempZoomValue;
+        }
         let temporaryZoomFactor: number = this.zoomFactor - this.pinchStep;
         if (temporaryZoomFactor < 4 && temporaryZoomFactor > 2) {
             temporaryZoomFactor = this.zoomFactor - this.pinchStep;
@@ -336,10 +347,8 @@ export class Magnification {
         if (temporaryZoomFactor <= 1.5) {
             temporaryZoomFactor = this.zoomFactor - (this.pinchStep / 1.5);
         }
-        if (this.pdfViewer.minZoom != null && temporaryZoomFactor < this.pdfViewer.minZoom / 100) {
-            temporaryZoomFactor = this.pdfViewer.minZoom / 100;
-        } else if (temporaryZoomFactor < 0.25) {
-            temporaryZoomFactor = 0.25;
+        if (minZoomPercentage != null && temporaryZoomFactor < minZoomPercentage / 100) {
+            temporaryZoomFactor = minZoomPercentage / 100;
         }
         this.isPinchZoomed = true;
         this.onZoomChanged(temporaryZoomFactor * 100);
@@ -355,24 +364,39 @@ export class Magnification {
 
     /**
      * Performs pinch out operation
-     *
+     * @private
      * @returns {void}
      */
-    private pinchOut(): void {
+    public pinchOut(): void {
         this.fitType = null;
+        // Validate and swap min/max zoom if necessary
+        let minZoomPercentage: number = this.pdfViewer.minZoom;
+        let maxZoomPercentage: number = this.pdfViewer.maxZoom;
+        if (minZoomPercentage != null && maxZoomPercentage != null && minZoomPercentage > maxZoomPercentage) {
+            const tempZoomValue: number = maxZoomPercentage;
+            maxZoomPercentage = minZoomPercentage;
+            minZoomPercentage = tempZoomValue;
+        }
         let temporaryZoomFactor: number = this.zoomFactor + this.pinchStep;
+        if (this.pdfViewer.minZoom != null && this.pdfViewer.minZoom > 10) {
+            minZoomPercentage = this.pdfViewer.minZoom;
+        }
         if (Browser.isDevice && !this.pdfViewer.enableDesktopMode) {
-            if (this.pdfViewer.maxZoom != null && temporaryZoomFactor > this.pdfViewer.maxZoom / 100) {
-                temporaryZoomFactor = this.pdfViewer.maxZoom / 100;
+            if (temporaryZoomFactor < minZoomPercentage / 100) {
+                temporaryZoomFactor = minZoomPercentage / 100;
+            } else if (maxZoomPercentage != null && temporaryZoomFactor > maxZoomPercentage / 100) {
+                temporaryZoomFactor = maxZoomPercentage / 100;
             } else if (temporaryZoomFactor > 4) {
                 temporaryZoomFactor = 4;
             }
         } else {
             if (temporaryZoomFactor > 2) {
-                temporaryZoomFactor = temporaryZoomFactor - this.pinchStep;
+                temporaryZoomFactor = temporaryZoomFactor + this.pinchStep;
             }
-            if (this.pdfViewer.maxZoom != null && temporaryZoomFactor > this.pdfViewer.maxZoom / 100) {
-                temporaryZoomFactor = this.pdfViewer.maxZoom / 100;
+            if (temporaryZoomFactor < minZoomPercentage / 100) {
+                temporaryZoomFactor = minZoomPercentage / 100;
+            } else if (maxZoomPercentage != null && temporaryZoomFactor > maxZoomPercentage / 100) {
+                temporaryZoomFactor = maxZoomPercentage / 100;
             } else if (temporaryZoomFactor > 4) {
                 temporaryZoomFactor = 4;
             }
@@ -463,6 +487,11 @@ export class Magnification {
             this.previousZoomFactor = this.zoomFactor;
             this.zoomLevel = this.getZoomLevel(zoomValue);
             this.zoomFactor = this.getZoomFactor(zoomValue);
+            // Detect if the zoom value is not a predefined level
+            const predefinedZoomValue: number = this.pdfViewerBase.customZoomValues
+                ? this.pdfViewerBase.customZoomValues[this.zoomLevel]
+                : this.zoomPercentages[this.zoomLevel];
+            this.isNotPredefinedZoom = (predefinedZoomValue !== zoomValue);
             if (this.zoomFactor <= 0.25) {
                 this.pdfViewerBase.isMinimumZoom = true;
             } else {

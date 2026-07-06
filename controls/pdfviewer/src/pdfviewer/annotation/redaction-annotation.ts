@@ -1,7 +1,7 @@
-import { AllowedInteraction, AnnotationSelectorSettingsModel, RedactionSettingsModel, AnnotationType, ICommentsCollection, IPageAnnotations, IPoint, IRectangle, IReviewCollection, PdfAnnotationBase, PdfAnnotationBaseModel, PdfBoundsModel, PdfViewer, PdfViewerBase, updateColorWithOpacity, ITextMarkupAnnotation, ISize, IAnnotation } from '../../index';
+import { AllowedInteraction, AnnotationSelectorSettingsModel, RedactionSettingsModel, AnnotationType, ICommentsCollection, IPageAnnotations, IPoint, IRectangle, IReviewCollection, PdfAnnotationBase, PdfAnnotationBaseModel, PdfBoundsModel, PdfViewer, PdfViewerBase, updateColorWithOpacity, ITextMarkupAnnotation, ISize, IAnnotation, AnnotationStatus } from '../../index';
 import { Browser, isBlazor, isNullOrUndefined } from '@syncfusion/ej2-base';
 import { PdfAnnotationType } from '../drawing/enum';
-import { Container } from '@syncfusion/ej2-drawings';
+import { Container } from './../ej2-drawings/index';
 
 /**
  * Interface for Redaction Annotation
@@ -241,6 +241,7 @@ export class Redaction {
             ShapeAnnotationType: 'Redaction',
             State: '',
             StateModel: 'Review',
+            Status: AnnotationStatus.NewlyAdded,
             Subject: 'Redaction',
             TextAlign: textAlign
         };
@@ -291,7 +292,8 @@ export class Redaction {
             isCommentLock: false,
             isReadonly: false,
             annotationSettings: annotationSettings,
-            allowedInteractions: allowedInteractions
+            allowedInteractions: allowedInteractions,
+            status: AnnotationStatus.NewlyAdded
         };
         const index: number = this.pdfViewer.annotation.getPageCollection(annotObject, pageNumber);
         if (index === -1 || !annotObject[index as number]) {
@@ -624,12 +626,14 @@ export class Redaction {
                         } as IReviewCollection,
                         isCommentLock: false,
                         isReadonly: annotation.IsReadonly || false,
-                        originalName: annotation.OriginalName ? annotation.OriginalName : null
+                        annotationIndex: annotation.AnnotationIndex,
+                        originalName: annotation.OriginalName ? annotation.OriginalName : null, status: annotation.Status
                     };
 
                     // Create PdfAnnotationBaseModel for redaction
                     const annot: any = {
                         author: author,
+                        annotationIndex: annotation.AnnotationIndex,
                         modifiedDate: annotationObject.modifiedDate,
                         annotName: annotationObject.annotName,
                         pageIndex: pageNumber,
@@ -663,7 +667,8 @@ export class Redaction {
                         fontColor: annotationObject.fontColor,
                         fontSize: annotationObject.fontSize,
                         fontFamily: annotationObject.fontFamily,
-                        textAlign: annotationObject.textAlign
+                        textAlign: annotationObject.textAlign,
+                        status: annotationObject.status
                     };
 
                     // Add the annotation to the viewer
@@ -742,6 +747,7 @@ export class Redaction {
         }
         const annotationObject: IRedactionAnnotation = {
             shapeAnnotationType: 'Redaction',
+            status: AnnotationStatus.NewlyAdded,
             author: annotation.author,
             modifiedDate: annotation.modifiedDate || new Date().toLocaleString(),
             subject: annotation.subject || '',
@@ -901,6 +907,7 @@ export class Redaction {
                 const annotationObject: IRedactionAnnotation = {
                     id: 'redaction' + this.redactionCount++,
                     shapeAnnotationType: 'Redaction',
+                    annotationIndex: annotation.AnnotationIndex,
                     author: author,
                     modifiedDate: annotation.ModifiedDate || new Date().toLocaleString(),
                     subject: annotation.Subject || '',
@@ -1037,6 +1044,9 @@ export class Redaction {
                         }
                         pageAnnotations[i as number].isPrint = annotationBase.isPrint;
                     }
+                    if (pageAnnotations[i as number].status !== 'NewlyAdded') {
+                        pageAnnotations[i as number].status = AnnotationStatus.ExistingModified;
+                    }
                     this.pdfViewer.annotationModule.storeAnnotationCollections(pageAnnotations[i as number], pageNumber);
                 }
             }
@@ -1090,6 +1100,8 @@ export class Redaction {
         if (annotation) {
             const annotationObject: IRedactionAnnotation = {
                 shapeAnnotationType: 'Redaction',
+                annotationIndex: annotation.AnnotationIndex,
+                status: annotation.status,
                 author: annotation.Author || '',
                 modifiedDate: annotation.ModifiedDate || new Date().toLocaleString(),
                 subject: annotation.Subject || '',
@@ -1140,6 +1152,7 @@ export class Redaction {
             // Create PdfAnnotationBaseModel for redaction
             const annot: any = {
                 author: annotationObject.author,
+                annotationIndex: annotationObject.annotationIndex,
                 modifiedDate: annotationObject.modifiedDate,
                 annotName: annotationObject.annotName,
                 pageIndex: pageIndex,
@@ -1250,6 +1263,9 @@ export class Redaction {
                         if (pageAnnotationObject.annotations[z as number].fontColor) {
                             const fontColorString: string = pageAnnotationObject.annotations[z as number].fontColor || '';
                             pageAnnotationObject.annotations[z as number].fontColor = JSON.stringify(this.getRgbCode(fontColorString));
+                        }
+                        if (isNullOrUndefined(pageAnnotationObject.annotations[z as number].status) && this.pdfViewerBase.canRedact) {
+                            pageAnnotationObject.annotations[z as number].status = AnnotationStatus.ExistingModified;
                         }
                     }
                     pageAnnotationObject.annotations = pageAnnotationObject.annotations.filter((item: any) => item);
@@ -1809,7 +1825,7 @@ export class Redaction {
                             annotation.AnnotationSettings.isLock = annotation.IsLocked;
                         }
                         annotationObject = {
-                            shapeAnnotationType: 'Redaction', annotType: 'TextRedaction', fillColor: annotation.FillColor,
+                            shapeAnnotationType: 'Redaction', annotationIndex: annotation.AnnotationIndex, annotType: 'TextRedaction', fillColor: annotation.FillColor,
                             allowedInteractions: annotation.allowedInteractions, markerOpacity: annotation.MarkerOpacity,
                             bounds: annotation.Bounds, author: annotation.Author, subject: annotation.Subject,
                             modifiedDate: annotation.ModifiedDate, note: annotation.Note, annotationId: annotation.AnnotName,
@@ -1895,7 +1911,8 @@ export class Redaction {
         const annotationSettings: object =   this.pdfViewer.annotationSettings;
         const isPrint: boolean = true;
         const annotation: any = {
-            shapeAnnotationType: type, fillColor: this.pdfViewer.redactionSettings.fillColor, markerOpacity: opacity,
+            shapeAnnotationType: type, status: AnnotationStatus.NewlyAdded, fillColor: this.pdfViewer.redactionSettings.fillColor,
+            markerOpacity: opacity,
             bounds: bounds, author: author, annotType: 'TextRedaction',
             allowedInteractions: allowedInteractions, subject: subject, modifiedDate: modifiedDate, note: note,
             annotName: annotationName, id: annotationName, comments: [], review: { state: '', stateModel: '', author: author, modifiedDate: modifiedDate },

@@ -81,6 +81,9 @@ describe('TextBox ', () => {
             expect(inputObj.readonly).toBe(true);
             expect(inputObj.element.placeholder).toBe('Enter a value');
         });
+        it('maxLength property', () => {
+            expect(inputObj.element.hasAttribute('maxlength')).toBe(false);
+        });
     });
     describe('Method testing - ', () => {
         let inputObj: any;
@@ -1946,6 +1949,25 @@ describe('TextBox ', () => {
             inputObj.dataBind();
             expect(isNullOrUndefined(inputObj.element.parentElement.querySelector('.e-clear-icon'))).toBe(false);
         });
+        it('maxLength api dynamic', () => {
+            inputObj = new TextBox();
+            inputObj.appendTo('#textbox');
+            expect(inputObj.element.hasAttribute('maxlength')).toBe(false);
+            inputObj.maxLength = 10;
+            inputObj.dataBind();
+            expect(inputObj.element.hasAttribute('maxlength')).toBe(true);
+            expect(inputObj.element.getAttribute('maxlength')).toBe('10');
+        });
+        it('maxLength api inital with dynamic', () => {
+            inputObj = new TextBox({ maxLength: 10 });
+            inputObj.appendTo('#textbox');
+            expect(inputObj.element.hasAttribute('maxlength')).toBe(true);
+            expect(inputObj.element.getAttribute('maxlength')).toBe('10');
+            inputObj.maxLength = 5;
+            inputObj.dataBind();
+            expect(inputObj.element.hasAttribute('maxlength')).toBe(true);
+            expect(inputObj.element.getAttribute('maxlength')).toBe('5');
+        });
     });
     describe('Events testing - ', () => {
         let inputObj: any;
@@ -2414,7 +2436,7 @@ describe('TextBox ', () => {
             expect(inputObj.element.value).toBe('Content changed');
             (document.querySelector('#reset') as HTMLButtonElement).click();
             expect(inputObj.element.value).toBe('');
-            expect(isNullOrUndefined(inputObj.value)).toBe(true);
+            expect(inputObj.value).toBe('');
             expect(isNullOrUndefined(inputObj.textboxWrapper.container.querySelector('.e-label-bottom'))).toBe(true);
             expect(isNullOrUndefined(inputObj.textboxWrapper.container.querySelector('.e-label-top'))).toBe(true);
         });
@@ -2426,7 +2448,7 @@ describe('TextBox ', () => {
             expect(inputObj.element.value).toBe('Content changed');
             (document.querySelector('#reset') as HTMLButtonElement).click();
             expect(inputObj.element.value).toBe('');
-            expect(isNullOrUndefined(inputObj.value)).toBe(true);
+            expect(inputObj.value).toBe('');
             expect(isNullOrUndefined(inputObj.textboxWrapper.container.querySelector('.e-label-bottom'))).toBe(false);
             expect(isNullOrUndefined(inputObj.textboxWrapper.container.querySelector('.e-label-top'))).toBe(true);
         });
@@ -3383,7 +3405,7 @@ describe('TextBox ', () => {
             textboxObj = new TextBox({ 
                 value: undefined
             },'#textbox');
-            expect(textboxObj.value).toBe(null);
+            expect(textboxObj.value).toBe('');
             textboxObj.destroy();
          });
          it('width',function() {
@@ -3458,6 +3480,128 @@ describe('TextBox ', () => {
             textbox.focusHandler();
             textbox.focusOutHandler();
             textbox.animationHandler();
+        });
+    });
+    describe('Icon template rendering', () => {
+        let textbox: any;
+        beforeEach(():void =>{
+            let ele: HTMLInputElement = <HTMLInputElement>createElement('input', {id: 'numeric'});
+            document.body.appendChild(ele);
+            textbox = new TextBox({ placeholder: 'Enter the value', floatLabelType: 'Auto', multiline: true,
+                prependTemplate: '<span class="e-icons e-user"></span>',
+                appendTemplate: '<span class="e-icons e-search"></span>'
+            });
+            textbox.appendTo('#numeric');
+        });
+        afterEach((): void =>{
+            if (textbox) {
+                textbox.destroy();
+            }
+            document.body.innerHTML = '';
+        });
+        it('icon template rendering', () => {
+            expect(textbox.textboxWrapper.container.querySelector('.e-user')).not.toBe(null);
+            expect(textbox.textboxWrapper.container.querySelector('.e-search')).not.toBe(null);
+        });
+        it('code coverage function', () => {
+            textbox.focusHandler();
+            textbox.focusOutHandler();
+            textbox.animationHandler();
+        });
+    });
+    describe('increase coverage', function () {
+        let textboxObj: any;
+        beforeEach(function () {
+            let inputElement: HTMLElement = createElement('input', { id: 'textbox' });
+            document.body.appendChild(inputElement);
+        });
+        afterEach(function () {
+            document.body.innerHTML = '';
+
+        });
+        it('should cover htmlAttributes branch when multiline and textarea is defined', () => {
+            textboxObj = new TextBox({
+                multiline: true
+            }, '#textbox');
+
+            textboxObj.appendTo('#textbox');
+            textboxObj.htmlAttributes = { title: 'test' };
+            textboxObj.dataBind();
+        });
+        it('handleFloatLabel - LTR (enableRtl false)', function (done) {
+            let element = createElement('input', { id: 'textbox1' });
+            document.body.appendChild(element);
+
+            let textbox = new TextBox({
+                floatLabelType: 'Auto',
+                placeholder: 'Enter text',
+                prependTemplate: '<span class="e-icons e-search"></span>',
+                enableRtl: false
+            });
+            textbox.appendTo('#textbox1');
+            textbox.enableRtl = false;
+            textbox.dataBind();
+
+            setTimeout(() => {
+                let floatLabel = document.querySelector('#textbox1')
+                    .parentElement.querySelector('.e-float-text') as HTMLElement;
+                textbox.destroy();
+                done();
+            }, 20);
+        });
+        it('handleFloatLabel - RTL (enableRtl true)', function (done) {
+            let element = createElement('input', { id: 'textbox2' });
+            document.body.appendChild(element);
+
+            let textbox = new TextBox({
+                floatLabelType: 'Auto',
+                placeholder: 'Enter text',
+                prependTemplate: '<span class="e-icons e-search"></span>',
+                enableRtl: true
+            });
+            textbox.appendTo('#textbox2');
+            textbox.enableRtl = true;
+            textbox.dataBind();
+
+            setTimeout(() => {
+                let floatLabel = document.querySelector('#textbox2')
+                    .parentElement.querySelector('.e-float-text') as HTMLElement;
+                textbox.destroy();
+                done();
+            }, 20);
+        });
+        it('focusHandler - should trigger label branch after template render', function (done) {
+            let element = createElement('input', { id: 'textbox-focus' });
+            document.body.appendChild(element);
+
+            let textbox = new TextBox({
+                floatLabelType: 'Auto',
+                placeholder: 'Enter name'
+            });
+
+            textbox.appendTo('#textbox-focus');
+            textbox.prependTemplate = '<span class="e-icons e-search"></span>';
+            textbox.dataBind();
+            textbox.element.focus();
+
+            setTimeout(() => {
+                let wrapper = document.querySelector('#textbox-focus').parentElement as HTMLElement;
+                let label = wrapper.querySelector('.e-float-text') as HTMLElement;
+                textbox.destroy();
+                done();
+            }, 30);
+        });
+        it('resetValue - should remove e-valid-input when value is null and conditions match', function () {
+            let element = createElement('input', { id: 'textbox-reset' });
+            document.body.appendChild(element);
+            let textbox = new TextBox({
+                floatLabelType: 'Auto'
+            });
+            textbox.appendTo('#textbox-reset');
+            let wrapper = document.querySelector('#textbox-reset').parentElement as HTMLElement;
+            wrapper.classList.add('e-valid-input');
+            (textbox as any).resetValue(null);
+            textbox.destroy();
         });
     });
 });

@@ -43,7 +43,7 @@ export class FormattingHandler {
 
             const formatNode: HTMLElement = FormattingHelper.getFormattedNode(node, format);
 
-            if ((formatNode && shouldRemove) || (formatNode && isValueBased && !value)) {
+            if ((formatNode && shouldRemove) || (formatNode && isValueBased && (!value || (value as any).url === null))) {
                 // Node HAS format and we're REMOVING (boolean styles)
                 // Node HAS format, user intent to empty it so we're REMOVING (value based styles)
                 this.removeFormatFromNode(node, format, range);
@@ -71,7 +71,7 @@ export class FormattingHandler {
                             this.parent.nodeSelection.getRange(),
                             findClosestParent(range.startContainer, '.e-block')
                         );
-                        this.removeFormatFromNode(node, oppositeFormat, blockRange);
+                        if (blockRange) { this.removeFormatFromNode(node, oppositeFormat, blockRange); }
                     }
                 }
             }

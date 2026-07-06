@@ -1,6 +1,6 @@
-@use 'ej2-base/styles/definition/material-dark' as *;
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 @use '../context-menu/material-dark-definition' as *;
-@forward 'ej2-base/styles/definition/material-dark';
+
 @forward '../context-menu/material-dark-definition';
 $menu-bigger-caret-li-padding: 36px !default;
 $menu-bigger-caret-right: 8px !default;

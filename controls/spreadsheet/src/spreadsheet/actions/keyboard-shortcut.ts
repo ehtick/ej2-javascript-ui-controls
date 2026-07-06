@@ -41,7 +41,7 @@ export class KeyboardShortcut {
         const trgt: Element = e.target as Element;
         return (!closest(trgt, '.e-filter-popup') && !closest(trgt, '.e-find-dlg') &&
             !closest(trgt, '.e-hyperlink-dlg') && !closest(trgt, '.e-sheet-tab') && !closest(trgt, '.e-name-box') &&
-            !closest(trgt, '.e-link-dialog') && !closest(trgt, '.e-comment-input')
+            !closest(trgt, '.e-link-dialog') && !closest(trgt, '.e-comment-input') && !closest(trgt, '.e-ai-assistview-panel')
         );
     }
 

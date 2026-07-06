@@ -12,6 +12,7 @@ import { DataManager, WebApiAdaptor } from '@syncfusion/ej2-data';
 import { Aggregate } from '../../src/treegrid/actions/summary';
 import { Workbook } from '@syncfusion/ej2-excel-export';
 import { Toolbar } from '../../src/treegrid/actions/toolbar';
+import { Query } from '@syncfusion/ej2-data';
 
 /**
  * Grid Export spec 
@@ -650,5 +651,212 @@ describe('Pdf Exporting Remote data with isCollapsedStatePersist false', () => {
         destroy(gridObj);
         gridObj.pdfExportModule.destroy();
         gridObj.excelExportModule.destroy();
+    });
+});
+
+describe('PdfExport - additional branch coverage', () => {
+let gridObj: TreeGrid;
+
+beforeAll((done: Function) => {
+    gridObj = createGrid({
+        dataSource: sampleData,
+        childMapping: 'subtasks',
+        treeColumnIndex: 1,
+        allowPaging: true,
+        pageSettings: {pageSize:10, pageCount:2},
+        allowExcelExport: true,
+        allowPdfExport: true,
+        columns: ['taskID', 'taskName', 'startDate'],
+    }, done);
+});
+it('generateQuery: converts CurrentPage -> AllPages and mutates prop', (done: Function) => {
+    const pdfModule: any = gridObj.pdfExportModule;
+    const q: Query = new Query();
+    const prop: any = { exportType: 'CurrentPage' };
+    (gridObj.grid.renderModule.data as any).pageQuery = (args: any)=> {};
+    pdfModule.generateQuery(q, prop)
+    expect(prop.exportType).toBe('AllPages');
+    done();
+});
+it('pdfQueryCellInfo: uses filterLevel when present to calculate paragraphIndent', (done: Function) => {
+    const colUid = (gridObj.grid.columns as any)[gridObj.treeColumnIndex].uid;
+    const args: any = { column: { uid: colUid }, data: { level: 2, filterLevel: 4 }, style: {} };
+    (gridObj.pdfExportModule as any).pdfQueryCellInfo(args);
+    expect(args.style.paragraphIndent).toBe(4 * 3);
+    done();
+});
+
+afterAll(() => {
+    destroy(gridObj);
+});
+});
+
+describe('PdfExport - additional branch coverage for map method', () => {
+let gridObj: TreeGrid;
+    let data: Object = new DataManager({
+        url: 'https://services.syncfusion.com/js/production/api/SelfReferenceData',
+        adaptor: new WebApiAdaptor,
+        crossDomain: true
+    });
+
+beforeAll((done: Function) => {
+    gridObj = createGrid({
+        dataSource: data,
+        hasChildMapping: 'isParent',
+        idMapping: 'TaskID',
+        parentIdMapping: 'ParentItem',
+        treeColumnIndex: 1,
+        allowExcelExport: true,
+        allowPdfExport: true,
+        columns: ['taskID', 'taskName', 'startDate'],
+    }, done);
+});
+it('Coverage in map method',  () => {
+  const pdfModule: any = gridObj.pdfExportModule;
+  let pdfExportProperties: any = {};
+  gridObj.beforePdfExport= (args: any) => {
+    args.cancel = true;
+  }
+  gridObj.pdfExport(pdfExportProperties);
+})
+
+afterAll(() => {
+    destroy(gridObj);
+});
+});
+
+describe('Coverage - Additional Excel Export coverage (targeted branches)', () => {
+    let gridObj: TreeGrid;
+    let remoteData: Object = new DataManager({
+        url: 'https://services.syncfusion.com/js/production/api/SelfReferenceData',
+        adaptor: new WebApiAdaptor,
+        crossDomain: true
+    });
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: remoteData,
+                hasChildMapping: 'isParent',
+                idMapping: 'TaskID',
+                parentIdMapping: 'ParentItem',
+                height: 400,
+                treeColumnIndex: 1,
+                allowPaging: true,
+                allowExcelExport: true,
+                allowPdfExport: true,
+                columns: [
+                    { field: 'TaskID', headerText: 'Task ID', textAlign: 'Right', width: 120 },
+                    { field: 'TaskName', headerText: 'Task Name', width: 150 },
+                    { field: 'StartDate', headerText: 'Start Date', textAlign: 'Right', width: 120 }
+                ]
+            },
+            done
+        );
+    });
+
+    it('removeEventListener and destroy should run without early-return', (done: Function) => {
+        gridObj.isDestroyed = true;
+        gridObj.excelExportModule.removeEventListener();
+        gridObj.isDestroyed = false;
+        gridObj.excelExportModule.removeEventListener();
+        gridObj.excelExportModule.destroy();
+        done();
+    });
+
+    it('Map should delegate to grid.excelExportModule.Map when remote and dataSource passed (plain array)', (done: Function) => {
+        let excelExportProperties: any = {
+            dataSource: sampleData.slice(0, 2),
+            isCollapsedStatePersist: true
+        };
+        gridObj.excelExport(excelExportProperties).then((doc: Workbook) => {
+            expect(doc).not.toBeUndefined();
+            done();
+        });
+    });
+
+    it('generateQuery should convert CurrentPage -> AllPages when allowPaging is true', () => {
+        const prop: any = { exportType: 'CurrentPage' };
+        (gridObj.grid.renderModule as any) = gridObj.grid.renderModule || {};
+        (gridObj.grid.renderModule.data as any) = gridObj.grid.renderModule.data || {};
+        (gridObj.grid.renderModule.data as any).pageQuery = function (qry: any) { return qry; };
+        (gridObj.excelExportModule as any).generateQuery(new Query(), prop);
+        expect(prop.exportType).toBe('AllPages');
+    });
+
+    it('manipulateExportProperties should filter out onWhere preds with null and remove IdMapping params', (done: Function) => {
+        (gridObj.grid as any).getDataModule = () => ({
+            generateQuery: (flag?: boolean) => ({
+                queries: [{ fn: 'onWhere', e: { field: gridObj.parentIdMapping, value: 'null' } }],
+                params: [{ key: 'IdMapping' }]
+            }),
+            isRemote: () => false,
+            getState: () => ({})
+        });
+
+        const prop: any = { isCollapsedStatePersist: false };
+        const dtSrc: any = [];
+        const res = (gridObj.excelExportModule as any).manipulateExportProperties(prop, dtSrc, { result: [] });
+        expect(res.dataSource).toBeDefined();
+        done();
+    });
+
+    it('manipulateExportProperties should use property.dataSource.dataSource.json when DataManager provided', (done: Function) => {
+        const dm = new DataManager({ json: sampleData.slice(0, 2) });
+        const prop: any = { dataSource: dm };
+        const dtSrc: any = [];
+        const convSpy = spyOn((gridObj as any).dataModule, 'convertToFlatData').and.callThrough();
+        const res = (gridObj.excelExportModule as any).manipulateExportProperties(prop, dtSrc, { result: [] });
+        expect(convSpy).toHaveBeenCalled();
+        expect(res.dataSource).toBeDefined();
+        expect(res.dataSource instanceof DataManager).toBe(true);
+        done();
+    });
+
+    it('excelQueryCellInfo should use filterLevel when present', (done: Function) => {
+        const col = gridObj.getColumns()[gridObj.treeColumnIndex];
+        const args: any = { column: { uid: col.uid }, data: { level: 1, filterLevel: 3 } };
+        (gridObj.excelExportModule as any).excelQueryCellInfo(args);
+        expect(args.style).toBeDefined();
+        expect(args.style.indent).toBe(3);
+        done();
+    });
+
+    it('exportRowDataBound should set grouping for nodes with hasChildRecords and null parentItem', (done: Function) => {
+        const excelRow: any = { type: 'excel', excelRows: [{}], rowObj: { data: { level: 2, parentItem: null, hasChildRecords: true } } };
+        (gridObj.excelExportModule as any).exportRowDataBound(excelRow);
+        expect(excelRow.excelRows[0].grouping).toBeDefined();
+        done();
+    });
+
+    it('finalPageSetup should set pageSetup when worksheet rows exist', () => {
+        const wb: any = { worksheets: [{ rows: [{}] }, {}] };
+        (gridObj.excelExportModule as any).finalPageSetup(wb);
+        expect(wb.worksheets[0].pageSetup).toBeDefined();
+    });
+
+    it('exportRowDataBound should mark grouping as hidden and collapsed-state respected when isCollapsedStatePersist is true and parent is remote', (done: Function) => {
+        const excelrowobj: any = { level: 2, parentItem: { uniqueID: 'p_parent_1' }, expanded: true };
+        const excelRow: any = { type: 'excel', excelRows: [{}, {}], rowObj: { data: excelrowobj } };
+
+        (gridObj.grid as any).filterSettings = (gridObj.grid as any).filterSettings || { columns: [] };
+
+        (gridObj as any).uniqueIDCollection = (gridObj as any).uniqueIDCollection || {};
+        (gridObj as any).uniqueIDCollection['p_parent_1'] = { uniqueID: 'p_parent_1' };
+
+        (gridObj.excelExportModule as any).isCollapsedStatePersist = true;
+        (gridObj as any).isLocalData = false;
+
+        (gridObj.excelExportModule as any).exportRowDataBound(excelRow);
+
+        const grouping = excelRow.excelRows[excelRow.excelRows.length - 1].grouping;
+        expect(grouping).toBeDefined();
+        expect(grouping.isCollapsed).toBe(false);
+        expect(grouping.isHidden).toBe(true);
+        done();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
     });
 });

@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/fabric-dark' as *;
-@forward 'ej2-base/styles/definition/fabric-dark';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $acrdn-skin: 'fabric' !default;
 $acrdn-icon-font-size: $font-size !default;
 $acrdn-bgr-arrow-icon-font-size: 14px !default;

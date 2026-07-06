@@ -327,6 +327,9 @@ export class InlineToolbarModule {
                 props = { level } as IHeadingBlockSettings;
             }
             this.editor.blockManager.blockCommand.transformBlocksForSelection(model.type as string, props);
+            setTimeout(() => {
+                this.editor.blockContainer.focus();
+            }, 0);
         };
 
         const beforeOpenHandler: () => void = () => {
@@ -415,9 +418,11 @@ export class InlineToolbarModule {
             );
             // Only add e-selected if the item is not disabled
             if (matchingModel && !matchingModel.disabled) {
-                const selectedItem: Element = menuPopup.querySelector(`#${currentItemId}`);
+                const selectedItem: HTMLElement = menuPopup.querySelector(`#${currentItemId}`);
                 if (selectedItem) {
                     selectedItem.classList.add('e-selected');
+                    selectedItem.focus();
+                    selectedItem.classList.add('e-focused');
                 }
             }
         }

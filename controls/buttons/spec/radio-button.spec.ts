@@ -47,6 +47,7 @@ describe('RadioButton', () => {
         it('RadioButton with disabled state', () => {
             radio = new RadioButton({ disabled: true }, '#radio');
             expect(element.disabled).toEqual(true);
+            expect(element.parentElement.classList.contains('e-disabled')).toEqual(true);
         });
 
         it('RadioButton with RTL', () => {
@@ -209,10 +210,12 @@ describe('RadioButton', () => {
             radio.dataBind();
             expect(radio.disabled).toEqual(true);
             expect(element.disabled).toEqual(true);
+            expect(element.parentElement.classList.contains('e-disabled')).toEqual(true);
             radio.disabled = false;
             radio.dataBind();
             expect(radio.disabled).toEqual(false);
             expect(element.disabled).toEqual(false);
+            expect(element.parentElement.classList.contains('e-disabled')).toEqual(false);
         });
 
         it('RadioButton with RTL', () => {

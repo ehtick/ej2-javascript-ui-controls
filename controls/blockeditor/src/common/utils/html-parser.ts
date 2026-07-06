@@ -163,7 +163,11 @@ export function convertHtmlElementToBlocks(container: HTMLElement, keepFormat: b
     return blocks;
 }
 
-export function convertInlineElementsToContentModels(element: HTMLElement, keepFormat: boolean): ContentModel[] {
+export function convertInlineElementsToContentModels(
+    element: HTMLElement,
+    keepFormat: boolean,
+    stripNewlines: boolean = false
+): ContentModel[] {
     const content: ContentModel[] = [];
     if (!keepFormat) {
         if (element.textContent !== '') {
@@ -177,7 +181,7 @@ export function convertInlineElementsToContentModels(element: HTMLElement, keepF
     const processNode: (node: Node) => void = (node: Node) => {
         if (node.nodeType === Node.TEXT_NODE) {
             let text: string = node.textContent;
-            text = text.replace(/\n/g, '');
+            text = stripNewlines ? text.replace(/\n/g, ' ') : text;
             if (text !== '') {
                 content.push(createContentModel(text, styleStack[styleStack.length - 1], linkProps));
             }

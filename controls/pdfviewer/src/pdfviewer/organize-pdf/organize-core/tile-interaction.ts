@@ -280,9 +280,9 @@ export function setSelectionRingStyle(checkbox: HTMLInputElement, anchornode: HT
             this.extractPagesInput.element.value = formatted;
         }
         // Ensure Extract button enabled/disabled reflects current input value
-        const createBtn: HTMLButtonElement = document.getElementsByClassName('e-pv-extractbtn')[0] as HTMLButtonElement;
-        if (createBtn) {
-            createBtn.disabled = (formatted.trim() === '');
+        const createBtn: any = document.getElementsByClassName('e-pv-extractbtn')[0] as HTMLButtonElement;
+        if (createBtn && createBtn.ej2_instances && createBtn.ej2_instances.length && createBtn.ej2_instances[0]) {
+            createBtn.ej2_instances[0].disabled = (formatted.trim() === '');
         }
     }
 }

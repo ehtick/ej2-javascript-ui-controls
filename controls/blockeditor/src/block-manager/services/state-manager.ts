@@ -105,4 +105,16 @@ export class StateManager {
         this.parent.blocks = this.parent.getEditorBlocks();
         this.parent.observer.notify('updateEditorBlocks', { blocks: this.parent.blocks });
     }
+
+    /**
+     * Updates the pending property changes to the editor model
+     *
+     * @returns {void}
+     * @hidden
+     */
+    public updateEditorContext(): void {
+        this.parent.observer.notify('updateEditorContext', {
+            users: this.parent.users
+        });
+    }
 }

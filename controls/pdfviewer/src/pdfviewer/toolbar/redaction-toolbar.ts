@@ -517,10 +517,10 @@ export class RedactionToolbar {
     private createPageTab(): HTMLElement {
         const pageTabMainDiv: HTMLElement = createElement('div', { className: 'e-pv-redaction-page-mark-content' });
         // Create and append radio options
-        pageTabMainDiv.appendChild(this.createRadioOption('radioCurrentPage', 'CurrentPage', 'Current Page'));
-        pageTabMainDiv.appendChild(this.createRadioOption('radioOddPages', 'OddPages', 'Odd Pages Only'));
-        pageTabMainDiv.appendChild(this.createRadioOption('radioEvenPages', 'EvenPages', 'Even Pages Only'));
-        pageTabMainDiv.appendChild(this.createRadioOption('radioSpecificPages', 'SpecificPages', 'Specific Pages'));
+        pageTabMainDiv.appendChild(this.createRadioOption('radioCurrentPage', 'CurrentPage', this.pdfViewer.localeObj.getConstant('Current Page')));
+        pageTabMainDiv.appendChild(this.createRadioOption('radioOddPages', 'OddPages', this.pdfViewer.localeObj.getConstant('Odd Pages Only')));
+        pageTabMainDiv.appendChild(this.createRadioOption('radioEvenPages', 'EvenPages', this.pdfViewer.localeObj.getConstant('Even Pages Only')));
+        pageTabMainDiv.appendChild(this.createRadioOption('radioSpecificPages', 'SpecificPages', this.pdfViewer.localeObj.getConstant('Specific Pages')));
         // Create and append the page range div (initially hidden)
         this.pageRangeDiv = createElement('div', {
             className: 'e-pv-page-range-row',
@@ -701,7 +701,7 @@ export class RedactionToolbar {
             className: 'e-pv-redaction-property-panel-text e-pv-redaction-fill-text',
             id: elementID + '_properties_formfield_fillcolor_label'
         });
-        fillColorLabel.textContent = 'Fill Color';
+        fillColorLabel.textContent = this.pdfViewer.localeObj.getConstant('Fill Color');
         td1.appendChild(fillColorLabel);
         // Create color picker container
         const colorPickerContainer: HTMLElement = createElement('div', {
@@ -733,7 +733,7 @@ export class RedactionToolbar {
         const fontTable: HTMLElement = createElement('table', { className: 'e-pv-redaction-font-table' });
         const fontTr1: HTMLElement = document.createElement('tr');
         const fontTd1: HTMLElement = document.createElement('td');
-        fontTd1.textContent = 'Font Style';
+        fontTd1.textContent = this.pdfViewer.localeObj.getConstant('Font Style');
         fontTd1.setAttribute('colspan', '2');
         fontTr1.appendChild(fontTd1);
         fontTable.appendChild(fontTr1);
@@ -796,7 +796,7 @@ export class RedactionToolbar {
         const fontTd3: HTMLElement = document.createElement('td');
         const fontColorSpan: HTMLElement = createElement('span', { className: 'e-pv-redaction-property-panel-text e-pv-redaction-font-color-text' });
         fontColorSpan.id = elementID + '_properties_formfield_fontcolor_label';
-        fontColorSpan.textContent = 'Font Color';
+        fontColorSpan.textContent = this.pdfViewer.localeObj.getConstant('Font color');
         fontTd3.appendChild(fontColorSpan);
         const fontColrPickerMainDiv: HTMLElement = createElement('div', {
             className: 'e-colorpicker-container e-hide-opacity e-pv-properties-form-field-font-color e-pv-redaction-font-color'
@@ -862,7 +862,7 @@ export class RedactionToolbar {
         const fontTd5: HTMLElement = document.createElement('td');
         const overlayTextSpan1: HTMLElement = createElement('span', { className: 'e-pv-redaction-property-panel-text e-pv-redaction-overlay-text' });
         overlayTextSpan1.id = elementID + '_properties_formfield_overlaytext_label';
-        overlayTextSpan1.textContent = 'Overlay Text';
+        overlayTextSpan1.textContent = this.pdfViewer.localeObj.getConstant('Overlay Text');
         fontTd5.appendChild(overlayTextSpan1);
         const overlayTextMainDiv: HTMLElement = createElement('div', {
             className: 'e-pv-redaction-overlat-input'
@@ -896,7 +896,7 @@ export class RedactionToolbar {
         const fillColorLabel: HTMLElement = createElement('div', {
             className: 'e-pv-fill-prop-lable-mobile'
         });
-        fillColorLabel.textContent = 'Fill Color';
+        fillColorLabel.textContent = this.pdfViewer.localeObj.getConstant('Fill Color');
         fillColorMainDiv.appendChild(fillColorLabel);
         const colorPickerContainer: HTMLElement = createElement('div', {
             className: 'e-pv-fill-prop-mobile'
@@ -997,7 +997,7 @@ export class RedactionToolbar {
         const fontColorLabel: HTMLElement = createElement('div', {
             className: 'e-pv-font-color-prop-group-mobile e-item'
         });
-        fontColorLabel.textContent = 'Font Color';
+        fontColorLabel.textContent = this.pdfViewer.localeObj.getConstant('Font color');
         this.fontColorMainDiv.appendChild(fontColorLabel);
         const colorPickerContainer1: HTMLElement = createElement('div', {
             className: 'e-pv-font-color-prop-mobile'
@@ -1074,7 +1074,7 @@ export class RedactionToolbar {
         generalPropertiesMainDiv.appendChild(this.repeatOverlayMainDiv);
         this.overlayTextMainDiv = createElement('div', { className: 'e-pv-overlay-text-prop-group-mobile e-item e-overlay'});
         const overlayTextSpan1: HTMLElement = createElement('div', { className: 'e-pv-overlay-text-prop-lable-mobile' });
-        overlayTextSpan1.textContent = 'Overlay Text';
+        overlayTextSpan1.textContent = this.pdfViewer.localeObj.getConstant('Overlay Text');
         this.overlayTextMainDiv.appendChild(overlayTextSpan1);
         const overlayTextDiv: HTMLElement = createElement('div', {
             className: 'e-pv-overlay-text-prop-mobile'
@@ -1118,7 +1118,7 @@ export class RedactionToolbar {
         const outlineColorLabel: HTMLElement = createElement('span', {
             className: 'e-pv-redaction-property-panel-text e-pv-redaction-outline-text'
         });
-        outlineColorLabel.textContent = 'Outline Color';
+        outlineColorLabel.textContent = this.pdfViewer.localeObj.getConstant('Outline Color');
         td1.appendChild(outlineColorLabel);
         // Create color picker container
         const colorPickerContainerOutline: HTMLElement = createElement('div', {
@@ -1135,7 +1135,7 @@ export class RedactionToolbar {
         const fillColorLabel: HTMLElement = createElement('span', {
             className: 'e-pv-redaction-property-panel-text e-pv-redaction-mark-fill-text'
         });
-        fillColorLabel.textContent = 'Fill Color';
+        fillColorLabel.textContent = this.pdfViewer.localeObj.getConstant('Fill Color');
         td1.appendChild(fillColorLabel);
         // Create color picker container
         const colorPickerContainer: HTMLElement = createElement('div', {
@@ -1159,7 +1159,7 @@ export class RedactionToolbar {
         const fillOpacityLabel: HTMLElement = createElement('span', {
             className: 'e-pv-redaction-property-panel-text e-pv-redaction-opacity-text'
         });
-        fillOpacityLabel.textContent = 'Fill Opacity';
+        fillOpacityLabel.textContent = this.pdfViewer.localeObj.getConstant('Fill Opacity');
         td2.appendChild(fillOpacityLabel);
         this.fillOpacityValue = createElement('span', {
             className: 'e-pv-redaction-opactity-value'
@@ -1194,7 +1194,7 @@ export class RedactionToolbar {
         const outlineColorLabel: HTMLElement = createElement('div', {
             className: 'e-pv-fill-prop-lable-mobile'
         });
-        outlineColorLabel.textContent = 'Outline Color';
+        outlineColorLabel.textContent = this.pdfViewer.localeObj.getConstant('Outline Color');
         outlineColorMainDiv.appendChild(outlineColorLabel);
         const colorPickerContainer1: HTMLElement = createElement('div', {
             className: 'e-pv-fill-prop-mobile'
@@ -1216,7 +1216,7 @@ export class RedactionToolbar {
         const fillColorLabel: HTMLElement = createElement('div', {
             className: 'e-pv-fill-prop-lable-mobile'
         });
-        fillColorLabel.textContent = 'Fill Color';
+        fillColorLabel.textContent = this.pdfViewer.localeObj.getConstant('Fill Color');
         fillColorMainDiv.appendChild(fillColorLabel);
         const colorPickerContainer: HTMLElement = createElement('div', {
             className: 'e-pv-fill-prop-mobile'
@@ -1238,7 +1238,7 @@ export class RedactionToolbar {
         const fillOpacityLabel: HTMLElement = createElement('div', {
             className: 'e-pv-fill-opacity-prop-lable-mobile'
         });
-        fillOpacityLabel.textContent = 'Fill Opacity';
+        fillOpacityLabel.textContent = this.pdfViewer.localeObj.getConstant('Fill Opacity');
         this.fillOpacityValue = createElement('span', {
             className: 'e-pv-redaction-opactity-value'
         });

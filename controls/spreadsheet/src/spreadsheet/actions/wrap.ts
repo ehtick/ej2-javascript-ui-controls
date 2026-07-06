@@ -4,6 +4,7 @@ import { Spreadsheet } from '../base/spreadsheet';
 import { ribbonClick, inView, setMaxHgt, getMaxHgt, WRAPTEXT, setRowEleHeight, rowHeightChanged, readonlyAlert } from '../common/index';
 import { completeAction, BeforeWrapEventArgs, getLines, getExcludedColumnWidth, getTextHeightWithBorder } from '../common/index';
 import { positionAutoFillElement, colWidthChanged, getLineHeight, updateWrapCell, ExtendedSpreadsheet } from '../common/index';
+import { spreadsheetDestroyed } from '../common/index';
 import { SheetModel, getCell, CellModel, wrap as wrapText, wrapEvent, getRow, getRowsHeight, Workbook, ApplyCFArgs, applyCF, RowModel, isReadOnlyCells } from '../../workbook/index';
 import { getRowHeight, getAddressFromSelectedRange, beginAction, isHiddenRow, isHiddenCol } from '../../workbook/index';
 
@@ -33,6 +34,7 @@ export class WrapText {
         this.parent.on(rowHeightChanged, this.rowHeightChangedHandler, this);
         this.parent.on(colWidthChanged, this.colWidthChanged, this);
         this.parent.on(updateWrapCell, this.updateWrapCell, this);
+        this.parent.on(spreadsheetDestroyed, this.destroyWrapCells, this);
     }
 
     private removeEventListener(): void {
@@ -42,6 +44,7 @@ export class WrapText {
             this.parent.off(rowHeightChanged, this.rowHeightChangedHandler);
             this.parent.off(colWidthChanged, this.colWidthChanged);
             this.parent.off(updateWrapCell, this.updateWrapCell);
+            this.parent.off(spreadsheetDestroyed, this.destroyWrapCells);
         }
     }
 
@@ -49,6 +52,9 @@ export class WrapText {
         args: { range: number[], wrap: boolean, sheet: SheetModel, initial: boolean, td: Element, row: HTMLElement,
             hRow: HTMLElement, isRender?: boolean, isCustomHgt?: boolean, isPublic?: boolean, outsideViewport?: boolean,
             isOtherAction?: boolean }): void {
+        if (this.parent.paintSuspendCount > 0) {
+            return;
+        }
         if (args.initial || inView(this.parent, args.range, true)) {
             if (args.isPublic && isReadOnlyCells(this.parent, args.range)) { return; }
             if (args.initial && !args.td && !args.outsideViewport && inView(this.parent, args.range, true)) {
@@ -266,6 +272,29 @@ export class WrapText {
         if (args.ele && !args.ele.querySelector('.e-wrap-content')) {
             const wrapSpan: HTMLElement = this.wrapCell.cloneNode() as HTMLElement;
             const filterBtn: Element = args.ele.querySelector('.e-filter-btn');
+            const hasVertChild: boolean = args.ele.childNodes && Array.from(args.ele.childNodes).some((ch: Node) =>
+                ch.nodeType === 1 && !isNullOrUndefined((ch as HTMLElement).className) &&
+                (ch as HTMLElement).className.indexOf('e-vert') > -1);
+            if (hasVertChild) {
+                const children: Node[] = Array.prototype.slice.call(args.ele.childNodes);
+                for (const ch of children) {
+                    if (ch === filterBtn) { continue; }
+                    if (ch.nodeType === 1 && !isNullOrUndefined((ch as HTMLElement).className) &&
+                        ((ch as HTMLElement).className.indexOf('e-addNoteIndicator') > -1 ||
+                            (ch as HTMLElement).className.indexOf('e-comment-indicator') > -1)) { continue; }
+                    wrapSpan.appendChild(ch);
+                }
+                if (filterBtn) {
+                    if (args.ele.firstChild) { args.ele.insertBefore(filterBtn, args.ele.firstChild); }
+                    else { args.ele.appendChild(filterBtn); }
+                }
+                args.ele.appendChild(wrapSpan);
+                const noteEl: Element = args.ele.querySelector('.e-addNoteIndicator');
+                if (noteEl) { args.ele.appendChild(noteEl); }
+                const commentEl: Element = args.ele.querySelector('.e-comment-indicator');
+                if (commentEl) { args.ele.appendChild(commentEl); }
+                return;
+            }
             while (args.ele.childElementCount && !isNullOrUndefined(args.ele.firstElementChild) &&
                 args.ele.firstElementChild.className.indexOf('e-addNoteIndicator') === -1) {
                 wrapSpan.appendChild(args.ele.firstElementChild);
@@ -307,6 +336,15 @@ export class WrapText {
         return 'wrapText';
     }
 
+    private destroyWrapCells(): void {
+        if (this.wrapCell) { this.wrapCell.remove(); this.wrapCell = null; }
+        if (this.parent && this.parent.element) {
+            this.parent.element.querySelectorAll('.e-wrap-content').forEach((wrap: Element) => {
+                wrap.remove();
+            });
+        }
+    }
+
     /**
      * Removes the added event handlers and clears the internal properties of WrapText module.
      *
@@ -314,12 +352,7 @@ export class WrapText {
      */
     public destroy(): void {
         this.removeEventListener();
-        if (this.wrapCell) { this.wrapCell.remove(); this.wrapCell = null; }
-        if (this.parent && this.parent.element) {
-            this.parent.element.querySelectorAll('.e-wrap-content').forEach((wrap: Element) => {
-                wrap.remove();
-            });
-        }
+        this.destroyWrapCells();
         this.parent = null;
     }
 }

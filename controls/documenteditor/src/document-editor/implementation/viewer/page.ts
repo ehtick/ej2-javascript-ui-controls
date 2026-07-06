@@ -9640,7 +9640,7 @@ export class CommentCharacterElementBox extends ElementBox {
     public commentId: string = '';
     /**
      * @private
-     */   
+     */
     public commentInternal: CommentElementBox;
 
     public commentMark: HTMLElement;

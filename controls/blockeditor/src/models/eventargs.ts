@@ -2,6 +2,9 @@ import { SuccessEventArgs } from '@syncfusion/ej2-inputs';
 import { CommandItemModel, BlockModel, BlockActionItemModel, ContextMenuItemModel } from './index';
 import { IToolbarItemModel, TransformItemModel } from './interface';
 import { BlockAction } from './types';
+/* Collaboration Start */
+import { VersionSnapshot } from '../models/interface';
+/* Collaboration End */
 
 
 export interface BlockChangedEventArgs {
@@ -548,3 +551,28 @@ export interface FileUploadSuccessEventArgs extends SuccessEventArgs {
      */
     fileUrl?: string
 }
+/* Collaboration Start */
+/**
+ * Represents the event arguments raised after a version snapshot is created.
+ */
+export interface SnapshotCreatedEventArgs {
+    /**
+     * The snapshot that was just created.
+     */
+    snapshot: VersionSnapshot;
+}
+
+/**
+ * Represents the event arguments raised after a version snapshot is restored.
+ */
+export interface SnapshotRestoredEventArgs {
+    /**
+     * The snapshot that was restored.
+     */
+    snapshot: VersionSnapshot;
+    /**
+     * The backup snapshot automatically created before restore.
+     */
+    backupSnapshot: VersionSnapshot;
+}
+/* Collaboration End */

@@ -132,19 +132,8 @@ class LineSegment implements ILineSegment {
     }
 }
 
-// Interface for objects that can be compared
-interface Comparable<T> {
-    /**
-     * Compares this object to another object of the same type.
-     * @param other - The other object to compare to.
-     * @returns a negative number if this object is less than the other,
-     *          a positive number if greater, or 0 if equal.
-     */
-    compareTo(other: T): number;
-}
-
 // Class representing an event in the sweep line algorithm
-class SweepEvent implements Comparable<SweepEvent> {
+class SweepEvent {
     public readonly segment: ILineSegment;
     public readonly isStart: boolean;
     public value: number;
@@ -170,19 +159,6 @@ class SweepEvent implements Comparable<SweepEvent> {
         this.value = this.isStart ? this.segment.sortedStart : this.segment.sortedEnd;
     }
 
-    /**
-     * Compares this event to another event for sorting purposes.
-     * @param {SweepEvent} other - The other event to compare to.
-     * @returns {number} -1 if this event is less than the other, 1 if greater, 0 if equal.
-     */
-    public compareTo(other: SweepEvent): number {
-        // Compare based on the value of the events
-        if (this.value !== other.value) {
-            return this.value < other.value ? -1 : 1;
-        }
-        // If values are equal, prioritize start events over end events
-        return this.isStart ? -1 : other.isStart ? 1 : 0;
-    }
 }
 
 // Class representing a segment tree used for efficient line segment intersection detection

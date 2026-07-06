@@ -1,3 +1,6 @@
+import { PdfCustomMetadata } from './xmp/pdf-custom-metadata';
+import { PdfXmpMetadata } from './xmp/pdf-xmp-metadata';
+
 /**
  * Represents the information about the PDF document.
  *
@@ -21,4 +24,6 @@ export type PdfDocumentInformation = {
     language?: string; // Specifies the language of the PDF document (optional)
     creationDate?: Date; // Specifies the creation date of the PDF document (optional)
     modificationDate?: Date; // Specifies the modification date of the PDF document (optional)
+    xmpMetadata?: PdfXmpMetadata; // Specifies the metadata information of the PDF document (optional)
+    customMetadata?: PdfCustomMetadata; // Specifies the custom metadata information of the PDF document (optional)
 };

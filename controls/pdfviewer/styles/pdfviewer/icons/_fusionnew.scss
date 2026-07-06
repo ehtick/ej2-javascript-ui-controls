@@ -1,4 +1,4 @@
-@use 'ej2-base/styles/common/mixin' as *;
+@use '../variables' as *;
 @use '../fusionnew-definition' as *;
 @include export-module('pdfviewer-fusion-icons') {
   .e-pdfviewer {
@@ -573,6 +573,10 @@
   }
   .e-pv-multiple-comment::before {
     content: '\e8bc';
+    font-family: 'e-icons';
+  }
+  .e-pv-ink-eraser-icon::before {
+    content: '\e7cc';
     font-family: 'e-icons';
   }
 }

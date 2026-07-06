@@ -992,7 +992,7 @@ describe('Block Editor', () => {
             expect(addIcon).not.toBeNull();
             addIcon.click();
             setTimeout(() => {
-                expect(editorElement.querySelector('#' + editor.blockManager.currentHoveredBlock.id)).toBe(blockElement);
+                expect(editorElement.querySelector('#' + editor.blockManager.currentHoveredBlock.id)).toBe(blockElement.nextElementSibling);
                 expect(document.querySelector('.e-blockeditor-command-menu').classList.contains('e-popup-open')).toBe(true);
                 editor.slashCommandModule.hidePopup();
                 done();

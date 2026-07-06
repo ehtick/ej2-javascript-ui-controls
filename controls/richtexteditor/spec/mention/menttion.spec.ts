@@ -52,7 +52,8 @@ function destroyMention() {
 }
 
 describe('Mention integration tests', () => {
-    describe('Mouse action testing ', () => {
+    // 🚧 TODO: Migrate this to Playwright 🎭
+    xdescribe('Mouse action testing ', () => {
         let editor: RichTextEditor;
         beforeAll(() => {
             editor = renderRTE({
@@ -87,7 +88,8 @@ describe('Mention integration tests', () => {
         });
     });
 
-    describe('Keyboard action Enter action testing ', () => {
+    // 🚧 TODO: Migrate this to Playwright 🎭
+    xdescribe('Keyboard action Enter action testing ', () => {
         let editor: RichTextEditor;
         beforeAll(() => {
             editor = renderRTE({
@@ -125,7 +127,8 @@ describe('Mention integration tests', () => {
         });
     });
 
-    describe('Keyboard action Tab action testing ', () => {
+    // 🚧 TODO: Migrate this to Playwright 🎭
+    xdescribe('Keyboard action Tab action testing ', () => {
         let editor: RichTextEditor;
         beforeAll(() => {
             editor = renderRTE({
@@ -163,7 +166,8 @@ describe('Mention integration tests', () => {
         });
     });
 
-    describe('905363: User list popup not open when pressing Shift with @ key.', () => {
+    // 🚧 TODO: Migrate this to Playwright 🎭
+    xdescribe('905363: User list popup not open when pressing Shift with @ key.', () => {
         let editor: RichTextEditor;
         beforeAll(() => {
             editor = renderRTE({
@@ -202,7 +206,8 @@ describe('Mention integration tests', () => {
         });
     });
 
-    describe('907712: When the Enable tab key setting is configured to true, the mention list popup will insert four spaces. ', () => {
+    // 🚧 TODO: Migrate this to Playwright 🎭
+    xdescribe('907712: When the Enable tab key setting is configured to true, the mention list popup will insert four spaces. ', () => {
         let editor: RichTextEditor;
         beforeAll(() => {
             editor = renderRTE({

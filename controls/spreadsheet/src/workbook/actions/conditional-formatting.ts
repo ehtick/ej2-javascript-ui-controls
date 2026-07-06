@@ -42,40 +42,43 @@ export class WorkbookConditionalFormat {
     }
 
     private setCFRule(e: CFArgs): void {
+        e.modelUpdateOnly = e.modelUpdateOnly || this.parent.paintSuspendCount > 0;
         const cf: ConditionalFormatModel = e.cfModel;
         const sheetIndex: number = e.sheetIdx === undefined ? getSheetIndexFromAddress(this.parent, cf.range) : e.sheetIdx;
         const sheet: SheetModel = getSheet(this.parent, sheetIndex);
         let indexes: number[] = getSwapRange(getRangeIndexes(cf.range || sheet.selectedRange));
         cf.range = getRangeAddress(indexes);
         if (e.isAction) {
-            const eventArgs: CFormattingEventArgs = { range: cf.range, type: cf.type, cancel: false, cFColor: cf.cFColor, value: cf.value,
-                sheetIdx: sheetIndex };
-            this.parent.notify(beginAction, { eventArgs: eventArgs, action: 'conditionalFormat' });
-            if (eventArgs.cancel) {
-                return;
+            if (!e.modelUpdateOnly) {
+                const eventArgs: CFormattingEventArgs = { range: cf.range, type: cf.type, cancel: false, cFColor: cf.cFColor,
+                    value: cf.value, sheetIdx: sheetIndex };
+                this.parent.notify(beginAction, { eventArgs: eventArgs, action: 'conditionalFormat' });
+                if (eventArgs.cancel) {
+                    return;
+                }
+                cf.type = eventArgs.type;
+                cf.cFColor = eventArgs.cFColor;
+                cf.value = eventArgs.value;
+                if (eventArgs.range !== cf.range) {
+                    cf.range = eventArgs.range;
+                    indexes = getSwapRange(getRangeIndexes(eventArgs.range));
+                }
+                delete eventArgs.cancel;
             }
-            cf.type = eventArgs.type;
-            cf.cFColor = eventArgs.cFColor;
-            cf.value = eventArgs.value;
-            if (eventArgs.range !== cf.range) {
-                cf.range = eventArgs.range;
-                indexes = getSwapRange(getRangeIndexes(eventArgs.range));
-            }
-            delete eventArgs.cancel;
         }
         if (!sheet.conditionalFormats) {
             this.parent.setSheetPropertyOnMute(sheet, 'conditionalFormats', []);
         }
         sheet.conditionalFormats.push(cf);
-        if (sheetIndex !== this.parent.activeSheetIndex) {
+        if (!e.modelUpdateOnly && sheetIndex !== this.parent.activeSheetIndex) {
             if (e.isUndoRedo && !e.isFromUpdateAction) {
                 this.parent.notify(goto, { address: sheet.name + '!' + cf.range });
             }
-        } else {
+        } else if (!e.modelUpdateOnly) {
             this.parent.notify(applyCF, <ApplyCFArgs>{ cfModel: [cf], isAction: true });
         }
         this.parent.setUsedRange(indexes[2], indexes[3]);
-        if (e.isAction) {
+        if (e.isAction && !e.modelUpdateOnly) {
             this.parent.notify(
                 'actionComplete', { eventArgs: { range: cf.range, type: cf.type, cFColor: cf.cFColor, value: cf.value, sheetIdx: sheetIndex },
                     action: 'conditionalFormat' });
@@ -83,6 +86,7 @@ export class WorkbookConditionalFormat {
     }
 
     private clearCFRule(args: CFArgs): void {
+        args.modelUpdateOnly = args.modelUpdateOnly || this.parent.paintSuspendCount > 0;
         if (args.sheetIdx === undefined) {
             args.sheetIdx = this.parent.activeSheetIndex;
         }
@@ -107,8 +111,10 @@ export class WorkbookConditionalFormat {
                     format: item.format, result: item.result, action: item.action
                 };
             }));
-            this.parent.notify(applyCF, <ApplyCFArgs>{ cfModel: args.oldCFModel, isAction: true });
-            if (args.sheetIdx !== this.parent.activeSheetIndex) {
+            if (!args.modelUpdateOnly) {
+                this.parent.notify(applyCF, <ApplyCFArgs>{ cfModel: args.oldCFModel, isAction: true });
+            }
+            if (!args.modelUpdateOnly && args.sheetIdx !== this.parent.activeSheetIndex) {
                 this.parent.notify(goto, { address: sheet.name + '!' + args.range });
             }
             return;
@@ -202,7 +208,7 @@ export class WorkbookConditionalFormat {
                     cfRange.splice(j, 1);
                     j--;
                 }
-                if (args.sheetIdx === this.parent.activeSheetIndex) {
+                if (!args.modelUpdateOnly && args.sheetIdx === this.parent.activeSheetIndex) {
                     this.parent.notify(clearCF, { indexes: [...idx] });
                 }
             }
@@ -223,21 +229,23 @@ export class WorkbookConditionalFormat {
                     cf.range = range;
                     if (cf.result) {
                         delete cf.result;
-                        this.parent.notify(applyCF, <ApplyCFArgs>{ cfModel: [cf], isAction: true });
+                        if (!args.modelUpdateOnly) {
+                            this.parent.notify(applyCF, <ApplyCFArgs>{ cfModel: [cf], isAction: true });
+                        }
                     }
                     args.updatedCFModel.push(cf);
                     updatedCFModel.push(cf);
                 }
             }
         }
-        if (args.sheetIdx !== this.parent.activeSheetIndex) {
+        if (!args.modelUpdateOnly && args.sheetIdx !== this.parent.activeSheetIndex) {
             if (args.isUndoRedo && !args.isFromUpdateAction) {
                 this.parent.notify(goto, { address: sheet.name + '!' + args.range });
             }
-        } else if (refreshCF.length) {
+        } else if (!args.modelUpdateOnly && refreshCF.length) {
             this.parent.notify(applyCF, <ApplyCFArgs>{ cfModel: refreshCF, isAction: true });
         }
-        if ((args.isAction || args.isClear) && args.oldCFModel.length) {
+        if (!args.modelUpdateOnly && (args.isAction || args.isClear) && args.oldCFModel.length) {
             const eventArgs: { [key: string]: object | string | number } = { cFormats: updatedCFModel, oldRange: oldRange,
                 previousConditionalFormats: args.oldCFModel, sheetIdx: args.sheetIdx, selectedRange: args.range };
             if (args.updatedCFModel.length) {

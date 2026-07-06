@@ -31,12 +31,47 @@ import { PdfFontStyle, Rectangle, PdfColor } from '@syncfusion/ej2-pdf';
  * ```
  */
 export class TextLine {
+    /**
+     * Internal: extracted full line text.
+     *
+     * @private
+     */
     _text: string;
+    /**
+     * Internal: collection of words in this line.
+     *
+     * @private
+     */
     _wordCollection: TextWord[] = [];
+    /**
+     * Internal: font name used for this line.
+     *
+     * @private
+     */
     _fontName: string;
+    /**
+     * Internal: font size used for this line.
+     *
+     * @private
+     */
     _fontSize: number;
+    /**
+     * Internal: font style used for this line.
+     *
+     * @private
+     */
     _fontStyle: PdfFontStyle;
+    /**
+     * Internal: bounds of the text line.
+     *
+     * @private
+     */
     _bounds: Rectangle;
+    /**
+     * Internal: page index where this line was found.
+     *
+     * @private
+     */
     _pageIndex: number;
     /**
      * Gets the single line of extracted text from the PDF page.
@@ -245,12 +280,47 @@ export class TextLine {
  * ```
  */
 export class TextWord {
+    /**
+     * extracted word text.
+     *
+     * @private
+     */
     _text: string;
+    /**
+     * bounds of the word.
+     *
+     * @private
+     */
     _bounds: Rectangle;
+    /**
+     * glyphs composing the word.
+     *
+     * @private
+     */
     _glyphs: TextGlyph[] = [];
+    /**
+     * font name for the word.
+     *
+     * @private
+     */
     _fontName: string;
+    /**
+     * font size for the word.
+     *
+     * @private
+     */
     _fontSize: number;
+    /**
+     * font style for the word.
+     *
+     * @private
+     */
     _fontStyle: PdfFontStyle;
+    /**
+     * original words.
+     *
+     * @private
+     */
     _words: string;
     /**
      * Gets the single word of extracted text from the PDF page.
@@ -451,17 +521,77 @@ export class TextWord {
  * ```
  */
 export class TextGlyph {
+    /**
+     *  character text for the glyph.
+     *
+     * @private
+     */
     _text: string;
+    /**
+     * original glyph width value.
+     *
+     * @private
+     */
     _width: number;
+    /**
+     * font name for glyph.
+     *
+     * @private
+     */
     _fontName: string;
+    /**
+     * indicates whether glyph came from hex string.
+     *
+     * @private
+     */
     _isHex: boolean = false;
+    /**
+     * character spacing applied.
+     *
+     * @private
+     */
     _charSpacing: number;
+    /**
+     * word spacing applied.
+     *
+     * @private
+     */
     _wordSpacing: number;
+    /**
+     * font size for the glyph.
+     *
+     * @private
+     */
     _fontSize: number;
+    /**
+     * replacement marker used by redaction logic.
+     *
+     * @private
+     */
     _isReplace: boolean = false;
+    /**
+     * font style for the glyph.
+     *
+     * @private
+     */
     _fontStyle: PdfFontStyle;
+    /**
+     * bounding rectangle for the glyph.
+     *
+     * @private
+     */
     _bounds: Rectangle;
+    /**
+     * glyph color.
+     *
+     * @private
+     */
     _color: PdfColor;
+    /**
+     * indicates whether glyph is rotated.
+     *
+     * @private
+     */
     _isRotated: boolean;
     /**
      * Gets the single character of extracted text from the PDF page.

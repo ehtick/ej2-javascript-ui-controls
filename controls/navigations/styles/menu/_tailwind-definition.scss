@@ -1,6 +1,6 @@
-@use 'ej2-base/styles/definition/tailwind' as *;
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 @use '../context-menu/tailwind-definition' as *;
-@forward 'ej2-base/styles/definition/tailwind';
+
 @forward '../context-menu/tailwind-definition';
 $menu-bigger-caret-font-size: $cmenu-bigger-caret-font-size !default;
 $menu-bigger-caret-li-padding: 32px !default;

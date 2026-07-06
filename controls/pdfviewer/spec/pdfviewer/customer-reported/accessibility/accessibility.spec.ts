@@ -25,11 +25,10 @@ describe('PDF_Viewer_accessbility', () => {
         });
 
         // Open organizer and thumbnails immediately after document load so tests can run synchronously
-        pdfviewer_accessbility.documentLoad = () => {
+        pdfviewer_accessbility.extractTextCompleted = () => {
             // Ensures Organize Pages DOM and Thumbnail DOM are present before tests
             pdfviewer_accessbility.isPageOrganizerOpen = true;
             pdfviewer_accessbility.isThumbnailViewOpen = true;
-            pdfviewer_accessbility.documentLoad = null;
             done();
         };
 

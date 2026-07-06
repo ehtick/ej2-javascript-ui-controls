@@ -116,6 +116,7 @@ export class SpreadsheetImage {
         const sheet: SheetModel = isUndefined(sheetIndex) && !args.isUndoRedo ? this.parent.getActiveSheet() :
             this.parent.sheets[sheetIndex as number];
         const panel: HTMLElement = this.parent.getMainContent() || this.parent.element;
+        const isSuspended: boolean = this.parent.paintSuspendCount > 0;
         if (!sheet || panel.querySelector(`#${id}`) ||
             ((sheet.frozenRows || sheet.frozenColumns) && this.parent.element.querySelector(`#${id}`))) {
             return;
@@ -128,7 +129,7 @@ export class SpreadsheetImage {
         }
         let eventArgs: BeforeImageData = { requestType: 'beforeInsertImage', range: sheet.name + '!' + range, imageData: args.options.src,
             sheetIndex: sheetIndex };
-        if (args.isPublic) {
+        if (args.isPublic && !isSuspended) {
             this.parent.notify('actionBegin', { eventArgs: eventArgs, action: 'beforeInsertImage' });
         }
         if (eventArgs.cancel) { return; }
@@ -216,7 +217,7 @@ export class SpreadsheetImage {
                 break;
             }
         }
-        if (!args.isUndoRedo && args.isPublic) {
+        if (!args.isUndoRedo && args.isPublic && !isSuspended) {
             eventArgs = { requestType: 'insertImage', range: sheet.name + '!' + range, imageHeight: args.options.height ?
                 args.options.height : 300, imageWidth: args.options.width ? args.options.width : 400, imageData: args.options.src, id: id,
             sheetIndex: sheetIndex };
@@ -309,12 +310,12 @@ export class SpreadsheetImage {
     public deleteImage(
         args: {
             id: string, range?: string, preventEventTrigger?: boolean, sheet?: SheetModel,
-            rowIdx?: number, colIdx?: number, isUndoRedo?: boolean, clearAction?: boolean
+            rowIdx?: number, colIdx?: number, isUndoRedo?: boolean, clearAction?: boolean, isClearObj?: boolean
         }): void {
         let sheet: SheetModel = args.sheet || this.parent.getActiveSheet();
         const pictureElements: HTMLElement = document.getElementById(args.id);
         let rowIdx: number = args.rowIdx; let colIdx: number = args.colIdx;
-        let address: string;
+        let address: string; const isSuspended: boolean = this.parent.paintSuspendCount > 0;
         if (pictureElements) {
             if (args.rowIdx === undefined && args.colIdx === undefined) {
                 let imgTop: { clientY: number, isImage?: boolean, target?: Element };
@@ -336,14 +337,16 @@ export class SpreadsheetImage {
                 rowIdx = imgTop.clientY; colIdx = imgleft.clientX;
             }
             address = sheet.name + '!' + getCellAddress(rowIdx, colIdx);
-            if (!args.preventEventTrigger) {
+            if (!args.preventEventTrigger && !isSuspended) {
                 const eventArgs: { address: string, cancel: boolean } = { address: address, cancel: false };
                 this.parent.notify(beginAction, { action: 'deleteImage', eventArgs: eventArgs });
                 if (eventArgs.cancel) {
                     return;
                 }
             }
-            document.getElementById(args.id).remove();
+            if (!isSuspended) {
+                document.getElementById(args.id).remove();
+            }
         } else if (!args.sheet) {
             const rangeVal: string = args.range ? args.range.lastIndexOf('!') > 0 ? args.range.substring(args.range.lastIndexOf('!') + 1)
                 : args.range : this.parent.getActiveSheet().selectedRange;
@@ -366,13 +369,18 @@ export class SpreadsheetImage {
             }
             setCell(rowIdx, colIdx, sheet, { image: prevCellImg }, true);
         }
-        if (!args.preventEventTrigger) {
+        if (!args.preventEventTrigger && !isSuspended) {
             this.parent.notify(
                 completeAction,
                 { action: 'deleteImage', eventArgs: { address: address, id: image.id, imageData: image.src, imageWidth: image.width,
                     imageHeight: image.height, imageTop: image.top, imageLeft: image.left, preservePos: image.preservePos, cancel: false },
                 preventAction: args.isUndoRedo, isClearAction: args.clearAction
                 });
+        } else if (!args.preventEventTrigger && isSuspended && !args.isClearObj) {
+            this.parent.pendingPaintRefresh = 'fullSheet';
+            this.parent.queuePaintAction('deleteImage_' + args.id, (): void => {
+                document.getElementById(args.id).remove();
+            });
         }
     }
 

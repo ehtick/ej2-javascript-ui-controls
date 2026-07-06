@@ -43,7 +43,7 @@ import {
     DiagramAnnotation,
     AnnotationStyle,
     ResolvedAnnotationStyle,
-    Bounds
+    AnnotationAlignmentConfig
 } from './visio-types';
 
 /**
@@ -122,7 +122,7 @@ const ACTIONS_SECTION: string = 'Actions';
  */
 export function convertVisioShapeToNode(node: any, context: ParsingContext, shapeGroup: VisioShape[]): any {
     // Compute EJ2 pivot by mapping Visio LocPin to top-origin pivot
-    let pivot: { x: number; y: number } = { x: 0.5, y: 0.5 };
+    let pivot: Point = { x: 0.5, y: 0.5 };
     const hasSize: boolean = node && node.width != null && node.height != null;
     const hasPivot: boolean = node && node.pivotX != null && node.pivotY != null;
 
@@ -178,8 +178,13 @@ export function convertVisioShapeToNode(node: any, context: ParsingContext, shap
         textBinding = VisioToSyncfusionTextBinder.bindVisioTextToSyncfusion(shapeTransform, textTransform);
     }
 
-    // Build group node object if the current node contains children
+    // Resolve alignment and offset for annotation rendering
+    const alignmentConfig: AnnotationAlignmentConfig = resolveAnnotationAlignmentAndOffset(node, textBinding);
+
+    // Determine if this is a group node (contains child shapes)
     const isGroup: boolean = Array.isArray(node.children) && node.children.length > 0;
+
+    // Build group-specific node object
     if (isGroup) {
         return {
             id: node.id,
@@ -188,31 +193,15 @@ export function convertVisioShapeToNode(node: any, context: ParsingContext, shap
             style: getNodeStyle(node, context, isGroup),
             children: node.children,
             parentId: node.parentId,
-            pivot: pivot,
+            pivot,
             constraints: setConstraints(node, context),
             shadow: undefined,
             rotateAngle: (360 - radiansToDegrees(node.rotateAngle)) % 360 || 0,
-            annotations: [
-                {
-                    content: node.annotation.content,
-                    width: inchToPx((node.annotation as VisioAnnotationInput).txtWidth ?
-                        (node.annotation as VisioAnnotationInput).txtWidth : node.width),
-                    height: inchToPx((node.annotation as VisioAnnotationInput).txtHeight ?
-                        (node.annotation as VisioAnnotationInput).txtHeight : node.height),
-                    visibility: node.annotation.visible,
-                    hyperlink: setHyperLink(node, annotationStyle),
-                    rotateAngle: setRotateAngle(node),
-                    constraints: setAnnotationConstraints(node.annotation),
-                    verticalAlignment: setVerticalAlignment(node),
-                    horizontalAlignment: setHorizontalAlignment(node),
-                    offset: (textBinding && textBinding.offset) || { x: 0.5, y: 0.5 },
-                    style: annotationStyle
-                }
-            ]
+            annotations: createAnnotationArray(node, alignmentConfig, annotationStyle)
         };
     }
 
-    // Build standard node object for non-group shapes
+    // Build standard non-group node object
     return {
         id: node.id,
         width: inchToPx(node.width),
@@ -227,29 +216,14 @@ export function convertVisioShapeToNode(node: any, context: ParsingContext, shap
         flip: setFlip(node),
         visible: setVisibility(node),
         tooltip: { content: node.tooltip || '' },
-        pivot: pivot,
+        pivot,
         rotateAngle: (360 - radiansToDegrees(node.rotateAngle)) % 360 || 0,
         children: node.children,
         parentId: node.parentId,
         padding: setPadding(isGroup),
         ports: diagramPorts,
         margin: (node as VisioShapeData).calculatedMargin ? (node as VisioShapeData).calculatedMargin : undefined,
-        annotations: [
-            {
-                content: node.annotation.content,
-                width: inchToPx((node.annotation as VisioAnnotationInput).txtWidth ?
-                    (node.annotation as VisioAnnotationInput).txtWidth : node.width),
-                height: inchToPx((node.annotation as VisioAnnotationInput).txtHeight ?
-                    (node.annotation as VisioAnnotationInput).txtHeight : node.height),
-                visibility: node.annotation.visible,
-                hyperlink: setHyperLink(node, annotationStyle),
-                rotateAngle: setRotateAngle(node),
-                constraints: setAnnotationConstraints(node.annotation),
-                horizontalAlignment: setHorizontalAlignment(node),
-                offset: (textBinding && textBinding.offset) || { x: 0.5, y: 0.5 },
-                style: annotationStyle
-            }
-        ]
+        annotations: createAnnotationArray(node, alignmentConfig, annotationStyle)
     };
 }
 
@@ -387,6 +361,387 @@ function setHorizontalAlignment(node: VisioNodeInput): string {
  */
 function setVerticalAlignment(node: VisioNodeInput): string {
     return node.annotation && node.annotation.verticalAlignment;
+}
+
+/**
+ * Resolves effective text alignment and offset for EJ2 annotation emission.
+ * Consolidates orientation-aware alignment logic to handle vertical text, explicit pins, and defaults.
+ * Eliminates code duplication between group and non-group node paths.
+ *
+ * @param {VisioNodeInput} node - The Visio node being converted
+ * @param {SyncfusionTextBinding | null} textBinding - Pre-computed text binding from VisioToSyncfusionTextBinder
+ * @returns {AnnotationAlignmentConfig} Resolved alignment values and offset for annotation rendering
+ * @private
+ */
+function resolveAnnotationAlignmentAndOffset(
+    node: VisioNodeInput,
+    textBinding: SyncfusionTextBinding | null
+): AnnotationAlignmentConfig {
+    // Extract base alignment from annotation
+    const baseVerticalAlign: string = setVerticalAlignment(node);
+    const baseHorizontalAlign: string = setHorizontalAlignment(node);
+    const isVerticalText: boolean = isVerticalTextAnnotation(node);
+
+    // Check if explicit text positioning should be preserved
+    const annotation: VisioAnnotationInput | undefined = node.annotation as VisioAnnotationInput | undefined;
+    let hasExplicitTextPosition: boolean = false;
+    if (annotation) {
+        const hasExplicitFlag: boolean = (annotation as { hasExplicitTextPosition?: boolean }).hasExplicitTextPosition === true;
+        hasExplicitTextPosition = hasExplicitFlag;
+    }
+
+    // Calculate node dimensions in pixels
+    const nodeWidthPx: number = inchToPx(node.width);
+    const nodeHeightPx: number = inchToPx(node.height);
+    let annotationWidthInches: number = node.width;
+    if (annotation && annotation.txtWidth) {
+        annotationWidthInches = annotation.txtWidth;
+    }
+    const annotationWidthPx: number = inchToPx(annotationWidthInches);
+
+    // Compute annotation offset using existing logic
+    const annotationOffset: Point = calculateAnnotationOffset(
+        textBinding,
+        baseVerticalAlign,
+        baseHorizontalAlign,
+        nodeHeightPx,
+        nodeHeightPx,
+        annotationWidthPx,
+        nodeWidthPx,
+        isVerticalText,
+        hasExplicitTextPosition
+    );
+
+    // Determine effective alignment based on text orientation
+    let effectiveVerticalAlign: string = baseVerticalAlign;
+    let effectiveHorizontalAlign: string = baseHorizontalAlign;
+
+    if (isVerticalText) {
+        // Vertical text: center both alignments; offset + rotation already position content
+        effectiveVerticalAlign = 'Center';
+        effectiveHorizontalAlign = 'Center';
+    } else {
+        if (hasExplicitTextPosition) {
+            // Non-vertical with explicit pins: derive vertical anchor from TxtPinY, center horizontal
+            effectiveHorizontalAlign = 'Center';
+            const nodeHeightInches: number = typeof node.height === 'number' ? node.height : 0;
+            const derived: 'Top' | 'Center' | 'Bottom' = deriveVerticalAlignForExplicitPins(
+                annotation as VisioAnnotationInput,
+                nodeHeightInches
+            );
+            effectiveVerticalAlign = derived;
+        }
+        // Otherwise, preserve computed alignments as-is
+    }
+
+    return {
+        verticalAlign: effectiveVerticalAlign,
+        horizontalAlign: effectiveHorizontalAlign,
+        annotationOffset
+    };
+}
+
+/**
+ * Creates annotation array for Syncfusion diagram node.
+ * Consolidates annotation properties including content, styling, alignment, and offset.
+ * Shared by both group and non-group node paths.
+ *
+ * @param {VisioNodeInput} node - The Visio node being converted
+ * @param {AnnotationAlignmentConfig} alignmentConfig - Resolved alignment and offset configuration
+ * @param {ResolvedAnnotationStyle} annotationStyle - Resolved style for annotation rendering
+ * @returns {any[]} Array containing single annotation object with all properties
+ * @private
+ */
+function createAnnotationArray(
+    node: VisioNodeInput,
+    alignmentConfig: AnnotationAlignmentConfig,
+    annotationStyle: ResolvedAnnotationStyle
+): any[] {
+    // Calculate annotation width in pixels from Visio inches
+    let annotationInputWidthInches: number = node.width;
+    const nodeAnnotation: VisioAnnotationInput = node.annotation as VisioAnnotationInput;
+    if (nodeAnnotation.txtWidth) {
+        annotationInputWidthInches = nodeAnnotation.txtWidth;
+    }
+    const annotationWidthPx: number = inchToPx(annotationInputWidthInches);
+
+    const annotation: any = {
+        content: node.annotation.content,
+        width: annotationWidthPx,
+        visibility: node.annotation.visible,
+        hyperlink: setHyperLink(node, annotationStyle),
+        rotateAngle: setRotateAngle(node),
+        constraints: setAnnotationConstraints(node.annotation),
+        verticalAlignment: alignmentConfig.verticalAlign,
+        horizontalAlignment: alignmentConfig.horizontalAlign,
+        offset: alignmentConfig.annotationOffset,
+        style: annotationStyle
+    };
+
+    return [annotation];
+}
+
+/**
+ * Calculates the final annotation offset after applying alignment rules.
+ * If explicit text pins exist, preserves binder offsets. For vertical text (TextDirection=1),
+ * swaps axes so Visio VerticalAlign maps to X and HorzAlign maps to Y.
+ *
+ * @param {SyncfusionTextBinding|null} textBinding - Binder-computed base offset (null => default center).
+ * @param {'Top'|'Center'|'Bottom'} verticalAlignment - From Visio VerticalAlign.
+ * @param {'Left'|'Center'|'Right'} horizontalAlignment - From Visio HorzAlign.
+ * @param {number} annotationHeight - Annotation height (pixels). Not used; kept for signature stability.
+ * @param {number} nodeHeight - Node height (pixels). Not used; kept for signature stability.
+ * @param {number} annotationWidth - Annotation width (pixels). Not used; kept for signature stability.
+ * @param {number} nodeWidth - Node width (pixels). Not used; kept for signature stability.
+ * @param {boolean} isVerticalText - True if TextDirection=1 (rotated/vertical text).
+ * @param {boolean} preserveExplicit - True when page-level text pins/dimensions define explicit position.
+ * @returns {{x:number, y:number}} Final normalized offset in [0..1]×[0..1].
+ */
+function calculateAnnotationOffset(
+    textBinding: SyncfusionTextBinding | null,
+    verticalAlignment: string,
+    horizontalAlignment: string,
+    annotationHeight: number,
+    nodeHeight: number,
+    annotationWidth: number,
+    nodeWidth: number,
+    isVerticalText: boolean,
+    preserveExplicit: boolean
+): { x: number; y: number } {
+    // Get base offset from binder or default to center
+    let baseOffsetX: number = 0.5;
+    let baseOffsetY: number = 0.5;
+    if (textBinding !== null && textBinding.offset) {
+        baseOffsetX = textBinding.offset.x;
+        baseOffsetY = textBinding.offset.y;
+    }
+
+    // Clamp helper to ensure normalized range
+    function clamp01(value: number): number {
+        if (value < 0) { return 0; }
+        if (value > 1) { return 1; }
+        return value;
+    }
+
+    // Preserve explicit page-level text pins: do not snap to alignment edges
+    if (preserveExplicit) {
+        return { x: clamp01(baseOffsetX), y: clamp01(baseOffsetY) };
+    }
+
+    // Start with base offsets
+    let finalX: number = baseOffsetX;
+    let finalY: number = baseOffsetY;
+
+    // Orientation-aware alignment snapping
+    if (isVerticalText) {
+        // For vertical text, Visio VerticalAlign controls the X edge.
+        if (typeof verticalAlignment === 'string') {
+            if (verticalAlignment === 'Top') {
+                finalX = 1;
+            } else if (verticalAlignment === 'Bottom') {
+                finalX = 0;
+            } else {
+                // Center: keep binder X
+            }
+        }
+
+        // For vertical text, Visio HorzAlign controls the Y edge.
+        if (typeof horizontalAlignment === 'string') {
+            if (horizontalAlignment === 'Left') {
+                finalY = 0;
+            } else if (horizontalAlignment === 'Right') {
+                finalY = 1;
+            } else {
+                // Center: keep binder Y
+            }
+        }
+    } else {
+        // For horizontal text, HorzAlign controls X
+        if (typeof horizontalAlignment === 'string') {
+            if (horizontalAlignment === 'Left') {
+                finalX = 0;
+            } else if (horizontalAlignment === 'Right') {
+                finalX = 1;
+            } else {
+                // Center: keep binder X
+            }
+        }
+
+        // For horizontal text, VerticalAlign controls Y
+        if (typeof verticalAlignment === 'string') {
+            if (verticalAlignment === 'Top') {
+                finalY = 0;
+            } else if (verticalAlignment === 'Bottom') {
+                finalY = 1;
+            } else {
+                // Center: keep binder Y
+            }
+        }
+    }
+
+    // Clamp and return
+    finalX = clamp01(finalX);
+    finalY = clamp01(finalY);
+    return { x: finalX, y: finalY };
+}
+
+/**
+ * Determines if a node's annotation should be treated as vertical text.
+ * Considers both TextDirection=1 (segmentAngle flag) and TxtAngle approximates 90 or 270 degrees.
+ * @param {VisioNodeInput} node - The node whose annotation is being emitted.
+ * @returns {boolean} True if text is vertical; otherwise false.
+ */
+function isVerticalTextAnnotation(node: VisioNodeInput): boolean {
+    // Guard: missing annotation cannot be vertical
+    if (!node || !node.annotation) {
+        return false;
+    }
+
+    // Use existing TextDirection mapping (segmentAngle flag)
+    if (node.annotation.segmentAngle === true) {
+        return true;
+    }
+
+    // Consider raw rotate angle (from TxtAngle in degrees) as a vertical detector
+    // Treat angles close to 90 or 270 (within a small tolerance) as vertical.
+    let rawAngle: number = 0;
+    if (typeof node.annotation.rotateAngle === 'number') {
+        rawAngle = node.annotation.rotateAngle;
+    }
+
+    // Normalize to [0..360)
+    let normalized: number = rawAngle % 360;
+    if (normalized < 0) {
+        normalized = normalized + 360;
+    }
+
+    // Apply tolerance for numerical stability
+    const tolerance: number = 0.5;
+    const nearNinety: boolean = Math.abs(normalized - 90) <= tolerance;
+    const nearTwoSeventy: boolean = Math.abs(normalized - 270) <= tolerance;
+
+    if (nearNinety || nearTwoSeventy) {
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Derives EJ2 vertical alignment for shapes that have explicit page-level text pins
+ * and are NOT vertical text. Uses Visio's local Y (0=bottom, 1=top) to choose the
+ * opposing EJ2 anchor so the binder's offset lands the block exactly like Visio.
+ *
+ * Rules:
+ * - TxtPinY near top (>= ~0.67 of Height)  -> EJ2 'Bottom'
+ * - TxtPinY near bottom (<= ~0.33 of Height) -> EJ2 'Top'
+ * - Otherwise -> 'Center'
+ *
+ * If TxtPinY is unavailable, falls back to the emitted offsetY (normalized 0..1).
+ *
+ * @param {VisioAnnotationInput} annotation - Parsed annotation object (with txtPinY if present).
+ * @param {number} nodeHeightInches - Node height in inches (Visio units).
+ * @returns {'Top' | 'Center' | 'Bottom'} Vertical alignment to emit into EJ2.
+ */
+function deriveVerticalAlignForExplicitPins(
+    annotation: VisioAnnotationInput,
+    nodeHeightInches: number
+): 'Top' | 'Center' | 'Bottom' {
+    // Read TxtPinY (inches from bottom)
+    let hasTxtPinY: boolean = false;
+    let txtPinYInches: number = 0;
+    if (
+        annotation &&
+        typeof (annotation as { txtPinY?: number }).txtPinY === 'number' &&
+        isFinite(((annotation as { txtPinY?: number }).txtPinY as number))
+    ) {
+        txtPinYInches = ((annotation as { txtPinY?: number }).txtPinY as number);
+        hasTxtPinY = true;
+    }
+
+    // Read TxtHeight (used for full-height detection)
+    let hasTxtHeight: boolean = false;
+    let txtHeightInches: number = 0;
+    if (
+        annotation &&
+        typeof (annotation as { txtHeight?: number }).txtHeight === 'number' &&
+        isFinite(((annotation as { txtHeight?: number }).txtHeight as number))
+    ) {
+        txtHeightInches = ((annotation as { txtHeight?: number }).txtHeight as number);
+        hasTxtHeight = true;
+    }
+
+    // Read TxtLocPinY (needed to detect origin pin case)
+    let hasTxtLocPinY: boolean = false;
+    let txtLocPinYInches: number = 0;
+    if (
+        annotation &&
+        typeof (annotation as { txtLocPinY?: number }).txtLocPinY === 'number' &&
+        isFinite(((annotation as { txtLocPinY?: number }).txtLocPinY as number))
+    ) {
+        txtLocPinYInches = ((annotation as { txtLocPinY?: number }).txtLocPinY as number);
+        hasTxtLocPinY = true;
+    }
+
+    // ---------------------------------------------------------------------
+    // Implicit-center fallback
+    // Visio renders centered when:
+    //   - VerticalAlign is not authored,
+    //   - the text block spans the full node height,
+    //   - TxtPinY == 0 and TxtLocPinY == 0.
+    //
+    // This scenario appears visually centered in Visio and needs to map
+    // to EJ2 'Center' to match output.
+    // ---------------------------------------------------------------------
+    const hasNodeHeight: boolean = typeof nodeHeightInches === 'number' &&
+        isFinite(nodeHeightInches) && nodeHeightInches > 0;
+
+    const isFullHeightBlock: boolean = hasTxtHeight &&
+        hasNodeHeight &&
+        Math.abs(txtHeightInches - nodeHeightInches) < 1e-6;
+
+    const pinsAtOrigin: boolean = hasTxtPinY &&
+        hasTxtLocPinY &&
+        txtPinYInches === 0 &&
+        txtLocPinYInches === 0;
+
+    if (isFullHeightBlock && pinsAtOrigin) {
+        return 'Center';
+    }
+
+    // Normalize TxtPinY to [0..1] (0 = bottom, 1 = top)
+    let normalizedFromBottom: number = 0.5;
+    if (hasTxtPinY && nodeHeightInches > 0 && isFinite(nodeHeightInches)) {
+        normalizedFromBottom = txtPinYInches / nodeHeightInches;
+        if (normalizedFromBottom < 0) { normalizedFromBottom = 0; }
+        if (normalizedFromBottom > 1) { normalizedFromBottom = 1; }
+    } else {
+        // Fallback: derive from offsetY if TxtPinY is not present
+        if (
+            annotation &&
+            (annotation as { offset?: { x: number; y: number } }).offset &&
+            typeof ((annotation as { offset?: { x: number; y: number } }).offset as { x: number; y: number }).y === 'number'
+        ) {
+            const topOriginOffsetY: number = ((annotation as { offset?: { x: number; y: number } })
+                .offset as { x: number; y: number }).y;
+
+            let flipped: number = 1 - topOriginOffsetY;
+            if (flipped < 0) { flipped = 0; }
+            if (flipped > 1) { flipped = 1; }
+            normalizedFromBottom = flipped;
+        }
+    }
+
+    // Map normalized pin position to EJ2 vertical alignment
+    const nearTopThreshold: number = 0.67;     // closer to top
+    const nearBottomThreshold: number = 0.33;  // closer to bottom
+
+    if (normalizedFromBottom >= nearTopThreshold) {
+        return 'Bottom';
+    }
+    if (normalizedFromBottom <= nearBottomThreshold) {
+        return 'Top';
+    }
+    return 'Center';
 }
 
 /**
@@ -2247,56 +2602,330 @@ export function tryDetermineSemanticGroupShape(
 /**
  * Collects geometry sections from a Visio shape node, keyed by IX.
  * If IX is missing, generates a synthetic key to ensure uniqueness.
- *
  * @param {VisioShapeNode} node - Shape node containing Section elements
  * @returns {Map<string, VisioSection>} Map of section keys to geometry sections
  */
 function getGeometrySectionsByIX(node: VisioShapeNode): Map<string, VisioSection> {
-    const out: Map<string, VisioSection> = new Map<string, VisioSection>();
+    const geometrySectionsByIX: Map<string, VisioSection> = new Map<string, VisioSection>();
     if (!node) {
-        return out;
+        return geometrySectionsByIX;
     }
-    const secs: VisioSection[] = ensureArray((node as any).Section);
-    let seen: number = 0;
-    for (let i: number = 0; i < secs.length; i++) {
-        // eslint-disable-next-line security/detect-object-injection
-        const s: VisioSection = secs[i];
-        if (s && s.$ && s.$.N === 'Geometry') {
-            // `IX` is not defined on VisioSection.$ in your typings; use 'any' safely
-            const ix: string = ((s as any).$ && (s as any).$.IX != null) ? String((s as any).$.IX) : ('g' + (seen++));
-            out.set(ix, s);
+    const sections: VisioSection[] = ensureArray(node.Section as VisioSection[]);
+    let syntheticKeyCounter: number = 0;
+    for (let sectionIndex: number = 0; sectionIndex < sections.length; sectionIndex += 1) {
+        const section: VisioSection = sections[parseInt(sectionIndex.toString(), 10)];
+        if (!section || !section.$ || section.$.N !== 'Geometry') {
+            continue;
         }
+        let sectionKey: string = '';
+        const sectionAttributes: Record<string, unknown> = section.$ as Record<string, unknown>;
+        const ixValue: unknown = sectionAttributes.IX;
+        if (ixValue !== null && ixValue !== undefined) {
+            sectionKey = String(ixValue);
+        } else {
+            sectionKey = 'g' + String(syntheticKeyCounter);
+            syntheticKeyCounter += 1;
+        }
+        geometrySectionsByIX.set(sectionKey, section);
     }
-    return out;
+    return geometrySectionsByIX;
 }
 
 /**
- * Merges geometry sections from master and instance nodes.
- * Keeps master sections intact and supplements with instance-only sections,
- * without overriding master rows with page rows.
- *
- * @param {VisioShapeNode} masterNode - Master shape node
- * @param {VisioShapeNode} instNode - Instance shape node
- * @returns {VisioSection[]} Combined geometry sections with master-preferred merge
+ * Merges Geometry sections by IX with Visio precedence (instance > master).
+ * Instance values take baseline; master provides defaults for missing values.
+ * When IX matches, cells merge with numeric-only override strategy.
+ * @param {VisioShapeNode} masterNode - Master shape node with default geometry
+ * @param {VisioShapeNode} instNode - Instance shape node with overrides
+ * @returns {VisioSection[]} Deep-merged Geometry sections
  */
-export function mergeGeometrySectionsByIndex(masterNode: VisioShapeNode, instNode: VisioShapeNode): VisioSection[] {
-    const merged: VisioSection[] = [];
-    const mMap: Map<string, VisioSection> = getGeometrySectionsByIX(masterNode);
-    const iMap: Map<string, VisioSection> = getGeometrySectionsByIX(instNode);
+export function mergeGeometrySectionsByIndex(
+    masterNode: VisioShapeNode,
+    instNode: VisioShapeNode
+): VisioSection[] {
+    const masterSectionMap: Map<string, VisioSection> = getGeometrySectionsByIX(masterNode);
+    const instanceSectionMap: Map<string, VisioSection> = getGeometrySectionsByIX(instNode);
 
-    // Master wins entirely where both have the section
-    mMap.forEach(function (mSec: VisioSection, key: string): void {
-        merged.push(mSec);
+    const resultSections: VisioSection[] = [];
+
+    if (!instanceSectionMap || instanceSectionMap.size === 0) {
+        masterSectionMap.forEach(function (section: VisioSection): void {
+            resultSections.push(section);
+        });
+        return resultSections;
+    }
+
+    if (!masterSectionMap || masterSectionMap.size === 0) {
+        instanceSectionMap.forEach(function (section: VisioSection): void {
+            resultSections.push(section);
+        });
+        return resultSections;
+    }
+
+    const processedSectionKeys: Set<string> = new Set<string>();
+
+    instanceSectionMap.forEach(function (instanceSection: VisioSection, sectionKey: string): void {
+        const masterSection: VisioSection | undefined = masterSectionMap.get(sectionKey);
+        if (masterSection) {
+            resultSections.push(mergeOneSectionDeep(masterSection, instanceSection));
+        } else {
+            resultSections.push(instanceSection);
+        }
+        processedSectionKeys.add(sectionKey);
     });
 
-    // Add page-only sections (supplement)
-    iMap.forEach(function (iSec: VisioSection, key: string): void {
-        if (!mMap.has(key)) {
-            merged.push(iSec);
+    masterSectionMap.forEach(function (masterSection: VisioSection, sectionKey: string): void {
+        if (!processedSectionKeys.has(sectionKey)) {
+            resultSections.push(masterSection);
         }
     });
 
-    return merged;
+    return resultSections;
+
+    /**
+     * Merges one Geometry section from master and instance definitions.
+     * Consolidates section-level and row-level cells with numeric precedence.
+     * @param {VisioSection} masterSection - Master section with default cells and rows
+     * @param {VisioSection} instanceSection - Instance section with overrides and additions
+     * @returns {VisioSection} Merged section preserving master metadata
+     */
+    function mergeOneSectionDeep(masterSection: VisioSection, instanceSection: VisioSection): VisioSection {
+        const masterSectionCells: VisioCell[] = masterSection && masterSection.Cell ? ensureArray(masterSection.Cell) : [];
+        const instanceSectionCells: VisioCell[] = instanceSection && instanceSection.Cell ? ensureArray(instanceSection.Cell) : [];
+        const mergedSectionCells: VisioCell[] = mergeCellsNumericOnly(masterSectionCells, instanceSectionCells);
+
+        const masterRowArray: VisioRow[] = masterSection && masterSection.Row ? ensureArray(masterSection.Row) : [];
+        const instanceRowArray: VisioRow[] = instanceSection && instanceSection.Row ? ensureArray(instanceSection.Row) : [];
+
+        const instanceRowsByIX: Map<string, VisioRow> = new Map<string, VisioRow>();
+        const instanceRowsByPosition: Map<string, VisioRow> = new Map<string, VisioRow>();
+        let instancePositionCounter: number = 0;
+
+        for (let instanceRowIndex: number = 0; instanceRowIndex < instanceRowArray.length; instanceRowIndex += 1) {
+            const instanceRow: VisioRow = instanceRowArray[parseInt(instanceRowIndex.toString(), 10)];
+            let rowIndexString: string = '';
+            if (instanceRow && instanceRow.$) {
+                const rowAttributes: Record<string, unknown> = instanceRow.$ as Record<string, unknown>;
+                const ixAttribute: unknown = rowAttributes.IX;
+                if (ixAttribute !== undefined && ixAttribute !== null) {
+                    rowIndexString = String(ixAttribute);
+                }
+            }
+            if (rowIndexString.length > 0) {
+                instanceRowsByIX.set(rowIndexString, instanceRow);
+            } else {
+                const positionKey: string = 'pos_' + String(instancePositionCounter);
+                instanceRowsByPosition.set(positionKey, instanceRow);
+                instancePositionCounter += 1;
+            }
+        }
+
+        const mergedRowArray: VisioRow[] = [];
+        const masterKeySet: Set<string> = new Set<string>();
+        let masterPositionCounter: number = 0;
+
+        for (let masterRowIndex: number = 0; masterRowIndex < masterRowArray.length; masterRowIndex += 1) {
+            const masterRow: VisioRow = masterRowArray[parseInt(masterRowIndex.toString(), 10)];
+
+            let masterRowIndexString: string = '';
+            if (masterRow && masterRow.$) {
+                const masterRowAttributes: Record<string, unknown> = masterRow.$ as Record<string, unknown>;
+                const masterIxAttribute: unknown = masterRowAttributes.IX;
+                if (masterIxAttribute !== undefined && masterIxAttribute !== null) {
+                    masterRowIndexString = String(masterIxAttribute);
+                }
+            }
+            const masterPositionKey: string = resolveRowPositionKey(masterRow, masterPositionCounter);
+
+            let mergedRow: VisioRow;
+            if (masterRowIndexString.length > 0 && instanceRowsByIX.has(masterRowIndexString)) {
+                const matchingInstanceRow: VisioRow | undefined = instanceRowsByIX.get(masterRowIndexString);
+                mergedRow = mergeRowCellsNumericOnly(masterRow, matchingInstanceRow);
+            } else {
+                const fallbackInstanceRow: VisioRow | undefined = instanceRowsByPosition.get(masterPositionKey);
+                mergedRow = mergeRowCellsNumericOnly(masterRow, fallbackInstanceRow);
+            }
+
+            mergedRowArray.push(mergedRow);
+            masterKeySet.add(masterRowIndexString.length > 0 ? masterRowIndexString : masterPositionKey);
+            masterPositionCounter += 1;
+        }
+
+        instanceRowsByIX.forEach(function (instanceRow: VisioRow, instanceRowIX: string): void {
+            if (!masterKeySet.has(instanceRowIX)) {
+                mergedRowArray.push(sanitizeRowShallow(instanceRow));
+            }
+        });
+
+        instanceRowsByPosition.forEach(function (instanceRow: VisioRow, positionKey: string): void {
+            if (!masterKeySet.has(positionKey)) {
+                mergedRowArray.push(sanitizeRowShallow(instanceRow));
+            }
+        });
+
+        const mergedSection: VisioSection = { $: masterSection.$ } as VisioSection;
+        if (mergedSectionCells.length > 0) {
+            (mergedSection as unknown as { Cell: VisioCell[] }).Cell = mergedSectionCells;
+        }
+        if (mergedRowArray.length > 0) {
+            (mergedSection as unknown as { Row: VisioRow[] }).Row = mergedRowArray;
+        }
+        return mergedSection;
+
+        /**
+         * Resolves position key using IX if present, otherwise uses position index.
+         * @param {VisioRow} row - Row to evaluate
+         * @param {number} position - Fallback position index
+         * @returns {string} Row key (IX or pos_N)
+         */
+        function resolveRowPositionKey(row: VisioRow, position: number): string {
+            if (row && row.$) {
+                const rowAttributes: Record<string, unknown> = row.$ as Record<string, unknown>;
+                const ixAttribute: unknown = rowAttributes.IX;
+                if (ixAttribute !== undefined && ixAttribute !== null) {
+                    return String(ixAttribute);
+                }
+            }
+            return 'pos_' + String(position);
+        }
+
+        /**
+         * Merges row cells by name with numeric-only override from instance.
+         * @param {VisioRow} masterRow - Master row providing defaults
+         * @param {VisioRow|undefined} instanceRow - Instance row providing overrides
+         * @returns {VisioRow} Merged row with combined cells
+         */
+        function mergeRowCellsNumericOnly(masterRow: VisioRow, instanceRow: VisioRow | undefined): VisioRow {
+            const masterRowCells: VisioCell[] = masterRow && masterRow.Cell ? ensureArray(masterRow.Cell) : [];
+            const instanceRowCells: VisioCell[] = instanceRow && instanceRow.Cell ? ensureArray(instanceRow.Cell) : [];
+            const mergedCells: VisioCell[] = mergeCellsNumericOnly(masterRowCells, instanceRowCells);
+
+            const resultRow: VisioRow = { $: masterRow.$ } as VisioRow;
+            if (mergedCells.length > 0) {
+                (resultRow as unknown as { Cell: VisioCell[] }).Cell = mergedCells;
+            }
+            return resultRow;
+        }
+
+        /**
+         * Creates shallow copy of row with only N and V cell attributes.
+         * @param {VisioRow} sourceRow - Row to sanitize
+         * @returns {VisioRow} Sanitized row with minimal cell data
+         */
+        function sanitizeRowShallow(sourceRow: VisioRow): VisioRow {
+            const sanitizedRow: VisioRow = { $: sourceRow.$ } as VisioRow;
+            const sourceRowCells: VisioCell[] = sourceRow && sourceRow.Cell ? ensureArray(sourceRow.Cell) : [];
+            const sanitizedCells: VisioCell[] = [];
+            for (let cellIndex: number = 0; cellIndex < sourceRowCells.length; cellIndex += 1) {
+                const currentCell: VisioCell = sourceRowCells[parseInt(cellIndex.toString(), 10)];
+                sanitizedCells.push(cloneNameV(currentCell));
+            }
+            if (sanitizedCells.length > 0) {
+                (sanitizedRow as unknown as { Cell: VisioCell[] }).Cell = sanitizedCells;
+            }
+            return sanitizedRow;
+        }
+    }
+
+    /**
+     * Maps cells by their N attribute.
+     * @param {VisioCell[]} cells - Cell array to map
+     * @returns {Map<string, VisioCell>} Cells keyed by name
+     */
+    function mapCellsByName(cells: VisioCell[]): Map<string, VisioCell> {
+        const cellsByName: Map<string, VisioCell> = new Map<string, VisioCell>();
+        for (let cellIndex: number = 0; cellIndex < cells.length; cellIndex += 1) {
+            const cell: VisioCell = cells[parseInt(cellIndex.toString(), 10)];
+            if (cell && cell.$ && cell.$.N) {
+                cellsByName.set(String(cell.$.N), cell);
+            }
+        }
+        return cellsByName;
+    }
+
+    /**
+     * Checks if cell V attribute is numeric.
+     * @param {VisioCell} cell - Cell to evaluate
+     * @returns {boolean} True if V is numeric
+     */
+    function hasNumericV(cell: VisioCell): boolean {
+        if (!cell || !cell.$) {
+            return false;
+        }
+        const cellAttributes: Record<string, unknown> = cell.$ as Record<string, unknown>;
+        const vAttribute: unknown = cellAttributes.V;
+        if (vAttribute === undefined || vAttribute === null) {
+            return false;
+        }
+        const numericValue: number = parseFloat(String(vAttribute));
+        if (!isFinite(numericValue)) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Creates shallow clone of cell with only N and V attributes.
+     * @param {VisioCell} sourceCell - Cell to clone
+     * @returns {VisioCell} Cloned cell with N and V
+     */
+    function cloneNameV(sourceCell: VisioCell): VisioCell {
+        let cellName: string = '';
+        if (sourceCell && sourceCell.$ && sourceCell.$.N) {
+            cellName = String(sourceCell.$.N);
+        }
+
+        let cellValue: string | number | undefined;
+        if (sourceCell && sourceCell.$) {
+            const sourceAttributes: Record<string, unknown> = sourceCell.$ as Record<string, unknown>;
+            const vAttribute: unknown = sourceAttributes.V;
+            if (vAttribute !== undefined && vAttribute !== null) {
+                if (typeof vAttribute === 'number') {
+                    cellValue = vAttribute;
+                } else {
+                    cellValue = String(vAttribute);
+                }
+            }
+        }
+
+        interface CellNameValue {
+            N: string;
+            V?: string | number;
+        }
+
+        const clonedCell: { $: CellNameValue } = { $: { N: cellName } };
+        if (cellValue !== undefined && cellValue !== null) {
+            clonedCell.$.V = cellValue;
+        }
+        return clonedCell as unknown as VisioCell;
+    }
+
+    /**
+     * Merges cells by name with numeric-only instance override.
+     * @param {VisioCell[]} masterCells - Master cell array
+     * @param {VisioCell[]} instanceCells - Instance cell array
+     * @returns {VisioCell[]} Merged cell array
+     */
+    function mergeCellsNumericOnly(masterCells: VisioCell[], instanceCells: VisioCell[]): VisioCell[] {
+        const masterCellsByName: Map<string, VisioCell> = mapCellsByName(masterCells);
+        const instanceCellsByName: Map<string, VisioCell> = mapCellsByName(instanceCells);
+        const mergedCells: VisioCell[] = [];
+
+        masterCellsByName.forEach(function (masterCell: VisioCell, cellName: string): void {
+            const instanceCell: VisioCell | undefined = instanceCellsByName.get(cellName);
+            if (instanceCell) {
+                if (hasNumericV(instanceCell)) {
+                    mergedCells.push(cloneNameV(instanceCell));
+                } else {
+                    mergedCells.push(cloneNameV(masterCell));
+                }
+            } else {
+                mergedCells.push(cloneNameV(masterCell));
+            }
+        });
+
+        return mergedCells;
+    }
 }
 
 /**

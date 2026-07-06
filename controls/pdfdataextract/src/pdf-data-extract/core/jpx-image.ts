@@ -1,4 +1,17 @@
+/**
+ * JPX image stream parser that extracts basic image properties.
+ *
+ * @private
+ */
 export class _PdfJpxImage{
+    /**
+     * Parse JPX stream and return basic image properties.
+     *
+     * @private
+     * @param {any} stream - source stream providing getByte(), getInt32(), skip(), getUnsignedInteger16()
+     * @returns {any} object with { width: number, height: number, bitsPerComponent: number, componentsCount: number }
+     * @throws {Error} when no size marker is found in JPX stream
+     */
     _parseImageProperties(stream:any): any { // eslint-disable-line
         let newByte: number = stream.getByte();
         while (newByte >= 0) {

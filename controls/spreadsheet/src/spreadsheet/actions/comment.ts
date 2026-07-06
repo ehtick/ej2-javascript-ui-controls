@@ -1,11 +1,12 @@
 import { activeCellChanged, beginAction, CellModel, ExtendedSheet, ExtendedThreadedCommentModel, getCell, getCellAddress, getCellIndexes, getSortedIndex, getRowHeight, getSheetName, importModelUpdate, setCell, SheetModel, Workbook } from '../../workbook/index';
-import { initiateComment, completeAction, createCommentIndicator, deleteComment, Spreadsheet, removeCommentContainer, locale, replyToComment, showCommentsPane, refreshCommentsPane, commentUndoRedo, getDPRValue, processSheetComments } from '../index';
+import { initiateComment, completeAction, createCommentIndicator, deleteComment, Spreadsheet, removeCommentContainer, locale, replyToComment, showCommentsPane, refreshCommentsPane, commentUndoRedo, processSheetComments } from '../index';
 import { Browser, closest, detach, enableRipple, EventHandler, getComponent, getUniqueID, isNullOrUndefined, L10n } from '@syncfusion/ej2-base';
-import { getUpdateUsingRaf, navigateNextPrevComment, updateNoteContainer, destroyComponent } from './../common/index';
+import { getUpdateUsingRaf, navigateNextPrevComment, updateNoteContainer, destroyComponent, renderSidePanel } from './../common/index';
 import { CommentSaveEventArgs, getRangeAddress, ThreadedCommentModel, updateCell, getISOTime } from '../../workbook/index';
 import { Button } from '@syncfusion/ej2-buttons';
 import { DropDownButton, ItemModel, MenuEventArgs } from '@syncfusion/ej2-splitbuttons';
 import { ListView, SelectEventArgs, Virtualization } from '@syncfusion/ej2-lists';
+import { focus } from '../common/index';
 
 ListView.Inject(Virtualization);
 
@@ -365,7 +366,7 @@ export class SpreadsheetComment {
             });
             const deleteBtn: Button = new Button({ cssClass: 'e-flat', iconCss: 'e-icons e-trash' }, deleteBtnEl);
             deleteBtn.createElement = this.parent.createElement;
-            EventHandler.add(deleteBtn.element, 'click', () => this.deleteComment({ sourceEl: deleteBtnEl }), this);
+            EventHandler.add(deleteBtn.element, 'click', () => this.deleteComment({ sourceEl: deleteBtnEl, setFoucs: true }), this);
             actionsWrap.appendChild(reopenBtnEl);
             actionsWrap.appendChild(deleteBtnEl);
             headerWrap.appendChild(actionsWrap);
@@ -452,7 +453,7 @@ export class SpreadsheetComment {
         } else if (text === l10n.getConstant('ResolveThread')) {
             this.setThreadResolved(true, sourceEl);
         } else {
-            this.deleteComment({ sourceEl: sourceEl });
+            this.deleteComment({ sourceEl: sourceEl, setFoucs: true });
         }
     }
 
@@ -1064,7 +1065,7 @@ export class SpreadsheetComment {
         commentContainer.style.width = `${actualWidth}px`;
     }
 
-    private deleteComment(args?: { rowIndex?: number; columnIndex?: number; sourceEl?: HTMLElement }): void {
+    private deleteComment(args?: { rowIndex?: number; columnIndex?: number; sourceEl?: HTMLElement, setFoucs?: boolean }): void {
         let container: HTMLElement; let rIdx: number; let cIdx: number;
         if (args && args.sourceEl) {
             container = this.getContainer(args.sourceEl);
@@ -1121,6 +1122,9 @@ export class SpreadsheetComment {
         if (this.isEditing) {
             this.isEditing = false;
             this.editingState = null;
+        }
+        if (args && args.setFoucs) {
+            focus(this.parent.element);
         }
     }
 
@@ -1710,16 +1714,8 @@ export class SpreadsheetComment {
     }
 
     private showCommentPane(args: { show: boolean }): void {
-        const host: HTMLElement = this.parent.element;
-        const id: string = host.id;
-        const sheetPanel: HTMLElement = host.querySelector(`#${id}_sheet_panel`);
-        const sheetEl: HTMLElement = host.querySelector(`#${id}_sheet`);
-        const sheetTabPanel: HTMLElement = host.querySelector(`#${id}_sheet_tab_panel`);
-        if (!sheetPanel || !sheetEl || !sheetTabPanel) {
-            return;
-        }
+        this.parent.notify(renderSidePanel, { show: args.show, isComment: true });
         this.parent.setProperties({ showCommentsPane: args.show }, true);
-        let reviewPanel: HTMLElement = sheetPanel.querySelector(`#${id}_review_panel`);
         if (!args.show) {
             if (this.reviewInstances && this.reviewInstances.length) {
                 this.reviewInstances.forEach((inst: { destroy: () => void; }) => inst.destroy());
@@ -1730,35 +1726,26 @@ export class SpreadsheetComment {
                 cancelAnimationFrame(this.scheduleMountId);
                 this.scheduleMountId = 0;
             }
-            if (reviewPanel && reviewPanel.parentElement) {
-                reviewPanel.parentElement.removeChild(reviewPanel);
+            const sidePanel: HTMLElement = this.parent.element.querySelector(`#${this.parent.element.id}_review_panel`);
+            if (sidePanel && sidePanel.parentElement) {
+                sidePanel.parentElement.removeChild(sidePanel);
             }
-            sheetEl.classList.remove('e-sheet-with-review-panel');
-            sheetTabPanel.classList.remove('e-sheet-panel-with-review-panel');
             this.isReviewPaneVisible = false;
         } else {
-            if (!reviewPanel) {
-                reviewPanel = this.parent.createElement('div', { id: `${id}_review_panel`, className: 'e-review-panel' });
-                sheetPanel.appendChild(reviewPanel);
-            }
-            sheetEl.classList.add('e-sheet-with-review-panel');
-            sheetTabPanel.classList.add('e-sheet-panel-with-review-panel');
-            reviewPanel.style.height = `calc(100% + ${getDPRValue(sheetTabPanel.getBoundingClientRect().height)}px)`;
             this.isReviewPaneVisible = true;
-            this.buildReviewPanelUI(reviewPanel);
+            const sidePanel: HTMLElement = this.parent.element.querySelector(`#${this.parent.element.id}_review_panel`);
+            if (sidePanel) {
+                sidePanel.innerHTML = '';
+                const wrap: HTMLElement = this.parent.createElement('div', { className: 'e-review-wrap' });
+                this.reviewHeaderEl = this.renderReviewHeader();
+                wrap.appendChild(this.reviewHeaderEl);
+                sidePanel.appendChild(wrap);
+                this.renderReviewBody();
+            }
         }
         if (this.parent.element.getElementsByClassName('e-addNoteContainer').length) {
             this.parent.notify(updateNoteContainer, null);
         }
-    }
-
-    private buildReviewPanelUI(reviewPanel: HTMLElement): void {
-        reviewPanel.innerHTML = '';
-        const wrap: HTMLElement = this.parent.createElement('div', { className: 'e-review-wrap' });
-        this.reviewHeaderEl = this.renderReviewHeader();
-        wrap.appendChild(this.reviewHeaderEl);
-        reviewPanel.appendChild(wrap);
-        this.renderReviewBody();
     }
 
     private renderReviewHeader(): HTMLElement {

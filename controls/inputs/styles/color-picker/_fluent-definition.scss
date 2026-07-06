@@ -1,7 +1,5 @@
-@use 'ej2-base/styles/definition/fluent' as *;
-@use 'ej2-buttons/styles/button/fluent-definition' as *;
-@forward 'ej2-buttons/styles/button/fluent-definition';
-@forward 'ej2-base/styles/definition/fluent';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $cpicker-split-btn-padding: 5px 8px !default;
 $cpicker-bigger-split-btn-padding: 7px 12px !default;
 $cpicker-split-line-height: 14px !default;

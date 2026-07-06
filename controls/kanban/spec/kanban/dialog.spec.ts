@@ -832,7 +832,60 @@ describe('Dialog actions module', () => {
         });
     });
 
+    describe('Dialog with Custom Template - Coverage for Template Branch', () => {
+        let kanbanObj: Kanban;
+        let element1: HTMLElement;
+        beforeAll((done: DoneFn) => {
+            const customTemplate: string = '<div class="e-custom-template">' +
+                '<div class="e-template-row">' +
+                '<label>ID:</label>' +
+                '<input class="e-field" name="Id" type="text" />' +
+                '</div>' +
+                '<div class="e-template-row">' +
+                '<label>Title:</label>' +
+                '<input class="e-field" name="Title" type="text" />' +
+                '</div>' +
+                '<div class="e-template-row">' +
+                '<label>Status:</label>' +
+                '<select class="e-field" name="Status">' +
+                '<option value="Open">Open</option>' +
+                '<option value="InProgress">InProgress</option>' +
+                '<option value="Review">Review</option>' +
+                '</select>' +
+                '</div>' +
+                '<div class="e-template-row">' +
+                '<label>Summary:</label>' +
+                '<textarea class="e-field" name="Summary"></textarea>' +
+                '</div>' +
+                '</div>';
 
+            const model: KanbanModel = {
+                columns: [
+                    { headerText: 'Backlog', keyField: 'Open' },
+                    { headerText: 'In Progress', keyField: 'InProgress' },
+                    { headerText: 'Review', keyField: 'Review' }
+                ],
+                cardSettings: {
+                    contentField: 'Summary',
+                    headerField: 'Id'
+                },
+                dialogSettings: {
+                    template: customTemplate // Custom template set
+                }
+            };
+            kanbanObj = util.createKanban(model, kanbanData, done);
+        });
+
+        afterAll(() => {
+            util.destroy(kanbanObj);
+        });
+
+        // ESSENTIAL COVERAGE (Must have)
+        it('Case 1: dialogSettings.template exists - template should be rendered', () => {
+            element1 = kanbanObj.element.querySelector('.e-card[data-id="1"]') as HTMLElement;
+            util.triggerMouseEvent(element1, 'dblclick');
+        });
+    });
 
     it('memory leak', () => {
         profile.sample();

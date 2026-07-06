@@ -28,6 +28,9 @@ module.exports = function (config) {
         
         "styles/material.css",
         
+        // Yjs library for collaboration tests (CDN)
+        'spec/collaboration/helpers/yjs-bundle.js',
+        
         "test-main.js",
         { pattern: "src/**/*.js", included: false },     
         { pattern: "spec/**/*.spec.js", included: false },

@@ -1,8 +1,7 @@
-@use 'ej2-base/styles/definition/material-dark' as *;
-@use 'ej2-navigations/styles/toolbar/material-dark-definition' as *;
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+@use '@syncfusion/ej2-navigations/styles/toolbar/material-dark-definition' as *;
 @use '../spreadsheet-ribbon/material-dark-definition' as *;
-@forward 'ej2-base/styles/definition/material-dark';
-@forward 'ej2-navigations/styles/toolbar/material-dark-definition';
+
 $sheet-skin: 'material-dark' !default;
 $spreadsheet-border-color: $grey-700 !default;
 $spreadsheet-border-width: 1px;
@@ -60,6 +59,7 @@ $sheet-tab-bg-color: $sheet-tab-panel-bg-color !default;
 $sheet-tab-hover-bg-color: $grey-800 !default;
 $sheet-tab-active-bg-color: $grey-700 !default;
 $sheet-tab-color: #e3e3e3 !default;
+$tab-text-color: $primary !default;
 $sheet-tab-indicator-color: #05a7f1 !default;
 $select-icon-color: $accent !default;
 $sheet-tab-btn-icon-color: $grey-dark-font !default;
@@ -93,6 +93,11 @@ $spreadsheet-formula-bar-expanded-separator-height: 60px !default;
 $bigger-name-box-ddl-input-height: 29px !default;
 $bigger-formula-bar-drop-icon-line-height: 29px !default;
 $bigger-insert-function-height: 89px !default;
+$sheet-bar-btn-box-shadow: $tbar-btn-box-shadow !default;
+$sheet-bar-default-font-color: $tbar-default-font !default;
+$sheet-bar-active-font-color: $tbar-active-font-color !default;
+$sheet-bar-active-icon-color: $tbar-active-icon-color !default;
+$sheet-bar-default-icon-color: $tbar-default-icon-color !default;
 
 //Insert dialog box
 $dlg-list-border: $spreadsheet-border-width solid $grey-500 !default;
@@ -129,6 +134,7 @@ $spreadsheet-ribbon-item-hover-border-color: transparent !default;
 $spreadsheet-ribbon-item-active-border-color: transparent !default;
 $spreadsheet-ribbon-item-active-background-color: $tbar-focus-bg !default;
 $font-family-collection: ('Arial', 'Arial Black', 'Axettac Demo', 'Batang', 'Book Antiqua', 'Calibri', 'Comic Sans MS', 'Courier', 'Courier New', 'Din Condensed', 'Georgia', 'Helvetica', 'Helvetica New', 'Roboto', 'Tahoma', 'Times New Roman', 'Verdana') !default;
+$sf-font-family-collection: ('Algerian', 'Arial', 'Calibri', 'Cambria', 'Cambria Math', 'Courier New', 'Candara', 'Georgia', 'Impact', 'Segoe Print', 'Segoe Script', 'Segoe UI', sans-serif, 'Times New Roman', 'Verdana', sans-serif) !default;
 $normal-btn-padding: 7px !default;
 $bigger-cpicker-btn-line-height: $bigger-spreadsheet-ribbon-btn-height - 2 !default;
 $bigger-cpicker-btn-padding-bottom: 2px !default;
@@ -264,7 +270,6 @@ $spreadsheet-addchart-icon-font-size: 18px !default;
 $spreadsheet-chart-icon-font-size: 32px !default;
 
 //Mixins
-$spreadsheet-ribbon-tab-text-wrap-height: 35px !default;
 $spreadsheet-cf-header-margin-bottom: 6px !default;
 $spreadsheet-cfmain-header-margin-bottom: 22px !default;
 $spreadsheet-sort-template-item-padding: 5px 0 0 !default;
@@ -280,10 +285,11 @@ $protectworkbook-dlg-content-header-line: 24px !default;
 $validation-dlg-content-header-line: 16px !default;
 $validation-dlg-content-padding: 12px !default;
 $spreadsheet-sort-dlg-error-bottom: 0 !default;
-$bigger-spread-ribbon-tab-text-wrap-height: 41px !default;
+$bigger-spreadsheet-ribbon-tab-text-wrap-height: 41px !default;
 $bigger-spread-ribbon-tab-menu-items-height: 41px !default;
 $bigger-spread-ribbon-tab-menu-items-line-height: 41px !default;
 $spreadsheet-ribbon-toolbar-btn-hover-color: $tbar-hover-bg !default;
+$spreadsheet-ribbon-toolbar-btn-hover-font: $tbar-hover-font !default;
 $spread-toolbar-btn-font-weight: normal !default;
 
 //Name Manager Dialog
@@ -405,8 +411,12 @@ $spread-comment-text-color: $grey-white !default;
 $spread-comment-timestamp-color: $grey-white !default;
 $spread-comment-input-height: 32px !default;
 $spread-comment-input-border-bottom-focused: 2px solid $accent !default;
-$spread-comment-border: 1px solid $grey-800 !default;
 $spread-comment-menu-height: 24px !default;
 $spread-comment-menu-width: 24px !default;
 $spread-comment-postbtn-padding: 6px 12px !default;
 $spread-comment-header-wrap-gap: 8px !default;
+$spreadsheet-ribbon-expand-icon-color: $expand-icon-color !default;
+$spread-border-color: $grey-dark-font !default;
+
+//Side panel
+$spread-side-panel-border: 1px solid $grey-800 !default;

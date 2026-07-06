@@ -1,10 +1,10 @@
-import { PdfViewer } from '../index';
+import { AnnotationStatus, PdfViewer } from '../index';
 import { PdfViewerBase, IPageAnnotations } from '../index';
 import { createElement, isNullOrUndefined, isBlazor, SanitizeHtmlHelper, Browser } from '@syncfusion/ej2-base';
 import { Dialog } from '@syncfusion/ej2-popups';
 import { PdfAnnotationBaseModel } from '../drawing/pdf-annotation-model';
 import { PdfAnnotationBase } from '../drawing/pdf-annotation';
-import { splitArrayCollection, processPathData, getPathString } from '@syncfusion/ej2-drawings';
+import { splitArrayCollection, processPathData, getPathString } from './../ej2-drawings/index';
 import { TextBox } from '@syncfusion/ej2-inputs';
 import { cloneObject } from '../drawing/drawing-util';
 import { CheckBox } from '@syncfusion/ej2-buttons';
@@ -29,6 +29,8 @@ export interface ISignAnnotation {
     signatureName: string
     fontFamily?: string
     fontSize?: string
+    status: AnnotationStatus
+    annotationIndex: number
 }
 /**
  * @hidden
@@ -1565,6 +1567,7 @@ export class Signature {
         signImage.style.left = '0px';
         signImage.style.top = '0px';
         signImage.style.visibility = 'hidden';
+        signImage.setAttribute('aria-label', 'Upload signature image');
         document.body.appendChild(signImage);
         signImage.addEventListener('change', this.addStampImage);
     }
@@ -1654,7 +1657,9 @@ export class Signature {
         const eventTarget: HTMLElement = event.target as HTMLElement;
         if (eventTarget.textContent.trim() !== '') {
             const createButton: any = document.getElementsByClassName('e-pv-createbtn')[0];
-            createButton.disabled = false;
+            if (createButton && createButton.ej2_instances && createButton.ej2_instances.length && createButton.ej2_instances[0]) {
+                createButton.ej2_instances[0].disabled = false;
+            }
             for (let i: number = 0; i < 4; i++) {
                 const fontElement: any = document.getElementById('_font_signature' + i + '');
                 if (fontElement) {
@@ -1958,16 +1963,16 @@ export class Signature {
 
     private enableCreateButton(isEnable: boolean): void {
         const createbtn: any = document.getElementsByClassName('e-pv-createbtn')[0];
-        if (createbtn) {
-            createbtn.disabled = isEnable;
+        if (createbtn && createbtn.ej2_instances && createbtn.ej2_instances.length && createbtn.ej2_instances[0]) {
+            createbtn.ej2_instances[0].disabled = isEnable;
         }
         this.enableClearbutton(isEnable);
     }
 
     private enableClearbutton(isEnable: boolean): void {
         const clearbtn: any = document.getElementsByClassName('e-pv-clearbtn')[0];
-        if (clearbtn) {
-            clearbtn.disabled = isEnable;
+        if (clearbtn && clearbtn.ej2_instances && clearbtn.ej2_instances.length && clearbtn.ej2_instances[0]) {
+            clearbtn.ej2_instances[0].disabled = isEnable;
         }
     }
 
@@ -2285,21 +2290,21 @@ export class Signature {
                 annot = {
                     id: currentAnnotation.id, bounds: { x: left, y: top, width: currentAnnotation.bounds.width,
                         height: currentAnnotation.bounds.height }, pageIndex: currentAnnotation.pageIndex, data: currentAnnotation.data,
-                    shapeAnnotationType: 'HandWrittenSignature', opacity: currentAnnotation.opacity, fontFamily: currentAnnotation.fontFamily, fontSize: currentAnnotation.fontSize, strokeColor: currentAnnotation.strokeColor, thickness: currentAnnotation.thickness, signatureName: annotationName
+                    shapeAnnotationType: 'HandWrittenSignature', opacity: currentAnnotation.opacity, fontFamily: currentAnnotation.fontFamily, fontSize: currentAnnotation.fontSize, strokeColor: currentAnnotation.strokeColor, thickness: currentAnnotation.thickness, signatureName: annotationName, annotationIndex: currentAnnotation.annotationIndex, status: AnnotationStatus.NewlyAdded
                 };
             }
             if (this.pdfViewerBase.currentSignatureAnnot.shapeAnnotationType === 'SignatureText') {
                 annot = {
                     id: currentAnnotation.id, bounds: { x: left, y: top, width: currentAnnotation.bounds.width,
                         height: currentAnnotation.bounds.height }, pageIndex: currentAnnotation.pageIndex, data: currentAnnotation.data,
-                    shapeAnnotationType: 'SignatureText', opacity: currentAnnotation.opacity, fontFamily: currentAnnotation.fontFamily, fontSize: currentAnnotation.fontSize, strokeColor: currentAnnotation.strokeColor, thickness: currentAnnotation.thickness, signatureName: annotationName
+                    shapeAnnotationType: 'SignatureText', opacity: currentAnnotation.opacity, fontFamily: currentAnnotation.fontFamily, fontSize: currentAnnotation.fontSize, strokeColor: currentAnnotation.strokeColor, thickness: currentAnnotation.thickness, signatureName: annotationName, annotationIndex: currentAnnotation.annotationIndex, status: AnnotationStatus.NewlyAdded
                 };
             }
             else if (this.pdfViewerBase.currentSignatureAnnot.shapeAnnotationType === 'SignatureImage') {
                 annot = {
                     id: currentAnnotation.id, bounds: { x: left, y: top, width: currentAnnotation.bounds.width,
                         height: currentAnnotation.bounds.height }, pageIndex: currentAnnotation.pageIndex, data: currentAnnotation.data,
-                    shapeAnnotationType: 'SignatureImage', opacity: currentAnnotation.opacity, fontFamily: currentAnnotation.fontFamily, fontSize: currentAnnotation.fontSize, strokeColor: currentAnnotation.strokeColor, thickness: currentAnnotation.thickness, signatureName: annotationName
+                    shapeAnnotationType: 'SignatureImage', opacity: currentAnnotation.opacity, fontFamily: currentAnnotation.fontFamily, fontSize: currentAnnotation.fontSize, strokeColor: currentAnnotation.strokeColor, thickness: currentAnnotation.thickness, signatureName: annotationName, annotationIndex: currentAnnotation.annotationIndex, status: AnnotationStatus.NewlyAdded
                 };
             }
             const obj: PdfAnnotationBaseModel = this.pdfViewer.add(annot as PdfAnnotationBase);
@@ -2396,17 +2401,17 @@ export class Signature {
                     if (currentAnnotation.AnnotationType === 'SignatureText') {
                         annot = {
                             id: 'sign' + this.pdfViewerBase.signatureCount, bounds: { x: currentLeft, y: currentTop, width: currentWidth, height: currentHeight }, pageIndex: pageIndex, data: data, fontFamily: currentAnnotation.FontFamily, fontSize: currentAnnotation.FontSize,
-                            shapeAnnotationType: 'SignatureText', opacity: currentAnnotation.Opacity, strokeColor: currentAnnotation.StrokeColor, thickness: currentAnnotation.Thickness, signatureName: currentAnnotation.SignatureName
+                            shapeAnnotationType: 'SignatureText', opacity: currentAnnotation.Opacity, strokeColor: currentAnnotation.StrokeColor, thickness: currentAnnotation.Thickness, signatureName: currentAnnotation.SignatureName, annotationIndex: currentAnnotation.AnnotationIndex
                         };
                     }
                     else if (currentAnnotation.AnnotationType === 'SignatureImage') {
                         annot = {
-                            id: 'sign' + this.pdfViewerBase.signatureCount, bounds: { x: currentLeft, y: currentTop, width: currentWidth, height: currentHeight }, pageIndex: pageIndex, data: data, shapeAnnotationType: 'SignatureImage', opacity: currentAnnotation.Opacity, strokeColor: currentAnnotation.StrokeColor, thickness: currentAnnotation.Thickness, signatureName: currentAnnotation.SignatureName
+                            id: 'sign' + this.pdfViewerBase.signatureCount, bounds: { x: currentLeft, y: currentTop, width: currentWidth, height: currentHeight }, pageIndex: pageIndex, data: data, shapeAnnotationType: 'SignatureImage', opacity: currentAnnotation.Opacity, strokeColor: currentAnnotation.StrokeColor, thickness: currentAnnotation.Thickness, signatureName: currentAnnotation.SignatureName, annotationIndex: currentAnnotation.AnnotationIndex
                         };
                     }
                     else{
                         annot = {
-                            id: 'sign' + this.pdfViewerBase.signatureCount, bounds: { x: currentLeft, y: currentTop, width: currentWidth, height: currentHeight }, pageIndex: pageIndex, data: data, shapeAnnotationType: 'HandWrittenSignature', opacity: currentAnnotation.Opacity, strokeColor: currentAnnotation.StrokeColor, thickness: currentAnnotation.Thickness, signatureName: currentAnnotation.SignatureName ? currentAnnotation.SignatureName : 'ink'
+                            id: 'sign' + this.pdfViewerBase.signatureCount, bounds: { x: currentLeft, y: currentTop, width: currentWidth, height: currentHeight }, pageIndex: pageIndex, data: data, shapeAnnotationType: 'HandWrittenSignature', opacity: currentAnnotation.Opacity, strokeColor: currentAnnotation.StrokeColor, thickness: currentAnnotation.Thickness, signatureName: currentAnnotation.SignatureName ? currentAnnotation.SignatureName : 'ink', annotationIndex: currentAnnotation.AnnotationIndex
                         };
                     }
                 }
@@ -2423,9 +2428,11 @@ export class Signature {
                 }
                 this.pdfViewer.add(annot as PdfAnnotationBase);
                 if (this.isAddAnnotationProgramatically) {
+                    annot.status = AnnotationStatus.NewlyAdded;
                     this.pdfViewer.fireSignatureAdd(annot.pageIndex, annot.signatureName,
                                                     annot.shapeAnnotationType, annot.bounds, annot.opacity,
                                                     annot.strokeColor, annot.thickness, annot.data);
+                    this.isAddAnnotationProgramatically = false;
                 }
                 const canvasPageIndex: number = currentAnnotation.pageIndex ? currentAnnotation.pageIndex : currentAnnotation.PageNumber;
                 const isNeedToRender: boolean = ((isImport && isLastAnnot) || isNullOrUndefined(isImport) ||
@@ -2483,7 +2490,7 @@ export class Signature {
              annotations.wrapper.pivot.y + (this.signatureTextContentTop * zoomvalue);
         }
         annotation = {
-            id: annotations.id ? annotations.id : null, bounds: { left: left, top: top, width: width, height: height }, shapeAnnotationType: annotations.shapeAnnotationType ? annotations.shapeAnnotationType : 'ink', opacity: annotations.opacity ? annotations.opacity : 1, thickness: annotations.thickness ? annotations.thickness : 1, strokeColor: annotations.strokeColor ? annotations.strokeColor : null, pageIndex: pageIndex, data: annotations.data ? annotations.data : annotations.Value, fontSize: annotations.fontSize ? annotations.fontSize : null, fontFamily: annotations.fontFamily ? annotations.fontFamily : null, signatureName: annotations.signatureName ? annotations.signatureName : annotations.Name
+            id: annotations.id ? annotations.id : null, bounds: { left: left, top: top, width: width, height: height }, shapeAnnotationType: annotations.shapeAnnotationType ? annotations.shapeAnnotationType : 'ink', opacity: annotations.opacity ? annotations.opacity : 1, thickness: annotations.thickness ? annotations.thickness : 1, strokeColor: annotations.strokeColor ? annotations.strokeColor : null, pageIndex: pageIndex, data: annotations.data ? annotations.data : annotations.Value, fontSize: annotations.fontSize ? annotations.fontSize : null, fontFamily: annotations.fontFamily ? annotations.fontFamily : null, signatureName: annotations.signatureName ? annotations.signatureName : annotations.Name, annotationIndex: annotations.annotationIndex ? annotations.annotationIndex : null, status: annotations.status ? annotations.status : null
         };
         const sessionSize: number = this.pdfViewerBase.sessionStorageManager.getWindowSessionStorageSize();
         const currentAnnotation: number = Math.round(JSON.stringify(annotation).length / 1024);
@@ -2569,6 +2576,9 @@ export class Signature {
                     }
                     if (property && property !== 'delete') {
                         this.storeSignatureCollections(pageAnnotations[parseInt(i.toString(), 10)], pageNumber);
+                    }
+                    if (pageAnnotations[parseInt(i.toString(), 10)].status !== 'NewlyAdded') {
+                        pageAnnotations[parseInt(i.toString(), 10)].status = AnnotationStatus.ExistingModified;
                     }
                     if (isSignatureEdited) {
                         pageAnnotations[parseInt(i.toString(), 10)].opacity = annotationBase.wrapper.children[0].style.opacity;
@@ -2764,7 +2774,8 @@ export class Signature {
                 data = getPathString(JSON.parse(signature.PathData));
             }
             annot = {
-                id: 'sign' + signature.SignatureName, bounds: { x: currentLeft, y: currentTop, width: currentWidth, height: currentHeight }, pageIndex: pageIndex, data: data,
+                id: 'sign' + signature.SignatureName, annotationIndex: signature.AnnotationIndex,
+                bounds: { x: currentLeft, y: currentTop, width: currentWidth, height: currentHeight }, pageIndex: pageIndex, data: data,
                 shapeAnnotationType: 'HandWrittenSignature', opacity: signature.Opacity, strokeColor: signature.StrokeColor, thickness: signature.Thickness, signatureName: signature.SignatureName
             };
             return annot;
@@ -2951,6 +2962,7 @@ export class Signature {
             FontFamily: annotationObject.fontFamily,
             FontSize: 32,
             StrokeColor: annotationObject.strokeColor,
+            Status: AnnotationStatus.NewlyAdded,
             Thickness: annotationObject.thickness,
             Bounds: { x: offset.x, y: offset.y, width: annotationObject.width, height: annotationObject.height }
         };
@@ -2966,19 +2978,19 @@ export class Signature {
             if (displayMode === 1){
                 annot = {
                     id: 'sign' + this.pdfViewerBase.signatureCount, bounds: bounds, pageIndex: annotationObject.pageNumber, data: this.outputString,
-                    shapeAnnotationType: 'HandWrittenSignature', opacity: annotationObject.opacity, strokeColor: annotationObject.strokeColor, thickness: annotationObject.thickness, signatureName: signatureId
+                    shapeAnnotationType: 'HandWrittenSignature', opacity: annotationObject.opacity, strokeColor: annotationObject.strokeColor, thickness: annotationObject.thickness, signatureName: signatureId, status: AnnotationStatus.NewlyAdded
                 };
             }
             else if (displayMode === 2){
                 annot = {
                     id: 'sign' + this.pdfViewerBase.signatureCount, bounds: bounds, pageIndex: annotationObject.pageNumber, data: this.outputString, fontFamily: annotationObject.fontFamily, fontSize: 32,
-                    shapeAnnotationType: 'SignatureText', signatureName: signatureId
+                    shapeAnnotationType: 'SignatureText', signatureName: signatureId, status: AnnotationStatus.NewlyAdded
                 };
             }
             else if (displayMode === 4){
                 annot = {
                     id: 'sign' + this.pdfViewerBase.signatureCount, bounds: bounds, pageIndex: annotationObject.pageNumber, data: this.outputString,
-                    shapeAnnotationType: 'SignatureImage', signatureName: signatureId
+                    shapeAnnotationType: 'SignatureImage', signatureName: signatureId, status: AnnotationStatus.NewlyAdded
                 };
             }
             this.pdfViewerBase.currentSignatureAnnot = annot;

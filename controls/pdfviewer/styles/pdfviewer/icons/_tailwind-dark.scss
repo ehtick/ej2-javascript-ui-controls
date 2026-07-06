@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/common/mixin' as *;
-@use '../tailwind-dark-definition' as *;
+@use '../variables' as *;
+
 @include export-module('pdfviewer-tailwind-icons') {
   .e-pdfviewer {
     .e-pv-icon::before {
@@ -588,6 +588,13 @@
   }
   .e-pv-extract-page-icon::before {
     content: '\e95a';
+    font-family: 'e-icons';
+  }
+  .e-pv-filter-icon::before {
+    content: '\e7f7';
+  }
+  .e-pv-ink-eraser-icon::before {
+    content: '\e7cc';
     font-family: 'e-icons';
   }
 }

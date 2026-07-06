@@ -253,11 +253,10 @@ it('PNG Paeth: pc < 0 and chooses UPLEFT', () => {
         Predictor: 10,
         Colors: 1,
         BitsPerComponent: 8,
-        Columns: 2
     }));
 
     p.readBlockPng();
     p.readBlockPng();
 
-    expect(p.bufferLength).toBe(4);
+    expect(p.bufferLength).toBe(2);
 });

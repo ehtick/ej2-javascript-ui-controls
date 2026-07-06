@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/material-dark' as *;
-@forward 'ej2-base/styles/definition/material-dark';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $zero-value: 0 !default;
 $upload-root-font-family: $font-family !default;
 $upload-element-opacity: $zero-value !default;

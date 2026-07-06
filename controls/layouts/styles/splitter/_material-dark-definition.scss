@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/material-dark' as *;
-@forward 'ej2-base/styles/definition/material-dark';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $navigation-arrow-background: #000 !default;
 $navigation-icon-background-hover: rgba(255, 128, 171, 1) !default;
 $navigation-icon-border-hover: rgba(255, 128, 171, .5) !default;

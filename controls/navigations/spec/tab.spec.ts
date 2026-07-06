@@ -5463,6 +5463,104 @@ describe('Tab Control', () => {
             expect(element.querySelector('#e-item' + tab.tabId + '_5').classList.contains('e-active')).toEqual(true);
             expect(closest(actEle3, '.e-toolbar-item').classList.contains('e-active')).toEqual(true);
         });
+
+        it('Detached focused element + Space key should not throw', () => {
+            tab = new Tab({
+                items: [
+                    { header: { text: 'header-item1' }, content: 'Content1' },
+                    { header: { text: 'header-item2' }, content: 'Content2' }
+                ]
+            });
+            tab.appendTo('#ej2Tab');
+
+            const legend = createElement('div', { id: 'legend', attrs: { tabindex: '0' } });
+            document.body.appendChild(legend);
+            legend.focus();
+
+            // Remove the focused element to simulate detached element scenario
+            detach(legend);
+
+            spyOn(console, 'error');
+
+            const keyEventArgs: any = {
+                preventDefault: function () { },
+                action: 'space',
+                target: legend
+            };
+
+            expect(function () { (tab as any).keyHandler(keyEventArgs); }).not.toThrow();
+            expect((console.error as any).calls.count()).toEqual(0);
+        });
+
+        it('Tab key navigation does not throw and logs no errors', () => {
+            tab = new Tab({
+                items: [
+                    { header: { text: 'item1' }, content: 'Content1' },
+                    { header: { text: 'item2' }, content: 'Content2' },
+                    { header: { text: 'item3' }, content: 'Content3' }
+                ]
+            });
+            tab.appendTo('#ej2Tab');
+            const element: HTMLElement = document.getElementById('ej2Tab');
+            const trgEle: HTMLElement = <HTMLElement>element.querySelector('.e-toolbar-item .e-tab-wrap');
+            trgEle.focus();
+            spyOn(console, 'error');
+            const keyEventArgs: any = { preventDefault: function () { }, action: 'tab', target: trgEle };
+            expect(function () { (tab as any).keyHandler(keyEventArgs); }).not.toThrow();
+            expect((console.error as any).calls.count()).toEqual(0);
+        });
+
+        it('Space/Enter keys activate tab without errors', () => {
+            tab = new Tab({
+                items: [
+                    { header: { text: 'a' }, content: 'A' },
+                    { header: { text: 'b' }, content: 'B' }
+                ]
+            });
+            tab.appendTo('#ej2Tab');
+            const element: HTMLElement = document.getElementById('ej2Tab');
+            const trgEle: HTMLElement = <HTMLElement>element.querySelector('.e-toolbar-item .e-tab-wrap');
+            spyOn(console, 'error');
+            const keyEventArgsSpace: any = { preventDefault: function () { }, action: 'space', target: trgEle };
+            const keyEventArgsEnter: any = { preventDefault: function () { }, action: 'enter', target: trgEle };
+            expect(function () { (tab as any).keyHandler(keyEventArgsSpace); }).not.toThrow();
+            expect(function () { (tab as any).keyHandler(keyEventArgsEnter); }).not.toThrow();
+            expect((console.error as any).calls.count()).toEqual(0);
+        });
+
+        it('Arrow key navigation does not throw', () => {
+            tab = new Tab({
+                items: [
+                    { header: { text: '1' }, content: '1' },
+                    { header: { text: '2' }, content: '2' },
+                    { header: { text: '3' }, content: '3' }
+                ]
+            });
+            tab.appendTo('#ej2Tab');
+            const element: HTMLElement = document.getElementById('ej2Tab');
+            const trgEle: HTMLElement = <HTMLElement>element.querySelector('.e-toolbar-item .e-tab-wrap');
+            spyOn(console, 'error');
+            const keyEventArgs: any = { preventDefault: function () { }, action: 'moveRight', target: trgEle };
+            expect(function () { (tab as any).keyHandler(keyEventArgs); }).not.toThrow();
+            expect((console.error as any).calls.count()).toEqual(0);
+        });
+
+        it('Shadow DOM origin event handled safely', () => {
+            tab = new Tab({ items: [{ header: { text: 's' }, content: 's' }] });
+            tab.appendTo('#ej2Tab');
+            const host = createElement('div', { id: 'shadow-host' });
+            document.body.appendChild(host);
+            const root = (host as any).attachShadow ? (host as any).attachShadow({ mode: 'open' }) : host;
+            const inside = createElement('button', { className: 'e-tab-wrap', id: 'shadow-btn', attrs: { tabindex: '0' } });
+            root.appendChild(inside);
+            inside.focus();
+            spyOn(console, 'error');
+            const keyEventArgs: any = { preventDefault: function () { }, action: 'space', target: inside };
+            expect(function () { (tab as any).keyHandler(keyEventArgs); }).not.toThrow();
+            expect((console.error as any).calls.count()).toEqual(0);
+            detach(host);
+        });
+
         it('Vertical - Space key testing', () => {
             tab = new Tab({
                 height: '70px',

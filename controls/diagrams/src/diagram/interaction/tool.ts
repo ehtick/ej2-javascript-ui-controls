@@ -42,7 +42,7 @@ import { getInOutConnectPorts, cloneBlazorObject, getObjectType, checkPort, find
 import { initializeCSPTemplate, isBlazor, remove } from '@syncfusion/ej2-base';
 import { NodeFixedUserHandleModel, ConnectorFixedUserHandleModel } from '../objects/fixed-user-handle-model';
 import { findAngle } from '../utility/connector';
-import { updateLaneBoundsWithSelector } from './container-interaction';
+import { updateLaneBoundsWithSelector, hideErFieldInsertionIndicator } from './container-interaction';
 import { Diagram } from '../diagram';
 import { AnnotationModel } from '../objects/annotation-model';
 import { BpmnTextNode } from '../objects/bpmn';
@@ -1062,6 +1062,8 @@ export class MoveTool extends ToolBase {
      * @private
      */
     public async mouseUp(args: MouseEventArgs, isPreventHistory?: boolean): Promise<void> {
+        // Hide ER field insertion indicator when drag ends
+        hideErFieldInsertionIndicator(this.commandHandler.diagram);
         let oldValues: SelectorModel; let newValues: SelectorModel; let isEndGroupActionCalled: boolean = false;
         this.checkPropertyValue();
         let obj: SelectorModel; let historyAdded: boolean = false; let object: NodeModel | ConnectorModel | SelectorModel;
@@ -2263,7 +2265,8 @@ export class ConnectorDrawingTool extends ConnectTool {
         super.mouseDown(args);
         this.inAction = true;
         this.commandHandler.setFocus();
-        this.triggerElementDrawEvent(args.source,'Start','Connector',(this.commandHandler.diagram.drawingObject as ConnectorModel).type,true);
+        //Bug 1018810: In Element Draw Event – Incorrect Connector Used as Source When Drawing with Connector Drawing Tool
+        this.triggerElementDrawEvent(null,'Start','Connector',(this.commandHandler.diagram.drawingObject as ConnectorModel).type,true);
     }
     /**
      * @param args
@@ -3138,6 +3141,8 @@ export class FreeHandTool extends ToolBase {
                     [{ x: this.startPoint.x, y: this.startPoint.y }, { x: this.currentPosition.x, y: this.currentPosition.y }]
             }
         };
+        // Bug 941776: Mark as temporary freehand drawing to prevent node defaults from being applied
+        (node as any).isFreehandDrawing = true;
         // 920152: elementDraw event not triggered for Freehand Drawing tool
         this.triggerElementDrawEvent(args.source, 'Start', 'Connector', (this.commandHandler.diagram.drawingObject as any).type, true);
         this.drawingObject = this.commandHandler.drawObject(node as Node);

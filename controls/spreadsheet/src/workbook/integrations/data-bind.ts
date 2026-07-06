@@ -408,7 +408,9 @@ export class DataBind {
                 this.parent.trigger(
                     'dataSourceChanged', { data: args.changedData, action: 'dataSourceChanged', rangeIndex: args.rangeIdx,
                         sheetIndex: args.sheetIdx });
-                this.parent.notify(updateView, { sheetIndex: args.sheetIdx, checkWrap: true, checkCF: true });
+                if (this.parent.paintSuspendCount === 0) {
+                    this.parent.notify(updateView, { sheetIndex: args.sheetIdx, checkWrap: true, checkCF: true });
+                }
             };
             const evtArgs: { sheet: ExtendedSheet, loadComplete: Function, loadFullData: boolean,
                 loadFromStartCell: boolean } = { sheet: <ExtendedSheet>sheet, loadComplete: loadCompleteHandler.bind(this),

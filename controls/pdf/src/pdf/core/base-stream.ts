@@ -274,9 +274,6 @@ export class _PdfContentStream extends _PdfBaseStream {
     }
     getString(isHex: boolean = false): string {
         const bytes: Uint8Array = new Uint8Array(this._bytes);
-        if (typeof bytes === 'undefined' || bytes === null || typeof bytes.length === 'undefined') {
-            throw new Error('Invalid argument for bytesToString');
-        }
         if (isHex) {
             return _byteArrayToHexString(bytes);
         } else {

@@ -1726,9 +1726,6 @@ export class _XfdfDocument extends _ExportHelper {
                 this._writePrefix(writer, 'DICT', key);
                 this._writeAppearanceDictionary(writer, primitive);
                 writer._writeEndElement();
-            } else if (primitive === null) {
-                this._writePrefix(writer, 'NULL', key);
-                writer._writeEndElement();
             } else if (primitive instanceof _PdfBaseStream && primitive.dictionary) {
                 const streamDictionary: _PdfDictionary = primitive.dictionary;
                 this._writePrefix(writer, 'STREAM', key);

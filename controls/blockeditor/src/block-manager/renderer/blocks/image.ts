@@ -19,6 +19,7 @@ export class ImageRenderer {
     private isResizing: boolean = false;
     private startDimensions: { width: number, height: number };
     private startPosition: { x: number, y: number };
+    /** @hidden */
     public aspectRatio: number;
     private currentResizeHandle: HTMLElement;
     private currentImage: HTMLImageElement;
@@ -27,7 +28,8 @@ export class ImageRenderer {
     private uploadPopupObj: Popup | null;
     private uploadPopupElement: HTMLElement | null;
     private currentPlaceholder: HTMLElement | null;
-    private isUploadPopupOpen: boolean;
+    /** @hidden */
+    public isUploadPopupOpen: boolean;
 
     constructor(manager: BlockManager) {
         this.parent = manager;
@@ -61,14 +63,22 @@ export class ImageRenderer {
     public renderImage(block: BlockModel): HTMLElement {
         const settings: IImageBlockSettings = block.properties as IImageBlockSettings;
 
-        const isCallFromBlazor: boolean = isNOU((this.parent.rootEditorElement as any).ej2_instances);
         // Check if image has source - if not, render placeholder
-        if (!isCallFromBlazor && (!settings.src || settings.src === '')) {
+        if ((!settings.src || settings.src === '')) {
             const placeholder: HTMLElement = this.renderPlaceholder(block.id);
 
             // Only auto-open popup if NOT during undo/redo and NOT during initial rendering
             const isUndoRedo: boolean = this.parent.undoRedoAction.isUndoing || this.parent.undoRedoAction.isRedoing;
-            if (!isUndoRedo && (this.parent.blockRenderer && !this.parent.blockRenderer.isEntireBlocksRendering)) {
+            if (
+                !isUndoRedo &&
+                (this.parent.blockRenderer && !this.parent.blockRenderer.isEntireBlocksRendering)
+                /* Collaboration Start */
+                // Restrict popup opening during transform block on collabrative mode.
+                && (
+                    isNOU(this.parent.collaborationModule) ||
+					(this.parent.collaborationModule && !this.parent.collaborationModule.syncBinding.isApplyingRemote))
+                /* Collaboration End */
+            ) {
                 // Open upload popup after a short delay to ensure placeholder is appended in dom
                 setTimeout(() => {
                     this.toggleUploadPopup(isNOU(this.parent.currentFocusedBlock), placeholder);
@@ -84,6 +94,13 @@ export class ImageRenderer {
         return container;
     }
 
+    /**
+     * Renders an image placeholder element for the specified block.
+     *
+     * @param {string} blockId - The unique identifier of the block for which the placeholder is created.
+     * @returns {HTMLElement} - The rendered placeholder element.
+     * @hidden
+     */
     public renderPlaceholder(blockId: string): HTMLElement {
         const placeholder: HTMLElement = createElement('div', {
             id: `${this.parent.rootEditorElement.id}_image-placeholder-${blockId}`,
@@ -120,7 +137,14 @@ export class ImageRenderer {
         return placeholder;
     }
 
-    private handlePlaceholderClick(event: MouseEvent): void {
+    /**
+     * Handles click interaction on the image placeholder element.
+     *
+     * @param {MouseEvent} event - The mouse event triggered when the placeholder is clicked.
+     * @returns {void}
+     * @hidden
+     */
+    public handlePlaceholderClick(event: MouseEvent): void {
         event.preventDefault();
         const target: HTMLElement = event.currentTarget as HTMLElement;
         if (this.currentPlaceholder !== target) {
@@ -132,7 +156,14 @@ export class ImageRenderer {
         }
     }
 
-    private handlePlaceholderKeydown(event: KeyboardEvent): void {
+    /**
+     * Handles keyboard interaction on the image placeholder element.
+     *
+     * @param {KeyboardEvent} event - The keyboard event triggered when a key is pressed on the placeholder.
+     * @returns {void}
+     * @hidden
+     */
+    public handlePlaceholderKeydown(event: KeyboardEvent): void {
         if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
             const target: HTMLElement = event.currentTarget as HTMLElement;
@@ -140,6 +171,14 @@ export class ImageRenderer {
         }
     }
 
+    /**
+     * Shows or hides the image upload popup.
+     *
+     * @param {boolean} shouldHide - Specifies whether the upload popup should be hidden.
+     * @param {HTMLElement} placeholder - Optional placeholder element used to position the upload popup.
+     * @returns {void}
+     * @hidden
+     */
     public toggleUploadPopup(shouldHide: boolean, placeholder?: HTMLElement): void {
         if (shouldHide) {
             if (this.uploadPopupObj && this.isUploadPopupOpen) {
@@ -166,26 +205,19 @@ export class ImageRenderer {
     }
 
     private createUploadPopup(): void {
-        // Create popup container
-        this.uploadPopupElement = createElement('div', {
-            id: `${this.parent.rootEditorElement.id}_image-upload-popup`,
-            className: 'e-image-upload-popup e-popup-container'
-        });
-        // Create popup content container
-        const contentContainer: HTMLElement = createElement('div', {
-            id: `${this.parent.rootEditorElement.id}_image-tab-container`,
-            className: 'e-popup-content'
-        });
-        this.uploadPopupElement.appendChild(contentContainer);
-        this.parent.rootEditorElement.appendChild(this.uploadPopupElement);
         // Notify BlockEditor to render the tab component in this container
-        this.parent.observer.notify('renderImageUploader', { container: contentContainer });
+        this.parent.observer.notify('renderImageUploader');
+        // get popup container
+        this.uploadPopupElement = this.parent.rootEditorElement.querySelector(`#${this.parent.rootEditorElement.id}_image-upload-popup`) as HTMLElement;
+        // get popup content container
+        const contentContainer: HTMLElement = this.parent.rootEditorElement.querySelector(`#${this.parent.rootEditorElement.id}_image-tab-container`) as HTMLElement;
         // Use PopupRenderer to create the popup
         const args: IPopupRenderOptions = {
             element: this.uploadPopupElement,
             content: contentContainer,
             width: '400px',
-            height: 'auto'
+            height: 'auto',
+            actionOnScroll: 'reposition'
         };
         this.uploadPopupObj = this.parent.popupRenderer.renderPopup(args);
         // Bind popup lifecycle events
@@ -454,7 +486,7 @@ export class ImageRenderer {
         const blockElement: HTMLElement = this.parent.currentFocusedBlock;
         const block: BlockModel = getBlockModelById(blockElement.id, this.parent.getEditorBlocks());
         const saveFormat: SaveFormat = this.parent.imageBlockSettings.saveFormat;
-        const src: string = await this.getImageSrcFromFile(file, (saveFormat || 'Base64'));
+        const src: string = await this.getImageSrcFromFile(file, (saveFormat || 'Blob'));
         const fileName: string = (file instanceof File) ? file.name : `image-${Date.now()}`;
 
         let transformedParagraph: HTMLElement = blockElement;
@@ -621,6 +653,12 @@ export class ImageRenderer {
         this.currentImage = null;
     }
 
+    /**
+     * Destroys the module and cleans up resources
+     *
+     * @returns {void}
+     * @hidden
+     */
     public destroy(): void {
         this.removeEventListeners();
 

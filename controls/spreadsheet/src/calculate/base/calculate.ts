@@ -878,9 +878,7 @@ export class Calculate extends Base<HTMLElement> implements INotifyPropertyChang
         }
         this.parser.isFormulaParsed = false;
         try {
-            if (typeof parsedText === 'string') {
-                lastIndexOfq = this.findLastIndexOfq(parsedText);
-            }
+            lastIndexOfq = this.findLastIndexOfq(parsedText);
             if (lastIndexOfq > 0) {
                 nestedFormula = true;
             }
@@ -2674,7 +2672,6 @@ export class Calculate extends Base<HTMLElement> implements INotifyPropertyChang
             }
             rangeIndexesArr.push({ startRow, startCol, endRow, endCol, getCellValue, grid });
         }
-        this.grid = prevGrid;
         for (let k: number = 0; k < criterias.length; k++) {
             if (criterias[k as number] === '') {
                 this.grid = prevGrid;

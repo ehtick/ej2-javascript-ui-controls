@@ -286,7 +286,8 @@ export class BatchEdit {
             if (this.parent.editModule['isAddedRowByMethod'] && !isNullOrUndefined(this.parent.editModule['addRowIndex']) &&
             !this.parent.editModule['isAddedRowByContextMenu'] && !this.parent.editModule.isAddedMultipleRowsByMethod) {
                 const newlyAddedRecords: ITreeData[] = this.parent.getBatchChanges()['addedRecords'];
-                const index: number = parseInt(this.parent.getContentTable().getElementsByClassName('e-insertedrow')[newlyAddedRecords.length - 1].getAttribute('aria-rowindex'), 10) - 1;
+                const index: number = this.getInsertedRowIndex(newlyAddedRecords.length - 1);
+                this.batchIndex = index;
                 this.batchRecords.splice(index, 0, newlyAddedRecords[newlyAddedRecords.length - 1]);
             }
         }
@@ -450,6 +451,18 @@ export class BatchEdit {
         this.parent.grid.renderModule.refresh();
     }
 
+    private getInsertedRowIndex(elementIndex: number): number {
+        const header: Element = this.parent.getHeaderTable().getElementsByClassName('e-insertedrow')[parseInt(elementIndex.toString(), 10)];
+        const content: Element = this.parent.getContentTable().getElementsByClassName('e-insertedrow')[parseInt(elementIndex.toString(), 10)];
+        if (this.parent.frozenRows && header) {
+            return parseInt(header.getAttribute('aria-rowindex'), 10) - 1;
+        }
+        if (content) {
+            return parseInt(content.getAttribute('aria-rowindex'), 10) - 1;
+        }
+        return -1;
+    }
+
     private batchSave(args: { updatedRecords: BatchChanges, index: number }) : void {
         if (this.parent.editSettings.mode === 'Batch') {
             let i: number; const batchChanges: Object = Object.hasOwnProperty.call(args, 'updatedRecords') ? args.updatedRecords : this.parent.getBatchChanges(); const deletedRecords: string = 'deletedRecords';
@@ -469,7 +482,7 @@ export class BatchEdit {
                 if (this.parent.editModule['isAddedRowByMethod'] && addRecords.length && !isNullOrUndefined(this.parent.editModule['addRowIndex']) && !this.parent.editModule['isAddedRowByContextMenu']) {
                     addRecords.reverse();
                     for (let i: number = 0; i < addRecords.length; i++) {
-                        const index: number = parseInt(this.parent.getContentTable().getElementsByClassName('e-insertedrow')[parseInt(i.toString(), 10)].getAttribute('aria-rowindex'), 10) - 1;
+                        const index: number = this.getInsertedRowIndex(parseInt(i.toString(), 10));
                         data.splice(index, 0, addRecords[parseInt(i.toString(), 10)]);
                     }
                 }

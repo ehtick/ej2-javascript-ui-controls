@@ -1,23 +1,24 @@
-@use 'ej2-base/styles/common/mixin' as *;
+@use 'variables' as *;
+
 @mixin bigger-tab-header-layout {
   & .e-tab .e-tab-header {
-    height: $bigger-spread-ribbon-tab-text-wrap-height;
-    min-height: $bigger-spread-ribbon-tab-text-wrap-height;
+    height: $bigger-spreadsheet-ribbon-tab-text-wrap-height;
+    min-height: $bigger-spreadsheet-ribbon-tab-text-wrap-height;
     @if $skin-name == 'Material3' {
       height: 47px;
       min-height: 47px;
     }
 
     & .e-toolbar-item:not(.e-separator) {
-      height: $bigger-spread-ribbon-tab-text-wrap-height;
-      min-height: $bigger-spread-ribbon-tab-text-wrap-height;
+      height: $bigger-spreadsheet-ribbon-tab-text-wrap-height;
+      min-height: $bigger-spreadsheet-ribbon-tab-text-wrap-height;
       @if $skin-name == 'Material3' {
         height: 48px;
         min-height: 48px;
       }
 
       & .e-tab-wrap {
-        height: $bigger-spread-ribbon-tab-text-wrap-height;
+        height: $bigger-spreadsheet-ribbon-tab-text-wrap-height;
         @if $skin-name == 'Material3' {
           height: 48px;
         }
@@ -30,7 +31,7 @@
       }
       @else {
         & .e-text-wrap {
-          height: $bigger-spread-ribbon-tab-text-wrap-height;
+          height: $bigger-spreadsheet-ribbon-tab-text-wrap-height;
           @if $skin-name == 'Material3' {
             height: 48px;
           }
@@ -39,16 +40,16 @@
     }
 
     & .e-toolbar-items {
-      height: $bigger-spread-ribbon-tab-text-wrap-height;
-      min-height: $bigger-spread-ribbon-tab-text-wrap-height;
+      height: $bigger-spreadsheet-ribbon-tab-text-wrap-height;
+      min-height: $bigger-spreadsheet-ribbon-tab-text-wrap-height;
       @if $skin-name == 'Material3' {
         height: 48px;
         min-height: 48px;
       }
 
       & .e-scroll-nav {
-        height: $bigger-spread-ribbon-tab-text-wrap-height;
-        min-height: $bigger-spread-ribbon-tab-text-wrap-height;
+        height: $bigger-spreadsheet-ribbon-tab-text-wrap-height;
+        min-height: $bigger-spreadsheet-ribbon-tab-text-wrap-height;
         @if $skin-name == 'Material3' {
           height: 48px;
           min-height: 48px;
@@ -56,7 +57,7 @@
         @if $skin-name == 'fluent2' or $skin-name == 'bootstrap5.3' or $skin-name == 'tailwind3' {
           & .e-nav-left-arrow::before,
           & .e-nav-right-arrow::before {
-            font-size: $bigger-spread-sheet-tab-nav-arrow-font;
+            font-size: $bigger-spread-tab-nav-arrow-font;
           }
         }
       }
@@ -90,19 +91,19 @@
       & .e-tab-wrap:focus .e-text-wrap,
       &:not(.e-separator) .e-text-wrap {
         @if $skin-name == 'bootstrap5.3' {
-          height: $bigger-spread-ribbon-tab-text-wrap-height;
+          height: $bigger-spreadsheet-ribbon-tab-text-wrap-height;
         }
       }
       &:not(.e-separator) .e-tab-wrap {
         @if $skin-name == 'bootstrap5.3' {
-          height: $bigger-spread-ribbon-tab-text-wrap-height;
+          height: $bigger-spreadsheet-ribbon-tab-text-wrap-height;
         }
       }
     }
 
     & .e-sheet-tab-panel {
       @if $skin-name == 'bootstrap5.3' {
-        height: $bigger-spread-ribbon-tab-text-wrap-height;
+        height: $bigger-spreadsheet-ribbon-tab-text-wrap-height;
       }
     }
 
@@ -503,6 +504,10 @@
       }
       @if $sheet-skin == 'Material3' or $skin-name == 'bootstrap5.3' {
         font-size: $bigger-filter-icon-font-size;
+      }
+      @if $sheet-skin == 'bootstrap5' or $skin-name == 'bootstrap5-dark' {
+        margin-left: $filter-icon-bigger-margin-left;
+        margin-top: $filter-icon-bigger-margin-top;
       }
     }
 

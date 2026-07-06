@@ -1580,13 +1580,11 @@ export class Splitter extends Component<HTMLElement> {
         if (cCount > 0){
             if (!expandPane.classList.contains(COLLAPSE_PANE)){
                 addClass([expandPane], EXPAND_PANE);
-                expandPane.setAttribute('aria-expanded', 'true');
             }
         } else if (cCount === 0){
             for (let i: number = 0; i < this.allPanes.length; i++) {
                 if (!this.allPanes[i as number].classList.contains(COLLAPSE_PANE)) {
                     removeClass([this.allPanes[i as number]], EXPAND_PANE);
-                    this.allPanes[i as number].setAttribute('aria-expanded', 'false');
                 }
             }
         }
@@ -1597,7 +1595,6 @@ export class Splitter extends Component<HTMLElement> {
         this.updateFlexGrow();
         if (flexStatus) {
             this.previousPane.classList.remove(EXPAND_PANE);
-            this.previousPane.setAttribute('aria-expanded', 'false');
             this.previousPane.style.flexGrow = '';
         }
     }
@@ -1721,13 +1718,11 @@ export class Splitter extends Component<HTMLElement> {
         const expandPane: HTMLElement = isLeftOrUp ? this.nextPane : this.previousPane;
         const collapsePaneIndex: number = isLeftOrUp ? this.prevPaneIndex : this.nextPaneIndex;
         removeClass([collapsePane], EXPAND_PANE);
-        collapsePane.setAttribute('aria-expanded', 'false');
         addClass([collapsePane], collapseClass);
         collapsePane.setAttribute('aria-hidden', 'true');
         const isFlexPane : boolean = collapsePane.style.flexBasis === '';
         if (isFlexPane) {
             addClass([expandPane], EXPAND_PANE);
-            expandPane.setAttribute('aria-expanded', 'true');
         } else {
             let isFlexPaneHidden: boolean = true;
             for (let i: number = 0; i < this.allPanes.length; i++) {
@@ -1735,7 +1730,6 @@ export class Splitter extends Component<HTMLElement> {
                     if (this.allPanes[i as number].style.flexBasis === '' && !this.allPanes[i as number].classList.contains(COLLAPSE_PANE)
                         && !this.allPanes[i as number].classList.contains(EXPAND_PANE)) {
                         addClass([this.allPanes[i as number]], EXPAND_PANE);
-                        this.allPanes[i as number].setAttribute('aria-expanded', 'true');
                         isFlexPaneHidden = false;
                         break;
                     }
@@ -1743,7 +1737,6 @@ export class Splitter extends Component<HTMLElement> {
             }
             if (isFlexPaneHidden){
                 addClass([expandPane], EXPAND_PANE);
-                expandPane.setAttribute('aria-expanded', 'true');
             }
         }
         if (!this.collapseFlag) {

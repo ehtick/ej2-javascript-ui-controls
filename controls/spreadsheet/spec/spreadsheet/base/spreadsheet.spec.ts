@@ -489,6 +489,24 @@ describe('Spreadsheet base module ->', () => {
         });
     });
 
+    describe('EJ2-1018380, EJ2-1018345, EJ2-1018382, EJ2-1018381, EJ2-1018384: Check for script error when no args passed->', () => {
+        beforeAll((done: Function) => {
+            helper.initializeSpreadsheet({ sheets: [{ ranges: [{ dataSource: defaultData }] }] }, done);
+        });
+        afterAll(() => {
+            helper.invoke('destroy');
+        });
+        it('should not throw when passing undefined or empty inputs', (done: Function) => {
+            let spreadsheet: Spreadsheet = helper.getInstance();
+            expect(() => { spreadsheet.updateRange(undefined); }).not.toThrow();
+            expect(() => { spreadsheet.updateUndoRedoCollection(undefined); }).not.toThrow();
+            expect(() => { spreadsheet.find('' as any); }).not.toThrow();
+            expect(() => { spreadsheet.open(undefined); }).not.toThrow();
+            expect(() => { spreadsheet.addCustomFunction(undefined); }).not.toThrow();
+            done();
+        });
+    });
+
     describe('Methods checking - I ->', () => {
 
         beforeAll((done: Function) => {
@@ -1770,7 +1788,7 @@ describe('Spreadsheet base module ->', () => {
                         expect(sheet.password).toBe('');
                         expect(sheet.hashValue).not.toBeNull();
                         done();
-                    }, 30)
+                    }, 30);
                 }, 30);
             }, 30);
         });
@@ -4276,6 +4294,11 @@ describe('Spreadsheet base module ->', () => {
                     });
                 }
             });
+        });
+        it('Should not throw and return undefined when passing incorrect arguments to selectRange API', (done: Function) => {
+            const spreadsheet: Spreadsheet = helper.getInstance();
+            expect(spreadsheet.selectRange('')).toBeUndefined();
+            done();
         });
     });
 });

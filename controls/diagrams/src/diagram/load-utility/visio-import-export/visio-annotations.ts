@@ -1,6 +1,13 @@
 import { mapCellValues, toCamelCase } from './visio-core';
 import { isValidColor } from './visio-theme';
-import { CellMapValue, ParsedXmlObject, Point, ShapeData, SyncfusionTextBinding, VisioCell, VisioRow, VisioSection, VisioShapeNode, VisioShapeTransform, VisioTextTransform } from './visio-types';
+import {
+    CellMapValue, ParsedXmlObject, Point, ShapeData, SyncfusionTextBinding, VisioCell, VisioRow, VisioSection,
+    VisioShapeTransform, VisioTextTransform, VisioShapeNode, VisioStyleSheet, ColorRef, ProcessedColor, MasterDefaultValues
+} from './visio-types';
+import { getValue, getCellElement } from './visio-node-parser';
+import { getLineColor, getFillColor, hexToRgb, toHsl, HSLColor, toHexStr, calcColor, createProcessedColor, getColorKeyFromId } from './visio-model-parsers';
+import { ParsingContext } from './visio-import-export';
+import { VisioTheme, VisioShape } from './visio-models';
 
 /**
  * Retrieves a specific Visio Section from a shape by name.
@@ -372,14 +379,18 @@ export class VisioTextStyleModel {
     /**
      * Creates a VisioTextStyleModel instance from a Visio shape object.
      * Extracts comprehensive text styling information including font, size, color, and decorations.
-     * @param {any} shape - The Visio shape object containing text style data
+     * @param {VisioShapeNode} shape - The Visio shape object containing text style data
      * @param {boolean} isConnector - To Check whether the shape is connector or not
+     * @param {ParsingContext} context -  - Parser context containing theme and shape data.
      * @returns {VisioTextStyleModel} A new VisioTextStyleModel with all extracted style properties
      */
-    static fromJs(shape: any, isConnector?: boolean): VisioTextStyleModel {
+    static fromJs(shape: VisioShapeNode, isConnector?: boolean, context?: ParsingContext): VisioTextStyleModel {
         const style: VisioTextStyleModel = new VisioTextStyleModel();
         const allCells: VisioCell[] = [];
-
+        const theme: VisioTheme = context && context.data && context.data.currentTheme;
+        if (theme && theme.name === 'Integral' && theme.schemeEnum === '36' && style.color === undefined) {
+            style.color = '#ffffff';
+        }
         // Validate shape has Section property
         if (!shape || !shape.Section) {
             return style;
@@ -420,24 +431,55 @@ export class VisioTextStyleModel {
             return cell ? (cell.$.V as string) : undefined;
         };
 
-        /**
-         * Helper function to get cell unit property
-         * @param {string} name - The name of the cell to find
-         * @returns {string | undefined} The cell unit value
-         */
-        const getCellUnit: (name: string) => string | undefined = (name: string): string | undefined => {
-            const cell: VisioCell = allCells.find((c: VisioCell) => c && c.$ && c.$.N === name);
-            return cell && cell.$ && cell.$.U;
-        };
 
+        const getMasterCell: (name: string) => string | undefined = (name: string) => {
+            let masterCell: VisioCell;
+            let objectStyleSheet: VisioStyleSheet;
+
+            if (!context || !context.entries || !context.entries.RootDocument || !context.entries.RootDocument.StyleSheets
+                || !context.entries.RootDocument.StyleSheets.StyleSheet) {
+                return undefined;
+            }
+            const styleSheets: VisioStyleSheet[] = context.entries.RootDocument.StyleSheets.StyleSheet;
+            if (shape && shape.$ && shape.$['TextStyle'] && styleSheets && styleSheets.length > 1) {
+                objectStyleSheet = styleSheets.find((sheet: VisioStyleSheet) => sheet && sheet.$ && sheet.$.ID === shape.$['TextStyle']);
+                // styleSheets.find(function (sheet) { return sheet && sheet.$ && sheet.$.ID === shape.$["TextStyle"]; });
+            }
+            if (shape && shape && shape.Cell) {
+                const masterCells: VisioCell[] = ensureArray(shape.Cell);
+                masterCell = masterCells.find((cell: VisioCell) => cell && cell.$ && cell.$.N === name);
+            }
+            if (masterCell && masterCell.$ && masterCell.$.V) {
+                return context.propertyManager.getColor(masterCell.$.V as string);
+            }
+            if (objectStyleSheet && objectStyleSheet.Cell) {
+                const styleSheetcells: VisioCell[] = ensureArray(objectStyleSheet.Cell);
+                const styleSheetcell: VisioCell = styleSheetcells.find((cell: VisioCell) => cell && cell.$ && cell.$.N === name);
+                if (styleSheetcell && styleSheetcell.$ && styleSheetcell.$.V && isValidColor(styleSheetcell.$.V as string)) {
+                    return styleSheetcell.$.V as string;
+                }
+                return undefined;
+            }
+            else {
+                return undefined;
+            }
+        };
+        const colorFromCell: string = getCell('Color');
+        const colorFromMasterCell: string = getMasterCell('Color');
+        const colorFromCellElement: string = shape.visioParentStyles &&
+            getValue(getCellElement(shape.visioParentStyles, shape, context, 'Character', 'Color'), '');
         // Extract color value
-        style.color = getCell('Color') != null ? getCell('Color') : undefined;
+        style.color = colorFromCell != null ? colorFromCell : colorFromMasterCell != null ? colorFromMasterCell
+            : (colorFromCellElement !== 'Themed' && colorFromCellElement !== '') ? colorFromCellElement : getFontColor(shape, context);
 
         // Extract and set font family
         style.fontFamily = getCell('Font') ? getCell('Font') : 'Calibri';
 
+        const sizeFromCell: string = getCell('Size');
+        const defaultFontSize: string = '0.167';
         // Extract and convert font size (multiply by 72 * 1.33 to get point size)
-        const fontSizeValue: number = Number(getCell('Size'));
+        const fontSizeValue: number = sizeFromCell ? Number(sizeFromCell) : shape.visioParentStyles  ?
+            Number(getValue(getCellElement(shape.visioParentStyles, shape, context, 'Character', 'Size'), defaultFontSize)) : Number(defaultFontSize);
         if (fontSizeValue) {
             style.fontSize = fontSizeValue * 72 * 1.33;
         }
@@ -469,6 +511,137 @@ export class VisioTextStyleModel {
         style.textDecoration = VisioTextDecorationModel.fromJs(shape);
         return style;
     }
+}
+/**
+ * Retrieves the font color for a shape based on quick style settings and theme data.
+ * Resolves folnt colors from theme font style matrices, variant colors, or base colors.
+ * Applies color modifiers (tint, shade, etc.) to generate the final font color.
+ *
+ * @param {VisioShape} shape - Parsed Visio shape(s) for the vertex node
+ * @param {ParsingContext} context - Parser context containing theme and shape data.
+ * @returns {string | undefined} The resolved font color in hex format (#RRGGBB), or undefined if not found.
+ *
+ * @private
+ */
+function getFontColor(shape: VisioShapeNode, context: ParsingContext): string | undefined {
+    const theme: VisioTheme | undefined = context.data.currentTheme ? context.data.currentTheme : undefined;
+    if (!theme) {
+        return undefined;
+    }
+    let fontColor: { color?: ColorRef | ProcessedColor; name?: string } | null = null;
+    let fontColorStyle: number = 0;
+    if (shape) {
+        fontColorStyle = shape.quickStyleValues && shape.quickStyleValues.quickStyleFontColor;
+        const matrix: number = shape.quickStyleValues && shape.quickStyleValues.quickStyleFontMatrix;
+        const index: number = matrix - 100;
+        switch (matrix) {
+        case 1:
+        case 2:
+        case 3:
+        case 4:
+        case 5:
+        case 6:
+            if (theme.fontColorsArray && theme.fontColorsArray.length > 0) {
+                fontColor = theme.fontColorsArray[matrix - 1];
+            }
+            break;
+        case 100:
+        case 101:
+        case 102:
+        case 103:
+            if (theme.isMonotoneVariant && theme.themeVariantStl !== undefined && theme.isMonotoneVariant[theme.themeVariantStl]) {
+                fontColorStyle = 100;
+            }
+            if (theme.variantFontIdx && theme.themeVariantStl !== undefined && theme.fontColorsArray) {
+                const variantRow: Array<number> = theme.variantFontIdx[theme.themeVariantStl];
+                if (variantRow && variantRow[parseInt(index.toString(), 10)] !== undefined) {
+                    fontColor = theme.fontColorsArray[variantRow[parseInt(index.toString(), 10)] - 1];
+                }
+            }
+            break;
+        }
+    }
+    if (!fontColorStyle || !fontColor) {
+        return undefined;
+    }
+    let txtColor: string;
+    if (fontColor && fontColor.color) {
+        if (fontColor.color.color) {
+            txtColor = toHexStr(fontColor.color.color);
+        }
+        else if ((fontColor.color as ColorRef).val !== 'phClr') {
+            const colorValue: string = (fontColor.color as ColorRef).val;
+            const color: string = theme.baseColors[`${colorValue}`] ? theme.baseColors[`${colorValue}`] : undefined;
+            txtColor = color;
+        }
+    }
+    let variantColor: ProcessedColor | null = null;
+    // Base color from scheme (colors 1-7)
+    if (fontColorStyle < 8) {
+        if (theme.baseColors) {
+            const colorKey: string | undefined = getColorKeyFromId(fontColorStyle);
+            if (colorKey && theme.baseColors[`${colorKey}`]) {
+                variantColor = createProcessedColor(theme.baseColors[`${colorKey}`]);
+            }
+        }
+    }
+    else {
+        // Variant colors (100-106, 200-206, etc.)
+        let clrIndex: number = 0;
+        if (fontColorStyle >= 200) {
+            clrIndex = fontColorStyle - 200;
+        } else if (fontColorStyle >= 100) {
+            clrIndex = fontColorStyle - 100;
+        }
+        if (clrIndex >= 0 && clrIndex <= 6) {
+            if (theme.themeVariantClr !== undefined && theme.variantsColors && theme.variantsColors.length > 0) {
+                const variantIndex: number = theme.themeVariantClr % theme.variantsColors.length;
+                const variantColors: ProcessedColor[] = theme.variantsColors[parseInt(variantIndex.toString(), 10)];
+                if (variantColors && variantColors[parseInt(clrIndex.toString(), 10)]) {
+                    variantColor = variantColors[parseInt(clrIndex.toString(), 10)];
+                }
+            }
+        }
+    }
+    if (fontColor && fontColor.color) {
+        fontColor.color.color = variantColor.color;
+        calcColor(fontColor.color);
+        txtColor = toHexStr(fontColor.color.color);
+    }
+    if (!txtColor && variantColor && variantColor.color) {
+        txtColor = toHexStr(variantColor.color);
+    }
+    const styleVariation: number = shape.quickStyleValues && shape.quickStyleValues.quickStyleVariation;
+
+    if ((styleVariation & 2) > 0) {
+        const bkgndColor: string = theme.bkgndColor;
+        const bkgHSLClr: HSLColor = toHsl(hexToRgb(bkgndColor));
+        const txtHSLClr: HSLColor = typeof txtColor == 'object' ? toHsl(txtColor) : toHsl(hexToRgb(txtColor));
+        const fillColor: string = getFillColor(shape, context);
+        const fillHSLClr: HSLColor = typeof fillColor == 'object' ? toHsl(fillColor) : toHsl(hexToRgb(fillColor));
+        const lineClr: string = getLineColor(shape, context);
+        const lineHSLClr: HSLColor = typeof lineClr == 'object' ? toHsl(lineClr) : toHsl(hexToRgb(lineClr));
+        if (Math.abs(bkgHSLClr.getLum() - txtHSLClr.getLum()) >= 0.1666) {
+            return txtColor;
+        }
+        else if (bkgHSLClr.getLum() <= 0.7292) {
+            txtColor = 'ffffff';
+        }
+        else {
+            const lineDiff: number = Math.abs(bkgHSLClr.getLum() - lineHSLClr.getLum());
+            const fillDiff: number = Math.abs(bkgHSLClr.getLum() - fillHSLClr.getLum());
+            const txtDiff: number = Math.abs(bkgHSLClr.getLum() - txtHSLClr.getLum());
+            const max: number = Math.max(lineDiff, fillDiff, txtDiff);
+
+            if (max === lineDiff) {
+                txtColor = lineClr;
+            }
+            else if (max === fillDiff) {
+                txtColor = fillColor;
+            }
+        }
+    }
+    return txtColor;
 }
 
 /**
@@ -558,21 +731,15 @@ export class VisioToSyncfusionTextBinder {
         // Step 1: Calculate base position offset from TxtPin coordinates
         const visioTextCenter: { x: number; y: number } = this.calculateVisioTextCenter(shapeTransform, textTransform);
         const positionOffset: { x: number; y: number } = this.convertToSyncfusionOffset(visioTextCenter, shapeTransform);
-        const combinedOffset: { x: number; y: number } = {
-            x: positionOffset.x,
-            y: positionOffset.y
-        };
 
-        if (shapeTransform.verticalAlignment === 'Bottom') {
-            combinedOffset.y += 0.2;
-        } else if (shapeTransform.verticalAlignment === 'Top') {
-            combinedOffset.y -= 0.2;
-        }
         // Return binding with rounded offset values to 2 decimal places
+        // Note: We don't apply vertical alignment adjustments here because the text position
+        // is already fully specified by the Visio cells (TxtPinX, TxtPinY, TxtLocPinX, TxtLocPinY).
+        // Those adjustments were heuristics for shapes without explicit text positioning.
         return {
             offset: {
-                x: Math.round(combinedOffset.x * 100) / 100,
-                y: Math.round(combinedOffset.y * 100) / 100
+                x: Math.round(positionOffset.x * 100) / 100,
+                y: Math.round(positionOffset.y * 100) / 100
             }
         };
     }
@@ -592,22 +759,21 @@ export class VisioToSyncfusionTextBinder {
         const shapeLeft: number = shapeTransform.pinX - shapeTransform.width / 2;
         const shapeBottom: number = shapeTransform.pinY - shapeTransform.height / 2;
 
-        // Calculate absolute text pin position including margin offsets
-        const absoluteTxtPinX: number = shapeLeft + textTransform.txtPinX + (textTransform.txtMargin.left - textTransform.txtMargin.right);
-        const absoluteTxtPinY: number = shapeBottom + textTransform.txtPinY +
-            (textTransform.txtMargin.bottom - textTransform.txtMargin.top);
+        // Calculate absolute text pin position (relative to shape's bottom-left corner)
+        // Note: txtPinX and txtPinY are already relative to the shape's bottom-left corner
+        const absoluteTxtPinX: number = shapeLeft + textTransform.txtPinX;
+        const absoluteTxtPinY: number = shapeBottom + textTransform.txtPinY;
 
         // Calculate offset from text pin to text center
+        // The text pin is the anchor point of the text block
+        // The text local pin (txtLocPinX, txtLocPinY) defines where within the text block the pin is located
+        // To find the center, we need to offset from the pin by: (txtWidth/2 - txtLocPinX, txtHeight/2 - txtLocPinY)
         const textCenterOffsetX: number = (textTransform.txtWidth / 2) - textTransform.txtLocPinX;
         const textCenterOffsetY: number = (textTransform.txtHeight / 2) - textTransform.txtLocPinY;
 
-        // Apply rotation transformations to offset (placeholder for future rotation support)
-        const rotatedOffsetX: number = textCenterOffsetX;
-        const rotatedOffsetY: number = textCenterOffsetY;
-
         // Calculate final text center position
-        const visioTextCenterX: number = absoluteTxtPinX + rotatedOffsetX;
-        const visioTextCenterY: number = absoluteTxtPinY + rotatedOffsetY;
+        const visioTextCenterX: number = absoluteTxtPinX + textCenterOffsetX;
+        const visioTextCenterY: number = absoluteTxtPinY + textCenterOffsetY;
 
         return {
             x: visioTextCenterX,
@@ -676,6 +842,8 @@ export class VisioAnnotation {
     offset: Point;
     /** Flag indicating if text angle should follow connector segment angle */
     segmentAngle?: boolean = false;
+    /** Flag indicating that page-level TxtPin TxtLocPin TxtWidth/Height define explicit text position. */
+    hasExplicitTextPosition?: boolean = false;
 }
 
 /**
@@ -807,11 +975,12 @@ export class VisioConnectorAnnotation extends VisioAnnotation {
     /**
      * Creates a VisioConnectorAnnotation instance from a Visio connector shape object.
      * Extracts all text and positioning properties specific to connectors.
-     * @param {any} shape - The Visio connector shape object
-     * @param {any} defaultData - Default text transform data for fallback values
+     * @param {VisioShapeNode} shape - The Visio connector shape object
+     * @param {MasterDefaultValues} defaultData - Default text transform data for fallback values
+     * @param {ParsingContext} context - Parser context containing theme and shape data.
      * @returns {VisioConnectorAnnotation} A new VisioConnectorAnnotation with extracted properties
      */
-    static fromJs(shape: any, defaultData: any): VisioConnectorAnnotation {
+    static fromJs(shape: VisioShapeNode, defaultData: MasterDefaultValues, context: ParsingContext): VisioConnectorAnnotation {
         const annotation: VisioConnectorAnnotation = new VisioConnectorAnnotation();
 
         // Validate shape properties
@@ -844,7 +1013,7 @@ export class VisioConnectorAnnotation extends VisioAnnotation {
 
         // Extract margin and styling
         annotation.margin = VisioMarginModel.fromJs(shape);
-        annotation.style = VisioTextStyleModel.fromJs(shape, true);
+        annotation.style = VisioTextStyleModel.fromJs(shape, true, context);
 
         // Extract visibility (HideText = '1' means hidden)
         annotation.visible = getCell('HideText') !== '1';
@@ -853,7 +1022,7 @@ export class VisioConnectorAnnotation extends VisioAnnotation {
         annotation.hyperlink = VisioHyperlinkModel.fromJs(shape);
 
         // Apply constraint flags (locks, selection, rotation)
-        getAnnotationConstraints(annotation, shape.Cell);
+        getAnnotationConstraints(annotation, shape.Cell as VisioCell[]);
 
         // Determine if text follows connector segment angle
         annotation.segmentAngle = getCell('TextDirection') ? getCell('TextDirection') === '1' : false;
@@ -861,10 +1030,10 @@ export class VisioConnectorAnnotation extends VisioAnnotation {
         // Set alignment based on text direction
         if (annotation.segmentAngle) {
             // For segmented text, use horizontal alignment
-            annotation.horizontalAlignment = getHorizontalAlignment(shape);
+            annotation.horizontalAlignment = getHorizontalAlignment(shape as VisioShapeNode, true);
         } else {
             // For regular text, use vertical alignment
-            annotation.verticalAlignment = getVerticalAlignment(shape);
+            annotation.verticalAlignment = getVerticalAlignment(shape as VisioShapeNode, true);
         }
 
         // Extract text positioning properties with fallback to defaults
@@ -899,11 +1068,12 @@ export class VisioNodeAnnotation extends VisioAnnotation {
     /**
      * Creates a VisioNodeAnnotation instance from a Visio node shape object.
      * Extracts text properties and applies shape-specific text positioning.
-     * @param {any} shape - The Visio node shape object
+     * @param {VisioShapeNode} shape - The Visio node shape object
      * @param {ParsedXmlObject} defaultData - Default data containing shape name, width, height, and positioning
+     * @param {ParsingContext} context - Parsing context
      * @returns {VisioNodeAnnotation} A new VisioNodeAnnotation with extracted properties
      */
-    static fromJs(shape: any, defaultData: ParsedXmlObject): VisioNodeAnnotation {
+    static fromJs(shape: VisioShapeNode, defaultData: ParsedXmlObject, context: ParsingContext): VisioNodeAnnotation {
         const annotation: VisioNodeAnnotation = new VisioNodeAnnotation();
 
         // Validate shape properties
@@ -941,7 +1111,7 @@ export class VisioNodeAnnotation extends VisioAnnotation {
 
         // Extract margin and styling
         annotation.margin = VisioMarginModel.fromJs(shape);
-        annotation.style = VisioTextStyleModel.fromJs(shape);
+        annotation.style = VisioTextStyleModel.fromJs(shape, false, context);
 
         // If the Visio text has mixed formatting runs, fall back to a safe, default style
         if (hasMixedCharacterFormatting(shape) && annotation.style) {
@@ -955,17 +1125,17 @@ export class VisioNodeAnnotation extends VisioAnnotation {
         annotation.hyperlink = VisioHyperlinkModel.fromJs(shape);
 
         // Apply constraint flags
-        getAnnotationConstraints(annotation, shape.Cell);
+        getAnnotationConstraints(annotation, shape.Cell as VisioCell[]);
 
         // Determine text direction mode
         annotation.segmentAngle = textDirection ? textDirection === 1 : false;
 
-        // Set alignment based on text direction
-        if (annotation.segmentAngle) {
-            annotation.horizontalAlignment = getHorizontalAlignment(shape);
-        } else {
-            annotation.verticalAlignment = getVerticalAlignment(shape);
-        }
+        // Populate both horizontal and vertical alignment.  The original code
+        // only set one depending on the segmentAngle flag, so non‑rotated text
+        // would always fall back to the default center horizontal alignment even
+        // if HorzAlign cell specified left/right.
+        annotation.horizontalAlignment = getHorizontalAlignment(shape);
+        annotation.verticalAlignment = getVerticalAlignment(shape);
 
         // Extract shape dimensions with fallback to defaults
         const shapeWidth: number = !isNaN(parseFloat(getCell('Width')))
@@ -1001,6 +1171,20 @@ export class VisioNodeAnnotation extends VisioAnnotation {
         // Extract text local pin Y coordinate with fallback
         const txtLocPinY: number = parseFloat(getCell('TxtLocPinY'));
         annotation.txtLocPinY = !isNaN(txtLocPinY) ? txtLocPinY : transform.txtLocPinY;
+        // Determine if page-level cells explicitly define text position
+        const hasTxtPinX: boolean = getCell('TxtPinX') !== undefined;
+        const hasTxtPinY: boolean = getCell('TxtPinY') !== undefined;
+        const hasTxtLocPinX: boolean = getCell('TxtLocPinX') !== undefined;
+        const hasTxtLocPinY: boolean = getCell('TxtLocPinY') !== undefined;
+        const hasTxtWidth: boolean = getCell('TxtWidth') !== undefined;
+        const hasTxtHeight: boolean = getCell('TxtHeight') !== undefined;
+
+        // Set explicit-position flag (true if any explicit text-position cell exists on page instance)
+        if (hasTxtPinX || hasTxtPinY || hasTxtLocPinX || hasTxtLocPinY || hasTxtWidth || hasTxtHeight) {
+            annotation.hasExplicitTextPosition = true;
+        } else {
+            annotation.hasExplicitTextPosition = false;
+        }
 
         return annotation;
     }
@@ -1059,26 +1243,92 @@ export class VisioNodeAnnotation extends VisioAnnotation {
 }
 
 /**
- * Determines horizontal alignment for connector text following segment angle.
- * Maps Visio VerticalAlign cell values to horizontal alignment for rotated text.
- * @function getHorizontalAlignment
- * @param {any} shape - The Visio shape object containing Cell elements
- * @returns {'Left' | 'Center' | 'Right'} The horizontal alignment value
+ * Resolves horizontal alignment for annotations.
+ * Uses 'HorzAlign' for nodes and legacy 'VerticalAlign' mapping for connectors (when isConnector === true).
+ * @param {VisioShapeNode} shape - The Visio shape node to inspect
+ * @param {boolean} [isConnector] - When true, apply legacy connector mapping (VerticalAlign 0→Left, 2→Right)
+ * @returns {'Left' | 'Center' | 'Right'} Horizontal alignment result
  */
-function getHorizontalAlignment(shape: any): 'Left' | 'Center' | 'Right' {
-    // Find VerticalAlign cell
-    const cells: VisioCell[] = ensureArray(shape.Cell);
-    const cell: VisioCell = cells.find((c: VisioCell) => c.$.N === 'VerticalAlign');
-    if (cell) {
-        // Map alignment codes: 0 = left, 2 = right, default = center
-        switch (cell.$.V) {
+function getHorizontalAlignment(
+    shape: VisioShapeNode,
+    isConnector?: boolean
+): 'Left' | 'Center' | 'Right' {
+    // Helper to map cell value to alignment string (branches only the switch-case based on isConnector)
+    const mapValue: (val: string) => 'Left' | 'Center' | 'Right' = (val: string): 'Left' | 'Center' | 'Right' => {
+        // Connector legacy mapping uses VerticalAlign: 0→Left, 2→Right, default→Center
+        if (isConnector === true) {
+            switch (val) {
+            case '0':
+                return 'Left';
+            case '2':
+                return 'Right';
+            default:
+                return 'Center';
+            }
+        }
+
+        // Node mapping uses HorzAlign: 0→Left, 1→Center, 2→Right
+        switch (val) {
         case '0':
             return 'Left';
+        case '1':
+            return 'Center';
         case '2':
             return 'Right';
         default:
             return 'Center';
         }
+    };
+
+    // Search top‑level cells first (HorzAlign for nodes; VerticalAlign for connectors handled by mapValue)
+    const cells: VisioCell[] = ensureArray(shape.Cell);
+    let found: VisioCell | undefined = undefined;
+
+    // For connectors, we prefer VerticalAlign; for nodes, HorzAlign
+    if (isConnector === true) {
+        found = cells.find((c: VisioCell) => c && c.$ && c.$.N === 'VerticalAlign');
+    } else {
+        found = cells.find((c: VisioCell) => c && c.$ && c.$.N === 'HorzAlign');
+    }
+
+    // If not found, walk through sections->rows->cells
+    if (!found) {
+        const sectionBag: VisioSection | VisioSection[] | undefined =
+            (shape as unknown as {
+                Section?: VisioSection | VisioSection[];
+            }).Section;
+        const sections: VisioSection[] = Array.isArray(sectionBag) ? sectionBag : (sectionBag ? [sectionBag] : []);
+        for (let si: number = 0; si < sections.length; si += 1) {
+            const section: VisioSection = sections[parseInt(si.toString(), 10)];
+            if (section && section.Row) {
+                const rows: VisioRow[] = ensureArray(section.Row);
+                for (let ri: number = 0; ri < rows.length; ri += 1) {
+                    const row: VisioRow = rows[parseInt(ri.toString(), 10)];
+                    const rowCells: VisioCell[] = ensureArray(row.Cell);
+                    if (isConnector === true) {
+                        const matchV: VisioCell | undefined = rowCells.find((c: VisioCell) => c && c.$ && c.$.N === 'VerticalAlign');
+                        if (matchV) {
+                            found = matchV;
+                            break;
+                        }
+                    } else {
+                        const matchH: VisioCell | undefined = rowCells.find((c: VisioCell) => c && c.$ && c.$.N === 'HorzAlign');
+                        if (matchH) {
+                            found = matchH;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (found) {
+                break;
+            }
+        }
+    }
+
+    // Return mapped value if a cell with value exists; default to 'Center'
+    if (found && found.$ && found.$.V != null) {
+        return mapValue(String(found.$.V));
     }
     return 'Center';
 }
@@ -1111,19 +1361,28 @@ function getAnnotationConstraints(shape: any, cells: VisioCell[]): void {
 }
 
 /**
- * Determines vertical alignment for node text.
- * Maps Visio VerticalAlign cell values to vertical alignment (Top, Center, Bottom).
- * @function getVerticalAlignment
- * @param {any} shape - The Visio shape object containing Cell elements
- * @returns {'Top' | 'Center' | 'Bottom'} The vertical alignment value
+ * Resolves vertical alignment from Visio 'VerticalAlign' cell.
+ * Uses the legacy connector mapping when `isConnector === true`, otherwise uses the updated node mapping.
+ * @param {VisioShapeNode} shape - The Visio shape node containing cells
+ * @param {boolean} [isConnector] - When true, apply old connector mapping (0→Bottom, 2→Top, default Center)
+ * @returns {'Top' | 'Center' | 'Bottom'} Resolved vertical alignment
  */
-function getVerticalAlignment(shape: any): 'Top' | 'Center' | 'Bottom' {
+function getVerticalAlignment(
+    shape: VisioShapeNode,
+    isConnector?: boolean
+): 'Top' | 'Center' | 'Bottom' {
     // Find VerticalAlign cell
     const cells: VisioCell[] = ensureArray(shape.Cell);
-    const cell: VisioCell = cells.find((c: VisioCell) => c.$.N === 'VerticalAlign');
-    if (cell) {
-        // Map alignment codes: 0 = bottom, 2 = top, default = center
-        switch (cell.$.V) {
+    const cell: VisioCell = cells.find((c: VisioCell) => c && c.$ && c.$.N === 'VerticalAlign');
+
+    // Fallback when not present or value is null/undefined
+    if (!cell || !cell.$ || cell.$.V == null) {
+        return 'Center';
+    }
+
+    // Connector path: restore old mapping (0→Bottom, 2→Top, default Center)
+    if (isConnector === true) {
+        switch (String(cell.$.V)) {
         case '0':
             return 'Bottom';
         case '2':
@@ -1132,5 +1391,16 @@ function getVerticalAlignment(shape: any): 'Top' | 'Center' | 'Bottom' {
             return 'Center';
         }
     }
-    return 'Center';
+
+    // Node path: updated mapping (0→Top, 1→Center, 2→Bottom)
+    switch (String(cell.$.V)) {
+    case '0':
+        return 'Top';
+    case '1':
+        return 'Center';
+    case '2':
+        return 'Bottom';
+    default:
+        return 'Center';
+    }
 }

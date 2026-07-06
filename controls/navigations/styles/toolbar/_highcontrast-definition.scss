@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/highcontrast' as *;
-@forward 'ej2-base/styles/definition/highcontrast';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $tbar-skin: 'highcontrast' !default;
 $tbar-icons-bgr-font-size: 18px;
 $tbar-separator-bgr-mrgn: 10px 5px;

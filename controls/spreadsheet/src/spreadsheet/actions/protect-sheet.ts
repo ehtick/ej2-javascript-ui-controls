@@ -393,6 +393,9 @@ export class ProtectSheet {
                 const okButton: HTMLElement = ftrElement.firstChild as HTMLElement;
                 if ((trgt as CellModel).value !== '') {
                     okButton.removeAttribute('disabled');
+                    if (okButton.classList.contains('e-disabled')) {
+                        okButton.classList.remove('e-disabled');
+                    }
                 }
                 else {
                     okButton.setAttribute('disabled', 'true');
@@ -407,6 +410,9 @@ export class ProtectSheet {
                 const okBtnElem: HTMLElement = ftrCnt.firstChild as HTMLElement;
                 if ((trgt as CellModel).value !== '') {
                     okBtnElem.removeAttribute('disabled');
+                    if (okBtnElem.classList.contains('e-disabled')) {
+                        okBtnElem.classList.remove('e-disabled');
+                    }
                 }
                 else {
                     okBtnElem.setAttribute('disabled', 'true');
@@ -421,6 +427,9 @@ export class ProtectSheet {
                 const btn: HTMLElement = ftr.firstChild as HTMLElement;
                 if ((trgt as CellModel).value !== '') {
                     btn.removeAttribute('disabled');
+                    if (btn.classList.contains('e-disabled')) {
+                        btn.classList.remove('e-disabled');
+                    }
                 }
                 else {
                     btn.setAttribute('disabled', 'true');
@@ -435,6 +444,9 @@ export class ProtectSheet {
                 const btn: HTMLElement = ftrElem.firstChild as HTMLElement;
                 if ((trgt as CellModel).value !== '') {
                     btn.removeAttribute('disabled');
+                    if (btn.classList.contains('e-disabled')) {
+                        btn.classList.remove('e-disabled');
+                    }
                 }
                 else {
                     btn.setAttribute('disabled', 'true');

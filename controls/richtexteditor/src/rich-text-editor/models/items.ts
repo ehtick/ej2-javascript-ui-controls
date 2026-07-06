@@ -8,7 +8,7 @@ import { TableStyleItems } from '../../models/items';
 import { IToolsItems, IDropDownItemModel } from '../../common/interface';
 import { ItemModel } from '@syncfusion/ej2-navigations';
 
-export let templateItems: string[] = ['lineheight', 'alignments', 'formats', 'fontname', 'fontsize', 'fontcolor', 'backgroundcolor', 'align', 'display', 'audiolayoutoption', 'videolayoutoption', 'videoalign', 'tablerows', 'tablecolumns', 'tablecell', 'tablecellhorizontalalign', 'tablecellverticalalign', 'styles', 'numberformatlist', 'bulletformatlist', 'codeblock', 'borderstyle', 'tablebackgroundcolor', 'bordercolor', 'aicommands', 'wraptext'];
+export let templateItems: string[] = ['lineheight', 'alignments', 'formats', 'fontname', 'fontsize', 'fontcolor', 'backgroundcolor', 'align', 'display', 'audiolayoutoption', 'videolayoutoption', 'videoalign', 'tablerows', 'tablecolumns', 'tablecell', 'tablecellhorizontalalign', 'tablecellverticalalign', 'styles', 'numberformatlist', 'bulletformatlist', 'codeblock', 'borderstyle', 'tablebackgroundcolor', 'bordercolor', 'aicommands', 'wraptext' , 'exportword', 'exportpdf'];
 
 export let tools: { [key: string]: IToolsItems } = {
     'alignments': {
@@ -800,8 +800,8 @@ export let tableCellItems: IDropDownItemModel[] = [
 
 let tableCellLocale: { [ket: string]: string }[] = [
     { locale: 'mergecells', value: 'Merge' },
-    { locale: 'verticalsplit', value: 'HorizontalSplit' },
-    { locale: 'horizontalsplit', value: 'VerticalSplit' }
+    { locale: 'verticalsplit', value: 'VerticalSplit' },
+    { locale: 'horizontalsplit', value: 'HorizontalSplit' }
 ];
 
 let tableRowLocale: { [ket: string]: string }[] = [

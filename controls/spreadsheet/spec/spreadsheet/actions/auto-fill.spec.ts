@@ -603,15 +603,15 @@ describe('Auto fill ->', () => {
             expect(sheet.rows[1].height).toBeUndefined();
             expect(sheet.rows[1].cells[0].value).toBe('Romona Heaslip Hello Taurus Pink Cargo jnwdnnc');
             virtualTrack = helper.getElementFromSpreadsheet('.e-sheet-content .e-virtualtrack');
-            //expect(virtualTrack.style.height).toBe('2060px');
+            // expect(virtualTrack.style.height).toBe('2060px');
             helper.invoke('wrap', ['A2:A2']);
-            //expect(virtualTrack.style.height).toBe('2078px');
+            // expect(virtualTrack.style.height).toBe('2078px');
             expect(sheet.rows[1].cells[0].wrap).toBeTruthy();
             expect(sheet.rows[1].height).toBe(38);
             expect(sheet.rows[2]).toBeUndefined();
             helper.invoke('autoFill', ['A3:A80', 'A2', 'Down', 'FillSeries']);
             expect(sheet.topLeftCell).toBe('A75');
-            //expect(virtualTrack.style.height).toBe('3482px');
+            // expect(virtualTrack.style.height).toBe('3482px');
             expect(sheet.rows[2].cells[0].wrap).toBeTruthy();
             expect(sheet.rows[2].cells[0].value).toBe('Romona Heaslip Hello Taurus Pink Cargo jnwdnnc');
             expect(sheet.rows[2].height).toBe(38);
@@ -631,10 +631,10 @@ describe('Auto fill ->', () => {
         });
         it('Fill without formatting down', (done: Function) => {
             helper.invoke('wrap', ['A3:A80', false]);
-            //expect(virtualTrack.style.height).toBe('2078px');
+            // expect(virtualTrack.style.height).toBe('2078px');
             helper.invoke('autoFill', ['A3:A80', 'A2', 'Down', 'FillWithoutFormatting']);
             expect(sheet.topLeftCell).toBe('A75');
-            //expect(virtualTrack.style.height).toBe('2078px');
+            // expect(virtualTrack.style.height).toBe('2078px');
             expect(sheet.rows[2].cells[0].wrap).toBeFalsy();
             expect(sheet.rows[2].cells[0].value).toBe('Romona Heaslip Hello Taurus Pink Cargo jnwdnnc');
             expect(sheet.rows[2].height).toBe(20);
@@ -655,7 +655,7 @@ describe('Auto fill ->', () => {
         it('Fill formatting only down', (done: Function) => {
             helper.invoke('autoFill', ['A3:A80', 'A2', 'Down', 'FillFormattingOnly']);
             expect(sheet.topLeftCell).toBe('A75');
-            //expect(virtualTrack.style.height).toBe('3482px');
+            // expect(virtualTrack.style.height).toBe('3482px');
             expect(sheet.rows[2].cells[0].wrap).toBeTruthy();
             expect(sheet.rows[2].cells[0].value).toBe('Romona Heaslip Hello Taurus Pink Cargo jnwdnnc');
             expect(sheet.rows[2].height).toBe(38);
@@ -675,10 +675,10 @@ describe('Auto fill ->', () => {
         });
         it('Copy cells down', (done: Function) => {
             helper.invoke('wrap', ['A3:A80', false]);
-            //expect(virtualTrack.style.height).toBe('2078px');
+            // expect(virtualTrack.style.height).toBe('2078px');
             helper.invoke('autoFill', ['A3:A80', 'A2', 'Down', 'CopyCells']);
             expect(sheet.topLeftCell).toBe('A75');
-            //expect(virtualTrack.style.height).toBe('3482px');
+            // expect(virtualTrack.style.height).toBe('3482px');
             expect(sheet.rows[2].cells[0].wrap).toBeTruthy();
             expect(sheet.rows[2].cells[0].value).toBe('Romona Heaslip Hello Taurus Pink Cargo jnwdnnc');
             expect(sheet.rows[2].height).toBe(38);
@@ -3098,6 +3098,36 @@ describe('Auto fill ->', () => {
                 helper.invoke('selectRange', ['A2']);
                 helper.invoke('paste');
                 expect(document.querySelector('.e-autofill')).toBeNull();
+                done();
+            });
+        });
+    });
+
+    describe('Autofill rich-text numeric update ->', () => {
+        beforeAll((done: Function) => {
+            helper.initializeSpreadsheet({ sheets: [{ ranges: [{ dataSource: defaultData }] }] }, done);
+        });
+        afterAll(() => {
+            helper.invoke('destroy');
+        });
+
+        it('should increment numeric portion and preserve richText styles on autofill', (done: Function) => {
+            helper.invoke('updateCell', [{ value: 'abcde12345', richText: [
+                { text: 'ab' },
+                { text: 'cd', style: { verticalAlign: 'sub' } },
+                { text: 'e12', style: { verticalAlign: 'super' } },
+                { text: '345' }
+            ] }, 'A1']);
+            helper.invoke('selectRange', ['A1']);
+            helper.invoke('autoFill', ['A2', 'A1', 'Down', 'FillSeries']);
+            setTimeout(() => {
+                const cell: any = helper.getInstance().sheets[0].rows[1].cells[0];
+                expect(cell).toBeDefined();
+                expect(cell.richText).toBeDefined();
+                const texts = (cell.richText as any[]).map(r => r.text).join('');
+                expect(texts).toBe('abcde12346');
+                expect(cell.richText[1].style && cell.richText[1].style.verticalAlign).toBe('sub');
+                expect(cell.richText[2].style && cell.richText[2].style.verticalAlign).toBe('super');
                 done();
             });
         });

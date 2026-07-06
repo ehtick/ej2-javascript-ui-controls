@@ -4,7 +4,7 @@ import { DocumentEditor } from '../../../document-editor';
 import { FormFieldsGroup } from './form-fields-group';
 import { ControlGroup } from './control-group';
 import { MappingGroup } from './mapping-group';
-import { ProtectGroup } from './protect-group';
+import { DeveloperProtectGroup } from './developer-protect-group';
 
 /**
  * Constants for tab identification
@@ -22,7 +22,7 @@ export class DeveloperTab {
     private formFieldsGroup: FormFieldsGroup;
     private controlGroup: ControlGroup;
     private mappingGroup: MappingGroup;
-    private protectGroup: ProtectGroup;
+    private developerProtectGroup: DeveloperProtectGroup;
 
     /**
      * Constructor for DeveloperTab class
@@ -36,7 +36,7 @@ export class DeveloperTab {
         this.formFieldsGroup = new FormFieldsGroup(container);
         this.controlGroup = new ControlGroup(container);
         this.mappingGroup = new MappingGroup(container);
-        this.protectGroup = new ProtectGroup(container);
+        this.developerProtectGroup = new DeveloperProtectGroup(container);
     }
 
     /**
@@ -60,7 +60,7 @@ export class DeveloperTab {
                 this.formFieldsGroup.getGroupModel(),
                 this.controlGroup.getGroupModel(),
                 this.mappingGroup.getGroupModel(),
-                this.protectGroup.getGroupModel()
+                this.developerProtectGroup.getGroupModel()
             ]
         };
     }
@@ -75,7 +75,7 @@ export class DeveloperTab {
         this.formFieldsGroup.updateSelection();
         this.controlGroup.updateSelection();
         this.mappingGroup.updateSelection();
-        this.protectGroup.updateSelection();
+        this.developerProtectGroup.updateSelection();
     }
 
 
@@ -94,14 +94,14 @@ export class DeveloperTab {
         if (this.mappingGroup.destroy) {
             this.mappingGroup.destroy();
         }
-        if (this.protectGroup.destroy) {
-            this.protectGroup.destroy();
+        if (this.developerProtectGroup.destroy) {
+            this.developerProtectGroup.destroy();
         }
 
         // Clear references
         this.formFieldsGroup = undefined;
         this.controlGroup = undefined;
         this.mappingGroup = undefined;
-        this.protectGroup = undefined;
+        this.developerProtectGroup = undefined;
     }
 }

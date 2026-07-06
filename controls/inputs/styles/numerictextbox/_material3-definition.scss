@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/material3' as *;
-@forward 'ej2-base/styles/definition/material3';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $numeric-skin-name: 'Material3' !default;
 $numeric-input-icon-size: 16px !default;
 $numeric-input-bigger-icon-size: 18px !default;
@@ -21,3 +21,4 @@ $numeric-bigger-prepend-outline-label-bottom-top: 0 !default;
 $numeric-bigger-prepend-outline-label-top-top: -6px !default;
 $numeric-bigger-prepend-filled-label-bottom-top: 24px !default;
 $numeric-bigger-prepend-filled-label-top-top: 10px !default;
+$numeric-box-full-border-color: rgba($border) !default;

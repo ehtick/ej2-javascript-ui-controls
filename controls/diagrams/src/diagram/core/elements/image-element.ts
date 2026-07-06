@@ -80,6 +80,11 @@ export class ImageElement extends DiagramElement {
         if (this.width !== undefined && this.height !== undefined) {
             this.desiredSize = new Size(this.width, this.height);
             this.contentSize = this.desiredSize;
+        } else if (this.width !== undefined || this.height !== undefined) {
+            // One dimension provided, fallback to 50 for missing
+            const w: number = this.width !== undefined ? this.width : 50;
+            const h: number = this.height !== undefined ? this.height : 50;
+            this.desiredSize = new Size(w, h);
         } else {
             this.desiredSize = this.contentSize;
         }

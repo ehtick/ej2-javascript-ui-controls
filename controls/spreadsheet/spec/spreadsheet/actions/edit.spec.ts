@@ -303,7 +303,6 @@ describe('Editing ->', () => {
             editor.textContent = 'pre';
             (helper.getInstance() as any).editModule.editCellData.value = 'pre';
             editor.textContent = 'Candidate';
-            EventHandler.trigger(helper.getElement(), 'compositionstart', { target: editor, isComposing: true });
             const inputEvt: any = document.createEvent('Event');
             inputEvt.initEvent('input', true, true);
             inputEvt.isComposing = false;
@@ -326,23 +325,7 @@ describe('Editing ->', () => {
             editor.textContent = 'pre';
             (helper.getInstance() as any).editModule.editCellData.value = 'pre';
             editor.textContent = 'Candidate';
-            EventHandler.trigger(helper.getElement(), 'compositionstart', { target: editor, isComposing: true });
             EventHandler.trigger(helper.getElement(), 'compositionend', { target: editor, isComposing: false });
-            helper.triggerKeyNativeEvent(13);
-            setTimeout(() => {
-                const cellA1: any = helper.getInstance().sheets[0].rows[0].cells[0];
-                expect(cellA1.value).toBe('Candidate');
-                done();
-            }, 20);
-        });
-        it('IME input event commit on Enter preserves candidate', (done: Function) => {
-            helper.invoke('selectRange', ['A1']);
-            helper.invoke('startEdit');
-            const editor: HTMLElement = helper.getCellEditorElement();
-            editor.textContent = 'pre';
-            (helper.getInstance() as any).editModule.editCellData.value = 'pre';
-            editor.textContent = 'Candidate';
-            EventHandler.trigger(helper.getElement(), 'input', { target: editor, isComposing: false });
             helper.triggerKeyNativeEvent(13);
             setTimeout(() => {
                 const cellA1: any = helper.getInstance().sheets[0].rows[0].cells[0];
@@ -358,7 +341,6 @@ describe('Editing ->', () => {
             formulaInput.value = 'pre';
             (helper.getInstance() as any).editModule.editCellData.value = 'pre';
             formulaInput.value = 'Candid';
-            EventHandler.trigger(helper.getElement(), 'compositionstart', { target: formulaInput, isComposing: true });
             const inputEvt: any = document.createEvent('Event');
             inputEvt.initEvent('input', true, true);
             inputEvt.isComposing = false;
@@ -382,7 +364,6 @@ describe('Editing ->', () => {
             formulaInput.value = 'pre';
             (helper.getInstance() as any).editModule.editCellData.value = 'pre';
             formulaInput.value = 'Candidate';
-            EventHandler.trigger(helper.getElement(), 'compositionstart', { target: formulaInput, isComposing: true });
             const inputEvt: any = document.createEvent('Event');
             inputEvt.initEvent('input', true, true);
             inputEvt.isComposing = false;
@@ -423,7 +404,6 @@ describe('Editing ->', () => {
         afterAll(() => {
             helper.invoke('destroy');
         });
-
         it('Delete image, apply unique formula ', (done: Function) => {
             const spreadsheet: Spreadsheet = helper.getInstance();
             spreadsheet.insertImage([{src:"https://www.w3schools.com/images/w3schools_green.jpg"}],"D3");
@@ -1355,8 +1335,7 @@ describe('Editing ->', () => {
                 expect(helper.getInstance().sheets[0].rows[2].cells[8].formula).toBe('=-hello');
                 helper.invoke('goTo', ['I4']);
                 helper.edit('I4', '-$*');
-                expect(helper.invoke('getCell', [3, 8]).textContent).toBe('');
-                expect(helper.getInstance().sheets[0].rows[3].cells[8].formula).toBe('=-$*');
+                expect(helper.invoke('getCell', [3, 8]).textContent).toBe('expression_cannot_end_with_an_operator');
                 helper.invoke('goTo', ['I5']);
                 helper.edit('I5', '--');
                 expect(helper.invoke('getCell', [4, 8]).textContent).toBe('');

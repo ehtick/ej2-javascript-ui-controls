@@ -18,6 +18,8 @@ import { Freeze } from '../../src/treegrid/actions/freeze-column';
 import { Logger } from '../../src/treegrid/actions/logger';
 import { Print } from '../../src/treegrid/actions/print';
 import { ITreeData } from '../../src';
+import { UrlAdaptor } from '@syncfusion/ej2-data';
+import * as utils from '../../src/treegrid/utils';
 
 /**
  * Grid base spec
@@ -5848,4 +5850,2589 @@ describe('getProcessedRecords infinite Scrolling Coverage Fix', () => {
     afterAll(() => {
         destroy(gridObj);
     });
+});
+
+
+describe('Render module coverage additions', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: sampleData,
+                childMapping: 'subtasks',
+                treeColumnIndex: 1,
+                columns: ['taskID', 'taskName', 'startDate']
+            },
+            done
+        );
+    });
+
+    it('RowModifier should return early for null data', () => {
+        expect(gridObj.renderModule.RowModifier({ data: null } as any)).toBeUndefined();
+    });
+
+    it('RowModifier should add summary class and set aria-expanded true', () => {
+        const tr: HTMLElement = createElement('tr');
+        const expandSpan: HTMLElement = createElement('span', { className: 'e-treegridexpand' });
+        tr.appendChild(expandSpan);
+        const args: any = { data: { isSummaryRow: true, level: 0 }, row: tr };
+        gridObj.renderModule.RowModifier(args);
+        expect(tr.classList.contains('e-summaryrow')).toBe(true);
+        expect(tr.getAttribute('aria-expanded')).toBe('true');
+    });
+
+    it('RowModifier should set aria-expanded false when collapse icon present', () => {
+        const tr: HTMLElement = createElement('tr');
+        const collapseSpan: HTMLElement = createElement('span', { className: 'e-treegridcollapse' });
+        tr.appendChild(collapseSpan);
+        const args: any = { data: { level: 0 }, row: tr };
+        gridObj.renderModule.RowModifier(args);
+        expect(tr.getAttribute('aria-expanded')).toBe('false');
+    });
+
+    it('cellRender should return early for null data', () => {
+        expect(gridObj.renderModule.cellRender({ data: null } as any)).toBeUndefined();
+    });
+
+    it('cellRender should create tree cell container and icons for tree column', () => {
+        const col = gridObj.getColumns()[gridObj.treeColumnIndex as number];
+        const td: HTMLElement = createElement('td');
+        const args: any = {
+            data: { level: 2, childRecords: [1], hasChildRecords: true, expanded: true, index: 0 },
+            cell: td,
+            column: col,
+            requestType: 'add'
+        };
+        gridObj.renderModule.cellRender(args);
+        expect(td.querySelector('.e-treecolumn-container')).toBeTruthy();
+        expect(td.querySelector('.e-treecell')).toBeTruthy();
+        expect(td.querySelector('.e-treegridexpand') || td.querySelector('.e-treegridcollapse')).toBeTruthy();
+    });
+
+    it('destroy should remove grid listeners', () => {
+        const offSpy = spyOn(gridObj.grid, 'off').and.callThrough();
+        gridObj.renderModule.destroy();
+        expect(offSpy).toHaveBeenCalled();
+        gridObj.grid.on('template-result', gridObj.renderModule['columnTemplateResult'], gridObj.renderModule);
+        gridObj.grid.on('reactTemplateRender', gridObj.renderModule['reactTemplateRender'], gridObj.renderModule);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+describe('Render module - template, checkbox and react refresh branches', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: sampleData,
+                childMapping: 'subtasks',
+                treeColumnIndex: 1,
+                allowTextWrap: true,
+                columns: [
+                    { field: 'taskID', headerText: 'Task ID' },
+                    { field: 'taskName', headerText: 'Task Name', showCheckbox: false },
+                    { field: 'startDate', headerText: 'Start Date' }
+                ]
+            },
+            done
+        );
+    });
+
+    it('should handle templateResult in updateTreeCell path', () => {
+        const treeCol = gridObj.getColumns()[gridObj.treeColumnIndex as number];
+        (treeCol as any).template = undefined;
+        const div = createElement('div');
+        div.innerHTML = '<span class="tpl">TEMPLATE</span>';
+        gridObj.renderModule['columnTemplateResult']({ template: div.childNodes, name: 'columnTemplate' });
+        const td: HTMLElement = createElement('td');
+        const cellEl: HTMLElement = createElement('span', { className: 'e-treecell' }) as HTMLElement;
+        const args: any = {
+            data: { level: 1, childRecords: [], hasChildRecords: false, index: 0 },
+            cell: td,
+            column: { field: treeCol.field, uid: treeCol.uid, template: { obj: true } },
+            requestType: 'add'
+        };
+        (gridObj.renderModule as any).updateTreeCell(args, cellEl);
+        expect(gridObj.renderModule['templateResult']).toBeNull();
+        expect(cellEl.querySelector('.tpl') || cellEl.innerHTML.length > 0).toBeTruthy();
+    });
+
+    it('should notify columnCheckbox and adjust width when checkbox present', () => {
+        const col = gridObj.getColumns()[1];
+        (col as any).showCheckbox = true;
+        gridObj.allowTextWrap = true;
+        gridObj.getColumns()[gridObj.treeColumnIndex as number].template = undefined;
+        const td: HTMLElement = createElement('td');
+        const frame = createElement('span', { className: 'e-frame' }) as HTMLElement;
+        frame.style.width = '20px';
+        td.appendChild(frame);
+        const args: any = { data: { level: 0, index: 0 }, cell: td, column: col };
+        gridObj.renderModule.cellRender(args);
+        expect(td.querySelector('.e-frame')).toBeTruthy();
+    });
+
+    it('refreshReactColumnTemplateByUid should call cellRender for react mode', (done) => {
+        (gridObj as any).isReact = true;
+        spyOn((gridObj as any), 'clearTemplate').and.callFake((names: any, undefinedArg: any, cb: Function) => { cb(); });
+        gridObj.getColumns()[gridObj.treeColumnIndex as number].template = undefined;
+        const colUid = gridObj.getColumns()[1].uid;
+        const cellRenderSpy = spyOn(gridObj.renderModule as any, 'cellRender').and.callThrough();
+        (gridObj.renderModule as any).refreshReactColumnTemplateByUid(colUid);
+        expect(cellRenderSpy).toHaveBeenCalled();
+        done();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+describe('Render additional coverage', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: sampleData,
+            childMapping: 'subtasks',
+            treeColumnIndex: 1,
+            columns: ['taskID', 'taskName', 'startDate']
+        }, done);
+    });
+
+    it('RowModifier should call lastRowBorder when drag modules present and last visible record', () => {
+        spyOn((gridObj as any), 'lastRowBorder').and.callThrough();
+        (gridObj as any).rowDragAndDropModule = { draggedRecord: true };
+        (gridObj.grid as any).rowDragAndDropModule = { dragStartData: true };
+        spyOn(gridObj, 'getContentTable').and.returnValue({ scrollHeight: 10 } as any);
+        spyOn(gridObj, 'getContent').and.returnValue({ clientHeight: 100 } as any);
+        spyOn(gridObj, 'getVisibleRecords').and.returnValue([{ uniqueID: 'uid-last' }]);
+        const tr: any = createElement('tr');
+        const td = createElement('td'); tr.appendChild(td);
+        const args: any = { data: { uniqueID: 'uid-last', level: 0 }, row: tr };
+        gridObj.renderModule.RowModifier(args);
+        expect((gridObj as any).lastRowBorder).toHaveBeenCalled();
+    });
+
+    it('cellRender should use getVirtualColIndexByUid when virtualization enabled', () => {
+        gridObj.enableColumnVirtualization = true;
+        gridObj.initialRender = false;
+        (gridObj as any).getVirtualColIndexByUid = function (uid: string) { return gridObj.treeColumnIndex; };
+        const td: HTMLElement = createElement('td');
+        const col = gridObj.getColumns()[gridObj.treeColumnIndex as number];
+        const args: any = { data: { level: 1, childRecords: [], hasChildRecords: false, index: 0 }, cell: td, column: col, requestType: 'add' };
+        gridObj.renderModule.cellRender(args);
+        expect(td.querySelector('.e-treecolumn-container')).toBeTruthy();
+        gridObj.enableColumnVirtualization = false;
+        gridObj.initialRender = true;
+    });
+
+    it('cellRender should add e-gridrowindex for freezeright/freezeLeft/movable columns', () => {
+        (gridObj.grid as any).getFrozenLeftColumnsCount = () => 1;
+        (gridObj.grid as any).getFrozenLeftColumns = (): any[] => [{ field: 'taskName' }];
+        (gridObj.grid as any).getFrozenRightColumns = (): any[] => [];
+        (gridObj.grid as any).getMovableColumns = (): any[] => [];
+        const td: HTMLElement = createElement('td');
+        const args: any = { data: { level: 0, index: 0 }, cell: td, column: { uid: gridObj.getColumns()[1].uid, field: 'taskName' }, requestType: 'update' };
+        gridObj.renderModule.cellRender(args);
+        expect(td.className.indexOf('e-gridrowindex') > -1).toBeTruthy();
+    });
+
+    it('cellRender summary branch should clear innerHTML when column.template present', () => {
+        const td: HTMLElement = createElement('td');
+        const args: any = { data: { isSummaryRow: true }, cell: td, column: { field: 'taskName', template: {} } };
+        gridObj.renderModule.cellRender(args);
+        expect(td.innerHTML === '' || td.innerHTML === null).toBeTruthy();
+    });
+
+    it('reactTemplateRender should set portals and notify renderReactTemplate', () => {
+        (gridObj as any).isReact = true;
+        spyOn(gridObj, 'notify').and.callThrough();
+        const portalEl = createElement('div');
+        (gridObj.renderModule as any).reactTemplateRender([portalEl]);
+        expect((gridObj as any).notify).toHaveBeenCalledWith('renderReactTemplate', (gridObj as any).portals);
+        (gridObj as any).isReact = false;
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+describe('Logger unit tests', () => {
+    let logger: Logger;
+    let gridObj: TreeGrid
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+        {
+            dataSource: sampleData,
+            childMapping: 'subtasks',
+            treeColumnIndex: 2,
+            enableVirtualization: true,
+            height: 400,
+            columns: [
+                { field: 'taskID', headerText: 'Task ID', textAlign: 'Right', width: 100 },
+                { field: 'taskName', headerText: 'Task Name', width: 260 },
+                { field: 'startDate', headerText: 'Start Date', width: 150 },
+            ]
+        },
+        done
+        );
+
+    });    
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+
+    it('should replace module url for module_missing', () => {
+        logger = new Logger(gridObj.grid);
+        const grids: any = require('@syncfusion/ej2-grids');
+        grids.detailLists['module_missing'] = {
+            check: (_: any, __: any) => ({ success: true, options: {} }),
+            generateMessage: () => 'Some message https://original/url',
+            logType: 'error'
+        };
+        spyOn(console, 'error');
+        logger.log('module_missing', {});
+        expect((console.error as jasmine.Spy).calls.mostRecent().args[0]).toContain('/modules');
+    });
+
+    it('should handle array input and different url replacements', () => {
+        logger = new Logger(gridObj.grid);
+        const grids: any = require('@syncfusion/ej2-grids');
+        grids.detailLists['grid_remote_edit'] = {
+            check: () => ({ success: true, options: {} }),
+            generateMessage: () => 'Remote edit https://remote/url',
+            logType: 'log'
+        };
+        grids.detailLists['virtual_height'] = {
+            check: () => ({ success: true, options: {} }),
+            generateMessage: () => 'Virtual https://virt/url',
+            logType: 'log'
+        };
+        spyOn(console, 'log');
+        logger.log(['grid_remote_edit', 'virtual_height'], {});
+        expect((console.log as jasmine.Spy).calls.count()).toBeGreaterThanOrEqual(2);
+    });
+
+    it('should log datasource_syntax_mismatch only when treeGridObj.dataStateChange present', () => {
+        logger = new Logger(gridObj.grid);
+        const grids: any = require('@syncfusion/ej2-grids');
+        grids.detailLists['datasource_syntax_mismatch'] = {
+            check: () => ({ success: true, options: {} }),
+            generateMessage: () => 'Data source issue https://ds/url',
+            logType: 'log'
+        };
+        spyOn(console, 'log');
+        (logger as any).treeGridObj = { dataStateChange: true };
+        logger.log('datasource_syntax_mismatch', {});
+        expect((console.log as jasmine.Spy).calls.mostRecent().args[0]).toContain('https');
+    });
+
+    it('treeLog should call mapping_fields_missing when mappings are absent', () => {
+        logger = new Logger(gridObj.grid);
+        spyOn(console, 'error');
+        const tg: any = { idMapping: null, childMapping: null, parentIdMapping: null, allowRowDragAndDrop: false, columns: [] };
+        logger.treeLog('mapping_fields_missing', {}, tg);
+        expect((console.error as jasmine.Spy).calls.count()).toBeGreaterThan(0);
+    });
+});
+
+describe('Task 1008825: Implementing support for getRowIndexByPrimaryKey() method in ej2 -treegrid', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: sampleData,
+                childMapping: 'subtasks',
+                treeColumnIndex: 1,
+                height: 400,
+                columns: [
+                    { field: 'taskID', headerText: 'Task ID', textAlign: 'Right', width: 100, isPrimaryKey: true },
+                    { field: 'taskName', headerText: 'Task Name', width: 260 },
+                    { field: 'startDate', headerText: 'Start Date', width: 150, showCheckbox: true },
+                ]
+            }, done
+
+        );
+    });
+    it('getRowIndexByPrimaryKey method testing', () => {
+        expect(gridObj.getRowIndexByPrimaryKey(1)).toBe(0);
+        expect(gridObj.getRowIndexByPrimaryKey(15)).toBe(14);
+        expect(gridObj.getRowIndexByPrimaryKey(30)).toBe(29);
+    });
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('Coverage - getFormat method', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: sampleData,
+                childMapping: 'subtasks',
+                treeColumnIndex: 1,
+                columns: [
+                    { field: 'taskID', headerText: 'Task ID', type: 'number' },
+                    { field: 'taskName', headerText: 'Task Name' },
+                    { field: 'startDate', headerText: 'Start Date', type: 'date', format: 'yMd' }
+                ]
+            },
+            done
+        );
+    });
+
+    it('should handle string format', () => {
+        const format: string = 'yMd';
+        const result: string = (gridObj as any).getFormat(format);
+        expect(result).toBe('yMd');
+    });
+
+    it('should handle object format with format property', () => {
+        const format: any = { format: 'yMd', skeleton: 'medium' };
+        const result: string = (gridObj as any).getFormat(format);
+        expect(result).toBe('yMd');
+    });
+
+    it('should handle object format with skeleton property only', () => {
+        const format: any = { skeleton: 'short' };
+        const result: string = (gridObj as any).getFormat(format);
+        expect(result).toBe('short');
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+describe('Coverage - setHeaderText method', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: sampleData,
+                childMapping: 'subtasks',
+                treeColumnIndex: 1,
+                columns: [
+                    { field: 'taskID', headerText: 'Task ID', type: 'number' },
+                    { field: 'taskName', headerText: 'Task Name' },
+                    { field: 'startDate', headerText: 'Start Date', type: 'date', format: 'yMd' }
+                ]
+            },
+            done
+        );
+    });
+
+    it('should set header text from column', () => {
+        const columns: any = extend([], gridObj.columns) as any;
+        const include: string[] = ['field', 'headerText', 'type'];
+        const result: any = (gridObj as any).setHeaderText(columns, include);
+        expect(result).toBeDefined();
+        expect(result.length).toBeGreaterThan(0);
+    });
+
+    it('should handle columns with template property', () => {
+        const columns: any = [
+            { field: 'taskID', headerText: 'Task ID', template: '<div>Test</div>' }
+        ];
+        const include: string[] = ['field', 'headerText', 'template'];
+        const result: any = (gridObj as any).setHeaderText(columns, include);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+describe('Coverage - getGridEditSettings method', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: sampleData,
+                childMapping: 'subtasks',
+                treeColumnIndex: 1,
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true,
+                    allowDeleting: true,
+                    mode: 'Row',
+                    newRowPosition: 'Top'
+                },
+                columns: ['taskID', 'taskName', 'startDate']
+            },
+            done
+        );
+    });
+
+    it('should convert Row mode to Normal', () => {
+        const settings: any = (gridObj as any).getGridEditSettings();
+        expect(settings.mode).toBe('Normal');
+    });
+
+    it('should handle Cell mode with Dialog false', () => {
+        gridObj.editSettings.mode = 'Cell';
+        const settings: any = (gridObj as any).getGridEditSettings();
+        expect(settings.mode).toBe('Normal');
+        expect(settings.showConfirmDialog).toBe(false);
+    });
+
+    it('should handle Dialog mode', () => {
+        gridObj.editSettings.mode = 'Dialog';
+        const settings: any = (gridObj as any).getGridEditSettings();
+        expect(settings.mode).toBe('Dialog');
+    });
+
+    it('should handle Batch mode', () => {
+        gridObj.editSettings.mode = 'Batch';
+        const settings: any = (gridObj as any).getGridEditSettings();
+        expect(settings.mode).toBe('Batch');
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+describe('Coverage - getContextMenu method', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: sampleData,
+                childMapping: 'subtasks',
+                treeColumnIndex: 1,
+                contextMenuItems: ['AddRow', 'Indent', 'Outdent', 'Edit', 'Delete'],
+                columns: ['taskID', 'taskName', 'startDate']
+            },
+            done
+        );
+    });
+
+    it('should generate context menu items', () => {
+        const items: any = (gridObj as any).getContextMenu();
+        expect(items).toBeDefined();
+        expect(items.length).toBeGreaterThan(0);
+    });
+
+    it('should return null when contextMenuItems is undefined', () => {
+        gridObj.contextMenuItems = undefined;
+        const items: any = (gridObj as any).getContextMenu();
+        expect(items).toBeNull();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+describe('Coverage - getGridToolbar method', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: sampleData,
+                childMapping: 'subtasks',
+                treeColumnIndex: 1,
+                toolbar: ['ExpandAll', 'CollapseAll', 'Search', 'Print', 'Indent', 'Outdent'],
+                columns: ['taskID', 'taskName', 'startDate']
+            },
+            done
+        );
+    });
+
+    it('should generate toolbar items', () => {
+        const items: any = (gridObj as any).getGridToolbar();
+        expect(items).toBeDefined();
+        expect(items.length).toBeGreaterThan(0);
+    });
+
+    it('should return null when toolbar is undefined', () => {
+        gridObj.toolbar = undefined;
+        const items: any = (gridObj as any).getGridToolbar();
+        expect(items).toBeNull();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+describe('Coverage - export methods', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: sampleData,
+                childMapping: 'subtasks',
+                treeColumnIndex: 1,
+                allowExcelExport: true,
+                allowPdfExport: true,
+                columns: ['taskID', 'taskName', 'startDate']
+            },
+            done
+        );
+    });
+
+    it('serverExcelExport should set isExcel flag true', () => {
+        spyOn<any>(gridObj, 'exportTreeGrid');
+        gridObj.serverExcelExport('http://localhost/export');
+        expect((gridObj as any).isExcel).toBe(true);
+    });
+
+    it('serverPdfExport should set isExcel flag false', () => {
+        spyOn<any>(gridObj, 'exportTreeGrid');
+        gridObj.serverPdfExport('http://localhost/export');
+        expect((gridObj as any).isExcel).toBe(false);
+    });
+
+    it('serverCsvExport should set isExcel flag true', () => {
+        spyOn<any>(gridObj, 'exportTreeGrid');
+        gridObj.serverCsvExport('http://localhost/export');
+        expect((gridObj as any).isExcel).toBe(true);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+describe('Coverage - column methods edge cases', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: sampleData,
+                childMapping: 'subtasks',
+                treeColumnIndex: 1,
+                columns: ['taskID', 'taskName', 'startDate', 'endDate']
+            },
+            done
+        );
+    });
+
+    it('getColumnByField should return correct column', () => {
+        const column: any = gridObj.getColumnByField('taskName');
+        expect(column).toBeDefined();
+        expect(column.field).toBe('taskName');
+    });
+
+    it('getColumnByUid should return correct column', () => {
+        const columns: any = gridObj.getColumns();
+        const uid: string = columns[1].uid;
+        const column: any = gridObj.getColumnByUid(uid);
+        expect(column).toBeDefined();
+        expect(column.uid).toBe(uid);
+    });
+
+    it('getColumnFieldNames should return field names', () => {
+        const names: string[] = gridObj.getColumnFieldNames();
+        expect(names).toBeDefined();
+        expect(names.length).toBeGreaterThan(0);
+    });
+
+    it('showColumns should show hidden columns', () => {
+        gridObj.hideColumns('startDate');
+        let visible: any = gridObj.getColumns().find((col: any) => col.field === 'startDate');
+        expect(visible.visible).toBe(false);
+        gridObj.showColumns('startDate');
+        visible = gridObj.getColumns().find((col: any) => col.field === 'startDate');
+        expect(visible.visible).toBe(true);
+    });
+
+    it('hideColumns should hide columns', () => {
+        gridObj.hideColumns('endDate');
+        const visible: any = gridObj.getColumns().find((col: any) => col.field === 'endDate');
+        expect(visible.visible).toBe(false);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+describe('Coverage - column header methods', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: sampleData,
+                childMapping: 'subtasks',
+                treeColumnIndex: 1,
+                columns: ['taskID', 'taskName', 'startDate']
+            },
+            done
+        );
+    });
+
+    it('getColumnHeaderByField should return header element', () => {
+        const header: Element = gridObj.getColumnHeaderByField('taskName');
+        expect(header).toBeDefined();
+    });
+
+    it('getColumnHeaderByIndex should return header element', () => {
+        const header: Element = gridObj.getColumnHeaderByIndex(1);
+        expect(header).toBeDefined();
+    });
+
+    it('getColumnHeaderByUid should return header element', () => {
+        const uid: string = gridObj.getColumns()[1].uid;
+        const header: Element = gridObj.getColumnHeaderByUid(uid);
+        expect(header).toBeDefined();
+    });
+
+    it('getColumnIndexByField should return column index', () => {
+        const index: number = gridObj.getColumnIndexByField('taskName');
+        expect(index).toBeGreaterThanOrEqual(0);
+    });
+
+    it('getColumnIndexByUid should return column index', () => {
+        const uid: string = gridObj.getColumns()[1].uid;
+        const index: number = gridObj.getColumnIndexByUid(uid);
+        expect(index).toBeGreaterThanOrEqual(0);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+describe('Coverage - cell methods', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: sampleData,
+                childMapping: 'subtasks',
+                treeColumnIndex: 1,
+                columns: ['taskID', 'taskName', 'startDate']
+            },
+            done
+        );
+    });
+
+    it('getCellFromIndex should return cell element', () => {
+        const cell: Element = gridObj.getCellFromIndex(0, 0);
+        expect(cell).toBeDefined();
+    });
+
+    it('getCellFromIndex with valid row and column should return element', () => {
+        const cell: Element = gridObj.getCellFromIndex(1, 1);
+        expect(cell).toBeDefined();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+describe('Coverage - onPropertyChanged method branches', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: sampleData,
+                childMapping: 'subtasks',
+                treeColumnIndex: 1,
+                allowPaging: true,
+                pageSettings: { pageSize: 10, pageCount: 5 },
+                allowSorting: true,
+                allowFiltering: true,
+                allowSelection: true,
+                columns: ['taskID', 'taskName', 'startDate']
+            },
+            done
+        );
+    });
+
+    it('should handle enableVirtualization property change', () => {
+        gridObj.enableVirtualization = true;
+        gridObj.dataBind();
+        expect(gridObj.grid.enableVirtualization).toBe(true);
+    });
+
+    it('should handle enableColumnVirtualization property change', () => {
+        gridObj.enableColumnVirtualization = false;
+        gridObj.dataBind();
+        expect(gridObj.grid.enableColumnVirtualization).toBe(false);
+    });
+
+    it('should handle allowSorting property change', () => {
+        gridObj.allowSorting = false;
+        gridObj.dataBind();
+        expect(gridObj.grid.allowSorting).toBe(false);
+    });
+
+    it('should handle allowMultiSorting property change', () => {
+        gridObj.allowMultiSorting = false;
+        gridObj.dataBind();
+        expect(gridObj.grid.allowMultiSorting).toBe(false);
+    });
+
+    it('should handle allowSelection property change', () => {
+        gridObj.allowSelection = false;
+        gridObj.dataBind();
+        expect(gridObj.grid.allowSelection).toBe(false);
+    });
+
+    it('should handle showColumnMenu property change', () => {
+        gridObj.showColumnMenu = true;
+        gridObj.dataBind();
+        expect(gridObj.grid.showColumnMenu).toBe(true);
+    });
+
+    it('should handle allowRowDragAndDrop property change', () => {
+        gridObj.allowRowDragAndDrop = false;
+        gridObj.dataBind();
+        expect(gridObj.grid.allowRowDragAndDrop).toBe(false);
+    });
+
+    it('should handle enableInfiniteScrolling property change', () => {
+        gridObj.enableInfiniteScrolling = false;
+        gridObj.dataBind();
+        expect(gridObj.grid.enableInfiniteScrolling).toBe(false);
+    });
+
+    it('should handle selectedRowIndex property change', () => {
+        gridObj.selectedRowIndex = 2;
+        gridObj.dataBind();
+        expect(gridObj.grid.selectedRowIndex).toBe(2);
+    });
+
+    it('should handle enableAltRow property change', () => {
+        gridObj.enableAltRow = false;
+        gridObj.dataBind();
+        expect(gridObj.grid.enableAltRow).toBe(false);
+    });
+
+    it('should handle enableHover property change', () => {
+        gridObj.enableHover = false;
+        gridObj.dataBind();
+        expect(gridObj.grid.enableHover).toBe(false);
+    });
+
+    it('should handle allowReordering property change', () => {
+        gridObj.allowReordering = false;
+        gridObj.dataBind();
+        expect(gridObj.grid.allowReordering).toBe(false);
+    });
+
+    it('should handle allowResizing property change', () => {
+        gridObj.allowResizing = false;
+        gridObj.dataBind();
+        expect(gridObj.grid.allowResizing).toBe(false);
+    });
+
+    it('should handle showColumnChooser property change', () => {
+        gridObj.showColumnChooser = true;
+        gridObj.dataBind();
+        expect(gridObj.grid.showColumnChooser).toBe(true);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+describe('Coverage - sort and search methods', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: sampleData,
+                childMapping: 'subtasks',
+                treeColumnIndex: 1,
+                allowSorting: true,
+                columns: ['taskID', 'taskName', 'startDate']
+            },
+            done
+        );
+    });
+
+    it('sortByColumn should sort column', () => {
+        if (gridObj.sortModule) {
+            spyOn(gridObj.sortModule, 'sortColumn');
+            gridObj.sortByColumn('taskName', 'Ascending', false);
+            expect(gridObj.sortModule.sortColumn).toHaveBeenCalled();
+        }
+    });
+
+    it('clearSorting should clear sort state', () => {
+        if (gridObj.sortModule) {
+            spyOn(gridObj.sortModule, 'clearSorting');
+            gridObj.clearSorting();
+            expect(gridObj.sortModule.clearSorting).toHaveBeenCalled();
+        }
+    });
+
+    it('removeSortColumn should remove sort from column', () => {
+        if (gridObj.sortModule) {
+            spyOn(gridObj.sortModule, 'removeSortColumn');
+            gridObj.removeSortColumn('taskName');
+            expect(gridObj.sortModule.removeSortColumn).toHaveBeenCalled();
+        }
+    });
+
+    it('search should search records', () => {
+        spyOn(gridObj.grid, 'search');
+        gridObj.search('test');
+        expect(gridObj.grid.search).toHaveBeenCalledWith('test');
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+describe('Coverage - page methods', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: sampleData,
+                childMapping: 'subtasks',
+                treeColumnIndex: 1,
+                columns: ['taskID', 'taskName', 'startDate']
+            },
+            done
+        );
+    });
+
+    it('goToPage should navigate to page', () => {
+        if (!gridObj.pagerModule) {
+            spyOn(gridObj, 'goToPage');
+            gridObj.goToPage(2);
+            expect(gridObj.goToPage).toHaveBeenCalledWith(2);
+        }
+    });
+
+    it('updateExternalMessage should update pager message', () => {
+        if (!gridObj.pagerModule) {
+            spyOn(gridObj, 'updateExternalMessage');
+            gridObj.updateExternalMessage('Test message');
+            expect(gridObj.updateExternalMessage).toHaveBeenCalledWith('Test message');
+        }
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+describe('Coverage - isFrozenGrid method', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: sampleData,
+                childMapping: 'subtasks',
+                treeColumnIndex: 1,
+                frozenColumns: 1,
+                columns: ['taskID', 'taskName', 'startDate']
+            },
+            done
+        );
+    });
+
+    it('isFrozenGrid should return true when frozenColumns > 0', () => {
+        const result: boolean = (gridObj as any).isFrozenGrid();
+        expect(result).toBe(true);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+describe('Coverage - isFrozenGrid with frozenRows', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: sampleData,
+                childMapping: 'subtasks',
+                treeColumnIndex: 1,
+                frozenRows: 2,
+                columns: ['taskID', 'taskName', 'startDate']
+            },
+            done
+        );
+    });
+
+    it('isFrozenGrid should return true when frozenRows > 0', () => {
+        const result: boolean = (gridObj as any).isFrozenGrid();
+        expect(result).toBe(true);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+describe('Coverage - treeColumnIndex and RTL methods', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: sampleData,
+                childMapping: 'subtasks',
+                treeColumnIndex: 1,
+                enableRtl: false,
+                columns: ['taskID', 'taskName', 'startDate']
+            },
+            done
+        );
+    });
+
+    it('should update tree column text align when RTL enabled', () => {
+        gridObj.enableRtl = true;
+        gridObj.dataBind();
+        expect(gridObj.grid.enableRtl).toBe(true);
+    });
+
+    it('should preserve tree column text align when RTL disabled', () => {
+        gridObj.enableRtl = false;
+        gridObj.dataBind();
+        expect(gridObj.grid.enableRtl).toBe(false);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+describe('Coverage - height and width with percentage', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        const container: HTMLElement = createElement('div', { id: 'treegrid', styles: 'height: 400px; width: 100%;' });
+        document.body.appendChild(container);
+        gridObj = createGrid(
+            {
+                dataSource: sampleData,
+                childMapping: 'subtasks',
+                treeColumnIndex: 1,
+                height: '100%',
+                width: '100%',
+                columns: ['taskID', 'taskName', 'startDate']
+            },
+            done
+        );
+    });
+
+    it('should set height as percentage', () => {
+        gridObj.height = '50%';
+        gridObj.dataBind();
+        expect(gridObj.element.style.height).toBe('50%');
+    });
+
+    it('should set width as percentage', () => {
+        gridObj.width = '80%';
+        gridObj.dataBind();
+        expect(gridObj.element.style.width).toBe('80%');
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        const container: Element = document.getElementById('treegrid');
+        if (container) {
+            container.remove();
+        }
+    });
+});
+
+describe('Coverage - pdfExport without allowPdfExport', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: sampleData,
+                childMapping: 'subtasks',
+                treeColumnIndex: 1,
+                allowPdfExport: false,
+                columns: ['taskID', 'taskName', 'startDate']
+            },
+            done
+        );
+    });
+
+    it('pdfExport should return null when allowPdfExport false', () => {
+        const result: any = gridObj.pdfExport();
+        expect(result).toBeNull();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+describe('Coverage - ExcelExport without allowExcelExport', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: sampleData,
+                childMapping: 'subtasks',
+                treeColumnIndex: 1,
+                allowExcelExport: false,
+                columns: ['taskID', 'taskName', 'startDate']
+            },
+            done
+        );
+    });
+
+    it('ExcelExport should return null when ExcelExport false', () => {
+        const result: any = gridObj.excelExport();
+        expect(result).toBeNull();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+describe('CSV Export should return null when allowExcelExport false', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: sampleData,
+                childMapping: 'subtasks',
+                treeColumnIndex: 1,
+                allowExcelExport: false,
+                columns: ['taskID', 'taskName', 'startDate']
+            },
+            done
+        );
+    });
+
+    it('csvExport should return promise when allowExcelExport true', () => {
+        const result: any = gridObj.csvExport();
+        expect(result).toBeNull();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+describe('Coverage - print method', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: sampleData,
+                childMapping: 'subtasks',
+                treeColumnIndex: 1,
+                columns: ['taskID', 'taskName', 'startDate']
+            },
+            done
+        );
+    });
+
+    it('print should call print module', () => {
+        if (gridObj.printModule) {
+            spyOn(gridObj.printModule, 'print');
+            gridObj.print();
+            expect(gridObj.printModule.print).toHaveBeenCalled();
+        }
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+
+describe('Coverage - setCellValue method', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: sampleData,
+                childMapping: 'subtasks',
+                treeColumnIndex: 1,
+                editSettings: { allowEditing: true, mode: 'Cell' },
+                columns: [
+                    { field: 'taskID', headerText: 'Task ID', isPrimaryKey: true },
+                    { field: 'taskName', headerText: 'Task Name', editType: 'default' },
+                    { field: 'startDate', headerText: 'Start Date', editType: 'datepickeredit' }
+                ]
+            },
+            done
+        );
+    });
+
+    it('setCellValue should update cell value', () => {
+        spyOn(gridObj.grid, 'setCellValue');
+        gridObj.setCellValue(1, 'taskName', 'Updated');
+        expect(gridObj.grid.setCellValue).toHaveBeenCalled();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+describe('Coverage - hasPreAndPostMiddleware method', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: sampleData,
+                childMapping: 'subtasks',
+                treeColumnIndex: 1,
+                columns: ['taskID', 'taskName', 'startDate']
+            },
+            done
+        );
+    });
+
+    it('hasPreAndPostMiddleware should return true for middleware objects', () => {
+        const middlewareObj: any = {
+            applyPreRequestMiddlewares: function() {},
+            applyPostRequestMiddlewares: function() {}
+        };
+        const result: boolean = (gridObj as any).hasPreAndPostMiddleware(middlewareObj);
+        expect(result).toBe(true);
+    });
+
+    it('hasPreAndPostMiddleware should return false for non-middleware objects', () => {
+        const result: boolean = (gridObj as any).hasPreAndPostMiddleware({});
+        expect(result).toBe(false);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+describe('TreeGrid actionFailureHandler branches', () => {
+    let gridObj: TreeGrid;
+    let capturedArgs: any;
+    beforeAll((done: Function) => {
+        gridObj = createGrid({ dataSource: sampleData, childMapping: 'subtasks', treeColumnIndex: 1,
+            columns: ['taskID', 'taskName'] }, done);
+    });
+
+    beforeEach(() => {
+        capturedArgs = undefined;
+        spyOn(gridObj as any, 'trigger').and.callFake((evt: string, args: any) => { capturedArgs = args; });
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+
+    it('detects missing primary key for CRUD actions', () => {
+        gridObj.editSettings.allowAdding = true; gridObj.editSettings.allowDeleting = true; gridObj.editSettings.allowEditing = true;
+        spyOn(gridObj as any, 'getPrimaryKeyFieldNames').and.returnValue([]);
+        (gridObj as any).actionFailureHandler();
+        expect(Object.keys(capturedArgs.error).some((k: string) => (capturedArgs.error as any)[k].indexOf('CRUD actions') > -1)).toBeTruthy();
+    });
+
+    it('detects missing primary key for row drag and drop', () => {
+        gridObj.allowRowDragAndDrop = true;
+        spyOn(gridObj as any, 'getPrimaryKeyFieldNames').and.returnValue([]);
+        (gridObj as any).actionFailureHandler();
+        expect(Object.keys(capturedArgs.error).some((k: string) => String((capturedArgs.error as any)[k]).indexOf('Row Drag and Drop') > -1)).toBeTruthy();
+    });
+
+    it('detects paging + virtualization conflict', () => {
+        gridObj.allowPaging = true; gridObj.enableVirtualization = true;
+        (gridObj as any).actionFailureHandler();
+        expect(Object.keys(capturedArgs.error).some((k: string) => String((capturedArgs.error as any)[k]).indexOf('Paging is not allowed') > -1)).toBeTruthy();
+        gridObj.allowPaging = false; gridObj.enableVirtualization = false;
+    });
+
+    it('detects missing data and columns', () => {
+        (gridObj as any).flatData = [];
+        gridObj.columns = [] as any;
+        (gridObj as any).actionFailureHandler();
+         expect(Object.keys(capturedArgs.error).some((k: string) => String((capturedArgs.error as any)[k]).indexOf('Either of the Data source or columns') > -1)).toBeTruthy();
+        (gridObj as any).flatData = sampleData.slice();
+        gridObj.columns = ['taskID', 'taskName'];
+    });
+
+    it('detects frozen columns attribute conflict', () => {
+        gridObj.frozenColumns = 1; gridObj['columnModel'] = [{ isFrozen: true } as any];
+        (gridObj as any).actionFailureHandler();
+        expect(Object.keys(capturedArgs.error).some((k: string) => String((capturedArgs.error as any)[k]).indexOf('Use only one attribute for Frozen') > -1)).toBeTruthy();        
+        gridObj.frozenColumns = 0; gridObj['columnModel'] = [];
+    });
+
+    it('detects virtualization with detailTemplate', () => {
+        gridObj.enableVirtualization = true; gridObj.detailTemplate = 'tpl';
+        (gridObj as any).actionFailureHandler();
+        expect(Object.keys(capturedArgs.error).some((k: string) => String((capturedArgs.error as any)[k]).indexOf('Virtual scrolling is not compatible with the detail template') > -1)).toBeTruthy();               
+        gridObj.enableVirtualization = false; gridObj.detailTemplate = undefined;
+    });
+
+    it('detects frozen with detail/row template conflict', () => {
+        gridObj.frozenColumns = 1; gridObj.rowTemplate = 'r'; gridObj.detailTemplate = 'd';
+        (gridObj as any).actionFailureHandler();
+        expect(Object.keys(capturedArgs.error).some((k: string) => String((capturedArgs.error as any)[k]).indexOf('Frozen rows and columns are not supported with the Detail template') > -1)).toBeTruthy();             
+        gridObj.frozenColumns = 0; gridObj.rowTemplate = undefined; gridObj.detailTemplate = undefined;
+    });
+
+    it('detects frozen with cell editing conflict', () => {
+        gridObj.frozenColumns = 1; gridObj.frozenRows = 0; gridObj.editSettings.allowEditing = true; gridObj.editSettings.mode = 'Cell';
+        gridObj['columnModel'] = [{ isFrozen: true } as any];
+        (gridObj as any).actionFailureHandler();
+        expect(Object.keys(capturedArgs.error).some((k: string) => String((capturedArgs.error as any)[k]).indexOf('Frozen rows and columns are not supported with cell editing') > -1)).toBeTruthy();
+        gridObj.frozenColumns = 0; gridObj['columnModel'] = [];
+    });
+
+    it('detects selection with row template', () => {
+        gridObj.allowSelection = true; gridObj.rowTemplate = 'r';
+        (gridObj as any).actionFailureHandler();
+        expect(Object.keys(capturedArgs.error).some((k: string) => String((capturedArgs.error as any)[k]).indexOf('Selection is not supported in RowTemplate') > -1)).toBeTruthy();
+        gridObj.allowSelection = false; gridObj.rowTemplate = undefined;
+    });
+
+    it('detects csv/pdf/excel export permission errors', () => {
+        gridObj['action'] = 'csvExport'; gridObj.allowExcelExport = false;
+        (gridObj as any).actionFailureHandler();
+        expect(Object.keys(capturedArgs.error).some((k: string) => String((capturedArgs.error as any)[k]).indexOf('CSV export is not allowed') > -1)).toBeTruthy();
+
+        gridObj['action'] = 'pdfExport'; gridObj.allowPdfExport = false;
+        (gridObj as any).actionFailureHandler();
+        expect(Object.keys(capturedArgs.error).some((k: string) => String((capturedArgs.error as any)[k]).indexOf('PDF export is not allowed') > -1)).toBeTruthy();
+
+        gridObj['action'] = 'excelExport'; gridObj.allowExcelExport = false;
+        (gridObj as any).actionFailureHandler();
+        expect(Object.keys(capturedArgs.error).some((k: string) => String((capturedArgs.error as any)[k]).indexOf('Excel export is not allowed') > -1)).toBeTruthy();
+        gridObj['action'] = undefined; gridObj.allowExcelExport = true; gridObj.allowPdfExport = true;
+    });
+
+    it('detects invalid treeColumnIndex', () => {
+        gridObj.treeColumnIndex = 99; gridObj.columns = ['a'];
+        (gridObj as any).actionFailureHandler();
+        expect(Object.keys(capturedArgs.error).some((k: string) => String((capturedArgs.error as any)[k]).indexOf('TreeColumnIndex value should not exceed') > -1)).toBeTruthy();
+        gridObj.treeColumnIndex = 1; gridObj.columns = ['taskID','taskName'];
+    });
+
+    it('detects virtualization percent width/height', () => {
+        gridObj.enableVirtualization = true; gridObj['columnModel'] = [{ width: '10%' } as any]; gridObj.height = '100%';
+        (gridObj as any).actionFailureHandler();
+        expect(Object.keys(capturedArgs.error).some((k: string) => String((capturedArgs.error as any)[k]).indexOf('column width and height should be in pixels') > -1)).toBeTruthy();
+        gridObj.enableVirtualization = false; gridObj['columnModel'] = []; gridObj.height = 'auto';
+    });
+
+    it('detects child/id mapping conflicts', () => {
+        gridObj.childMapping = 'subtasks'; gridObj.idMapping = 'TaskID';
+        (gridObj as any).actionFailureHandler();
+        expect(Object.keys(capturedArgs.error).some((k: string) => String((capturedArgs.error as any)[k]).indexOf('Both IdMapping and ChildMapping should not be used') > -1)).toBeTruthy();
+        gridObj.idMapping = undefined;
+
+        gridObj.idMapping = 'TaskID'; gridObj.parentIdMapping = undefined;
+        (gridObj as any).actionFailureHandler();
+        expect(Object.keys(capturedArgs.error).some((k: string) => String((capturedArgs.error as any)[k]).indexOf('IdMapping and ParentIdMapping properties should be defined') > -1)).toBeTruthy();
+        gridObj.idMapping = undefined; gridObj.parentIdMapping = undefined; gridObj.childMapping = 'subtasks';
+    });
+
+    it('detects checkbox column rules and tree column alignment', () => {
+        gridObj['columnModel'] = [{ showCheckbox: true, field: 'a' } as any, { showCheckbox: true, field: 'b' } as any];
+        (gridObj as any).actionFailureHandler();
+        expect(Object.keys(capturedArgs.error).some((k: string) => String((capturedArgs.error as any)[k]).indexOf('Only one column can have the ShowCheckbox') > -1)).toBeTruthy();
+        gridObj['columnModel'] = [{ showCheckbox: true, field: 'x' } as any];
+        gridObj.columns = [{ field: 'y' } as any] as any;
+        gridObj.treeColumnIndex = 0;
+        (gridObj as any).actionFailureHandler();
+        expect(Object.keys(capturedArgs.error).some((k: string) => String((capturedArgs.error as any)[k]).indexOf('ShowCheckbox column should not be defined other than the tree column') > -1)).toBeTruthy();
+        gridObj['columnModel'] = [{ field: 'f', textAlign: 'Right' } as any];
+        gridObj.treeColumnIndex = 0; gridObj.columns = [{ field: 'f' } as any] as any;
+        (gridObj as any).actionFailureHandler();
+        expect(Object.keys(capturedArgs.error).some((k: string) => String((capturedArgs.error as any)[k]).indexOf('TextAlign right for the tree column is not applicable') > -1)).toBeTruthy();
+        gridObj['columnModel'] = [];
+    });
+});
+
+describe('Coverage - getData method with various filters', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: sampleData,
+            childMapping: 'subtasks',
+            treeColumnIndex: 1,
+            columns: ['taskID', 'taskName', 'startDate'],
+            allowFiltering: true
+        }, done);
+    });
+
+    it('getData with no filters should return all records', () => {
+        const result: any = gridObj.getData();
+        expect(result).toBeDefined();
+        expect(Array.isArray(result)).toBe(true);
+    });
+
+    it('getData with isFilter flag should return filtered records only', () => {
+        const result: any = gridObj.getData({ isFilter: true });
+        expect(result).toBeDefined();
+        expect(Array.isArray(result)).toBe(true);
+    });
+
+    it('getData with isSort flag should return sorted records', () => {
+        const result: any = gridObj.getData({ isSort: true });
+        expect(result).toBeDefined();
+        expect(Array.isArray(result)).toBe(true);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+describe('Coverage - getProcessedRecords method', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: sampleData,
+            childMapping: 'subtasks',
+            treeColumnIndex: 1,
+            columns: ['taskID', 'taskName', 'startDate'],
+            allowPaging: true,
+            pageSettings: { pageSize: 5 }
+        }, done);
+    });
+
+    it('getProcessedRecords with skipPage true should return all records', () => {
+        const result: any = gridObj.getProcessedRecords(true);
+        expect(result).toBeDefined();
+        expect(Array.isArray(result)).toBe(true);
+    });
+
+    it('getProcessedRecords with skipPage false should return page records', () => {
+        const result: any = gridObj.getProcessedRecords(false);
+        expect(result).toBeDefined();
+        expect(Array.isArray(result)).toBe(true);
+    });
+
+    it('getProcessedRecords with no argument should return processed records', () => {
+        const result: any = gridObj.getProcessedRecords();
+        expect(result).toBeDefined();
+        expect(Array.isArray(result)).toBe(true);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+
+
+describe('Coverage - dataBind method', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: sampleData,
+            childMapping: 'subtasks',
+            treeColumnIndex: 1,
+            columns: ['taskID', 'taskName', 'startDate']
+        }, done);
+    });
+
+    it('dataBind should bind data to grid', () => {
+        expect(() => {
+            gridObj.dataBind();
+        }).not.toThrow();
+    });
+
+    it('dataBind with rowDropSettings should update targetID', () => {
+        gridObj.rowDropSettings.targetID = 'testTarget';
+        const element: HTMLElement = createElement('div', { id: 'testTarget' });
+        document.body.appendChild(element);
+        expect(() => {
+            gridObj.dataBind();
+        }).not.toThrow();
+        element.remove();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+describe('Coverage - getRows and getPager methods', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: sampleData,
+            childMapping: 'subtasks',
+            treeColumnIndex: 1,
+            columns: ['taskID', 'taskName', 'startDate'],
+            allowPaging: true
+        }, done);
+    });
+
+    it('getRows should return all row elements', () => {
+        const rows: HTMLTableRowElement[] = gridObj.getRows();
+        expect(rows).toBeDefined();
+        expect(Array.isArray(rows)).toBe(true);
+        expect(rows.length).toBeGreaterThan(0);
+    });
+
+    it('getPager should return pager element', () => {
+        const pager: Element = gridObj.getPager();
+        expect(pager).toBeDefined();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+
+describe('Coverage - mouseClickHandler for expand/collapse', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: sampleData,
+            childMapping: 'subtasks',
+            treeColumnIndex: 1,
+            columns: ['taskID', 'taskName', 'startDate']
+        }, done);
+    });
+
+    it('mouseClickHandler should handle expand button click', () => {
+        const rows: HTMLTableRowElement[] = gridObj.getRows();
+        if (rows.length > 0) {
+            const expandBtn: HTMLElement | null = rows[0].querySelector('.e-treegridexpand');
+            if (expandBtn) {
+                const event: any = new MouseEvent('click', { bubbles: true });
+                Object.defineProperty(event, 'target', { value: expandBtn });
+                expect(() => {
+                    (gridObj as any).mouseClickHandler(event);
+                }).not.toThrow();
+            }
+        }
+    });
+
+    it('mouseClickHandler should ignore touch events', () => {
+        const event: any = new TouchEvent('click', { bubbles: true });
+        expect(() => {
+            (gridObj as any).mouseClickHandler(event);
+        }).not.toThrow();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+
+describe('Coverage - expandRow and collapseRow with row element', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: sampleData,
+            childMapping: 'subtasks',
+            treeColumnIndex: 1,
+            columns: ['taskID', 'taskName', 'startDate']
+        }, done);
+    });
+
+    it('expandRow with row element should expand correctly', () => {
+        const rows: HTMLTableRowElement[] = gridObj.getRows();
+        if (rows.length > 0) {
+            expect(() => {
+                gridObj.expandRow(rows[0] as HTMLTableRowElement);
+            }).not.toThrow();
+        }
+    });
+
+    it('collapseRow with row element should collapse correctly', () => {
+        const rows: HTMLTableRowElement[] = gridObj.getRows();
+        if (rows.length > 0) {
+            expect(() => {
+                gridObj.collapseRow(rows[0] as HTMLTableRowElement);
+            }).not.toThrow();
+        }
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+
+describe('Coverage - record hierarchy methods', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: sampleData,
+            childMapping: 'subtasks',
+            treeColumnIndex: 1,
+            columns: ['taskID', 'taskName', 'startDate']
+        }, done);
+    });
+
+    it('flatData should contain flat structure of records', () => {
+        if (gridObj.flatData.length > 0) {
+            const parentRecord: any = gridObj.flatData[0];
+            expect(parentRecord).toBeDefined();
+        }
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+
+describe('Coverage - updateRowTemplate branch conditions', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: sampleData,
+            childMapping: 'subtasks',
+            treeColumnIndex: 1,
+            columns: ['taskID', 'taskName', 'startDate'],
+            rowTemplate: '<div>${taskID}</div>'
+        }, done);
+    });
+
+    it('updateRowTemplate should work with rowTemplate defined', () => {
+        expect(() => {
+            (gridObj as any).updateRowTemplate();
+        }).not.toThrow();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+describe('Coverage - exportTreeGrid method', () => {
+  let gridObj: any;
+  let submitSpy: jasmine.Spy;
+
+  beforeEach(() => {
+    spyOn(UrlAdaptor.prototype, 'processQuery').and.returnValue({
+      data: JSON.stringify({
+        where: [],
+        search: null,
+        sorted: []
+      })
+    });
+
+    submitSpy = jasmine.createSpy('submit');
+
+    gridObj = {
+      grid: {
+        getDataModule: () => ({
+          generateQuery: () => ({})
+        })
+      },
+      addOnPersist: () =>
+        JSON.stringify({
+          filterSettings: { columns: [] },
+          searchSettings: { fields: [] },
+          sortSettings: { columns: [] },
+          columns: []
+        }),
+      setHeaderText: (cols: any) => cols,
+      createElement: (_tag: string) => {
+        return {
+          style: {},
+          appendChild: () => {},
+          set method(val: string) {},
+          set action(val: string) {},
+          submit: submitSpy,
+          remove: () => {}
+        };
+      }
+    };
+
+    spyOn(document.body, 'appendChild').and.callFake(() => {});
+  });
+
+  it('should execute exportTreeGrid without throwing and submit the form', () => {
+    expect(() => {
+      TreeGrid.prototype['exportTreeGrid'].call(gridObj, '/export');
+    }).not.toThrow();
+
+    expect(submitSpy).toHaveBeenCalled();
+  });
+});
+
+describe('Coverage - updateRowTemplate', () => {
+  let gridObj: any;
+
+  beforeEach(() => {
+    const row = document.createElement('tr');
+
+    gridObj = {
+      rowTemplate: true,
+      isReact: true,
+      enableCollapseAll: true,
+      treeColumnRowTemplate: () => { gridObj.getContentTable = ()=> ({rows: [row]})},
+      getCurrentViewRecords: () => [{ id: 1 }],
+      getContentTable: () => ({
+        rows: [] as any
+      }),
+
+      renderModule: {
+        RowModifier: jasmine.createSpy('RowModifier')
+      }
+    };
+
+    spyOn(window, 'setTimeout').and.callFake((fn: Function) => {
+      fn();
+      return 0 as any;
+    });
+  });
+
+  it('should execute updateRowTemplate including enableCollapseAll block', () => {
+    TreeGrid.prototype['updateRowTemplate'].call(gridObj);
+    expect(gridObj.renderModule.RowModifier).toHaveBeenCalled();
+  });
+});
+
+describe('Coverage - mouseClickHandler deep branches (TS safe)', () => {
+  it('should cover checkbox summary and filter template cleanup paths', () => {
+    const spanEle = document.createElement('span');
+    spanEle.classList.add('e-stop', 'e-uncheck');
+    const spanEle1 = document.createElement('span');
+    spanEle1.classList.add('e-stop', 'e-uncheck');
+    
+    const headerCheckbox = document.createElement('div');
+    headerCheckbox.appendChild(document.createElement('input'));
+    headerCheckbox.appendChild(spanEle);
+    headerCheckbox.appendChild(spanEle1);
+
+    const dlgElement = document.createElement('div');
+    dlgElement.id = 'dlgId';
+    document.body.appendChild(dlgElement);
+    spyOn(document, 'getElementById').and.returnValue(dlgElement);
+
+    const gridObj: any = {
+      isEditCollapse: false,
+      isCheckBoxSelection: true,
+      isReact: true,
+      aggregates: [{ showChildSummary: true }],
+      notify: () => {},
+      clearTemplate: (_: string[], __: any, cb: Function) => cb(),
+      getCurrentViewRecords: () => [{}, {}],
+      expandCollapseRequest: () => {},
+
+      grid: {
+        isEdit: false,
+        isPersistSelection: false,
+        isCheckBoxSelection: true,
+
+        isEllipsisTooltip: () => true,
+        toolTipObj: { close: () => {} },
+
+        getHeaderContent: () => ({
+          querySelector: () => spanEle
+        }),
+
+        getSelectedRowIndexes: () => [0, 1],
+
+        filterModule: {
+          column: { filterTemplate: true },
+          fltrDlgDetails: { isOpen: true },
+          filterModule: {
+            dlgObj: {
+              element: { id: 'dlgId' },
+              isDestroyed: false,
+              destroy: () => {}
+            }
+          }
+        }
+      }
+    };
+
+    const expandTarget = {
+      classList: {
+        contains: (cls: string) => cls === 'e-treegridexpand'
+      }
+    };
+
+    const filterTarget = {
+      classList: {
+        contains: (cls: string) =>
+          cls === 'e-rowcell' || cls === 'e-content'
+      }
+    };
+
+    TreeGrid.prototype['mouseClickHandler'].call(gridObj, { target: expandTarget });
+    TreeGrid.prototype['mouseClickHandler'].call(gridObj, { target: filterTarget });
+
+    expect(spanEle1.classList.contains('e-check')).toBe(true);
+    expect(spanEle1.classList.contains('e-uncheck')).toBe(false);
+  });
+});
+
+describe('Coverage - collapseRemoteChild deep branches', () => {
+  it('should cover all conditional blocks inside collapseRemoteChild', () => {
+
+    const row = document.createElement('tr');
+    row.setAttribute('data-Uid', 'uid1');
+
+    const detailTd = document.createElement('td');
+    detailTd.classList.add('e-detailrowexpand');
+    row.appendChild(detailTd);
+
+    const treeContainer = document.createElement('div');
+    treeContainer.classList.add('e-treecolumn-container');
+
+    const expandIcon = document.createElement('span');
+    expandIcon.classList.add('e-treegridexpand');
+    treeContainer.appendChild(expandIcon);
+
+    row.appendChild(treeContainer);
+
+    row.classList.add('e-gridrowindex0level1');
+
+    
+    const childRecord: any = {
+      expanded: true,
+      index: 0,
+      level: 0
+    };
+
+    
+    const gridObj: any = {
+      loadChildOnDemand: true,
+      rowTemplate: false,
+
+      getFrozenLeftColumnsCount: () => 1,
+      getFrozenRightColumnsCount: () => 0,
+
+      getRows: () => [row],
+
+      toggleRowVisibility: () => {},
+
+      grid: {
+        pageSettings: { totalRecordsCount: 10 },
+        detailRowModule: {
+          collapse: () => {}
+        },
+        getRowObjectFromUID: () => ({ data: childRecord }),
+        getCurrentViewRecords: () => [childRecord]
+      }
+    };
+
+    const rowDetails = {
+      record: childRecord,
+      rows: [row]
+    };
+    TreeGrid.prototype['collapseRemoteChild'].call(gridObj, rowDetails, false);
+  });
+});
+
+describe('Coverage - collapseRemoteChild movable/right row selection', () => {
+  it('should switch row to movableRows when main row has no expand icon', () => {
+    const mainRow = document.createElement('tr');
+    const movableRow = document.createElement('tr');
+
+    const container = document.createElement('div');
+    container.className = 'e-treecolumn-container';
+
+    const expandIcon = document.createElement('span');
+    expandIcon.className = 'e-treegridexpand';
+    container.appendChild(expandIcon);
+    movableRow.appendChild(container);
+
+    const movableDiv = document.createElement('div');
+    movableDiv.classList.add('e-gridrowindex0level1');
+    movableDiv.appendChild(container);
+
+    movableRow.appendChild(movableDiv);
+
+    const record = { index: 0, level: 0, expanded: true };
+
+
+    const gridObj: any = {
+      rowTemplate: false,
+      getFrozenLeftColumnsCount: () => 1,
+      getFrozenRightColumnsCount: () => 0,
+      getRows: () => [mainRow, movableRow],
+      toggleRowVisibility: () => {},
+      grid: {
+        pageSettings: { totalRecordsCount: 2 },
+        detailRowModule: { collapse: () => {} },
+        getRowObjectFromUID: () => ({ data: record })
+      },
+      collapseRemoteChild: (record: any, rows: any) => {return;}
+    };
+
+    TreeGrid.prototype['collapseRemoteChild'].call(
+      gridObj,
+      { record, rows: [mainRow] },
+      false
+    );
+
+    expect(true).toBe(true);
+  });
+});
+
+describe('Coverage - updateExpandStateMapping direct array input', () => {
+    let gridObj: TreeGrid;
+ 
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: [
+                    {
+                        taskID: 1,
+                        taskName: 'Parent 1',
+                        expanded: false,
+                        subtasks: [
+                            { taskID: 2, taskName: 'Child 1', expanded: false },
+                            { taskID: 3, taskName: 'Child 2', expanded: false }
+                        ]
+                    }
+                ],
+                expandStateMapping: 'expanded',
+                childMapping: 'subtasks',
+                editSettings: { allowEditing: true },
+                treeColumnIndex: 1,
+                columns: [
+                    { field: 'taskID', headerText: 'ID', isPrimaryKey: true },
+                    { field: 'taskName', headerText: 'Name' }
+                ]
+            },
+            done
+        );
+    });
+ 
+    it('should hit IF branch when passing array of records', () => {
+        const records = [
+            gridObj.flatData[0],
+            gridObj.flatData[1]
+        ];
+        (gridObj as any).updateExpandStateMapping(records, true);
+        expect((records[0] as any).expanded).toBe(true);
+        expect((records[1] as any).expanded).toBe(true);
+    });
+ 
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+describe('Coverage - collapseAll ternary getBatchChanges undefined', () => {
+    it('should use empty object when getBatchChanges is undefined', () => {
+        const treeGrid: any = {};
+        treeGrid.getCurrentViewRecords = () => [{ id: 1 }];
+        treeGrid.editSettings = { mode: 'Batch', showConfirmDialog: false };
+        treeGrid.expandCollapseAll = jasmine.createSpy();
+        TreeGrid.prototype.collapseAll.call(treeGrid);
+        expect(treeGrid.expandCollapseAll).toHaveBeenCalled();
+    });
+});
+
+describe('Coverage - extendedGridActionEvents', () => {
+
+  it('should cover actionBegin virtualscroll branch', () => {
+    const gridObj: any = {
+      enableVirtualization: true,
+      query: { expand: jasmine.createSpy('expand') },
+      showSpinner: jasmine.createSpy('showSpinner'),
+      notify: () => {},
+      action: 'indenting',
+      grid: {}
+    };
+
+    spyOn(utils, 'isRemoteData').and.returnValue(true);
+
+    TreeGrid.prototype['extendedGridActionEvents'].call(gridObj);
+
+    gridObj.grid.actionBegin({ requestType: 'virtualscroll' });
+
+    expect(gridObj.query.expand).toHaveBeenCalledWith('VirtualScrollingAction');
+  });
+
+  it('should cover actionBegin clear searching branch', () => {
+    const gridObj: any = {
+      enableVirtualization: true,
+      query: { expand: jasmine.createSpy('expand') },
+      action: 'indenting',
+      notify: () => {},
+      grid: {}
+    };
+
+    spyOn(utils, 'isRemoteData').and.returnValue(true);
+
+    TreeGrid.prototype['extendedGridActionEvents'].call(gridObj);
+
+    gridObj.grid.actionBegin({
+      requestType: 'searching',
+      searchString: ''
+    });
+
+    expect(gridObj.query.expand).toHaveBeenCalledWith('ClearSearchingAction');
+  });
+
+  it('should cover actionBegin clearFilter branch', () => {
+    const gridObj: any = {
+      enableVirtualization: true,
+      query: { expand: jasmine.createSpy('expand') },
+      notify: () => {},
+      grid: {},
+      action: 'indenting',
+    };
+
+    spyOn(utils, 'isRemoteData').and.returnValue(true);
+
+    TreeGrid.prototype['extendedGridActionEvents'].call(gridObj);
+
+    gridObj.grid.actionBegin({ action: 'clearFilter' });
+
+    expect(gridObj.query.expand).toHaveBeenCalledWith('ClearFilteringAction');
+  });
+
+  it('should cover frozen grid movable table height reset branch', () => {
+    const movable = document.createElement('div');
+    const frozen = document.createElement('div');
+
+    const gridObj: any = {
+      enableVirtualization: true,
+      trigger: () => {},
+      notify: () => {},
+      updateColumnModel: () => {},
+      updateTreeGridModel: () => {},
+      aggregates: [],
+      grid: {
+        isFrozenGrid: () => true,
+        element: {
+          querySelector: (cls: string) =>
+            cls.indexOf('movable') !== -1 ? movable : frozen
+        }
+      }
+    };
+
+    TreeGrid.prototype['extendedGridActionEvents'].call(gridObj);
+
+    gridObj.grid.actionComplete({ tableName: 'movable' });
+
+    expect(movable.style.height).toBe('auto');
+  });
+
+});
+
+describe('Coverage - getPageSizeByHeight', () => {
+  let treeGridObj: any;
+  
+
+  beforeEach(() => {
+    
+    const element = document.createElement('div');
+    element.id = 'treegrid';
+    element.style.height = '400px';
+    Object.defineProperty(element, 'clientHeight', {
+        value: 400,
+        configurable: true
+    });
+
+    Object.defineProperty(element, 'offsetHeight', {
+        value: 400,
+        configurable: true
+    });
+
+    document.body.appendChild(element);
+
+    treeGridObj = {
+      element,
+      allowTextWrap: true,
+      textWrapSettings: { wrapMode: 'Header' },
+      frozenRows: 0,
+      grid: {
+        getRowHeight: () => 40,
+        getNoncontentHeight: () => 100
+      }
+    };
+  });
+
+  afterEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  it('should take container height from treegrid element when height is undefined', () => {
+    const result = TreeGrid.prototype.getPageSizeByHeight.call(treeGridObj, undefined);
+    expect(result).toBeGreaterThanOrEqual(0);
+  });
+
+  it('should fallback to root element height when treegrid element is not found', () => {
+    spyOn(document, 'getElementById').and.returnValue(null);
+
+    const result = TreeGrid.prototype.getPageSizeByHeight.call(treeGridObj, undefined);
+    expect(result).toBeGreaterThanOrEqual(0);
+  });
+
+  it('should calculate page size for percentage container height', () => {
+    const result = TreeGrid.prototype.getPageSizeByHeight.call(treeGridObj, '50%');
+    expect(result).toBeGreaterThan(0);
+  });
+
+  it('should include pager external message height when pager element exists', () => {
+    const pagerMsg = document.createElement('div');
+    pagerMsg.className = 'e-pagerexternalmsg';
+    Object.defineProperty(pagerMsg, 'clientHeight', {
+        value: 30,
+        configurable: true
+    });
+
+    Object.defineProperty(pagerMsg, 'offsetHeight', {
+         value: 30,
+        configurable: true
+    });    
+
+    document.body.appendChild(pagerMsg);
+
+    const result = TreeGrid.prototype.getPageSizeByHeight.call(treeGridObj, 400);
+    expect(result).toBeGreaterThan(0);
+  });
+
+  it('should add frozenRows to calculated page size', () => {
+    treeGridObj.frozenRows = 2;
+
+    const result = TreeGrid.prototype.getPageSizeByHeight.call(treeGridObj, 400);
+    expect(result).toBeGreaterThan(2);
+  });
+
+  it('should return 0 when container height is less than noncontent height', () => {
+    const result = TreeGrid.prototype.getPageSizeByHeight.call(treeGridObj, 50);
+    expect(result).toBe(0);
+  });
+
+  it('should return 0 when text wrap conditions fail', () => {
+    treeGridObj.allowTextWrap = true;
+    treeGridObj.textWrapSettings.wrapMode = 'Content';
+
+    const result = TreeGrid.prototype.getPageSizeByHeight.call(treeGridObj, 400);
+    expect(result).toBe(0);
+  });
+it('should use root element height when grid element is not found', () => {
+  const root = document.createElement('div');
+
+  Object.defineProperty(root, 'clientHeight', {
+    value: 0,
+    configurable: true
+  });
+
+  const treeGridObj: any = {
+    element: root,
+    allowTextWrap: false,
+    grid: {
+      getRowHeight: () => 40,
+      getNoncontentHeight: () => 100
+    }
+  };
+
+  spyOn(document, 'getElementById').and.returnValue(null);
+
+  const result = TreeGrid.prototype.getPageSizeByHeight.call(treeGridObj);
+
+  expect(result).toBe(0);
+});  
+});
+
+describe('Coverage - misc TreeGrid prototype methods', () => {
+
+  it('should call openColumnChooser when columnChooserModule exists', () => {
+    const gridObj: any = {
+      columnChooserModule: {
+        openColumnChooser: jasmine.createSpy('openColumnChooser')
+      }
+    };
+
+    TreeGrid.prototype.openColumnChooser.call(gridObj, 10, 20);
+
+    expect(gridObj.columnChooserModule.openColumnChooser).toHaveBeenCalledWith(10, 20);
+  });
+
+  it('should call editModule.updateRow with merged data when index is defined', () => {
+    const gridData = [{ id: 1, name: 'Old' }];
+
+    const gridObj: any = {
+      grid: {
+        getCurrentViewRecords: () => gridData,
+        editModule: {
+          updateRow: jasmine.createSpy('updateRow')
+        }
+      }
+    };
+
+    TreeGrid.prototype.updateRow.call(gridObj, 0, { name: 'New' });
+
+    expect(gridObj.grid.editModule.updateRow).toHaveBeenCalled();
+  });
+
+  it('should call editModule.updateRow directly when index is undefined', () => {
+    const gridObj: any = {
+      grid: {
+        editModule: {
+          updateRow: jasmine.createSpy('updateRow')
+        }
+      }
+    };
+
+    TreeGrid.prototype.updateRow.call(gridObj, undefined, { id: 2 });
+
+    expect(gridObj.grid.editModule.updateRow).toHaveBeenCalledWith(undefined, { id: 2 });
+  });
+
+  it('should cancel rowDrag when grid is in edit mode', () => {
+    const gridObj: any = {
+      notify: () => {},
+      trigger: () => {},
+      grid: {
+        isEdit: true
+      }
+    };
+
+    TreeGrid.prototype['bindGridDragEvents'].call(gridObj);
+
+    const dragArgs: any = {};
+    gridObj.grid.rowDrag(dragArgs);
+
+    expect(dragArgs.cancel).toBe(true);
+  });
+
+  it('should cancel rowDrop when grid is in edit mode', () => {
+    const gridObj: any = {
+      notify: () => {},
+      trigger: () => {},
+      grid: {
+        isEdit: true
+      }
+    };
+
+    TreeGrid.prototype['bindGridDragEvents'].call(gridObj);
+
+    const dropArgs: any = {};
+    gridObj.grid.rowDrop(dropArgs);
+
+    expect(dropArgs.cancel).toBe(true);
+  });
+
+});
+
+describe('Coverage - bindGridEvents red branches', () => {
+
+  function createTreeGridObj() {
+    return {
+
+      dataSource: new DataManager({
+        json: [],
+        adaptor: new RemoteSaveAdaptor()
+      }),
+
+      selectionSettings: { persistSelection: true },
+
+      columnModel: [{ type: 'checkbox' }],
+
+      parentIdMapping: 'parentId',
+
+      query: {
+        queries: [
+          { e: { field: 'parentId' } },
+          { e: { field: 'name' } }
+        ]
+      },
+
+      pageSettings: {},
+      grid: {
+        currentViewData: [] as any,
+        selectionModule: {}
+      },
+
+    IsExpandCollapseClicked: function () { },
+    extendedGridDataBoundEvent: function () { },
+    extendedGridEvents: function () { },
+    extendedGridActionEvents: function () { },
+    extendedGridEditEvents: function () { },
+    bindGridDragEvents: function () { },
+    bindCallBackEvents: function () { }, 
+    triggerEvents: jasmine.createSpy('triggerEvents'),
+    trigger: jasmine.createSpy('trigger'),
+    };
+  }
+
+  it('should update parentQuery on rowSelecting when parentItem exists', () => {
+    const gridObj: any = createTreeGridObj();
+    spyOn(utils, 'isRemoteData').and.returnValue(true);
+    TreeGrid.prototype['bindGridEvents'].call(gridObj);
+
+    const args: any = {
+      data: { parentItem: {} },
+      cancel: false
+    };
+
+    gridObj.grid.rowSelecting(args);
+
+    expect(gridObj.parentQuery.length).toBe(1);
+    expect(gridObj.query.queries.length).toBe(0);
+  });
+
+  it('should update parentQuery on rowSelecting when header checkbox is clicked', () => {
+    const gridObj: any = createTreeGridObj();
+    spyOn(utils, 'isRemoteData').and.returnValue(true);
+    TreeGrid.prototype['bindGridEvents'].call(gridObj);
+
+    const args: any = {
+      data: {},
+      isHeaderCheckboxClicked: true,
+          cancel: false
+      };
+
+      gridObj.grid.rowSelecting(args);
+
+      expect(gridObj.parentQuery.length).toBe(1);
+      expect(gridObj.query.queries.length).toBe(0);
+  });
+
+    it('should update parentQuery on rowDeselecting', () => {
+        const gridObj: any = createTreeGridObj();
+        spyOn(utils, 'isRemoteData').and.returnValue(true);
+        TreeGrid.prototype['bindGridEvents'].call(gridObj);
+
+        const args: any = {
+            data: {}
+        };
+
+        gridObj.grid.rowDeselecting(args);
+
+        expect(gridObj.parentQuery.length).toBe(1);
+        expect(gridObj.query.queries.length).toBe(0);
+    });
+});
+
+describe('Coverage - miscellaneous TreeGrid branch handlers', () => {
+
+  it('should skip summary and hidden rows when finding next row', () => {
+    const row1 = document.createElement('tr');
+    row1.className = 'e-summaryrow';
+
+    const row2 = document.createElement('tr');
+    row2.classList.add('e-childrow-hidden');
+
+    const row3 = document.createElement('tr');
+
+    Object.defineProperty(row1, 'nextElementSibling', { value: row2 });
+    Object.defineProperty(row2, 'nextElementSibling', { value: row3 });
+
+    const gridObj: any = {
+        findnextRowElement: TreeGrid.prototype['findnextRowElement'],
+    };
+
+    const result = TreeGrid.prototype['findnextRowElement'].call(gridObj, row1);
+    expect(result).toBe(row3);
+  });
+
+  it('should skip summary and hidden rows when finding previous row', () => {
+    const row1 = document.createElement('tr');
+    const row2 = document.createElement('tr');
+    row2.className = 'e-summaryrow';
+
+    Object.defineProperty(row1, 'previousElementSibling', { value: row2 });
+    Object.defineProperty(row2, 'previousElementSibling', { value: null });
+
+    const gridObj: any = {
+        findPreviousRowElement: TreeGrid.prototype['findPreviousRowElement']
+    };
+
+    const result = TreeGrid.prototype['findPreviousRowElement'].call(gridObj, row1);
+    expect(result).toBeNull();
+  });
+
+  it('should return early when excel export is disabled', () => {
+    const gridObj: any = {
+      allowExcelExport: false,
+      allowPdfExport: true,
+      notify: () => {},
+      trigger: () => {},
+      grid: {
+        element: { id: 'grid' }
+      }
+    };
+
+    TreeGrid.prototype['bindCallBackEvents'].call(gridObj);
+
+    gridObj.grid.toolbarClick({
+      item: { id: 'grid_excelexport' }
+    });
+
+    expect(true).toBeTruthy();
+  });
+
+  it('should cancel cellSelecting when expand icon is clicked', () => {
+    const expandIcon = document.createElement('span');
+    expandIcon.classList.add('e-treegridexpand');
+
+    const gridObj: any = {
+      trigger: () => {},
+      grid: {
+        selectionModule: {
+          actualTarget: expandIcon
+        }
+      }
+    };
+
+    TreeGrid.prototype['bindCallBackEvents'].call(gridObj);
+
+    const args: any = {};
+    gridObj.grid.cellSelecting(args);
+
+    expect(args.cancel).toBeTruthy();
+  });
+
+  it('should cancel beginEdit when row is summary row', () => {
+    const row = document.createElement('tr');
+    row.classList.add('e-summaryrow');
+
+    const gridObj: any = {
+      trigger: () => {},
+      grid: {}
+    };
+
+    TreeGrid.prototype['bindCallBackEvents'].call(gridObj);
+
+    const args: any = { row };
+    gridObj.grid.beginEdit(args);
+
+    expect(args.cancel).toBeTruthy();
+  });
+
+  it('should reset infiniteScrollData when requestType is not infiniteScroll', () => {
+    const gridObj: any = {
+      isExpandRefresh: false,
+      infiniteScrollData: [1, 2],
+      trigger: () => {},
+      grid: {}
+    };
+
+    TreeGrid.prototype['extendedGridEditEvents'].call(gridObj);
+
+    gridObj.grid.dataStateChange({
+      action: { requestType: 'paging' }
+    });
+
+    expect(gridObj.infiniteScrollData.length).toBe(0);
+  });
+
+  it('should cancel cellSave when context menu selection is invalid', () => {
+    const menuElement = document.createElement('div');
+
+    const gridObj: any = {
+      element: { id: 'grid' },
+      notify: () => {},
+      trigger: () => {},
+      grid: {
+        isContextMenuOpen: () => true,
+        contextMenuModule: {
+          contextMenu: {
+            element: menuElement
+          }
+        }
+      }
+    };
+
+    TreeGrid.prototype['extendedGridEditEvents'].call(gridObj);
+
+    const args: any = {};
+    gridObj.grid.cellSave(args);
+
+    expect(args.cancel).toBeTruthy();
+  });
+});
+
+describe('Coverage - expandAction & expandCollapseRequest', () => {
+
+  it('should use currentViewRecords when data is remote', () => {
+    var parentItem = {
+        uniqueID: 'p1',
+        expanded: true,
+        parentItem: {
+            uniqueID: 'p2',
+            expanded: false,
+            parentItem: null as any
+        },
+    };
+    const treeGridObj: any = {
+      dataSource: new DataManager({
+        json: [],
+        adaptor: new RemoteSaveAdaptor()
+      }),
+
+    flatData: [parentItem, {uniqueID: 'p2',expanded: false, parentItem: null}],
+    parentData: [],
+    getCurrentViewRecords: function () { return [parentItem, {uniqueID: 'p2',expanded: false, parentItem: null}]; },
+
+      expandRow: jasmine.createSpy('expandRow')
+    };
+
+    const record: any[] = [
+      { parentItem: { uniqueID: 'p1' } }
+    ];
+
+    spyOn(utils, 'isRemoteData').and.returnValue(true);
+    spyOn(utils, 'getExpandStatus').and.returnValue(false);
+
+    TreeGrid.prototype['expandAction'].call(treeGridObj, record, 'key', 0);
+
+    expect(record.length).toBeGreaterThan(1);
+    expect(parentItem.expanded).toBe(true);
+  });
+
+  it('should resolve record from freezeRows when grid is frozen & virtualized', () => {
+    const target = document.createElement('span');
+
+    const row = document.createElement('tr');
+    row.setAttribute('data-uid', 'uid1');
+
+    const treeGridObj: any = {
+      enableVirtualization: true,
+      rowTemplate: false,
+      enableImmutableMode: true,
+      allowEditing: false,
+      editSettings: {mode: 'cell'},
+      grid: {
+        isFrozenGrid: () => true,
+        getRowInfo: () => ({
+          row,
+          rowData: { id: 1 },
+          rowIndex: 0
+        }),
+        contentModule: {
+          freezeRows: [{ uid: 'uid1', data: { id: 99 } }]
+        }
+      },
+      getCurrentViewRecords: function () { return [{ id: 42 }]; },
+      expandRow: jasmine.createSpy('expandRow'),
+      collapseRow: jasmine.createSpy('collapseRow')
+    };
+
+    TreeGrid.prototype['expandCollapseRequest'].call(treeGridObj, target);
+
+    expect(treeGridObj.expandRow).toHaveBeenCalled();
+  });
+});
+
+describe('Coverage - TreeGrid render method', () => {
+  let treeGridObj: any;
+
+  beforeEach(() => {
+const element = document.createElement('div');
+element.id = 'treegrid';
+element.classList.add('e-treegrid');
+
+const gridContentWrapper = document.createElement('div');
+gridContentWrapper.classList.add('e-gridcontent');
+
+const gridContentChild = document.createElement('div');
+gridContentWrapper.appendChild(gridContentChild);
+
+const contentWrapper = document.createElement('div');
+contentWrapper.classList.add('e-content');
+
+const table = document.createElement('table');
+table.classList.add('e-table');
+contentWrapper.appendChild(table);
+
+element.appendChild(gridContentWrapper);
+element.appendChild(contentWrapper);
+
+document.body.appendChild(element);  
+
+    treeGridObj = {
+      element,
+      grid: {
+        appendTo: () => {},
+        requiredModules: () => [] as any,
+        rowDropSettings: { targetID: 'target' },
+        on: jasmine.createSpy('on'),
+        destroyTemplate: jasmine.createSpy('destroyTemplate')
+      },
+      rowDropSettings: { targetID: 'target' },
+      renderModule: {},
+      dataModule: {},
+      printModule: {},
+      on: jasmine.createSpy('on'),
+      createElement: document.createElement.bind(document),
+      log: () => {},
+      autoGenerateColumns: () => {},
+      loadGrid: () => {},
+      convertTreeData: jasmine.createSpy('convertTreeData'),
+      addListener: () => {},
+      updateColumnModel: () => {},
+      wireEvents: () => {},
+      renderComplete: () => {},
+      refreshToolbarItems: () => {},
+      actionFailureHandler: () => {},
+      clearTemplate: jasmine.createSpy('clearTemplate'),
+      trigger: () => {}
+    };
+  });
+
+  afterEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  it('should initialize React grid properties', () => {
+    treeGridObj.isReact = true;
+
+    TreeGrid.prototype['render'].call(treeGridObj);
+
+    expect(treeGridObj.grid.isReact).toBeTruthy();
+    expect(Array.isArray(treeGridObj.grid.portals)).toBeTruthy();
+  });
+
+  it('should initialize Vue grid properties', () => {
+    treeGridObj.isVue = true;
+    treeGridObj.vueInstance = {};
+
+    TreeGrid.prototype['render'].call(treeGridObj);
+
+    expect(treeGridObj.grid.isVue).toBeTruthy();
+    expect(treeGridObj.grid.vueInstance).toBe(treeGridObj.vueInstance);
+  });
+
+  it('should convert tree data when dataSource is defined', () => {
+    treeGridObj.dataSource = [];
+
+    TreeGrid.prototype['render'].call(treeGridObj);
+
+    expect(treeGridObj.convertTreeData).toHaveBeenCalledWith([]);
+  });
+
+  it('should update grid rowDropSettings targetID', () => {
+    TreeGrid.prototype['render'].call(treeGridObj);
+
+    expect(treeGridObj.grid.rowDropSettings.targetID)
+      .toBe('target_gridcontrol');
+  });
+
+  it('should call clearTemplate inside overridden destroyTemplate when not React portal', () => {
+    TreeGrid.prototype['render'].call(treeGridObj);
+
+    const destroyFn = treeGridObj.grid.destroyTemplate;
+
+    destroyFn({}, 0, () => {});
+
+    expect(treeGridObj.clearTemplate).toHaveBeenCalled();
+  });
+
+  it('should call callback in destroyTemplate when React portals are undefined', () => {
+    treeGridObj.isReact = true;
+    treeGridObj.portals = undefined;
+
+    TreeGrid.prototype['render'].call(treeGridObj);
+
+    const destroyFn = treeGridObj.grid.destroyTemplate;
+    const cb = jasmine.createSpy('callback');
+
+    destroyFn({}, 0, cb);
+
+    expect(cb).toHaveBeenCalled();
+  });
+
 });

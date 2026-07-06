@@ -1,5 +1,4 @@
-@use 'ej2-base/styles/common/mixin' as *;
-@use '../tailwind-dark-definition' as *;
+@use '../variables' as *;
 @include export-module('documenteditor-tailwind-dark-icons') {
   .e-documenteditor {
     .e-close::before {

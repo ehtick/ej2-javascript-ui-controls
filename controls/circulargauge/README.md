@@ -1,5 +1,3 @@
-[![coverage](http://ej2.syncfusion.com/badges/ej2-circulargauge/coverage.svg)](http://ej2.syncfusion.com/badges/ej2-circulargauge)
-
 # JavaScript Circular Gauge Control
 
 The [JavaScript Circular Gauge](https://www.syncfusion.com/javascript-ui-controls/js-circular-gauge?utm_source=npm&utm_medium=listing&utm_campaign=javascript-circulargauge-npm) control is ideal to visualize numeric values over a circular scale. All the circular gauge elements are rendered using Scalable Vector Graphics (SVG).

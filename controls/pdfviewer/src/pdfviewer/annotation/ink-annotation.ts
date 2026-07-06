@@ -1,10 +1,10 @@
 import { InkAnnotationSettings } from './../pdfviewer';
-import { AllowedInteraction, IAnnotation, IPoint, PdfViewer } from '../index';
+import { AllowedInteraction, AnnotationStatus, IAnnotation, IPoint, PdfViewer } from '../index';
 import { PdfViewerBase, IPageAnnotations } from '../index';
 import { PdfAnnotationBaseModel, PdfBoundsModel } from '../drawing/pdf-annotation-model';
 import { PdfAnnotationBase } from '../drawing/pdf-annotation';
 import { AnnotationSelectorSettingsModel } from '../pdfviewer-model';
-import { splitArrayCollection, processPathData, getPathString } from '@syncfusion/ej2-drawings';
+import { splitArrayCollection, processPathData, getPathString, PointModel, PathElement } from './../ej2-drawings/index';
 import { Browser, isNullOrUndefined } from '@syncfusion/ej2-base';
 import { cloneObject } from '../drawing/drawing-util';
 
@@ -21,7 +21,8 @@ export interface IInkAnnotation extends IAnnotation {
     notes: string,
     isPrint: boolean,
     allowedInteractions: AllowedInteraction[],
-    isLocked?: boolean
+    isLocked?: boolean,
+    initialZoom?: number
 }
 export class InkAnnotation {
     private pdfViewer: PdfViewer;
@@ -59,6 +60,14 @@ export class InkAnnotation {
      * @private
      */
     public inkPathDataCollection: IInkPathDataCollection[] = [];
+    /**
+     * @private
+     */
+    public eraserPath: PointModel[] = [];
+    /**
+     * @private
+     */
+    public eraserPreviewPageIndex: number = -1;
     constructor(pdfViewer: PdfViewer, pdfViewerBase: PdfViewerBase) {
         this.pdfViewer = pdfViewer;
         this.pdfViewerBase = pdfViewerBase;
@@ -186,6 +195,46 @@ export class InkAnnotation {
         this.currentPageNumber = pageIndex.toString();
     }
 
+    /**
+     * @param {any} position - It describes about the position of the annotation
+     * @private
+     * @returns {void}
+     */
+    public addEraserPath(position: any): void {
+        this.eraserPath.push({ x: position.currentPosition.x, y: position.currentPosition.y });
+    }
+
+    /**
+     * Draws a temporary preview stroke during eraser movement.
+     * Shows a black semi-transparent line that follows the cursor.
+     * @param {number} pageIndex - The page on which the preview should be drawn
+     * @param {number} eraserSize - The diameter of the eraser
+     * @private
+     * @returns {void}
+     */
+    public drawEraserPreview(pageIndex: number, eraserSize: number): void {
+        const ratio: number = this.pdfViewerBase.getWindowDevicePixelRatio();
+        const canvas: any = this.pdfViewerBase.getAnnotationCanvas('_annotationCanvas_', pageIndex);
+        const context: any = canvas.getContext('2d');
+        context.setTransform(ratio, 0, 0, ratio, 0, 0);
+        context.beginPath();
+        context.lineJoin = 'round';
+        context.lineCap = 'round';
+        context.lineWidth = eraserSize;
+        context.strokeStyle = '#D3D3D333';
+        const pts: any = this.eraserPath;
+        if (pts.length > 0) {
+            context.moveTo(pts[0].x, pts[0].y);
+            for (let i: number = 1; i < pts.length; i++) {
+                context.lineTo(pts[(i as number)].x, pts[(i as number)].y);
+            }
+        }
+        context.setLineDash([]);
+        context.stroke();
+        context.closePath();
+        this.eraserPreviewPageIndex = pageIndex;
+    }
+
     private convertToPath(newObject: any): void {
         this.movePath(newObject[0], newObject[1]);
         this.linePath(newObject[0], newObject[1]);
@@ -252,7 +301,8 @@ export class InkAnnotation {
                 author: author, subject: subject, notes: '',
                 review: { state: '', stateModel: '', modifiedDate: modifiedDate, author: author },
                 annotationSelectorSettings: this.getSelector('Ink', ''), modifiedDate: modifiedDate, annotationSettings: annotationSettings,
-                isPrint: isPrint, allowedInteractions: allowedInteractions, isCommentLock: false, isLocked: isLock
+                isPrint: isPrint, allowedInteractions: allowedInteractions, isCommentLock: false,
+                isLocked: isLock, status: AnnotationStatus.NewlyAdded, initialZoom: this.inkAnnotationInitialZoom
             };
             const annotation: PdfAnnotationBaseModel = this.pdfViewer.add(annot as PdfAnnotationBase);
             const bounds: any = { left: annot.bounds.x, top: annot.bounds.y, width: annot.bounds.width, height: annot.bounds.height };
@@ -476,8 +526,12 @@ export class InkAnnotation {
                         currentAnnotation.AnnotationSettings : this.pdfViewer.annotationModule.updateAnnotationSettings(currentAnnotation);
                     currentAnnotation.State = currentAnnotation.State ? currentAnnotation.State : '';
                     currentAnnotation.StateModel = currentAnnotation.StateModel ? currentAnnotation.StateModel : '';
+                    let status: AnnotationStatus;
+                    if (isImport) {
+                        status = AnnotationStatus.NewlyAdded;
+                    }
                     annot = {
-                        id: 'ink' + this.pdfViewerBase.inkCount, bounds: { x: currentLeft, y: currentTop, width: currentWidth, height: currentHeight }, pageIndex: pageIndex, data: data,
+                        id: 'ink' + this.pdfViewerBase.inkCount, annotationIndex: currentAnnotation.AnnotationIndex, bounds: { x: currentLeft, y: currentTop, width: currentWidth, height: currentHeight }, pageIndex: pageIndex, data: data,
                         shapeAnnotationType: 'Ink', opacity: currentAnnotation.Opacity, strokeColor: currentAnnotation.StrokeColor, thickness: currentAnnotation.Thickness, annotName: currentAnnotation.AnnotName,
 
                         comments: this.pdfViewer.annotationModule.
@@ -489,10 +543,11 @@ export class InkAnnotation {
                             modifiedDate: currentAnnotation.ModifiedDate, author: currentAnnotation.Author }, notes:
                                 currentAnnotation.Note, annotationSettings: currentAnnotation.AnnotationSettings,
                         annotationSelectorSettings: selectorSettings, customData: customData, isPrint: isPrint,
-                        isCommentLock: currentAnnotation.IsCommentLock
+                        isCommentLock: currentAnnotation.IsCommentLock, status: !isNullOrUndefined(currentAnnotation.Status) ?
+                            currentAnnotation.Status : status
                     };
                     const annotObject: IInkAnnotation = {
-                        id: 'ink' + this.pdfViewerBase.inkCount, bounds: { x: currentLeft, y: currentTop, width: currentWidth, height: currentHeight }, pageIndex: pageIndex, data: data,
+                        id: 'ink' + this.pdfViewerBase.inkCount, annotationIndex: currentAnnotation.AnnotationIndex, bounds: { x: currentLeft, y: currentTop, width: currentWidth, height: currentHeight }, pageIndex: pageIndex, data: data,
                         shapeAnnotationType: 'Ink', opacity: currentAnnotation.Opacity, strokeColor: currentAnnotation.StrokeColor, thickness: currentAnnotation.Thickness, annotName: currentAnnotation.AnnotName,
 
                         comments: this.pdfViewer.annotationModule.
@@ -505,7 +560,8 @@ export class InkAnnotation {
                                 currentAnnotation.Note, annotationSettings: currentAnnotation.AnnotationSettings,
                         annotationSelectorSettings: selectorSettings, customData: customData, isPrint: isPrint,
                         isCommentLock: currentAnnotation.IsCommentLock,
-                        originalName: currentAnnotation.OriginalName ? currentAnnotation.OriginalName : null
+                        originalName: currentAnnotation.OriginalName ? currentAnnotation.OriginalName : null,
+                        status: !isNullOrUndefined(currentAnnotation.Status) ? currentAnnotation.Status : status
                     };
                     this.pdfViewer.add(annot as PdfAnnotationBase);
                     const canvasPageIndex: any = currentAnnotation.pageIndex ? currentAnnotation.pageIndex : currentAnnotation.PageNumber;
@@ -575,7 +631,7 @@ export class InkAnnotation {
             id: 'Ink', isCommentLock: annotation.IsCommentLock, isLocked: annotation.IsLocked, isPrint: annotation.IsPrint, modifiedDate: annotation.ModifiedDate,
             note: annotation.Note, opacity: annotation.Opacity, pageIndex: pageNumber, review: review,
             shapeAnnotationType: annotation.AnnotationType,
-            strokeColor: annotation.StrokeColor, subject: annotation.Subject, thickness: annotation.Thickness
+            strokeColor: annotation.StrokeColor, subject: annotation.Subject, thickness: annotation.Thickness, status: annotation.status
         };
         this.pdfViewer.annotationModule.storeAnnotations(pageNumber, annotationObject, '_annotations_ink');
     }
@@ -713,6 +769,9 @@ export class InkAnnotation {
                         pageAnnotations[parseInt(i.toString(), 10)].modifiedDate =
                             this.pdfViewer.annotation.stickyNotesAnnotationModule.getDateAndTime();
                     }
+                    if (pageAnnotations[parseInt(i.toString(), 10)].status !== 'NewlyAdded') {
+                        pageAnnotations[parseInt(i.toString(), 10)].status = AnnotationStatus.ExistingModified;
+                    }
                     this.pdfViewer.annotationModule.storeAnnotationCollections(pageAnnotations[parseInt(i.toString(), 10)], pageNumber);
                 }
             }
@@ -731,6 +790,205 @@ export class InkAnnotation {
             }
             this.pdfViewer.annotationsCollection.set(this.pdfViewerBase.documentId + '_annotations_ink', storeObject);
         }
+    }
+
+    /**
+     * Processes ink erasing using geometry-based midpoint detection (reference sample logic).
+     * Converts SVG path to point arrays, fragments based on eraser geometry, converts back to SVG.
+     * @param {any} inkAnnotation - The ink annotation to erase from
+     * @param {PointModel[]} eraserPath - Array of eraser positions during drag
+     * @param {number} eraserSize - Diameter of eraser
+     * @returns {string} - Fragmented path data string with M commands separating fragments
+     * @private
+     */
+    private processInkErase(inkAnnotation: any, eraserPath: PointModel[], eraserSize: number): string {
+        if (!eraserPath || eraserPath.length < 1) {
+            return inkAnnotation.data;
+        }
+        const pathData: string = inkAnnotation.data;
+        const collectionData: Object[] = processPathData(pathData);
+        if (!collectionData || collectionData.length < 1) {
+            return inkAnnotation.data;
+        }
+        const zoom: number = this.pdfViewerBase.getZoomFactor();
+        const rawThickness: number = inkAnnotation.thickness || this.pdfViewer.inkAnnotationSettings.thickness || 1;
+        const strokeThickness: number = rawThickness * zoom > 1 ? rawThickness * zoom : rawThickness;
+        const hitRadius: number = eraserSize / 2 + strokeThickness / 2;
+        const distToSeg: any = (p: { x: number; y: number }, a: { x: number; y: number }, b: { x: number; y: number }): number => {
+            const dx: number = b.x - a.x;
+            const dy: number = b.y - a.y;
+            const lenSq: number = dx * dx + dy * dy;
+            const t: number = lenSq
+                ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq))
+                : 0;
+            return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+        };
+        const isErased: any = (p: { x: number; y: number }): boolean => {
+            if ((eraserPath as any).length === 1) {
+                return Math.hypot(p.x - (eraserPath as any)[0].x, p.y - (eraserPath as any)[0].y) <= hitRadius;
+            }
+            for (let i: number = 0; i < (eraserPath as any).length - 1; i++) {
+                if (distToSeg(p, (eraserPath as any)[(i as any)], (eraserPath as any)[i + 1]) <= hitRadius) {
+                    return true;
+                }
+            }
+            return false;
+        };
+        const paths: Array<Array<{ x: number; y: number }>> = [];
+        let current: Array<{ x: number; y: number }> = [];
+        for (let k: number = 0; k < collectionData.length; k++) {
+            const pt: any = collectionData[(k as any)];
+            if (pt.command === 'M') {
+                if (current.length > 1) {
+                    paths.push(current);
+                }
+                current = [{ x: pt.x, y: pt.y }];
+            } else if (pt.command === 'L') {
+                current.push({ x: pt.x, y: pt.y });
+            }
+        }
+        if (current.length > 1) {
+            paths.push(current);
+        }
+        // Subdivide each ink segment into ~2 px steps for pixel-level erase accuracy
+        const STEP: number = 2;
+        const segmentedPathData: Array<Array<{ x: number; y: number }>> = [];
+        for (let pi: number = 0; pi < paths.length; pi++) {
+            const path: Array<{ x: number; y: number }> = paths[(pi as any)];
+            let fragment: Array<{ x: number; y: number }> = [];
+            for (let i: number = 0; i < path.length - 1; i++) {
+                const a: { x: number; y: number } = path[(i as any)];
+                const b: { x: number; y: number } = path[i + 1];
+                const dx: number = b.x - a.x;
+                const dy: number = b.y - a.y;
+                const steps: number = Math.max(1, Math.ceil(Math.hypot(dx, dy) / STEP));
+                for (let s: number = 0; s < steps; s++) {
+                    const p0: { x: number; y: number } = {
+                        x: a.x + dx * (s / steps),
+                        y: a.y + dy * (s / steps)
+                    };
+                    const p1: { x: number; y: number } = {
+                        x: a.x + dx * ((s + 1) / steps),
+                        y: a.y + dy * ((s + 1) / steps)
+                    };
+                    if (!isErased(p0) && !isErased(p1)) {
+                        if (fragment.length === 0) {
+                            fragment.push(p0);
+                        }
+                        fragment.push(p1);
+                    } else {
+                        if (fragment.length > 1) {
+                            segmentedPathData.push(fragment);
+                        }
+                        fragment = [];
+                    }
+                }
+            }
+            if (fragment.length > 1) {
+                segmentedPathData.push(fragment);
+            }
+        }
+        if (segmentedPathData.length === 0) {
+            return '';
+        }
+        const uniquePath: Set<string> = new Set<string>();
+        for (let fi: number = 0; fi < segmentedPathData.length; fi++) {
+            const frag: Array<{ x: number; y: number }> = segmentedPathData[(fi as any)];
+            if (frag.length > 1) {
+                let str: string = `M${Math.round(frag[0].x)},${Math.round(frag[0].y)}`;
+                for (let i: number = 1; i < frag.length; i++) {
+                    str += ` L${Math.round(frag[(i as any)].x)},${Math.round(frag[(i as any)].y)}`;
+                }
+                if (!uniquePath.has(str)) {
+                    uniquePath.add(str);
+                }
+            }
+        }
+        return uniquePath.size > 0 ? Array.from(uniquePath).join(' ') : '';
+    }
+
+    /**
+     * Applies erasing by updating the original annotation with fragmented path.
+     * The annotation remains a single annotation with the modified path containing erased gaps.
+     * @param {any} originalAnnotation - The annotation being erased
+     * @param {string} pathData - Erased path data (output from processInkErase)
+     * @param {number} pageIndex - Page containing the annotation
+     * @private
+     * @returns {void}
+     */
+    private applyInkErase(originalAnnotation: any, pathData: string, pageIndex: number): void {
+        originalAnnotation.data = pathData;
+        const pageAnnotations: any[] = this.getAnnotations(pageIndex, null);
+        if (pageAnnotations) {
+            const inkAnnotationObject: any = (this.pdfViewer.nameTable as any)[originalAnnotation.id];
+            inkAnnotationObject.data = pathData;
+            if (inkAnnotationObject.wrapper && inkAnnotationObject.wrapper.children && inkAnnotationObject.wrapper.children[0] &&
+                inkAnnotationObject.wrapper.children[0] instanceof PathElement) {
+                const pathElement: any = inkAnnotationObject.wrapper.children[0];
+                pathElement.data = pathData;
+                pathElement.pathData = pathData;
+                const bounds: any = inkAnnotationObject.wrapper.bounds;
+                pathElement.absoluteBounds = inkAnnotationObject.wrapper.bounds;
+                const actualSize: any = pathElement.actualSize || bounds;
+                pathElement.desiredSize = actualSize;
+                pathElement.absolutePath = pathElement.updatePath(pathData, bounds, actualSize);
+            }
+            originalAnnotation.modifiedDate = this.pdfViewer.annotation.stickyNotesAnnotationModule.getDateAndTime();
+            if (originalAnnotation.status !== 'NewlyAdded') {
+                originalAnnotation.status = AnnotationStatus.ExistingModified;
+            }
+            this.pdfViewer.annotationModule.storeAnnotationCollections(originalAnnotation, pageIndex);
+        }
+        this.manageInkAnnotations(pageAnnotations, pageIndex);
+        this.outputString = '';
+        this.newObject = [];
+        this.eraserPath = [];
+    }
+
+    /**
+     * Restores ink annotation pathData from a snapshot (for undo/redo).
+     * Updates both the annotation collection and the SVG wrapper element.
+     * @param {any} annotationSnapshot - Snapshot with id, data, bounds
+     * @param {number} pageIndex - Page containing the annotation
+     * @private
+     * @returns {void}
+     */
+    public restoreInkPathData(annotationSnapshot: any, pageIndex: number): void {
+        const pageAnnotations: any[] = this.getAnnotations(pageIndex, null);
+        if (pageAnnotations) {
+            for (let i: number = 0; i < pageAnnotations.length; i++) {
+                if (pageAnnotations[(i as number)].id === annotationSnapshot.id) {
+                    pageAnnotations[(i as number)].data = annotationSnapshot.data;
+                    pageAnnotations[(i as number)].bounds = annotationSnapshot.bounds;
+                    break;
+                }
+            }
+            const updatedPathData: any = annotationSnapshot.data;
+            annotationSnapshot.data = updatedPathData;
+            const inkAnnotationObject: any = (this.pdfViewer.nameTable as any)[annotationSnapshot.id];
+            if (inkAnnotationObject) {
+                inkAnnotationObject.data = annotationSnapshot.data;
+                if (annotationSnapshot.bounds) {
+                    inkAnnotationObject.bounds = annotationSnapshot.bounds;
+                }
+                if (inkAnnotationObject.wrapper && inkAnnotationObject.wrapper.children && inkAnnotationObject.wrapper.children[0]) {
+                    const pathElement: any = inkAnnotationObject.wrapper.children[0];
+                    pathElement.data = annotationSnapshot.data;
+                    pathElement.pathData = annotationSnapshot.data;
+                    const bounds: any = inkAnnotationObject.wrapper.bounds;
+                    pathElement.absoluteBounds = inkAnnotationObject.wrapper.bounds;
+                    const actualSize: any = pathElement.actualSize || bounds;
+                    pathElement.desiredSize = actualSize;
+                    if (pathElement.updatePath && typeof pathElement.updatePath === 'function') {
+                        pathElement.absolutePath = pathElement.updatePath(annotationSnapshot.data, bounds, actualSize);
+                    }
+                }
+            }
+            annotationSnapshot.modifiedDate = this.pdfViewer.annotation.stickyNotesAnnotationModule.getDateAndTime();
+            this.pdfViewer.annotationModule.storeAnnotationCollections(annotationSnapshot, pageIndex);
+        }
+        this.manageInkAnnotations(pageAnnotations, pageIndex);
+        this.pdfViewer.renderDrawing(undefined, pageIndex);
     }
 
     /**
@@ -780,7 +1038,8 @@ export class InkAnnotation {
                 data = getPathString(JSON.parse(currentAnnotation.PathData));
             }
             annot = {
-                id: 'ink' + this.pdfViewerBase.signatureCount, bounds: { x: currentLeft, y: currentTop, width: currentWidth, height: currentHeight }, pageIndex: pageIndex, data: data,
+                id: 'ink' + this.pdfViewerBase.signatureCount, annotationIndex: currentAnnotation.AnnotationIndex,
+                bounds: { x: currentLeft, y: currentTop, width: currentWidth, height: currentHeight }, pageIndex: pageIndex, data: data,
                 shapeAnnotationType: 'Ink', opacity: currentAnnotation.Opacity, strokeColor: currentAnnotation.StrokeColor, thickness: currentAnnotation.Thickness, annotationId: currentAnnotation.AnnotName,
                 customData: customData, comments: this.pdfViewer.annotationModule.
                     getAnnotationComments(currentAnnotation.Comments, currentAnnotation, currentAnnotation.Author),
@@ -868,6 +1127,7 @@ export class InkAnnotation {
             PageNumber: pageNumber,
             State: '',
             StateModel: '',
+            Status: AnnotationStatus.NewlyAdded,
             StrokeColor: annotationObject.strokeColor ? annotationObject.strokeColor : 'rgba(255,0,0,1)',
             SubType: null,
             Subject: annotationObject.subject ? annotationObject.subject : 'Ink',

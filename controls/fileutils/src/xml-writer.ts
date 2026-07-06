@@ -58,7 +58,7 @@ export class XmlWriter {
         this.elementStack.push(new XmlElement());
         this.elementStack[0].set('', '', '', this.namespaceStack.length - 1);
         this.attributeStack = [];
-        Save.isMicrosoftBrowser = !(!navigator.msSaveBlob);
+        Save.isMicrosoftBrowser = !(!(navigator as any).msSaveBlob);
     }
 
     /**

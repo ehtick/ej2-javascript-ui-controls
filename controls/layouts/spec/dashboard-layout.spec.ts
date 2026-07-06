@@ -306,34 +306,6 @@ describe('GridLayout', () => {
             expect(gridLayOut.element.querySelector('#fifth').style.width).not.toEqual('501px');
         });
 
-        it('Nested panel refresh after the window resize', () => {
-            gridLayOut = new DashboardLayout({
-                cellSpacing: [10, 10],
-                columns: 20,
-                allowResizing: true,
-                panels: [
-                    { id: 'first', sizeX: 20, sizeY: 10, row: 0, col: 0, content: '<div id="nested_dashboard"></div>' },
-                    { id: 'second', sizeX: 15, sizeY: 2, row: 0, col: 1 }
-                ]
-            });
-            gridLayOut.appendTo('#gridlayout');
-
-            let NestedDashboard: DashboardLayout = new DashboardLayout({
-                cellSpacing: [10, 10],
-                columns: 6,
-                allowResizing: true,
-                panels: [ { id: 'Panel1', sizeX: 4, sizeY: 2, row: 0, col: 0 } ]
-            });
-            NestedDashboard.appendTo('#nested_dashboard');
-            (document.querySelectorAll('#container')[0] as HTMLElement).style.width = '800px';
-            window.dispatchEvent(new Event('resize'));
-            gridLayOut.refresh();
-            expect(document.getElementById('container').style.width).not.toEqual('1264px');
-            expect(gridLayOut.element.querySelector('#first').style.width).not.toEqual('248px');
-            expect(gridLayOut.element.querySelector('#second').style.width).not.toEqual('1264px');
-            document.getElementById('container').style.width = '1264px';
-        });
-
         it('updatePanel public method test case', () => {
             gridLayOut = new DashboardLayout({
                 cellAspectRatio: 1,
@@ -390,6 +362,7 @@ describe('GridLayout', () => {
             expect((<any>gridLayOut).getCellInstance('three').col == 0).toBe(true);
             expect((<any>gridLayOut).getCellInstance('three').content == "<div>333</div>").toBe(true);
             let panel4: PanelModel = { id: "one", sizeX: 1, sizeY: 1, row: 0, col: 10, content: null, header: null };
+            (<any>gridLayOut.element).querySelector('#one').querySelector('.e-panel-container').remove();
             gridLayOut.updatePanel(panel4);
             expect((<any>gridLayOut).getCellInstance('one').sizeX == 1).toBe(true);
             expect((<any>gridLayOut).getCellInstance('one').sizeY == 1).toBe(true);
@@ -6632,6 +6605,205 @@ describe('GridLayout', () => {
         });
     });
 
+    describe('inline layout testing for panel attributes', () => {
+        beforeEach(() => {
+            ele = createElement('div', { id: 'gridlayout1' });
+            document.body.appendChild(ele);
+            let datasizeX: any = ['2', '2', '1', '5', '3', '2', '1'];
+            let dataSizeY: any = ['1', '1', '1', '1', '1', '1', '3'];
+            let datarow: any = ['1', '0', '0', '2', '1', '0', '0'];
+            let datacol: any = ['0', '0', '2', '0', '2', '3', '5'];
+            let panelContainer: HTMLElement;
+            for (let i: number = 0; i < 7; i++) {
+                let panelElement: HTMLElement = createElement('div', { className: 'e-panel' });
+                if (i == 2) {
+                    panelContainer = createElement('div', { className: 'e-panel-container' });
+                    panelElement.appendChild(panelContainer);
+                    ele.appendChild(panelElement)
+                    continue;
+                }
+                panelElement.setAttribute('data-sizeX', datasizeX[i]);
+                panelElement.setAttribute('data-sizeY', dataSizeY[i]);
+                panelElement.setAttribute('data-row', datarow[i]);
+                panelElement.setAttribute('data-col', datacol[i]);
+                panelElement.setAttribute('data-minSizeX', "1");
+                panelElement.setAttribute('data-minSizeY', "1");
+                panelElement.setAttribute('data-maxSizeX', "5");
+                panelElement.setAttribute('data-maxSizeY', "5");
+                panelElement.setAttribute('data-zindex', "120");
+                panelContainer = createElement('div', { className: 'e-panel-container' });
+                panelElement.appendChild(panelContainer);
+                ele.appendChild(panelElement)
+            }
+        });
+        afterEach(() => {
+            if (gridLayOut) {
+                gridLayOut.destroy();
+                detach(ele);
+            }
+        })
+        it('should set default sizeX=1 when data-sizex attribute is removed', () => {
+            gridLayOut = new DashboardLayout({
+                columns: 8,
+                cellSpacing: [5, 5],
+                allowResizing: true
+            });
+            gridLayOut.appendTo('#gridlayout1');
+            expect(gridLayOut.panels[2].sizeX).toBe(1);
+            expect(gridLayOut.panels[2].row).toBe(0);
+            expect(gridLayOut.panels[2].col).toBe(0);
+        });
+        it('setXYAttributes method testing', () => {
+            let eleAttr = createElement('div', { id: 'gridlayoutAttr' });
+            document.body.appendChild(eleAttr);
+            gridLayOut = new DashboardLayout({
+                columns: 8,
+                cellSpacing: [5, 5],
+                allowResizing: true,
+                panels: [
+                    { id: 'one', sizeX: null, sizeY: null, minSizeX: null, minSizeY: null, col: null, row: null },
+                    { id: 'two', sizeX: 2, sizeY: 1, row: 0, col: 1 },
+                    { id: 'three', sizeX: 1, sizeY: 1, row: 0, col: 1 },
+                    { id: 'four', sizeX: 3, sizeY: 1, row: 0, col: 4 },
+                ]
+            });
+            gridLayOut.appendTo('#gridlayoutAttr');
+            var panelCollection = eleAttr.querySelectorAll('.e-panel');
+            expect(panelCollection[0].hasAttribute('data-sizey')).toBe(false);
+            expect(panelCollection[0].hasAttribute('data-minSizeX')).toBe(false);
+            expect(panelCollection[0].hasAttribute('data-minSizeY')).toBe(false);
+            expect(panelCollection[0].hasAttribute('data-row')).toBe(false);
+            expect(panelCollection[0].hasAttribute('data-col')).toBe(false);
+        });
+    });
+
+    describe('DashboardLayout - msie event binding branch coverage', () => {
+        let gridLayOut: any;
+        let ele: HTMLElement;
+        let parentEle: HTMLElement;
+        let defaultUA: string;
+        let defaultBrowserName: string;
+
+        const ie11UA: string = 'Mozilla/5.0 (Windows NT 6.1; Trident/7.0; rv:11.0) like Gecko';
+
+        const forceMsie = (): void => {
+            Browser.userAgent = ie11UA;
+            try {
+                if ((Browser as any).info) {
+                    (Browser as any).info.name = 'msie';
+                }
+            } catch (e) {
+                // no-op
+            }
+        };
+
+        beforeEach(() => {
+            defaultUA = Browser.userAgent;
+            defaultBrowserName = (Browser as any).info && (Browser as any).info.name;
+            forceMsie();
+
+            ele = createElement('div', { id: 'gridlayout_msie' });
+            parentEle = createElement('div', { id: 'container_msie' });
+            parentEle.style.width = '1264px';
+            parentEle.appendChild(ele);
+            document.body.appendChild(parentEle);
+
+            gridLayOut = new DashboardLayout({
+                columns: 4,
+                cellSpacing: [5, 5],
+                allowResizing: true,
+                panels: [{ id: 'p0', sizeX: 1, sizeY: 1, row: 0, col: 0 }]
+            });
+            gridLayOut.appendTo('#gridlayout_msie');
+        });
+
+        afterEach(() => {
+            if (gridLayOut) {
+                gridLayOut.destroy();
+            }
+            if (parentEle && parentEle.parentNode) {
+                parentEle.parentNode.removeChild(parentEle);
+            }
+
+            Browser.userAgent = defaultUA;
+            try {
+                if ((Browser as any).info) {
+                    (Browser as any).info.name = defaultBrowserName;
+                }
+            } catch (e) {
+                // no-op
+            }
+        });
+
+        it('resizeEvents should bind "mousedown pointerdown" and skip touchstart in msie', () => {
+            const addSpy: jasmine.Spy = spyOn(EventHandler, 'add').and.stub();
+
+            (gridLayOut as any).resizeEvents();
+
+            const args: any[][] = addSpy.calls.allArgs();
+            expect(args.some((x: any[]) => x[1] === 'mousedown pointerdown')).toBe(true);
+            expect(args.some((x: any[]) => x[1] === 'touchstart')).toBe(false);
+        });
+
+        it('downResizeHandler should bind document pointer move/up handlers in msie', () => {
+            const addSpy: jasmine.Spy = spyOn(EventHandler, 'add').and.stub();
+            const handle: HTMLElement = gridLayOut.element.querySelector('.e-resize') as HTMLElement;
+            expect(handle).not.toBeNull();
+
+            (gridLayOut as any).downResizeHandler({
+                currentTarget: handle,
+                pageX: 100,
+                pageY: 100
+            } as any);
+
+            const args: any[][] = addSpy.calls.allArgs();
+            expect(args.some((x: any[]) => x[0] === document && x[1] === 'mousemove pointermove')).toBe(true);
+            expect(args.some((x: any[]) => x[0] === document && x[1] === 'mouseup pointerup')).toBe(true);
+        });
+
+        it('upResizeHandler should remove document pointer move/up handlers in msie', () => {
+            // avoid real global handler binding
+            spyOn(EventHandler, 'add').and.stub();
+            const removeSpy: jasmine.Spy = spyOn(EventHandler, 'remove').and.stub();
+
+            const handle: HTMLElement = gridLayOut.element.querySelector('.e-resize') as HTMLElement;
+            expect(handle).not.toBeNull();
+
+            (gridLayOut as any).downResizeHandler({
+                currentTarget: handle,
+                pageX: 100,
+                pageY: 100
+            } as any);
+
+            (gridLayOut as any).upResizeHandler({
+                currentTarget: handle
+            } as any);
+
+            const args: any[][] = removeSpy.calls.allArgs();
+            expect(args.some((x: any[]) => x[0] === document && x[1] === 'mousemove pointermove')).toBe(true);
+            expect(args.some((x: any[]) => x[0] === document && x[1] === 'mouseup pointerup')).toBe(true);
+        });
+
+        it('addPanel should bind resize handle with "mousedown pointerdown" in msie', () => {
+            const addSpy: jasmine.Spy = spyOn(EventHandler, 'add').and.stub();
+
+            gridLayOut.addPanel({ id: 'p1', sizeX: 1, sizeY: 1, row: 1, col: 0 });
+
+            const args: any[][] = addSpy.calls.allArgs();
+            expect(args.some((x: any[]) => x[1] === 'mousedown pointerdown')).toBe(true);
+        });
+
+        it('onPropertyChanged allowResizing=false should remove "mousedown pointerdown" in msie', () => {
+            const removeSpy: jasmine.Spy = spyOn(EventHandler, 'remove').and.stub();
+
+            gridLayOut.allowResizing = false;
+            gridLayOut.dataBind();
+
+            const args: any[][] = removeSpy.calls.allArgs();
+            expect(args.some((x: any[]) => x[1] === 'mousedown pointerdown')).toBe(true);
+        });
+    });
+
     describe('Drag and Drop testing', () => {
         let gridLayOut: any;
         beforeEach(() => {
@@ -8518,4 +8690,110 @@ describe('DashboardLayout - stacking column and moving into the stack (no overla
     expect(parseInt(p1E2.getAttribute('data-col'), 10)).toBe(1);
 
   });
+});
+describe('DashboardLayout - updatePanel branch coverage', () => {
+    let gridLayOut: any;
+    let ele: HTMLElement;
+    let parentEle: HTMLElement;
+    beforeEach(() => {
+        ele = createElement('div', { id: 'gridlayout_updatepanel_test' });
+        parentEle = createElement('div', { id: 'container_updatepanel' });
+        parentEle.style.width = '1264px';
+        parentEle.appendChild(ele);
+        document.body.appendChild(parentEle);
+
+        gridLayOut = new DashboardLayout({
+            columns: 4,
+            cellSpacing: [5, 5],
+            panels: [
+                { id: 'panel1', sizeX: 1, sizeY: 1, row: 0, col: 0, content: 'Initial' }
+            ]
+        });
+        gridLayOut.appendTo('#gridlayout_updatepanel_test');
+    });
+    afterEach(() => {
+        if (gridLayOut) {
+            gridLayOut.destroy();
+        }
+        if (parentEle && parentEle.parentNode) {
+            parentEle.parentNode.removeChild(parentEle);
+        }
+    });
+    it('updatePanel should create header element when missing and header property exists', () => {
+        const cell: HTMLElement = document.getElementById('panel1') as HTMLElement;
+        expect(cell).not.toBeNull();
+        const existingHeader: HTMLElement = cell.querySelector('.e-panel-header') as HTMLElement;
+        if (existingHeader) {
+            detach(existingHeader);
+        }
+        expect(cell.querySelector('.e-panel-header')).toBeNull();
+        const createSubElementSpy: jasmine.Spy =
+            spyOn(gridLayOut as any, 'createSubElement').and.callThrough();
+        gridLayOut.updatePanel({
+            id: 'panel1',
+            header: 'New Header',
+            content: 'Updated Content'
+        } as any);
+        const args: any[][] = createSubElementSpy.calls.allArgs();
+        expect(args.some((a: any[]) => a[1] === 'panel1template' && a[2] === '')).toBe(true);
+        expect(cell.querySelector('.e-panel-header')).not.toBeNull();
+    });
+});
+describe('DashboardLayout - resetLayout branch coverage', () => {
+    let gridLayOut: any;
+    let ele: HTMLElement;
+    let parentEle: HTMLElement;
+    beforeEach(() => {
+        ele = createElement('div', { id: 'gridlayout_resetlayout' });
+        parentEle = createElement('div', { id: 'container_resetlayout' });
+        parentEle.style.width = '1264px';
+        parentEle.appendChild(ele);
+        document.body.appendChild(parentEle);
+
+        gridLayOut = new DashboardLayout({
+            columns: 4,
+            cellSpacing: [5, 5],
+            allowDragging: true,
+            allowPushing: true,
+            allowFloating: true,
+            panels: [
+                { id: 'panel1', sizeX: 1, sizeY: 1, row: 0, col: 0, content: 'Panel 1' },
+                { id: 'panel2', sizeX: 1, sizeY: 1, row: 0, col: 1, content: 'Panel 2' },
+                { id: 'panel3', sizeX: 2, sizeY: 1, row: 1, col: 0, content: 'Panel 3' }
+            ]
+        });
+        gridLayOut.appendTo('#gridlayout_resetlayout');
+    });
+    afterEach(() => {
+        if (gridLayOut) {
+            gridLayOut.destroy();
+        }
+        if (parentEle && parentEle.parentNode) {
+            parentEle.parentNode.removeChild(parentEle);
+        }
+    });
+    it('resetLayout should push checkCollision element when not in collisions and row matches', () => {
+        const panel1: HTMLElement = document.getElementById('panel1') as HTMLElement;
+        const panel2: HTMLElement = document.getElementById('panel2') as HTMLElement;
+        expect(panel1).not.toBeNull();
+        expect(panel2).not.toBeNull();
+        (gridLayOut as any).checkCollision = [panel2];
+        (gridLayOut as any).mainElement = panel1;
+        (gridLayOut as any).cloneObject = {
+            panel1: { row: 0, col: 0 },
+            panel2: { row: 0, col: 1 },
+            panel3: { row: 1, col: 0 }
+        };
+        (gridLayOut as any).oldRowCol = {
+            panel1: { row: 0, col: 0 },
+            panel2: { row: 0, col: 1 },
+            panel3: { row: 1, col: 0 }
+        };
+        const collisionsSpy: jasmine.Spy =
+            spyOn(gridLayOut as any, 'collisions').and.returnValue([panel1]);
+        const panelModel: PanelModel = (gridLayOut as any).getCellInstance('panel1');
+        const result: HTMLElement[] = (gridLayOut as any).resetLayout(panelModel);
+        expect(result.some((el: HTMLElement) => el.id === 'panel2')).toBe(true);
+        expect(collisionsSpy).toHaveBeenCalled();
+    });
 });

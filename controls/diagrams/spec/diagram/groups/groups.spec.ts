@@ -2954,7 +2954,7 @@ describe('OffsetY value applied through programmatically is not working well for
         ele = null;
     });
     it('updating group node offset at runtime', function (done: Function) {
-        
+        ;
         diagram.nodes[3].offsetX = 50;
         diagram.dataBind();
         diagram.nodes[3].offsetX = 250;
@@ -3153,6 +3153,58 @@ describe('CR BUG - 1020464: Group Style Update Bug Fix', () => {
             'Child2 strokeColor must remain unchanged after group style update');
         expect(updatedChild2Style.strokeWidth).toBe(originalChild2Style.strokeWidth,
             'Child2 strokeWidth must remain unchanged after group style update');
+        done();
+    });
+});
+
+describe('Bug 1019674: Prevented group child nodes from being hidden under group fill during virtualization', () => {
+    let diagram: Diagram;
+    let ele: HTMLElement;
+    let mouseEvents: MouseEvents = new MouseEvents();
+
+    beforeAll((): void => {
+        const isDef = (o: any) => o !== undefined && o !== null;
+        if (!isDef(window.performance)) {
+            console.log("Unsupported environment, window.performance.memory is unavailable");
+            this.skip(); //Skips test (in Chai)
+            return;
+        }
+        ele = createElement('div', { id: 'diagram1' });
+        document.body.appendChild(ele);
+        let nodes: NodeModel[] = [
+            {
+                id: 'node1', offsetX: 100,
+                offsetY: 100, style: { fill: 'blue' }
+            }, {
+                id: 'node2', offsetX: 200,
+                offsetY: 100, style: { fill: 'blue' }
+            },
+            {
+                id: 'group', children: ['node1', 'node2'],
+                padding: { left: 10, right: 10, top: 10, bottom: 10 }, offsetX: 300,
+                offsetY: 200, style: { fill: 'red' }
+            }];
+        diagram = new Diagram({
+            width: '1500px', height: '600px', nodes: nodes,
+            constraints: DiagramConstraints.Default | DiagramConstraints.Virtualization
+        });
+        diagram.appendTo('#diagram1');
+
+    });
+
+    afterAll((): void => {
+        diagram.destroy();
+        diagram = null;
+        ele.remove();
+        ele = null;
+    });
+    it('check group and child color', (done: Function) => {
+        let diagramCanvas: HTMLElement = document.getElementById(diagram.element.id + 'content');
+        diagram.selectAll();
+        expect(diagram.nodes[0].style.fill === 'blue').toBe(true);
+        expect(diagram.nodes[1].style.fill === 'blue').toBe(true);
+        expect(diagram.nodes[2].style.fill === 'red').toBe(true);
+        diagram.clearSelection();
         done();
     });
 });

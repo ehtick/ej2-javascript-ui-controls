@@ -2,7 +2,8 @@ import { VisioAnnotation } from './visio-annotations';
 import { VisioConnector } from './visio-connectors';
 import { shapeIndex } from './visio-nodes';
 import { ConnectorType, DetermineShapeResult, FontProps, FormattedColors, GradientStop, GradientVector, LineStyleList, NormalizedVisioData, OrderEntry, RadialGradientConfig, ShapeAddInfo, VarientStyle, VisioMedia, VisioPort, VisioRow } from './visio-types';
-import { ColorReferenceArray, ProcessedColor, LineStyleRef, TransformedColorRef, LineStyleEntry, SchemeLineStyle, ConnectorLineStyle } from './visio-types';
+import { ColorReferenceArray, ProcessedColor, LineStyleRef, TransformedColorRef, LineStyleEntry, SchemeLineStyle, ConnectorLineStyle, QuickStyleValues } from './visio-types';
+import { VisioStyle } from './visio-import-export';
 import { DecoratorShapes } from '../../enum/enum';
 /**
  * Represents the styling properties of a Visio shape (colors, gradients, strokes).
@@ -732,6 +733,25 @@ export class VisioShape {
     ports?: VisioPort[];
 
     /**
+     * The parent style references (FillStyle, LineStyle, TextStyle) that this shape inherits.
+     * These are resolved from the Visio theme and allow the shape to apply consistent
+     * styling rules based on its parent style definitions.
+     *
+     * @type {VisioStyle | undefined}
+     */
+    visioParentStyles?: VisioStyle;
+
+    /**
+     * The quick style values applied to this shape.
+     * Contains numeric indices referencing theme-based style matrices (fill, line, font, shadow).
+     * These values are used to quickly apply consistent visual styles across shapes
+     * without redefining each property individually.
+     *
+     * @type {QuickStyleValues | undefined}
+     */
+    quickStyleValues?: QuickStyleValues;
+
+    /**
      * The ID of the image/media file if this shape represents an embedded image.
      * Used to look up the actual image data in the medias collection.
      *
@@ -753,6 +773,8 @@ export class VisioShape {
      * @type {string}
      */
     addInfo: ShapeAddInfo;
+    /** Raw XML shape data */
+    xmlShapeData?: Element;
 }
 
 /**
@@ -1586,6 +1608,22 @@ export class VisioTheme {
     variantFillIdx?: Array<Array<number>>;
 
     /**
+     * 2D array of font style indices for each theme variation.
+     * Structure: variantFontIdx[variationIndex][styleIndex] = fontStyleIndex.
+     *
+     * @type {Array<Array<number>> | undefined}
+     */
+    variantFontIdx?: Array<Array<number>>;
+
+    /**
+     * 2D array of line style indices for each theme variation.
+     * Structure: variantLineIdx[variationIndex][styleIndex] = lineStyleIndex.
+     *
+     * @type {Array<Array<number>> | undefined}
+     */
+    variantLineIdx?: Array<Array<number>>;
+
+    /**
      * 2D array of hex color strings for all theme variations.
      * Structure: variantsColors[variationIndex] = [hex1, hex2, ..., hex7].
      *
@@ -1601,6 +1639,14 @@ export class VisioTheme {
      * @type {Record<string, string | undefined> | undefined}
      */
     baseColors?: Record<string, string | undefined>;
+
+    /**
+     * Background color of the theme in hex format (#RRGGBB).
+     * Extracted from the a:bg1 element if available.
+     *
+     * @type {string | undefined}
+     */
+    bkgndColor?: string
 
     /**
      * Array of monotone flags for each theme variation.

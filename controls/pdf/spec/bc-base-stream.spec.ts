@@ -1,6 +1,5 @@
 import { _PdfBaseStream, _PdfStream, _PdfNullStream, _PdfContentStream } from '../src/pdf/core/base-stream';
 import { _PdfDictionary } from '../src/pdf/core/pdf-primitives';
-
 describe('_PdfBaseStream - core behaviors', () => {
     class TestPdfBaseStream extends _PdfBaseStream {
         constructor() {

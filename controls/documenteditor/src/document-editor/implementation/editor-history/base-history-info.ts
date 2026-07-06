@@ -1329,7 +1329,16 @@ export class BaseHistoryInfo {
                         deletedNodes.splice(deletedNodes.indexOf(firstNode), 1);
                         //Removes the intermediate empty paragraph instance.
                         if (this.action !== 'Paste' && this.owner.selectionModule.start.paragraph !== firstNode.containerWidget.lastChild) {
-                            editor.removeBlock(this.owner.selectionModule.start.paragraph);
+                            let skipElementRemoval: boolean = false;
+                            let currentParagarph = this.owner.selectionModule.start.paragraph
+                            if (!(isNullOrUndefined(currentParagarph) && isNullOrUndefined(currentParagarph.bodyWidget) && isNullOrUndefined(currentParagarph.previousWidget)
+                                && isNullOrUndefined((currentParagarph.previousWidget as ParagraphWidget).bodyWidget))) {
+                                if (!(currentParagarph === currentParagarph.bodyWidget.lastChild && (currentParagarph.previousWidget as ParagraphWidget).bodyWidget.index !==
+                                currentParagarph.bodyWidget.index) && (currentParagarph.bodyWidget.sectionFormat.breakCode !== 'NoBreak' || currentParagarph !== currentParagarph.bodyWidget.firstChild)) {
+                                    skipElementRemoval = true;
+                                }
+                            }
+                            editor.removeBlock(this.owner.selectionModule.start.paragraph, undefined, skipElementRemoval);
                         }
                         let paragraph: ParagraphWidget = this.documentHelper.selection.getNextParagraphBlock(firstNode.getSplitWidgets().pop() as BlockWidget);
                         if (!isNullOrUndefined(paragraph) && (firstNode !== firstNode.containerWidget.lastChild || !isNullOrUndefined(firstNode.nextSplitWidget) && !(deletedNodes[0] instanceof BodyWidget))) {

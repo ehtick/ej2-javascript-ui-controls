@@ -747,6 +747,11 @@ export class FlowchartLayout {
     }
 
     private updatePoints(pts: PointModel[], internalConnector: Connector): void {
+        //1023115-Flowchart layout throws exception when rendered with Bezier or Straight connectors
+        if (internalConnector.type !== 'Orthogonal') {
+            internalConnector.intermediatePoints = pts;
+            return;
+        }
         let pointSets: PointModel[] = [];
         const segCollection: OrthogonalSegment[] = [];
         for (let i: number = 0; i < pts.length; i++) {

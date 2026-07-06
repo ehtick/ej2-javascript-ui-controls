@@ -1,5 +1,4 @@
-@use 'ej2-base/styles/definition/definition' as *;
-@forward 'ej2-base/styles/definition/definition';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 
 // uploader definition styles
 $zero-value: 0;

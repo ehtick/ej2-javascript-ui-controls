@@ -20,6 +20,8 @@ import { PaletteModel } from '../../../symbol-palette';
 import { NodeFixedUserHandleModel, ConnectorFixedUserHandleModel } from '../fixed-user-handle-model';
 import { DropInfo } from '@syncfusion/ej2-base';
 import { AnnotationModel } from '../annotation-model';
+import { ErMultiplicity } from '../er-objects';
+import { ErFieldModel } from '../er-objects-model';
 
 /**
  * IElement interface defines the base of the diagram objects (node/connector)
@@ -1213,4 +1215,36 @@ export interface IExportingEventArgs {
     cancel?: false;
     /** returns the errors or warnings collected during the process. */
     logs?: string[]
+}
+
+/**
+ * IErEntityChangedEventArgs - Fired when ER entity model changes.
+ * Provides old and new entity state for change tracking.
+ * Fires in three states: Start (before), Progress (during), Completed (after).
+ *
+ * @event
+ *
+ * @public
+ */
+export interface IErEntityChangedEventArgs {
+    /** Returns the instance of the diagram. */
+    diagram: Diagram;
+    /** The entity node that changed. */
+    element: NodeModel;
+    /** Old entity state before the change. */
+    oldValue: {
+        /** Entity fields (columns). */
+        fields?: ErFieldModel[];
+    };
+    /** New entity state after the change. */
+    newValue: {
+        /** Entity fields (columns). */
+        fields?: ErFieldModel[];
+    };
+    /** Type of change: 'FieldsAdd' | 'FieldsRemove' | 'FieldsReorder'. */
+    cause: string;
+    /** Current state of the event: Start, Progress, or Completed */
+    state: State;
+    /** Set to true to cancel the entity change. */
+    cancel?: boolean;
 }

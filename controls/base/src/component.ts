@@ -223,6 +223,7 @@ export abstract class Component<ElementType extends HTMLElement> extends Base<El
                 gantt: ['tooltip'],
                 chart: ['Export', 'Zoom'],
                 accumulationchart: ['Export'],
+                aiassistview: ['assistThinking'],
                 'query-builder': 'all'
             };
             const component: string = this.getModuleName();

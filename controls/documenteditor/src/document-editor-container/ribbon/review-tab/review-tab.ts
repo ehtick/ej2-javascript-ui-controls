@@ -1,7 +1,7 @@
 import { DocumentEditorContainer } from '../../document-editor-container';
 import { RibbonTabModel } from '@syncfusion/ej2-ribbon';
 import { DocumentEditor } from '../../../document-editor';
-import { CommentsGroup } from './comments-group';
+import { ReviewCommentsGroup } from './review-comments-group';
 import { TrackingGroup } from './tracking-group';
 import { ProtectGroup } from './protect-group';
 
@@ -22,7 +22,7 @@ export class ReviewTab {
     /**
      * @private
      */
-    public commentsGroup: CommentsGroup;
+    public reviewCommentsGroup: ReviewCommentsGroup;
     /**
      * @private
      */
@@ -38,7 +38,7 @@ export class ReviewTab {
         this.ribbonId = this.container.element.id + '_ribbon';
 
         // Initialize group instances
-        this.commentsGroup = new CommentsGroup(container);
+        this.reviewCommentsGroup = new ReviewCommentsGroup(container);
         this.trackingGroup = new TrackingGroup(container);
         this.protectGroup = new ProtectGroup(container);
     }
@@ -54,7 +54,7 @@ export class ReviewTab {
             keyTip: 'R',
             header: this.container.localObj.getConstant('Review'),
             groups: [
-                this.commentsGroup.getGroupModel(),
+                this.reviewCommentsGroup.getGroupModel(),
                 this.trackingGroup.getGroupModel(),
                 this.protectGroup.getGroupModel()
             ]
@@ -68,7 +68,7 @@ export class ReviewTab {
      */
     public updateReviewTabOnSelectionChange(): void {
         // Update all groups based on current selection
-        this.commentsGroup.updateSelection();
+        this.reviewCommentsGroup.updateSelection();
         this.trackingGroup.updateSelection();
         this.protectGroup.updateSelection();
     }
@@ -80,8 +80,8 @@ export class ReviewTab {
      */
     public destroy(): void {
         // Clean up group resources
-        if (this.commentsGroup.destroy) {
-            this.commentsGroup.destroy();
+        if (this.reviewCommentsGroup.destroy) {
+            this.reviewCommentsGroup.destroy();
         }
         if (this.trackingGroup.destroy) {
             this.trackingGroup.destroy();
@@ -91,7 +91,7 @@ export class ReviewTab {
         }
 
         // Clear references
-        this.commentsGroup = undefined;
+        this.reviewCommentsGroup = undefined;
         this.trackingGroup = undefined;
         this.protectGroup = undefined;
     }

@@ -46,7 +46,7 @@ export type OverflowOption = 'None' | 'Show' | 'Hide';
  * Extended :- Hide the overflowing toolbar items in the next row. Show the overflowing toolbar items when you click the expand icons, if the popup content overflows the height of the page, the rest of the elements will be hidden.
  * ```
  */
-export type OverflowMode = 'Scrollable' |'Popup' | 'MultiRow' | 'Extended';
+export type OverflowMode = 'Scrollable' | 'Popup' | 'MultiRow' | 'Extended';
 
 type HTEle = HTMLElement;
 type Str = string;

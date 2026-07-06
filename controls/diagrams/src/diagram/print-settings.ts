@@ -24,7 +24,7 @@ import { DiagramHtmlElement } from './core/elements/html-element';
 import { DiagramNativeElement } from './core/elements/native-element';
 import { DiagramElement } from './core/elements/diagram-element';
 import { GroupableView } from './core/containers/container';
-import { LinearGradient } from './core/appearance';
+import { LinearGradient, RadialGradient } from './core/appearance';
 
 let storeFormat: string;
 
@@ -433,7 +433,9 @@ export class PrintAndExport {
             //renderLabels
             const renderer: DiagramRenderer = new DiagramRenderer('', null, true);
             const htmlLayer: HTMLElement = getHTMLLayer(this.diagram.element.id);
-            this.diagram.renderDiagramElements(svg, renderer, htmlLayer, false);
+            this.diagram.renderDiagramElements(g, renderer, htmlLayer, false);
+            // Post-process gradients for Canvas mode export
+            this.processGradientsForCanvasExport(svg, this.diagram.element.id);
         }
         document.body.removeChild(svg);
         return svg;
@@ -442,6 +444,88 @@ export class PrintAndExport {
         element.setAttribute('transform', 'translate(' + (-bounds.x + margin.left) + ', ' +
             (-bounds.y + margin.top) + ')');
     }
+
+    /**
+     * Process gradients for Canvas mode SVG export
+     * Creates gradient definitions in the EXPORT SVG
+     *
+     * @param svg - The export SVG element to add gradients to
+     * @param diagramId - The diagram ID used for identifying gradient pattern elements
+     * @returns void
+     *
+     * @remarks
+     * In Canvas mode, gradient coordinates are not stored in node.style.gradient.
+     * This method creates gradient elements with explicit default values to ensure
+     * proper rendering in the exported SVG.
+     *
+     * @private
+     */
+    private processGradientsForCanvasExport(svg: SVGElement, diagramId: string): void {
+        const svgSvgElement: SVGSVGElement = svg as SVGSVGElement;
+
+        // Retrieve or create the defs element to hold gradient definitions
+        let defsElement: Element = svgSvgElement.getElementById(diagramId + 'gradient_pattern');
+        if (!defsElement) {
+            defsElement = createSvgElement('defs', { id: diagramId + 'gradient_pattern' }) as SVGElement;
+            svg.insertBefore(defsElement, svg.firstChild);
+        }
+
+        for (const node of this.diagram.nodes) {
+            if (node.visible && node.style && node.style.gradient && node.style.gradient.type !== 'None') {
+                // Find the node's CONTENT element
+                const nodeContentElement: Element = svgSvgElement.getElementById(node.id + '_content');
+                if (nodeContentElement) {
+                    const gradientType: string = node.style.gradient.type;
+                    const gradientId: string = node.id + '_content' + (gradientType === 'Linear' ? '_linear' : '_radial');
+
+                    let gradientElement: SVGElement;
+
+                    // Create gradient element with the correct ID and DEFAULT coordinates
+                    if (gradientType === 'Linear') {
+                        gradientElement = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient') as SVGElement;
+
+                        // Set default linear gradient coordinates (left to right)
+                        setAttributeSvg(gradientElement, {
+                            'id': gradientId,
+                            'x1': (node.style.gradient as LinearGradient).x1 + '%',
+                            'y1': (node.style.gradient as LinearGradient).y1 + '%',
+                            'x2': (node.style.gradient as LinearGradient).x2 + '%',
+                            'y2': (node.style.gradient as LinearGradient).y2 + '%'
+                        });
+                    } else {
+                        gradientElement = document.createElementNS('http://www.w3.org/2000/svg', 'radialGradient') as SVGElement;
+
+                        // Set default radial gradient coordinates (center with 50% radius)
+                        setAttributeSvg(gradientElement, {
+                            'id': gradientId,
+                            'cx': (node.style.gradient as RadialGradient).cx + '%',
+                            'cy': (node.style.gradient as RadialGradient).cy + '%',
+                            'r': (node.style.gradient as RadialGradient).r + '%',
+                            'fx': (node.style.gradient as RadialGradient).fx + '%',
+                            'fy': (node.style.gradient as RadialGradient).fy + '%'
+                        });
+                    }
+
+                    // Add stop elements for each color
+                    if (node.style.gradient.stops) {
+                        for (let i: number = 0; i < node.style.gradient.stops.length; i++) {
+                            const stop: any = node.style.gradient.stops[parseInt(i.toString(), 10)];
+                            const stopElement: SVGElement = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+                            setAttributeSvg(stopElement, { 'offset': (stop.offset / 100).toString(), 'style': 'stop-color:' + stop.color });
+                            gradientElement.appendChild(stopElement);
+                        }
+                    }
+
+                    // Add gradient to defs
+                    defsElement.appendChild(gradientElement);
+
+                    // Update node element's fill attribute to reference the gradient
+                    (nodeContentElement as SVGElement).setAttribute('fill', `url(#${gradientId})`);
+                }
+            }
+        }
+    }
+
     private diagramAsCanvas(options: IExportOptions, customBounds: boolean): HTMLCanvasElement {
         const scaleX: string = 'scaleX';
         const scaleY: string = 'scaleY';

@@ -811,6 +811,28 @@ export interface ImageModel {
 }
 
 /**
+ * Interface for a class RichText
+ */
+export interface RichTextModel {
+
+    /**
+     * Specifies the text content of the segment.
+     *
+     * @default ''
+     */
+    text?: string;
+
+    /**
+     * Specifies the style of the segment using CellStyleModel, which represents the general cell styling configuration.
+     * However, in a rich text segment, only the superscript or subscript options are supported.
+     *
+     * @default {}
+     */
+    style?: CellStyleModel;
+
+}
+
+/**
  * Interface for a class CommentReply
  */
 export interface CommentReplyModel {

@@ -12,26 +12,131 @@ import { PdfEmbeddedImage } from './image-extraction/pdf-embedded-image';
 import { _PdfImage } from './image-extraction/image';
 import { PdfRedactionRegion } from './redaction';
 
+/**
+ * Helper for parsing PDF content streams and extracting text/images/shape primitives.
+ *
+ * @private
+ */
 export class _PdfContentParserHelper {
+    /**
+     * The owning PdfDocument instance used for lookups and cross-reference cache updates.
+     *
+     * @private
+     */
     _document: PdfDocument;
+    /**
+     * Identity matrix used as the default text matrix.
+     *
+     * @private
+     */
     _identityMatrix: number[] = [1, 0, 0, 1, 0, 0];
+    /**
+     * Current computed font size during parsing.
+     *
+     * @private
+     */
     _fontSize: number;
+    /**
+     * Accumulated width used while composing words.
+     *
+     * @private
+     */
     _width: number = 0;
+    /**
+     * Collected embedded image metadata discovered during parsing.
+     *
+     * @private
+     */
     _imageInfo: PdfEmbeddedImage[] = [];
+    /**
+     * Point-to-pixel multiplier used for dimension conversions.
+     *
+     * @private
+     */
     _pt: number = 1.3333;
+    /**
+     * Accumulated height used while composing words.
+     *
+     * @private
+     */
     _height: number = 0;
+    /**
+     * The ross-reference object used to resolve indirect PDF objects.
+     *
+     * @private
+     */
     _crossReference: _PdfCrossReference;
+    /**
+     * Accumulated extracted textual content when in text extraction mode.
+     *
+     * @private
+     */
     _resultantText: string = '';
+    /**
+     * Current glyph buffer for the word being built.
+     *
+     * @private
+     */
     _textGlyph: TextGlyph[] = [];
+    /**
+     * Current word buffer for the current line being built
+     *
+     * @private
+     */
     _textWord: TextWord[] = [];
-    _textLine: TextLine[] = []
+    /**
+     * Collected text lines when in text-line extraction mode.
+     *
+     * @private
+     */
+    _textLine: TextLine[] = [];
+    /**
+     * Active text processing mode
+     *
+     * @private
+     */
     _mode: _TextProcessingMode;
+    /**
+     * Flag indicating whether a redaction-relevant text item was found in the current block.
+     *
+     * @private
+     */
     _isContainsRedactionText: boolean = false;
+    /**
+     * PdfRedactor instance used when operating in redaction mode.
+     *
+     * @private
+     */
     _isNotUpdated: boolean;
+    /**
+     * PdfRedactor instance used when operating in redaction mode.
+     *
+     * @private
+     */
     _redaction: PdfRedactor;
+    /**
+     * Current Y coordinate used for redaction/text-finding heuristics.
+     *
+     * @private
+     */
     _yPosition: number = 0;
+    /**
+     * Current X coordinate used for redaction/text-finding heuristics.
+     *
+     * @private
+     */
     _xPosition: number = 0;
+    /**
+     * The owning PdfDocument instance used for lookups and cross-reference cache updates.
+     *
+     * @private
+     */
     _parser: _PdfTextParser = new _PdfTextParser();
+    /**
+     * Internal parser used to decode text and text metrics from content streams.
+     *
+     * @private
+     */
     constructor();
     constructor(mode: _TextProcessingMode);
     constructor(mode: _TextProcessingMode, redaction?: PdfRedactor);
@@ -44,12 +149,31 @@ export class _PdfContentParserHelper {
             this._document = redaction._document;
         }
     }
+    /**
+     * Reads and returns the parsed content records for a page.
+     *
+     * @private
+     * @param {PdfPage} page - The PDF page to read content from.
+     * @returns {_PdfRecord[]} The parsed content record collection.
+     */
     _getPageRecordCollection(page: PdfPage): _PdfRecord[] {
         const combinedContent: Uint8Array = page._combineContent();
         const parser: _ContentParser = new _ContentParser(combinedContent);
         const recordCollection: _PdfRecord[] = parser._readContent();
         return recordCollection;
     }
+    /* eslint-disable */
+    /**
+     * Processes the 'Tj' and '"' text-showing operators and extracts or prepares replacement text.
+     *
+     * @private
+     * @param {_PdfRecord} record - Content record representing the operator.
+     * @param {_TextState} textState - Current text graphic state.
+     * @param {_FontStructure} currentFont - Active font structure.
+     * @param {PdfPage} page - Page that is being processed.
+     * @param {Map<string, _FontStructure>} fontCollection - Collection of fonts available on the page.
+     * @returns {{ updatedText: string; isChangeOperator: boolean } | void} Replacement info when in redaction mode; otherwise void.
+     */
     _processTjOperator(record: _PdfRecord, textState: _TextState, currentFont: _FontStructure, page: PdfPage, fontCollection:
     Map<string, _FontStructure>): { updatedText: string; isChangeOperator: boolean } | void {
         currentFont = this._parser._getTextFont(fontCollection, textState, this._crossReference);
@@ -59,14 +183,14 @@ export class _PdfContentParserHelper {
         } else {
             element = record._operands[0];
         }
-        let result: any; // eslint-disable-line
-        let elements: any; // eslint-disable-line
+        let result: any;
+        let elements: any;
         let textGlyphs: TextGlyph[] = [];
         let encodedText: string[] = [];
         let decodedText: string[] = [];
         let updatedText: string = '';
         let isChangeOperator: boolean = false;
-        let object: any; // eslint-disable-line
+        let object: any;
         let extractedText: string;
         let text: string;
         if (this._mode === _TextProcessingMode.textLineExtraction) {
@@ -78,7 +202,7 @@ export class _PdfContentParserHelper {
         } else if (this._mode === _TextProcessingMode.textExtraction) {
             currentFont = this._parser._getTextFont(fontCollection, textState, this._crossReference);
             this._extractTextElement(element, currentFont, record._splitText);
-            if (record._operator === "'" || record._operator === '"') { //eslint-disable-line
+            if (record._operator === "'" || record._operator === '"') {
                 this._resultantText += '\r\n';
             }
         } else if (this._mode === _TextProcessingMode.redaction) {
@@ -99,6 +223,18 @@ export class _PdfContentParserHelper {
             }
         }
     }
+    /* eslint-enable */
+    /**
+     * Builds a TextLine/TextWord entry from the current glyph buffer and pushes it into collections.
+     *
+     * @private
+     * @param {string} text - The assembled text for the current word.
+     * @param {_FontStructure} currentFont - Active font used to set name/style.
+     * @param {_TextState} textState - Current text state containing font size.
+     * @param {PdfPage} page - Page index used for line metadata.
+     * @param {string} extractedText - The full extracted text for the current line.
+     * @returns {void}
+     */
     _setTextLineCollection(text: string, currentFont: _FontStructure, textState: _TextState, page: PdfPage, extractedText: string): void{
         if (text !== '') {
             const textWord: TextWord = new TextWord();
@@ -133,6 +269,17 @@ export class _PdfContentParserHelper {
         textLine1._bounds = {x: pathBounds[0], y: pathBounds[1], width: pathBounds[2], height: pathBounds[3]};
         this._textLine.push(textLine1);
     }
+    /**
+     * Processes the 'TJ' array operator and returns replacement info when in redaction mode.
+     *
+     * @private
+     * @param {_PdfRecord} record - Content record for TJ operator.
+     * @param {_TextState} textState - Current text state for metrics and positioning.
+     * @param {_FontStructure} currentFont - Active font reference.
+     * @param {PdfPage} page - The page being processed.
+     * @param {Map<string, _FontStructure>} fontCollection - Fonts available on the page.
+     * @returns {{ updatedText: string, isChangeOperator: boolean }} Object with updatedText and change flag.
+     */
     _processTJOperator(record: _PdfRecord, textState: _TextState, currentFont: _FontStructure, page: PdfPage, fontCollection:
     Map<string, _FontStructure>): { updatedText: string, isChangeOperator: boolean } {
         currentFont = this._parser._getTextFont(fontCollection, textState, this._crossReference);
@@ -173,6 +320,17 @@ export class _PdfContentParserHelper {
         }
         return { updatedText, isChangeOperator };
     }
+    /**
+     * Processes the single-quote (') operator which implies newline then show text.
+     *
+     * @private
+     * @param {_PdfRecord} record - Content record.
+     * @param {_TextState} textState - Current text state.
+     * @param {_FontStructure} currentFont - Active font.
+     * @param {PdfPage} page - Page being processed.
+     * @param {Map<string, _FontStructure>} fontCollection - Available fonts map.
+     * @returns {{ updatedText: string, isChangeOperator: boolean } | void} Replacement info when in redaction mode.
+     */
     _processSingleQuoteOperator(record: _PdfRecord, textState: _TextState, currentFont: _FontStructure, page: PdfPage, fontCollection:
     Map<string, _FontStructure>): { updatedText: string, isChangeOperator: boolean } | void {
         textState._carriageReturn();
@@ -182,6 +340,14 @@ export class _PdfContentParserHelper {
             return { updatedText, isChangeOperator };
         }
     }
+    /**
+     * Tests whether two rectangles intersect.
+     *
+     * @private
+     * @param {Rectangle} redaction - First rectangle.
+     * @param {Rectangle} imageBounds - Second rectangle.
+     * @returns {boolean} True when rectangles intersect; otherwise false.
+     */
     _intersect(redaction: Rectangle, imageBounds: Rectangle): boolean {
         const x1: number = Math.max(redaction.x, imageBounds.x);
         const x2: number = Math.min(redaction.x + redaction.width, imageBounds.x + imageBounds.width);
@@ -192,6 +358,14 @@ export class _PdfContentParserHelper {
         }
         return false;
     }
+    /**
+     * Multiplies two 3x2 affine matrices represented as arrays.
+     *
+     * @private
+     * @param {number[]} matrix1 - Left matrix.
+     * @param {number[]} matrix2 - Right matrix.
+     * @returns {number[]} Resulting matrix.
+     */
     _multiply(matrix1: number[], matrix2: number[]): number[] {
         const matrix: number[] = [];
         matrix[0] = matrix1[0] * matrix2[0] + matrix1[1] * matrix2[2];
@@ -202,6 +376,17 @@ export class _PdfContentParserHelper {
         matrix[5] = matrix1[4] * matrix2[1] + (matrix1[5] * matrix2[3]) + matrix2[5];
         return matrix;
     }
+    /**
+     * Processes the double-quote (") operator which sets word/char spacing then shows text.
+     *
+     * @private
+     * @param {_PdfRecord} record - Content record containing operands.
+     * @param {_TextState} textState - Current text state to update.
+     * @param {_FontStructure} currentFont - Active font.
+     * @param {PdfPage} page - Page being processed.
+     * @param {Map<string, _FontStructure>} fontCollection - Fonts collection.
+     * @returns {{ updatedText: string, isChangeOperator: boolean } | void} Replacement info when in redaction mode.
+     */
     _processDoubleQuoteOperator(record: _PdfRecord, textState: _TextState, currentFont: _FontStructure, page: PdfPage, fontCollection:
     Map<string, _FontStructure>): { updatedText: string, isChangeOperator: boolean } | void {
         textState._wordSpacing = Number(record._operands[0]);
@@ -213,6 +398,18 @@ export class _PdfContentParserHelper {
             return { updatedText, isChangeOperator };
         }
     }
+    /**
+     * Processes a collection of content records and delegates operator handling.
+     *
+     * @private
+     * @param {_PdfRecord[]} recordCollection - Array of parsed content records.
+     * @param {PdfPage} page - Page being processed.
+     * @param {Map<string, _FontStructure>} fontCollection - Map of fonts available on the page.
+     * @param {Map<string, any>} xObjectCollection - Map of XObjects (images/forms).
+     * @param {_GraphicState} graphicState - Current graphic state tracker.
+     * @param {Map<string, _ImageStructure>} [imageCollection] - Optional image collection to populate.
+     * @returns {_PdfContentStream | void | string | TextLine[] | PdfEmbeddedImage[]} Stream for redaction or extracted results based on mode.
+     */
     _processRecordCollection(recordCollection: _PdfRecord[],  page: PdfPage, fontCollection: Map<string, _FontStructure>,
                              xObjectCollection: Map<string, any>, graphicState: _GraphicState, imageCollection?: // eslint-disable-line 
                              Map<string, _ImageStructure>): _PdfContentStream | void | string | TextLine[] | PdfEmbeddedImage[] {
@@ -243,6 +440,21 @@ export class _PdfContentParserHelper {
         }
         return;
     }
+    /**
+     * Processes content records for image extraction/redaction asynchronously and collects image metadata.
+     *
+     * @private
+     * @param {_PdfRecord[]} recordCollection - Parsed content records.
+     * @param {PdfPage} page - Page being processed.
+     * @param {Map<string, _FontStructure>} fontCollection - Fonts available on the page.
+     * @param {Map<string, any>} xObjectCollection - Map of XObjects.
+     * @param {_GraphicState} graphicState - Current graphic state.
+     * @param {any} callBack - Callback used for canvas rendering during extraction.
+     * @param {_TextProcessingMode} [mode] - Optional processing mode override.
+     * @param {PdfRedactionRegion[]} [options] - Optional redaction regions for image redaction.
+     * @param {boolean} [isValidCanvas] - Flag for canvas validation.
+     * @returns {Promise<any>} Promise resolving with stream for redaction or image info for extraction.
+     */
     async _processImageRecordCollection(recordCollection: _PdfRecord[],  page: PdfPage, fontCollection: Map<string, _FontStructure>,
                              xObjectCollection: Map<string, any>, graphicState: _GraphicState, callBack: any, mode?: _TextProcessingMode, options?: PdfRedactionRegion[], isValidCanvas?: boolean): Promise<any> { // eslint-disable-line     
         let textState: _TextState;
@@ -433,6 +645,26 @@ export class _PdfContentParserHelper {
         }
         return;
     }
+    /**
+     * Processes a single record within a collection; core dispatcher for operators.
+     *
+     * @private
+     * @param {_TextState} textState - Current text state.
+     * @param {number} index - Index of the current record in the collection.
+     * @param {string} updatedText - Updated text accumulator for redaction optimization.
+     * @param {PdfPage} page - Page being processed.
+     * @param {_PdfRecord[]} recordCollection - Array of parsed records.
+     * @param {Map<string, _FontStructure>} fontCollection - Font collection map.
+     * @param {Map<string, any>} xObjectCollection - XObject collection map.
+     * @param {_GraphicState} graphicState - Graphic state object.
+     * @param {_PdfShapeParser} parser - Shape parser instance (may be created internally).
+     * @param {number} red - Red color channel (unused local).
+     * @param {number} green - Green color channel (unused local).
+     * @param {number} blue - Blue color channel (unused local).
+     * @param {number} skipUntil - Index until which to skip records (used by shape parser).
+     * @param {_PdfContentStream} stream - Stream accumulator for redaction output.
+     * @returns {any} The possibly modified index or other dispatch result.
+     */
     _processPdfRecordCollection(textState: _TextState, index: number, updatedText: string, page: PdfPage, recordCollection: _PdfRecord[],
                                 fontCollection: Map<string, _FontStructure>, xObjectCollection: Map<string, any>,  // eslint-disable-line
                                 graphicState: _GraphicState, parser: _PdfShapeParser, red: number, green: number,
@@ -673,10 +905,31 @@ export class _PdfContentParserHelper {
             return index;
         }
     }
+    /**
+     * Decodes a single encoded text item and appends it to the resultantText buffer.
+     *
+     * @private
+     * @param {string} elements - Encoded text operand from the content stream.
+     * @param {_FontStructure} currentFont - Font used to decode the text.
+     * @param {string[]} inputText - Optional split-text inputs used in decoding.
+     * @returns {void}
+     */
     _extractTextElement(elements: string, currentFont: _FontStructure, inputText: string[]): void {
         const decodedText: string = _decodeEncodedText(elements, currentFont, inputText);
         this._resultantText += decodedText;
     }
+    /**
+     * Builds glyph/word info from a 'Tj' operator decoded list.
+     *
+     * @private
+     * @param {string[]} decodedList - Decoded string items.
+     * @param {_FontStructure} currentFont - Active font for metrics.
+     * @param {_TextState} textState - Current text state.
+     * @param {PdfPage} page - Page context.
+     * @param {TextGlyph[]} [textGlyphs] - Optional glyph array to populate.
+     * @param {string[]} [inputType] - Optional original input encoding array.
+     * @returns {any} Object containing glyphs/decoded/encoded text or tempString/extractedText depending on mode.
+     */
     _getTextElementsFromTjOperator(decodedList: string[], currentFont: _FontStructure, textState: _TextState, page: PdfPage,
     textGlyphs?: TextGlyph[], inputType?: string[]): any {// eslint-disable-line
         this._textWord = [];
@@ -707,6 +960,18 @@ export class _PdfContentParserHelper {
             }
         }
     }
+    /**
+     * Builds glyph/word info from a 'TJ' operator decoded list (array) and returns encoded/decoded text or text fragments.
+     *
+     * @private
+     * @param {string[]} decodedList - Decoded TJ array entries.
+     * @param {_FontStructure} currentFont - Active font structure.
+     * @param {_TextState} textState - Current text state.
+     * @param {PdfPage} page - Page context.
+     * @param {TextGlyph[]} [textGlyphs] - Optional glyph array to populate.
+     * @param {string[]} [inputType] - Optional original input encoding array.
+     * @returns {any} Object containing populated glyphs and encoded/decoded text fragments or tempString/extractedText.
+     */
     _getTextElementsFromTJOperator(decodedList: string[], currentFont: _FontStructure, textState: _TextState, page: PdfPage,
      textGlyphs?: TextGlyph[], inputType?: string[]): any { //eslint-disable-line
         let textValues: string[] = [];
@@ -777,6 +1042,22 @@ export class _PdfContentParserHelper {
             return {tempString, extractedText};
         }
     }
+    /**
+     * Splits incoming glyphs into words and updates word/glyph collections for the current line.
+     *
+     * @private
+     * @param {string} glyph - Single character or glyph to process.
+     * @param {string} tempString - Current assembled string for the current word.
+     * @param {string} fontName - Font name for created TextWord objects.
+     * @param {PdfFontStyle} fontStyle - Font style for created TextWord objects.
+     * @param {PdfPage} page - Page context for rotation checks.
+     * @param {number} [rotation] - Optional rotation angle affecting measurement.
+     * @param {PdfColor} [textColor] - Optional color for glyphs.
+     * @param {number} [fontSize] - Optional font size for glyphs.
+     * @param {Rectangle} [textBounds] - Bounds of the glyph in user space.
+     * @param {Rectangle} [previousRect] - Previous glyph bounds used for gap detection.
+     * @returns {any} Object containing updated tempString and previousRect for continued processing.
+     */
     _splitWords(glyph: string, tempString: string, fontName: string, fontStyle: PdfFontStyle , page: PdfPage,
                 rotation?: number, textColor?: PdfColor, fontSize?: number, textBounds?:
                 Rectangle,

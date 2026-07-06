@@ -82,7 +82,7 @@ describe('PDF_Viewer_TextSearch_Spinner_NonExistentText', () => {
      * Ensures spinner is fully hidden
      * after a non-existent text search completes.
      */
-    fit('1025523 - Spinner_Completely_Hidden_After_NonExistent_Search_Completes', (done: DoneFn) => {
+    it('1025523 - Spinner_Completely_Hidden_After_NonExistent_Search_Completes', (done: DoneFn) => {
         // Open search toolbar
         const searchBtn = pdfviewer_search_spinner.viewerBase.getElement('_searchIcon') as HTMLElement;
         searchBtn.click();

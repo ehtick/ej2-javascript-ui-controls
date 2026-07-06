@@ -3,7 +3,7 @@ import { PdfViewerBase } from '../index';
 import { Browser, isBlazor, isNullOrUndefined, initializeCSPTemplate } from '@syncfusion/ej2-base';
 import { PdfAnnotationBaseModel } from '../drawing/pdf-annotation-model';
 import { PdfAnnotationBase } from '../drawing/pdf-annotation';
-import { splitArrayCollection, processPathData, cornersPointsBeforeRotation, Rect, PointModel, getPathString } from '@syncfusion/ej2-drawings';
+import { splitArrayCollection, processPathData, cornersPointsBeforeRotation, Rect, PointModel, getPathString } from './../ej2-drawings/index';
 import { DiagramHtmlElement } from '../drawing/html-element';
 import { ItemModel } from '../pdfviewer-model';
 import { Tooltip } from '@syncfusion/ej2-popups';

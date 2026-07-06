@@ -60,8 +60,8 @@ export class ShadingGroup {
         // Initialize the color picker with inline mode
         this.colorPicker = new ColorPicker({
             inline: true,
-            value: this.currentShadingColor,
             locale: this.container.locale,
+            value: this.currentShadingColor,
             enableOpacity: false,
             change: (args: ColorPickerEventArgs) => {
                 this.currentShadingColor = args.currentValue.hex;

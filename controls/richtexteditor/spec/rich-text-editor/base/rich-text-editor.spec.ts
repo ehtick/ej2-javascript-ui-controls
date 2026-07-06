@@ -339,6 +339,28 @@ describe('RTE Base module ', () => {
         });
     });
 
+    describe('1031458: Blockquote must maintain the p tag while initial loading', () => {
+        let rteObj: RichTextEditor;
+        let rteEle: HTMLElement;
+        beforeAll(() => {
+            rteObj = renderRTE({
+                toolbarSettings: {
+                    items: ['CreateTable'],
+                },
+                value: `<blockquote><p>Testing</p></blockquote>`,
+            });
+            rteEle = rteObj.element;
+        });
+        afterAll(() => {
+            destroy(rteObj);
+        });
+        it('should maintain the p tag within the blockquote', () => {
+            rteObj.focusIn();
+            const blockquote = rteObj.contentModule.getDocument().querySelector('blockquote');
+            const pTag = blockquote.querySelectorAll('p');
+            expect(pTag.length).toBe(1);
+        });
+    });
     describe('EJ2-44314: Improvement with backSpaceKey action in the Rich Text Editor', () => {
         let rteObj: RichTextEditor;
         let keyBoardEvent: any = { type: 'keydown', preventDefault: () => { }, ctrlKey: true, key: 'Enter', keyCode: 13, stopPropagation: () => { }, shiftKey: false, which: 8 };
@@ -395,10 +417,12 @@ describe('RTE Base module ', () => {
             setCursorPoint(document, node, 0);
             (rteObj.element.querySelectorAll(".e-toolbar-item")[0] as HTMLElement).querySelector('button').click();
             setTimeout(() => {
-                (<any>rteObj).keyDown(keyboardEventArg);
-                (<any>rteObj).keyUp(keyboardEventArgs);
-                (<any>rteObj).keyDown(keyboardEventArg);
-                (<any>rteObj).keyUp(keyboardEventArgs);
+                const ENTER_KEY_DOWN_EVENT: KeyboardEvent = new KeyboardEvent('keydown', ENTERKEY_EVENT_INIT);
+                const ENTER_KEY_UP_EVENT: KeyboardEvent = new KeyboardEvent('keyup', ENTERKEY_EVENT_INIT);
+                rteObj.inputElement.dispatchEvent(ENTER_KEY_DOWN_EVENT);
+                rteObj.inputElement.dispatchEvent(ENTER_KEY_UP_EVENT);
+                rteObj.inputElement.dispatchEvent(ENTER_KEY_DOWN_EVENT);
+                rteObj.inputElement.dispatchEvent(ENTER_KEY_UP_EVENT);
                 setTimeout(() => {
                     expect((rteObj as any).inputElement.querySelectorAll('h1').length).toBe(3);
                     done();
@@ -6485,8 +6509,8 @@ describe('RTE Base module ', () => {
         });
         afterEach(() => {
             destroy(rteObj);
-        });
-        describe('EJ2-61402 - script error occurs when press ctrl button in list', () => {
+    });
+    describe('EJ2-61402 - script error occurs when press ctrl button in list', () => {
             let rteObj: RichTextEditor;
             let keyBoardEvent: any = { type: 'keydown', preventDefault: () => { }, ctrlKey: true, key: 'c', stopPropagation: () => { }, shiftKey: false, which: 67 };
             it('check the list element', (done: Function) => {
@@ -7198,11 +7222,11 @@ describe('RTE Base module ', () => {
         let editor: RichTextEditor;
         let editorElem: HTMLElement;
         beforeAll(() => {
-            editorElem = createElement('div', { id: '69081_RTE' });
+            editorElem = createElement('div', { id: 'RTE_69081' });
             document.body.appendChild(editorElem);
             RichTextEditor.Inject(HtmlEditor, Toolbar, QuickToolbar, PasteCleanup);
             editor = new RichTextEditor({});
-            editor.appendTo('#69081_RTE');
+            editor.appendTo('#RTE_69081');
         });
         afterAll(() => {
             editor.destroy();
@@ -10138,6 +10162,80 @@ Rich Text Editor 3`
         });
     });
 
+    describe('1004248: Font Color Toolbar Does Not Reflect Selected Text Color in RichTextEditor', () => {
+        let rteObj: RichTextEditor;
+        const richTestValue: string = '<p><span style="background-color: rgb(255, 128, 128);"><span style="color: rgb(68, 114, 196); text-decoration: inherit;">Rich</span></span> <span style="background-color: rgb(128, 255, 128);"><span style="color: rgb(255, 0, 0); text-decoration: inherit;">Test</span></span> <span style="background-color: rgb(255, 255, 128);"><span style="color: rgb(255, 192, 0); text-decoration: inherit;">Editor</span></span></p>';
+        beforeEach(() => {
+            rteObj = renderRTE({
+                toolbarSettings: {
+                    items: ['FontColor', 'BackgroundColor']
+                }
+            });
+        });
+        it('Select "Rich" word and verify font color button shows correct color (rgb(68, 114, 196)) and dropdown selected color matches', (done: DoneFn) => {
+            rteObj.inputElement.innerHTML = richTestValue;
+            const richSpan: Element = (rteObj.inputElement.querySelector('p') as HTMLElement).querySelectorAll('span')[1];
+            const richTextNode: Node = richSpan.firstChild as Node;
+            const sel = new NodeSelection().setSelectionText(document, richTextNode, richTextNode, 0, 4);
+            (rteObj as any).mouseUp({ target: rteObj.inputElement, isTrusted: true } as any);
+            setTimeout(() => {
+                const fontColorBtn: HTMLElement = rteObj.element.querySelectorAll(".e-toolbar-item")[0] as HTMLElement;
+                const fontColorPreview: HTMLElement = fontColorBtn.querySelector('.e-split-preview') as HTMLElement;
+                expect(fontColorPreview.style.backgroundColor).toBe('rgb(68, 114, 196)');
+                // Click dropdown button to open color picker
+                const dropdownBtn: HTMLElement = fontColorBtn.querySelectorAll('button')[1] as HTMLElement;
+                dropdownBtn.click();
+                setTimeout(() => {
+                    const value: string = (document.querySelector(".e-popup-open .e-color-palette .e-selected") as HTMLElement).style.backgroundColor;
+                    expect(value).toBe("rgb(68, 114, 196)");
+                    done();
+                }, 100);
+            }, 100);
+        });
+        it('Select "Rich" word and verify background color button shows correct color (rgb(255, 128, 128)) and dropdown selected color matches', (done: DoneFn) => {
+            rteObj.inputElement.innerHTML = richTestValue;
+            const richSpan: Element = (rteObj.inputElement.querySelector('p') as HTMLElement).querySelectorAll('span')[1];
+            const richTextNode: Node = richSpan.firstChild as Node;
+            const sel = new NodeSelection().setSelectionText(document, richTextNode, richTextNode, 0, 4);
+            (rteObj as any).mouseUp({ target: rteObj.inputElement, isTrusted: true } as any);
+            setTimeout(() => {
+                const bgColorBtn: HTMLElement = rteObj.element.querySelectorAll(".e-toolbar-item")[1] as HTMLElement;
+                const bgColorPreview: HTMLElement = bgColorBtn.querySelector('.e-split-preview') as HTMLElement;
+                expect(bgColorPreview.style.backgroundColor).toBe('rgb(255, 128, 128)');
+                // Click dropdown button to open color picker
+                const dropdownBtn: HTMLElement = bgColorBtn.querySelectorAll('button')[1] as HTMLElement;
+                dropdownBtn.click();
+                setTimeout(() => {
+                    const value: string = (document.querySelector(".e-popup-open .e-color-palette .e-selected") as HTMLElement).style.backgroundColor;
+                    expect(value).toBe("rgb(255, 128, 128)");
+                    done();
+                }, 100);
+            }, 100);
+        });
+        it('Select "Rich" word and verify background color button shows correct color (rgb(255, 128, 128)) and dropdown selected color matches', (done: DoneFn) => {
+            rteObj.inputElement.innerHTML = '<p>Testing</p>';
+            const richSpan: Element = (rteObj.inputElement.querySelector('p') as HTMLElement);
+            const richTextNode: Node = richSpan.firstChild as Node;
+            const sel = new NodeSelection().setSelectionText(document, richTextNode, richTextNode, 0, 4);
+            (rteObj as any).mouseUp({ target: rteObj.inputElement, isTrusted: true } as any);
+            setTimeout(() => {
+                const bgColorBtn: HTMLElement = rteObj.element.querySelectorAll(".e-toolbar-item")[1] as HTMLElement;
+                const bgColorPreview: HTMLElement = bgColorBtn.querySelector('.e-split-preview') as HTMLElement;
+                expect(bgColorPreview.style.backgroundColor).toBe('rgb(255, 255, 0)');
+                // Click dropdown button to open color picker
+                const dropdownBtn: HTMLElement = bgColorBtn.querySelectorAll('button')[1] as HTMLElement;
+                dropdownBtn.click();
+                setTimeout(() => {
+                    const value: string = (document.querySelector(".e-popup-open .e-color-palette .e-selected") as HTMLElement).style.backgroundColor;
+                    expect(value).toBe("rgb(255, 255, 0)");
+                    done();
+                }, 100);
+            }, 100);
+        });
+        afterEach(() => {
+            destroy(rteObj);
+        });
+    });
 
     describe('945277 - Placeholder doesnt disappear on RichTextEditor component when inserting text with voice', () => {
         let rteObj: RichTextEditor;
@@ -10161,6 +10259,28 @@ Rich Text Editor 3`
             rteObj.value = '<p>Hello</p>';
             rteObj.dataBind();
             expect(((rteObj as any).placeHolderWrapper as HTMLElement).classList.contains('enabled')).toBe(false);
+        });
+    });
+    describe('1006945: Toolbar status with heading, font size and font family', () => {
+        let rteObj: RichTextEditor;
+        beforeAll(() => {
+            rteObj = renderRTE({
+                value: `<h1><span style="font-size: 14pt;"><span style="font-family: &quot;Segoe UI&quot;;">Welcome to the Syncfusion Rich Text Editor</span></span></h1>`,
+                toolbarSettings: {
+                    items: ['Formats', 'FontName', 'FontSize']
+                }
+            });
+        });
+        it('Should detect heading format, font size 14pt and Segoe UI font family in toolbar items', () => {
+            const formatDropdown = rteObj.element.querySelectorAll(".e-toolbar-item")[0].querySelector('.e-rte-dropdown-btn-text');
+            const fontNameDropdown = rteObj.element.querySelectorAll(".e-toolbar-item")[1].querySelector('.e-rte-dropdown-btn-text');
+            const fontSizeDropdown = rteObj.element.querySelectorAll(".e-toolbar-item")[2].querySelector('.e-rte-dropdown-btn-text');
+            expect(formatDropdown.textContent).toContain('Heading 1');
+            expect(fontNameDropdown.textContent).toContain('Segoe UI');
+            expect(fontSizeDropdown.textContent).toContain('14');
+        });
+        afterAll(() => {
+            destroy(rteObj);
         });
     });
     describe('935893 - List not clearing after Ctrl+A and Delete in editor', () => {
@@ -10302,6 +10422,67 @@ Rich Text Editor 3`
         });
         it('beforeSanitizeHtml event should trigger only once', () => {
             expect(beforeSanitizeCount).toBe(1);
+        });
+        afterAll(() => {
+            destroy(rteObj);
+        });
+    });
+    describe('Bug 1005644: RichTextEditorToolbarSettings Enable="false" throws unhandled exception from version 32.1.19 in Ej2', () => {
+        let rteObj: RichTextEditor;
+        beforeEach(() => {
+            rteObj = renderRTE({
+                height: '100%',
+                placeholder: 'Enter your text here...',
+                formatter: new MarkdownFormatter({ listTags: { OL: '1., 2., 3.' } }),
+                toolbarSettings: {
+                    enable: false,
+                },
+                editorMode: 'Markdown',
+            });
+        });
+        afterEach(() => {
+            destroy(rteObj);
+        });
+        it('should not render the toolbar when toolbarSettings.enable is false', () => {
+            const toolbar: HTMLElement = rteObj.element.querySelector('.e-rte-toolbar');
+            expect(toolbar).toBeNull();
+        });
+        it('should apply the placeholder text correctly', () => {
+            const textarea: HTMLTextAreaElement = rteObj.inputElement as HTMLTextAreaElement;
+            expect(textarea.getAttribute('placeholder')).toBe('Enter your text here...');
+        });
+        it('should apply custom OL list tag from MarkdownFormatter', () => {
+            const markdownFormatter: MarkdownFormatter = rteObj.formatter as MarkdownFormatter;
+            expect(markdownFormatter).not.toBeNull();
+            const listTags: { [key: string]: string } = (markdownFormatter as any).listTags;
+            expect(listTags).not.toBeNull();
+            expect(listTags['OL']).toBe('1., 2., 3.');
+        });
+    });
+    describe('Bug 1020148: Tooltip not hide after click dropdown in RTE sample', () => {
+        let rteObj: RichTextEditor;
+        let rteEle: HTMLElement;
+        let controlId: string;
+        beforeAll(() => {
+            rteObj = renderRTE({
+                value: `<ul>
+            <li>
+                <h1>Welcome to the Syncfusion Rich Text Editor</h1>
+            </li>
+            </ul>`,
+            toolbarSettings: { items: ['Bold', 'BulletFormatList', 'NumberFormatList'] }
+            });
+            rteEle = rteObj.element;
+            controlId = rteEle.id;
+        });
+        it('tooltip should hide when the toolbar is being clicked', () => {
+            rteObj.focusIn();
+            let bulletDropdown = document.querySelector('#' + controlId + '_toolbar_BulletFormatList_dropdownbtn');
+            const mouseEve = new MouseEvent("mouseover", { bubbles: true, cancelable: true, view: window });
+            bulletDropdown.dispatchEvent(mouseEve);
+            (bulletDropdown as HTMLElement).click();
+            const tooltipWrap: HTMLElement | null = document.querySelector('.e-tooltip-wrap');
+            expect(tooltipWrap).toBeNull();
         });
         afterAll(() => {
             destroy(rteObj);

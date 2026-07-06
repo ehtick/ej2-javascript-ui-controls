@@ -256,7 +256,7 @@ export function getNumberFromCellMap(map: Map<string, any>, key: string, fallbac
  *
  * This function handles all these cases plus common JavaScript boolean conversions.
  *
- * @param {string | undefined} value - The value to convert to boolean
+ * @param {string | boolean | number | undefined} value - The value to convert to boolean
  * @param {boolean} defaultValue - The fallback if value is null/undefined (default: false)
  * @returns {boolean} Boolean representation of the value
  * @example
@@ -275,7 +275,7 @@ export function getNumberFromCellMap(map: Map<string, any>, key: string, fallbac
  * // Undefined uses default
  * toBoolean(undefined, true); // Result: true
  */
-export function toBoolean(value: string | undefined, defaultValue: boolean = false): boolean {
+export function toBoolean(value: string | boolean | number | undefined, defaultValue: boolean = false): boolean {
     if (value === undefined || value === null) { return defaultValue; }
     if (typeof value === 'boolean') { return value; }
     if (typeof value === 'number') { return value !== 0; }
@@ -1355,7 +1355,7 @@ export function createPathFromGeometrySections(
  * @param {number} val - The angle value to normalize.
  * @returns {number} The angle in radians.
  */
-function normalizeAngleRadians(val: number): number {
+export function normalizeAngleRadians(val: number): number {
     // If value looks like degrees, convert to radians
     if (Math.abs(val) > 6.283185307) { return val * Math.PI / 180; }
     return val;

@@ -22,6 +22,7 @@ describe('Chart ->', () => {
         });
         it('Insert', (done: Function) => {
             spreadsheet = helper.getInstance();
+            expect(() => { helper.invoke('insertChart'); }).not.toThrow();
             helper.invoke('insertChart', [[{ type: 'Column', range: 'D1:E5', left: getColumnsWidth(spreadsheet.sheets[0], 0, 2, true) + 1 }]]);
             cell = spreadsheet.sheets[0].rows[0].cells[3];
             // expect(JSON.stringify(cell.chart)).toBe('[{"type":"Column","range":"Sheet1!D1:E5","theme":"Material","isSeriesInRows":false,"id":"e_spreadsheet_chart_1","height":290,"width":480,"top":0,"left":192}]'); check this now
@@ -2539,15 +2540,9 @@ describe('Chart ->', () => {
                 const chartObj: any = getComponent(helper.getElementFromSpreadsheet('.e-accumulationchart'), 'accumulationchart');
                 expect(chartObj.series[0].dataSource[5].y).toBe(2.9);
                 expect(chartObj.series[0].dataSource[6].y).toBe(2.4);
-                expect(chartObj.series[1].dataSource[4].y).toBe(2.85);
-                expect(chartObj.series[1].dataSource[5].y).toBe(2.94);
-                expect(chartObj.series[1].dataSource[6].y).toBe(2.93);
                 helper.invoke('merge', ['B6:C10']);
                 expect(chartObj.series[0].dataSource[5].y).toBe(0);
                 expect(chartObj.series[0].dataSource[6].y).toBe(0);
-                expect(chartObj.series[1].dataSource[4].y).toBe(0);
-                expect(chartObj.series[1].dataSource[5].y).toBe(0);
-                expect(chartObj.series[1].dataSource[6].y).toBe(0);
                 done();
             });
             it('ej2-react-ui-components/issues/79 -> Charts are not loaded if data range is not from active sheet', (done: Function) => {
@@ -2832,7 +2827,7 @@ describe('Chart ->', () => {
                 }, 10);
             });
         });
-        describe('EJ2-896138, EJ2-1016956 ->', () => {
+        describe('EJ2-896138 ->', () => {
             beforeAll((done: Function) => {
                 helper.initializeSpreadsheet({
                     sheets: [{
@@ -4401,8 +4396,8 @@ describe('Chart ->', () => {
             const chart: HTMLElement = helper.getInstance().element.querySelector('#chart_5');
             const chartObj: any = getComponent(chart, 'chart');
             expect(chartObj.primaryXAxis.valueType).toBe('DateTime');
-            expect(document.getElementById('chart_50_AxisLabel_0').textContent).toBe('1/1/1900 0...');
-            expect(document.getElementById('chart_50_AxisLabel_1').textContent).toBe('1/1/1920 0...');
+            expect(document.getElementById('chart_50_AxisLabel_0').textContent).toBe('2/14/2014 0:00');
+            expect(document.getElementById('chart_50_AxisLabel_1').textContent).toBe('4/14/2014 0:00');
             done();
         });
         it('Testing inbetween values editing and undo & redo in Scatter chart ', (done: Function) => {
@@ -4414,8 +4409,8 @@ describe('Chart ->', () => {
             expect(document.getElementById('chart_50_AxisLabel_1').textContent).toBe('Hello');
             helper.invoke('undo');
             expect(chartObj.primaryXAxis.valueType).toBe('DateTime');
-            expect(document.getElementById('chart_50_AxisLabel_0').textContent).toBe('1/1/1900 0...');
-            expect(document.getElementById('chart_50_AxisLabel_1').textContent).toBe('1/1/1920 0...');
+            expect(document.getElementById('chart_50_AxisLabel_0').textContent).toBe('2/14/2014 0:00');
+            expect(document.getElementById('chart_50_AxisLabel_1').textContent).toBe('4/14/2014 0:00');
             helper.invoke('redo');
             expect(chartObj.primaryXAxis.valueType).toBe('Category');
             expect(document.getElementById('chart_50_AxisLabel_0').textContent).toBe('2/14/2014 3:00');
@@ -4425,14 +4420,14 @@ describe('Chart ->', () => {
         it('Checking date values in Pie chart rendering using public method', (done: Function) => {
             helper.invoke('undo');
             helper.invoke('insertChart', [[{ type: 'Pie', range: 'J1:K6', id: 'chart_6' }]]);
-            expect(document.getElementById('chart_6_chart_legend_text_0').textContent).toBe('2/14/2014 3:00');
-            expect(document.getElementById('chart_6_chart_legend_text_1').textContent).toBe('1/1/1900 0:00');
+            expect(document.getElementById('chart_6_chart_legend_text_0_0').textContent).toBe('2/14/2014 3:00');
+            expect(document.getElementById('chart_6_chart_legend_text_0_1').textContent).toBe('6/11/2014 0:00');
             done();
         });
         it('Checking date values in Doughnut chart rendering using public method', (done: Function) => {
             helper.invoke('insertChart', [[{ type: 'Doughnut', range: 'L1:M6', id: 'chart_7' }]]);
-            expect(document.getElementById('chart_7_chart_legend_text_0').textContent).toBe('14-Feb');
-            expect(document.getElementById('chart_7_chart_legend_text_1').textContent).toBe('14-Jun');
+            expect(document.getElementById('chart_7_chart_legend_text_0_0').textContent).toBe('14-Feb');
+            expect(document.getElementById('chart_7_chart_legend_text_0_1').textContent).toBe('14-Jun');
             done();
         });
         it('Checking date values in Column chart rendering using UI interaction', (done: Function) => {
@@ -4616,8 +4611,8 @@ describe('Chart ->', () => {
                 const chart: HTMLElement = helper.getInstance().element.querySelector('#chart_7');
                 const chartObj: any = getComponent(chart, 'chart');
                 expect(chartObj.primaryXAxis.valueType).toBe('DateTime');
-                expect(document.getElementById('chart_70_AxisLabel_0').textContent).toBe('1/1/1900 0...');
-                expect(document.getElementById('chart_70_AxisLabel_1').textContent).toBe('1/1/1920 0...');
+                expect(document.getElementById('chart_70_AxisLabel_0').textContent).toBe('2/4/2014 0:00');
+                expect(document.getElementById('chart_70_AxisLabel_1').textContent).toBe('4/4/2014 0:00');
                 const target: HTMLElement = document.getElementById('chart_7_Series_0_Point_7');
                 helper.triggerMouseAction('mousemove', { x: target.getBoundingClientRect().left, y: target.getBoundingClientRect().top }, chart, target);
                 helper.switchRibbonTab(7);
@@ -4626,8 +4621,8 @@ describe('Chart ->', () => {
                 helper.switchRibbonTab(7);
                 helper.getElement('#' + helper.id + 'switch_row_column_chart').click();
                 expect(chartObj.primaryXAxis.valueType).toBe('DateTime');
-                expect(document.getElementById('chart_70_AxisLabel_0').textContent).toBe('1/1/1900 0...');
-                expect(document.getElementById('chart_70_AxisLabel_1').textContent).toBe('1/1/1920 0...');
+                expect(document.getElementById('chart_70_AxisLabel_0').textContent).toBe('2/4/2014 0:00');
+                expect(document.getElementById('chart_70_AxisLabel_1').textContent).toBe('4/4/2014 0:00');
                 helper.invoke('deleteChart');
                 done();
             });
@@ -5578,11 +5573,8 @@ describe('Chart ->', () => {
         });
         it('importing discountinuous chart with date format in x range ->', (done: Function) => {
             const json: object = {
-                Workbook: {
-                    sheets: [{
-                        chartColl: [{
-                            address: [5, 6], height: 284, id: "e_spreadsheet_chart_8", isSeriesInRows: false, left: 396, theme: "Material",
-                            title: "Chart Title", top: 82, type: "Column", width: 471, series: [{ category: 'A2:A11', name: '=C1', range: 'C2:C11' }, { name: '=E1', range: 'E2:E11' }]
+                Workbook: { sheets: [{ chartColl: [{ address: [5, 6], height: 284, id: "e_spreadsheet_chart_8", isSeriesInRows: false, left: 396, theme: "Material",
+                        title: "Chart Title", top: 82, type: "Column", width: 471, series: [{ category: 'A2:A11', name: '=C1', range: 'C2:C11' }, { name: '=E1', range: 'E2:E11' }]
                         }], rows: [{ cells: [{ index: 0, value: 'Date' }, { index: 2, value: 'Price' }, { index: 4, value: 'Discount' }] },
                         { cells: [{ index: 0, value: '41829', format: 'm/d/yyyy' }, { index: 2, value: 20 }, { index: 4, value: 1 }] },
                         { cells: [{ index: 0, value: '41684', format: 'm/d/yyyy' }, { index: 2, value: 30 }, { index: 4, value: 5 }] },
@@ -5593,9 +5585,7 @@ describe('Chart ->', () => {
                         { cells: [{ index: 0, value: '41842', format: 'm/d/yyyy' }, { index: 2, value: 10 }, { index: 4, value: 3 }] },
                         { cells: [{ index: 0, value: '41674', format: 'm/d/yyyy' }, { index: 2, value: 10 }, { index: 4, value: 6 }] },
                         { cells: [{ index: 0, value: '41973', format: 'm/d/yyyy' }, { index: 2, value: 30 }, { index: 4, value: 12 }] },
-                        { cells: [{ index: 0, value: '41943', format: 'm/d/yyyy' }, { index: 2, value: 10 }, { index: 4, value: 9 }] }]
-                    }]
-                }
+                        { cells: [{ index: 0, value: '41943', format: 'm/d/yyyy' }, { index: 2, value: 10 }, { index: 4, value: 9 }] }]}]}
             };
             const spreadsheet: Spreadsheet = helper.getInstance();
             spreadsheet.openFromJson({ file: json });

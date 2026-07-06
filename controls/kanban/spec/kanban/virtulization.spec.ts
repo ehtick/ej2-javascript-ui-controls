@@ -3,7 +3,7 @@
 /**
  * Kanban base spec
  */
-import { Browser, createElement, remove } from '@syncfusion/ej2-base';
+import { Browser, createElement, remove, EventHandler } from '@syncfusion/ej2-base';
 import { DataManager, Query } from '@syncfusion/ej2-data';
 import { Kanban, KanbanModel, ColumnsModel, CardClickEventArgs, ActionEventArgs, EJ2Instance } from '../../src/kanban/index';
 import { generateKanbanDataVirtualScroll, generateKanbanDataVirtualScrollLessData, kanbanData, generateKanbanData } from './common/kanban-data.spec';
@@ -2392,6 +2392,234 @@ describe('Kanban Virtual Scroll Feature', () => {
         it('Should have proper role attribute for the kanban element', () => {
             expect(kanbanObj.element.getAttribute('role')).toEqual('application');
             expect(kanbanObj.element.getAttribute('aria-label')).toEqual('Kanban Board');
+        });
+    });
+    describe('VirtualLayoutRender - cover template via UI render', () => {
+        let kanbanObj: Kanban;
+        beforeAll((done: DoneFn) => {
+            const element: HTMLElement = createElement('div', { id: 'KanbanTemplate' });
+            document.body.appendChild(element);
+            const options: KanbanModel = {
+                dataSource: virtualKanbanData,
+                keyField: 'Status',
+                columns: [
+                    { headerText: 'Backlog', keyField: 'Open' },
+                    { headerText: 'In Progress', keyField: 'InProgress' },
+                    { headerText: 'Review', keyField: 'Review' },
+                    { headerText: 'Testing', keyField: 'Testing' },
+                    { headerText: 'Done', keyField: 'Close' }
+                ],
+                height: '800px',
+                cardHeight: '120px',
+                enableVirtualization: true,
+                cardSettings: { contentField: 'Summary', headerField: 'Id', template: 'tpl' }
+            };
+            kanbanObj = new Kanban(options);
+            (kanbanObj as any).templateParser = (tpl: any) => {
+                return (_data: any) => {
+                    const el = document.createElement('div');
+                    el.className = 'test-card-tpl';
+                    el.textContent = 'tpl-rendered';
+                    return [el];
+                };
+            };
+            kanbanObj.appendTo(element);
+            // wait for initial rendering
+            setTimeout(done, 500);
+        });
+
+        afterAll(() => {
+            util.destroy(kanbanObj);
+        });
+
+        it('should render card template during normal render', () => {
+            expect(document.querySelector('.test-card-tpl')).toBeTruthy();
+        });
+    });
+    describe('VirtualLayoutRender - cover tags/grabber/footer via UI render', () => {
+        let kanbanObj: Kanban;
+        beforeAll((done: DoneFn) => {
+            const element: HTMLElement = createElement('div', { id: 'KanbanCardExtras' });
+            document.body.appendChild(element);
+            const data = [{
+                Id: '1',
+                Status: 'Open',
+                Summary: 'Card with extras',
+                Tags: 'tagA,tagB',
+                Color: '#ff0000',
+                FooterCss: 'foo,bar'
+            }];
+            const options: KanbanModel = {
+                dataSource: data,
+                keyField: 'Status',
+                columns: [{ headerText: 'Backlog', keyField: 'Open' }],
+                height: '800px',
+                cardHeight: '120px',
+                enableVirtualization: true,
+                cardSettings: {
+                    contentField: 'Summary',
+                    headerField: 'Id',
+                    tagsField: 'Tags',
+                    grabberField: 'Color',
+                    footerCssField: 'FooterCss'
+                }
+            };
+            kanbanObj = new Kanban(options);
+            kanbanObj.appendTo(element);
+            setTimeout(done, 500);
+        });
+
+        afterAll(() => {
+            util.destroy(kanbanObj);
+        });
+
+        it('should render tags, apply grabber color and render footer css elements', () => {
+            const card: HTMLElement = document.querySelector('.e-card[data-id="1"]') as HTMLElement;
+            expect(card).toBeTruthy();
+            expect(card.textContent).toContain('tagA');
+            expect(card.textContent).toContain('tagB');
+            expect(card.style.borderLeftColor).toBe('rgb(255, 0, 0)');
+            expect(card.querySelector('.foo')).toBeTruthy();
+            expect(card.querySelector('.bar')).toBeTruthy();
+        });
+    });
+    describe('LayoutRender - swimlane template (adaptive)', () => {
+        let kanbanObj: Kanban;
+        beforeAll((done: DoneFn) => {
+            const host = createElement('div', { id: 'KanbanSwimlaneTemplate' });
+            document.body.appendChild(host);
+            const data = [
+                { Id: '1', Status: 'Open', Assignee: 'John', Summary: 'Card 1' },
+                { Id: '2', Status: 'Open', Assignee: 'John', Summary: 'Card 2' }
+            ];
+            const options: KanbanModel = {
+                dataSource: data,
+                keyField: 'Status',
+                columns: [{ headerText: 'Backlog', keyField: 'Open' }],
+                height: '400px',
+                cardHeight: '120px',
+                cardSettings: { contentField: 'Summary', headerField: 'Id' },
+                swimlaneSettings: { keyField: 'Assignee', textField: 'Assignee', template: 'swimTpl', showItemCount: true }
+            };
+            kanbanObj = new Kanban(options);
+            (kanbanObj as any).isAdaptive = true;
+            (kanbanObj as any).templateParser = (_tpl: any) => {
+                return (_data: any) => {
+                    const el = createElement('div', { className: 'test-swim-template', innerHTML: 'SWIM-TPL' });
+                    return [el];
+                };
+            };
+            kanbanObj.appendTo(host);
+            setTimeout(done, 300);
+        });
+        afterAll(() => {
+            if (kanbanObj) { kanbanObj.destroy(); }
+            document.body.innerHTML = '';
+        });
+        it('should append swimlane template in adaptive mode', () => {
+            const tpl = document.querySelector('.test-swim-template') as HTMLElement;
+            expect(tpl).toBeTruthy();
+            expect(tpl.textContent).toBe('SWIM-TPL');
+        });
+    });
+
+    describe('Basic kanban in mobile device', () => {
+        let kanbanObj: Kanban;
+        const uA: string = Browser.userAgent;
+        const androidUserAgent: string = 'Mozilla/5.0 (Linux; Android 9; Pixel XL Build/PPP3.180510.008) ' +
+            'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.81 Mobile Safari/537.36';
+        beforeAll((done: DoneFn) => {
+            Browser.userAgent = androidUserAgent;
+            const model: KanbanModel = { width: 300, height: 500, enableVirtualization: true };
+            kanbanObj = util.createKanban(model, kanbanData, done);
+        });
+        afterAll(() => {
+            util.destroy(kanbanObj);
+            Browser.userAgent = uA;
+        });
+
+        it('checking adaptive rendering or not', () => {
+            expect(kanbanObj.isAdaptive).toEqual(true);
+            (kanbanObj.virtualLayoutModule as any).scrollUiUpdate();
+        });
+    });
+
+    describe('Data - Observable dataSource branch', () => {
+        let kanbanObj: Kanban;
+        beforeAll((done: DoneFn) => {
+            const host = createElement('div', { id: 'KanbanObservable' });
+            document.body.appendChild(host);
+            const observableDataSource: any = {
+                result: [
+                    { Id: '1', Status: 'Open', Summary: 'Task 1' },
+                    { Id: '2', Status: 'Open', Summary: 'Task 2' }
+                ]
+            };
+            const options: KanbanModel = {
+                dataSource: observableDataSource,
+                keyField: 'Status',
+                columns: [{ headerText: 'Backlog', keyField: 'Open' }],
+                height: '400px',
+                cardSettings: { contentField: 'Summary', headerField: 'Id' }
+            };
+            kanbanObj = new Kanban(options);
+            // Mock dataStateChange to resolve the promise
+            kanbanObj.dataStateChange = (args: any) => {
+                if (args.state && args.state.resolver) {
+                    setTimeout(() => { args.state.resolver(observableDataSource); }, 100);
+                }
+            };
+            kanbanObj.appendTo(host);
+            setTimeout(done, 300);
+        });
+
+        afterAll(() => {
+            if (kanbanObj) { kanbanObj.destroy(); }
+            document.body.innerHTML = '';
+        });
+
+        it('should set isObservable to true when dataSource has result property', () => {
+            const dataModule: any = (kanbanObj as any).dataModule;
+            const query: Query = new Query();
+            const promise: any = (dataModule as any).getData(query);
+            expect(promise).toBeDefined();
+            expect((dataModule as any).isObservable).toBe(true);
+            promise.then((result: any) => {
+                expect(result).toBeDefined();
+            }).catch((e: any) => {
+                fail(e);
+            });
+        });
+    });
+    describe('Virtual Layout - Content Cell COLLAPSED_CLASS Coverage', () => {
+        let kanbanObj: Kanban;
+        beforeAll((done: DoneFn) => {
+            const model: KanbanModel = {
+                enableVirtualization: true,
+                keyField: 'Status',
+                dataSource: kanbanData,
+                columns: [
+                    { headerText: 'To Do', keyField: 'Open' },
+                    { headerText: 'In Progress', keyField: 'InProgress' },
+                    { headerText: 'Testing', keyField: 'Testing' },
+                    { headerText: 'Done', keyField: 'Close' }
+                ],
+                cardSettings: {
+                    contentField: 'Summary',
+                    headerField: 'Id'
+                }
+            };
+            kanbanObj = util.createKanban(model, kanbanData, done);
+        });
+        afterAll(() => {
+            util.destroy(kanbanObj);
+        });
+
+        it('should apply COLLAPSED_CLASS to content cell when column is in columnToggleArray', () => {
+            kanbanObj.actionModule.columnToggleArray.push('InProgress');
+            (kanbanObj.virtualLayoutModule as any).renderContent();
+            const contentCell: HTMLElement = kanbanObj.element.querySelector('.e-content-row:not(.e-swimlane-row) [data-key="InProgress"]') as HTMLElement;
+            expect(contentCell.classList.contains('e-content-cells')).toBe(true);
         });
     });
 });

@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/material3-dark' as *;
-@forward 'ej2-base/styles/definition/material3-dark';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $zero-value: 0 !default;
 $upload-border-radius: $radius-4 !default;
 $upload-root-font-family: $font-family !default;

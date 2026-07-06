@@ -1,5 +1,7 @@
 @use 'sass:color';
-@use 'ej2-base/styles/common/mixin' as *;
+@use 'variables' as *;
+@use '@syncfusion/ej2-buttons/styles/button/variables' as btn;
+
 @include export-module('color-picker-theme') {
   .e-container {
     @if $skin-name == 'Material3' {
@@ -85,18 +87,18 @@
     &.e-disabled {
       & .e-value-switch-btn,
       & .e-mode-switch-btn {
-        color: $btn-disabled-color;
+        color: btn.$btn-disabled-color;
 
         &:focus {
           background-color: transparent;
-          color: $btn-disabled-color;
+          color: btn.$btn-disabled-color;
           outline: none;
           outline-offset: unset;
         }
 
         &:active {
           background-color: transparent;
-          color: $btn-disabled-color;
+          color: btn.$btn-disabled-color;
         }
       }
     }
@@ -132,7 +134,7 @@
           color: $cpicker-handler-tooltip-color;
         }
         @else if $skin-name == 'bootstrap5' or $skin-name == 'bootstrap5.3' {
-          background-color: $btn-hover-bgcolor;
+          background-color: btn.$btn-hover-bgcolor;
           color: $cpicker-handler-tooltip-color;
         }
       }
@@ -146,10 +148,10 @@
           color: $gray-700;
         }
         @else if $skin-name == 'bootstrap5' or $skin-name == 'bootstrap5.3' {
-          background-color: $btn-focus-bgcolor;
-          border-color: $btn-focus-border-color;
-          box-shadow: $btn-active-box-shadow;
-          color: $btn-active-color;
+          background-color: btn.$btn-focus-bgcolor;
+          border-color: btn.$btn-focus-border-color;
+          box-shadow: btn.$btn-active-box-shadow;
+          color: btn.$btn-active-color;
         }
       }
 
@@ -161,9 +163,9 @@
           color: $cpicker-handler-tooltip-color;
         }
         @else if $skin-name == 'bootstrap5' or $skin-name == 'bootstrap5.3' {
-          background-color: $btn-active-bgcolor;
-          box-shadow: $btn-active-box-shadow;
-          color: $btn-active-color;
+          background-color: btn.$btn-active-bgcolor;
+          box-shadow: btn.$btn-active-box-shadow;
+          color: btn.$btn-active-color;
         }
       }
 
@@ -174,13 +176,13 @@
         }
         box-shadow: none;
         @if $skin-name != 'tailwind' and $skin-name != 'tailwind3' and $skin-name != 'FluentUI' and $skin-name != 'fluent2'{
-          color: $btn-disabled-bgcolor;
+          color: btn.$btn-disabled-bgcolor;
         }
         @if $skin-name == 'fluent2' {
           color: $icon-color-disabled;
         }
         @if $skin-name == 'tailwind' {
-          border-color: $btn-disabled-border-color;
+          border-color: btn.$btn-disabled-border-color;
         }
         @if $skin-name == 'Material3' {
           border: none;
@@ -189,7 +191,7 @@
     }
   }
 
-  #{if(&, '&', '*')} .e-color-picker .e-selected-value {
+  * .e-color-picker .e-selected-value {
     & .e-css.e-btn.e-flat {
       @if $skin-name == 'bootstrap4' {
         background-color: $cpicker-handler-tooltip-color;

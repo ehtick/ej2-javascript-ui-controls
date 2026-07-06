@@ -853,24 +853,6 @@ describe('InfinitePageAction with collapse and refresh actions', () => {
         );
     });
 
-    it('Test infinitePageAction with collapse Action', (done: Function) => {
-        const infiniteScrollModule: any = (treegrid as any).infiniteScrollModule;
-        infiniteScrollModule.treeAction = 'collapse';
-        const collapsedData: any = treegrid.getCurrentViewRecords()[0];
-        collapsedData.childRecords = virtualData.slice(1, 10);
-        infiniteScrollModule.collapsedData = collapsedData;
-
-        const pageingDetails: any = {
-            result: virtualData,
-            count: virtualData.length,
-            actionArgs: { actionArgs: { requestType: 'refresh' } }
-        };
-
-        infiniteScrollModule.infinitePageAction(pageingDetails);
-        expect(pageingDetails.result.length).toBeGreaterThan(0);
-        done();
-    });
-
     it('Test infinitePageAction with refresh treeAction', (done: Function) => {
         const infiniteScrollModule: any = (treegrid as any).infiniteScrollModule;
         infiniteScrollModule.treeAction = 'refresh';
@@ -948,6 +930,48 @@ describe('InfinitePageAction with collapse and refresh actions', () => {
     });
 });
 
+describe('InfinitePageAction with collapse actions', () => {
+    let treegrid: TreeGrid;
+    beforeAll((done: Function) => {
+        treegrid = createGrid(
+            {
+                dataSource: virtualData,
+                enableInfiniteScrolling: true,
+                childMapping: 'Crew',
+                treeColumnIndex: 1,
+                pageSettings: { pageSize: 30 },
+                height: 400,
+                columns: [
+                    { field: 'TaskID', headerText: 'Player Jersey', isPrimaryKey: true, width: 140, textAlign: 'Right' },
+                    { field: 'FIELD1', headerText: 'Player Name', width: 140 }
+                ]
+            },
+            done
+        );
+    });
+
+    it('Test infinitePageAction with collapse Action', (done: Function) => {
+        const infiniteScrollModule: any = (treegrid as any).infiniteScrollModule;
+        infiniteScrollModule.treeAction = 'collapse';
+        const collapsedData: any = treegrid.getCurrentViewRecords()[0];
+        collapsedData.childRecords = virtualData.slice(1, 10);
+        infiniteScrollModule.collapsedData = collapsedData;
+
+        const pageingDetails: any = {
+            result: virtualData,
+            count: virtualData.length,
+            actionArgs: { actionArgs: { requestType: 'refresh' } }
+        };
+
+        infiniteScrollModule.infinitePageAction(pageingDetails);
+        expect(pageingDetails.result.length).toBeGreaterThan(0);
+        done();
+    });
+
+    afterAll(() => {
+        destroy(treegrid);
+    });
+});
 describe('InfiniteRemoteExpand method coverage', () => {
     let treegrid: TreeGrid;
     beforeAll((done: Function) => {
@@ -1002,4 +1026,195 @@ describe('InfiniteRemoteExpand method coverage', () => {
     afterAll(() => {
         destroy(treegrid);
     });
+});
+
+
+describe('InfiniteScroll - additional uncovered branches', () => {
+  let treegrid: TreeGrid;
+  beforeAll((done: Function) => {
+    treegrid = createGrid({
+      dataSource: virtualData,
+      enableInfiniteScrolling: true,
+      childMapping: 'Crew',
+      treeColumnIndex: 1,
+      editSettings: { allowEditing: true, allowAdding: true, allowDeleting: true, newRowPosition: 'Below' },
+      pageSettings: { pageSize: 30 },
+      height: 400,
+      columns: [{ field: 'TaskID', isPrimaryKey: true }, { field: 'FIELD1' }]
+    }, done);
+  });
+  afterAll(() => {
+    destroy(treegrid);
+  });
+
+it('collapseActionComplete: triggers collapse request when table bottom within content (no cache)', function () {
+    const module = treegrid['infiniteScrollModule'];
+    treegrid.infiniteScrollSettings.enableCache = false;
+    const collapseArgs: any = {
+        isCollapse: true,
+        data: { uniqueID: 'node-1', childRecords: [{}, {}] }
+    };
+    spyOn(module, 'makeCollapseRequest').and.callFake(() => { /* no-op */ });
+    const rowHeight = treegrid.grid.getRowHeight ? treegrid.grid.getRowHeight() : 38;
+    spyOn(treegrid.grid, 'getRowHeight').and.returnValue(rowHeight);
+    const contentDiv = treegrid.getContent() as HTMLElement;
+    const contentFirstChild = contentDiv && contentDiv.firstElementChild as HTMLElement;
+    const tableEl = treegrid.grid.contentModule.getTable() as HTMLElement;
+    expect(contentFirstChild).toBeTruthy();
+    expect(tableEl).toBeTruthy();
+    const originalContentRect = contentFirstChild.getBoundingClientRect;
+    const originalTableRect = tableEl.getBoundingClientRect;
+
+    (contentFirstChild as any).getBoundingClientRect = () => ({
+        top: 100, left: 0, right: 1000, bottom: 465, width: 1000, height: 365
+    });
+    (tableEl as any).getBoundingClientRect = () => ({
+        top: 100, left: 0, right: 1000, bottom: rowHeight + 462, width: 1000, height: rowHeight + 362
+    });
+
+    module.collapseActionComplete(collapseArgs);
+
+    expect(module.treeAction).toBe('collapse', 'treeAction should be set to collapse');
+    expect(module.collapsedData).toBe(collapseArgs.data, 'collapsedData should store args.data');
+    expect(module.makeCollapseRequest).toHaveBeenCalledWith(collapseArgs);
+
+    (contentFirstChild as any).getBoundingClientRect = originalContentRect;
+    (tableEl as any).getBoundingClientRect = originalTableRect;
+});
+
+it('collapseActionComplete: does nothing when table extends beyond content (condition fails)', function () {
+    const module = treegrid['infiniteScrollModule'];
+    treegrid.infiniteScrollSettings.enableCache = false;
+
+    const collapseArgs: any = {
+        isCollapse: true,
+        data: { uniqueID: 'node-2', childRecords: [] }
+    };
+
+    spyOn(module, 'makeCollapseRequest');
+
+    const rowHeight = treegrid.grid.getRowHeight ? treegrid.grid.getRowHeight() : 38;
+    spyOn(treegrid.grid, 'getRowHeight').and.returnValue(rowHeight);
+
+    const contentDiv = treegrid.getContent() as HTMLElement;
+    const contentFirstChild = contentDiv && contentDiv.firstElementChild as HTMLElement;
+    const tableEl = treegrid.grid.contentModule.getTable() as HTMLElement;
+
+    expect(contentFirstChild).toBeTruthy();
+    expect(tableEl).toBeTruthy();
+
+    const originalContentRect = contentFirstChild.getBoundingClientRect;
+    const originalTableRect = tableEl.getBoundingClientRect;
+
+    (contentFirstChild as any).getBoundingClientRect = () => ({
+        top: 100, left: 0, right: 1000, bottom: 640, width: 1000, height: 540
+    });
+    (tableEl as any).getBoundingClientRect = () => ({
+        top: 100, left: 0, right: 1000, bottom: 700, width: 1000, height: 600
+    });
+
+    module.treeAction = undefined as any;
+    module.collapsedData = undefined as any;
+
+    module.collapseActionComplete(collapseArgs);
+
+    expect(module.treeAction).toBeUndefined();
+    expect(module.collapsedData).toBeUndefined();
+    expect(module.makeCollapseRequest).not.toHaveBeenCalled();
+
+    (contentFirstChild as any).getBoundingClientRect = originalContentRect;
+    (tableEl as any).getBoundingClientRect = originalTableRect;
+});
+
+it('collapseActionComplete: early exit when cache is enabled or not collapsing', function () {
+    const module = treegrid['infiniteScrollModule'];
+
+    treegrid.infiniteScrollSettings.enableCache = true;
+    const args1: any = { isCollapse: true, data: { uniqueID: 'x' } };
+    spyOn(module, 'makeCollapseRequest');
+    module.collapseActionComplete(args1);
+    expect(module.makeCollapseRequest).not.toHaveBeenCalled();
+
+    treegrid.infiniteScrollSettings.enableCache = false;
+    const args2: any = { isCollapse: false, data: { uniqueID: 'y' } };
+    module.collapseActionComplete(args2);
+    expect(module.makeCollapseRequest).not.toHaveBeenCalled();
+});
+
+  it('infinitePageAction: delete branch with skip < 0 (take branch)', () => {
+    const module: any = treegrid['infiniteScrollModule'];
+    treegrid.infiniteScrollSettings.enableCache = false;
+    treegrid.grid.infiniteScrollModule['lastIndex'] = -5;
+    const pd: any = {
+      result: virtualData,
+      count: virtualData.length,
+      actionArgs: { actionArgs: { requestType: 'delete', data: [virtualData[0], virtualData[1]] } }
+    };
+    module.infinitePageAction(pd);
+    expect(pd.result).toBeDefined();
+  });
+
+  it('infinitePageAction: collapse remainingChildDataCount <= 0 path', () => {
+    const module: any = treegrid['infiniteScrollModule'];
+    module.treeAction = 'collapse';
+    module.collapsedData = { uniqueID: 'u', childRecords: [] };
+    const pd: any = { result: virtualData, count: virtualData.length, actionArgs: { actionArgs: { requestType: 'refresh' } } };
+    module.infinitePageAction(pd);
+    expect(pd.result).toBeDefined();
+  });
+
+  it('infiniteDeleteHandler: accepts single-object data (not array)', () => {
+    const module: any = treegrid['infiniteScrollModule'];
+    spyOn(module, 'removeRows').and.callThrough();
+    const single = virtualData[0];
+    module.infiniteDeleteHandler({ requestType: 'delete', data: single } as any);
+    expect(module.removeRows).toHaveBeenCalled();
+  });
+
+  it('createRows: paths for isFrozenRight and frozenRows', () => {
+    const module: any = treegrid['infiniteScrollModule'];
+    const frozenRight = document.createElement('div');
+    frozenRight.className = 'e-frozen-right-content';
+    const t = document.createElement('tbody');
+    frozenRight.appendChild(t);
+    treegrid.element.appendChild(frozenRight);
+    treegrid.frozenRows = 2;
+    treegrid.grid.infiniteScrollModule.requestType = 'add';
+    treegrid.editModule['addRowIndex'] = 2;
+    const eventArgs: any = {
+      rows: [],
+      row: [],
+      args: { e: { requestType: 'save', action: 'add' } },
+      isMovable: true,
+      isFrozenRows: false,
+      isFrozenRight: true,
+      cancel: false
+    };
+    module.createRows(eventArgs);
+    expect(eventArgs.cancel).toBeTruthy();
+  });
+
+it('createRows: paths for isMovable', () => {
+    const module: any = treegrid['infiniteScrollModule'];
+    const frozenRight = document.createElement('div');
+    frozenRight.className = 'e-frozen-right-content';
+    const t = document.createElement('tbody');
+    frozenRight.appendChild(t);
+    treegrid.element.appendChild(frozenRight);
+    treegrid.grid['frozenLeftColumns'] = 2;
+    treegrid.grid.isFrozenGrid()
+    treegrid.editModule['addRowIndex'] = 2;
+    const eventArgs: any = {
+      rows: [],
+      row: [],
+      args: { e: { requestType: 'save', action: 'add' } },
+      isMovable: true,
+      isFrozenRows: false,
+      isFrozenRight: false,
+      cancel: false
+    };
+    module.createRows(eventArgs);
+    expect(eventArgs.cancel).toBeTruthy();
+  });  
+
 });

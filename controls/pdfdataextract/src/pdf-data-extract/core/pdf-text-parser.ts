@@ -7,24 +7,101 @@ import { _MatrixHelper } from './text-extraction/matrix-helper';
 import { _PdfContentParserHelper } from './content-parser-helper';
 import { PdfRedactionRegion } from './redaction/pdf-redaction-region';
 
+/**
+ * Internal PDF text parser responsible for extracting glyphs, words and lines.
+ *
+ * @private
+ */
 export class _PdfTextParser {
+    /**
+     * Internal collection of extracted text glyphs.
+     *
+     * @private
+     */
     _textGlyph: TextGlyph[] = [];
+    /**
+     * Internal collection of extracted text words.
+     *
+     * @private
+     */
     _textWord: TextWord[] = [];
+    /**
+     * Internal collection of extracted text lines.
+     *
+     * @private
+     */
     _textLine: TextLine[] = [];
+    /**
+     * Internal aggregated extracted text string.
+     *
+     * @private
+     */
     _extractedText: string = '';
+    /**
+     * Internal width accumulator.
+     *
+     * @private
+     */
     _width: number = 0;
+    /**
+     * Internal height accumulator.
+     *
+     * @private
+     */
     _height: number = 0;
+    /**
+     * Internal generic index counter.
+     *
+     * @private
+     */
     _index: number = 0;
+    /**
+     * Internal current font size.
+     *
+     * @private
+     */
     _fontSize: number =  0;
+    /**
+     * Internal array of encoded text tokens.
+     *
+     * @private
+     */
     _encodedText: string[] = [];
+    /**
+     * Internal previous glyph bounding rectangle.
+     *
+     * @private
+     */
     _previousRect: Rectangle = {x: 0, y: 0, width: 0 , height: 0};
+    /**
+     * Internal current bounding rectangle.
+     *
+     * @private
+     */
     _boundingRectangle: Rectangle = {x: 0, y: 0, width: 0 , height: 0};
+    /**
+     * Translate a matrix by (x,y) returning a new MatrixHelper.
+     *
+     * @private
+     * @param {number} x - translation x
+     * @param {number} y - translation y
+     * @param {_MatrixHelper} textMatrix - matrix to translate
+     * @returns {_MatrixHelper} translated matrix
+     */
     _translateTextMatrix(x: number, y: number, textMatrix: _MatrixHelper): _MatrixHelper {
         const matrix: _MatrixHelper = new _MatrixHelper(textMatrix._m11, textMatrix._m12, textMatrix._m21, textMatrix._m22,
                                                         textMatrix._m11 * x + textMatrix._m21 * y + textMatrix._offsetX,
                                                         textMatrix._m12 * x + textMatrix._m22 * y + textMatrix._offsetY);
         return matrix;
     }
+    /**
+     * Get character width depending on font type.
+     *
+     * @private
+     * @param {number} width - raw width value
+     * @param {_FontStructure} currentFont - font structure
+     * @returns {number} advanced width
+     */
     _getCharacterWidth(width: number, currentFont: _FontStructure): number {
         let advancedWidth: number;
         if (currentFont._type === 'TrueType') {
@@ -34,9 +111,24 @@ export class _PdfTextParser {
         }
         return advancedWidth;
     }
+    /**
+     * Move to new line using current leading.
+     *
+     * @private
+     * @param {_TextState} textState - current text state
+     * @returns {void} nothing
+     */
     _setNewLineWithLeading(textState: _TextState): void {
         textState._carriageReturn();
     }
+    /**
+     * Set text matrix and text line matrix from operand array.
+     *
+     * @private
+     * @param {string[]} element - matrix operands [a,b,c,d,e,f]
+     * @param {_TextState} textState - current text state
+     * @returns {void} nothing
+     */
     _setTextMatrix(element: string[], textState: _TextState): void {
         textState._setTextMatrix(
             parseFloat(element[0]), parseFloat(element[1]), parseFloat(element[2]),
@@ -47,10 +139,26 @@ export class _PdfTextParser {
             parseFloat(element[3]), parseFloat(element[4]), parseFloat(element[5])
         );
     }
+    /**
+     * Initialize text matrices to identity.
+     *
+     * @private
+     * @param {_TextState} textState - current text state
+     * @param {number[]} identityMatrix - identity matrix values
+     * @returns {void} nothing
+     */
     _beginText(textState: _TextState, identityMatrix: number[]): void {
         textState._textMatrix = identityMatrix.slice();
         textState._textLineMatrix = identityMatrix.slice();
     }
+    /**
+     * Set font name and size from operands.
+     *
+     * @private
+     * @param {string[]} element - font operands
+     * @param {_TextState} textState - current text state
+     * @returns {void} nothing
+     */
     _setFont(element: string[], textState: _TextState): void {
         for (let j: number = 0; j < element.length; j++) {
             if (element[Number.parseInt(j.toString(), 10)].indexOf('/') !== -1) {
@@ -60,30 +168,95 @@ export class _PdfTextParser {
         }
         textState._fontSize = Number(element[1]);
     }
+    /**
+     * Move text placement and set leading.
+     *
+     * @private
+     * @param {string[]} element - operands [tx, ty]
+     * @param {_TextState} textState - current text state
+     * @returns {void} nothing
+     */
     _moveTextPlacementAndSetLeading(element: string[], textState: _TextState): void {
         textState._leading = -Number(element[1]);
         textState._translateTextLineMatrix(Number(element[0]), Number(element[1]));
         textState._textMatrix = textState._textLineMatrix.slice();
     }
+    /**
+     * Set text rise value.
+     *
+     * @private
+     * @param {string[]} element - operand array
+     * @param {_TextState} textState - current text state
+     * @returns {void} nothing
+     */
     _setTextRise(element: string[], textState: _TextState): void {
         textState._textRise = Number(element[0]);
     }
+    /**
+     * Set character spacing.
+     *
+     * @private
+     * @param {string[]} element - operand array
+     * @param {_TextState} textState - current text stat
+     * @returns {void} nothing
+     */
     _setCharSpacing(element: string[], textState: _TextState): void {
         textState._charSpacing = Number(element[0]);
     }
+    /**
+     * Set word spacing.
+     *
+     * @private
+     * @param {string[]} element - operand array
+     * @param {_TextState} textState - current text state
+     * @returns {void} nothing
+     */
     _setWordSpacing(element: string[], textState: _TextState): void {
         textState._wordSpacing = Number(element[0]);
     }
+    /**
+     * Set horizontal text scale.
+     *
+     * @private
+     * @param {string[]} element - operand array
+     * @param {_TextState} textState - current text state
+     * @returns {void} nothing
+     */
     _setTextHorizontalScale(element: string[], textState: _TextState): void {
         textState._textHScale = Number(element[0]) / 100;
     }
+    /**
+     * Update text leading.
+     *
+     * @private
+     * @param {string[]} element - operand array
+     * @param {_TextState} textState - current text state
+     * @returns {void} nothing
+     */
     _updateTextLeading(element: string[], textState: _TextState): void {
         textState._leading = Number(element[0]);
     }
+    /**
+     * Move text placement by operands.
+     *
+     * @private
+     * @param {string[]} element - operands [tx, ty]
+     * @param {_TextState} textState - current text state
+     * @returns {void} nothing
+     */
     _moveTextPlacement(element: string[], textState: _TextState): void {
         textState._translateTextLineMatrix(Number(element[0]), Number(element[1]));
         textState._textMatrix = textState._textLineMatrix.slice();
     }
+    /**
+     * Compute current transformation matrix for glyph placement.
+     *
+     * @private
+     * @param {_FontStructure} font - current font
+     * @param {number[]} fontMatrix - font matrix values
+     * @param {_TextState} textState - current text state
+     * @returns {number[]} transform matrix [a,b,c,d,e,f]
+     */
     _getCurrentTransform(font: _FontStructure, fontMatrix: number[], textState: _TextState): number[] {
         const  tsm: number[] = [textState._fontSize * textState._textHScale, 0, 0, textState._fontSize, 0, textState._textRise];
         if (font._isType3Font && textState._fontSize <= 1 && !_isArrayEqual(fontMatrix, [0.001, 0, 0, 0.001, 0, 0])) {
@@ -94,6 +267,16 @@ export class _PdfTextParser {
         }
         return this._transform(textState._ctm, this._transform(textState._textMatrix, tsm));
     }
+    /**
+     * Determine whether a coordinate intersects any redaction region.
+     *
+     * @private
+     * @param {number} x - x coordinate
+     * @param {number} y - y coordinate
+     * @param {PdfPage} page - page reference
+     * @param {PdfRedactionRegion[]} redactBounds - redaction regions
+     * @returns {boolean} true when coordinate intersects a redaction region
+     */
     _isFoundText(x: number, y: number, page: PdfPage, redactBounds: PdfRedactionRegion[]): boolean {
         let isFound: boolean = false;
         let location: number[] = [];
@@ -147,6 +330,15 @@ export class _PdfTextParser {
         }
         return isFound;
     }
+    /**
+     * Convert page-space coordinates according to page rotation.
+     *
+     * @private
+     * @param {number} x - x coordinate
+     * @param {number} y - y coordinate
+     * @param {PdfPage} page - page reference
+     * @returns {number[]} rotated location [x,y]
+     */
     _getRelativeLocation(x: number, y: number , page: PdfPage): number[] {
         const location: number[] = [x, y];
         if (page.rotation === PdfRotationAngle.angle90) {
@@ -158,10 +350,25 @@ export class _PdfTextParser {
         }
         return location;
     }
+    /**
+     * Multiply two affine transform matrices.
+     *
+     * @private
+     * @param {number[]} m1 - left matrix
+     * @param {number[]} m2 - right matrix
+     * @returns {number[]} product matrix
+     */
     _transform(m1: number[], m2: number[]): number[] {
         return [m1[0] * m2[0] + m1[2] * m2[1], m1[1] * m2[0] + m1[3] * m2[1], m1[0] * m2[2] + m1[2] * m2[3], m1[1] * m2[2] + m1[3] * m2[3]
             , m1[0] * m2[4] + m1[2] * m2[5] + m1[4], m1[1] * m2[4] + m1[3] * m2[5] + m1[5]];
     }
+    /**
+     * Get crop or media box values for page coordinate adjustments.
+     *
+     * @private
+     * @param {PdfPage} page - page reference
+     * @returns {number[]} [x0, y0, height] crop or media box values
+     */
     _getCropOrMediaBox(page: PdfPage): number[] {
         const cropOrMediaBox: number[] = [];
         if (page.cropBox[0] !== 0 || page.cropBox[3] !== 0) {
@@ -175,6 +382,17 @@ export class _PdfTextParser {
         }
         return cropOrMediaBox;
     }
+    /* eslint-disable */
+    /**
+     * Split encoded text tokens into decoded pieces for processing.
+     *
+     * @private
+     * @param {string} encodedText - raw encoded token
+     * @param {_FontStructure} font - current font structure
+     * @param {string[]} inputText - tokenized input text array
+     * @param {boolean} [isForRedaction=false] - include inputType for redaction
+     * @returns {{decodedList: string[], inputType?: string[]}} decoded segments (and optional inputType)
+     */
     _getSplitText(encodedText: string, font: _FontStructure, inputText: string[], isForRedaction: boolean = false): { decodedList:
     string[], inputType?: string[] } {
         const decodedList: string[] = [];
@@ -266,6 +484,14 @@ export class _PdfTextParser {
         }
         return isForRedaction ? { decodedList, inputType } : { decodedList };
     }
+    /* eslint-enable */
+    /**
+     * Compute page-rotation from current text matrix.
+     *
+     * @private
+     * @param {_TextState} textState - current text state
+     * @returns {number} rotation in degrees (0, 90, 270)
+     */
     _getPageRotation(textState: _TextState): number {
         let rotation: number = 0;
         if (textState._textMatrix[0] === 0 && textState._textMatrix[1] > 0 && textState._textMatrix[2] < 0 &&
@@ -277,6 +503,13 @@ export class _PdfTextParser {
         }
         return rotation;
     }
+    /**
+     * Split a hex string into chunks for glyph decoding.
+     *
+     * @private
+     * @param {string} hexString - hex literal string (e.g. <....>)
+     * @returns {string[]} array of hex chunks
+     */
     _splitHexString(hexString: string): string[] {
         const hexList: string[] = [];
         if (typeof(hexString) === 'undefined') {
@@ -295,6 +528,13 @@ export class _PdfTextParser {
         }
         return hexList;
     }
+    /**
+     * Create a fallback font dictionary used when font lookup fails.
+     *
+     * @private
+     * @param {_PdfCrossReference} crossReference - cross-reference table
+     * @returns {_PdfDictionary} fallback font dictionary
+     */
     _getFallBackFontDictionary(crossReference: _PdfCrossReference): _PdfDictionary {
         const dictionary: _PdfDictionary = new _PdfDictionary(crossReference);
         dictionary.set('BaseFont', new _PdfName('Helvetica'));
@@ -303,6 +543,15 @@ export class _PdfTextParser {
         dictionary.set('Encoding', new _PdfName('WinAnsiEncoding'));
         return dictionary;
     }
+    /**
+     * Process basic graphics/text commands affecting graphic state.
+     *
+     * @private
+     * @param {string} token - command token (e.g. 'q', 'Q', 'cm')
+     * @param {string[]} element - operand array
+     * @param {_GraphicState} state - current graphic state
+     * @returns {void} nothing
+     */
     _processCommand(token: string, element: string[], state: _GraphicState): void {
         let args: number[] = [];
         switch (token) {
@@ -318,6 +567,15 @@ export class _PdfTextParser {
             state._transform(args);
         }
     }
+    /**
+     * Resolve the current font structure from a font collection or fallback.
+     *
+     * @private
+     * @param {Map<string,_FontStructure>} fontCollection - page font resources
+     * @param {_TextState} textState - current text state
+     * @param {_PdfCrossReference} crossReference - cross-reference table
+     * @returns {_FontStructure} resolved font structure
+     */
     _getTextFont(fontCollection: Map<string, _FontStructure>, textState: _TextState, crossReference: _PdfCrossReference): _FontStructure {
         let currentFont: _FontStructure;
         if (fontCollection.get(textState._font)) {
@@ -328,8 +586,28 @@ export class _PdfTextParser {
         }
         return currentFont;
     }
+    /* eslint-disable */
+    /**
+     * Build text content item(s) for a text token (glyphs, bounds, encoded text).
+     *
+     * @private
+     * @param {_FontStructure} currentFont - resolved font
+     * @param {string} text - input text token
+     * @param {number} extraSpacing - extra spacing to apply
+     * @param {_TextState} textState - current text state
+     * @param {PdfPage} page - page reference
+     * @param {string} tempString - temporary accumulator string
+     * @param {{x:number,y:number,width:number,height:number}} previousRect - previous bounding rect
+     * @param {string} extractedText - accumulated extracted text
+     * @param {_PdfContentParserHelper} [parser] - optional content parser helper
+     * @param {TextGlyph[]} [textGlyphs] - optional output glyph array
+     * @param {string[]} [hex] - optional hex chunks array
+     * @param {number} [index] - optional start index for encodedText
+     * @param {string[]} [encodedText] - optional encoded text output
+     * @returns {any} glyph/text data or parser results depending on call (object)
+     */
     _getTextContentItem(currentFont: _FontStructure, text: string, extraSpacing: number, textState: _TextState, page: PdfPage,
-                        tempString: string, previousRect: { x: number, y: number, width: number, height: number }, extractedText: string, parser?: _PdfContentParserHelper, textGlyphs?: TextGlyph[], hex?: string[], index?: number, encodedText?: string[]): any { // eslint-disable-line
+                        tempString: string, previousRect: { x: number, y: number, width: number, height: number }, extractedText: string, parser?: _PdfContentParserHelper, textGlyphs?: TextGlyph[], hex?: string[], index?: number, encodedText?: string[]): any {
         text = text.slice(0, -1  );
         let fontSize: number = 0;
         let isHex: boolean = false;
@@ -337,7 +615,7 @@ export class _PdfTextParser {
         if (typeof(hex) !== 'undefined' && hex.length > 0) {
             isHex = true;
         }
-        let glyphs: any = currentFont._charsToGlyphs(text); // eslint-disable-line
+        let glyphs: any = currentFont._charsToGlyphs(text);
         const ii: number = glyphs.length;
         let scale: number = 0;
         if (currentFont. _fontMatrix) {
@@ -348,7 +626,7 @@ export class _PdfTextParser {
         }
         const rotation: number = this._getPageRotation(textState);
         for (let i: number = 0; i < ii; i++) {
-            const glyph: any = glyphs[Number.parseInt(i.toString(), 10)]; // eslint-disable-line
+            const glyph: any = glyphs[Number.parseInt(i.toString(), 10)];
             // this._resultantText += glyph._unicode;
             let width: number;
             let charSpacing: number = textState._charSpacing + (i + 1 === ii ? extraSpacing : 0);
@@ -469,7 +747,7 @@ export class _PdfTextParser {
                 textGlyphs.push(textGlyph);
             } else {
                 fontSize = textState._fontSize;
-                const result: any = parser._splitWords(glyph._unicode, tempString, currentFont._name,// eslint-disable-line
+                const result: any = parser._splitWords(glyph._unicode, tempString, currentFont._name,
                                                        currentFont._fontStyle, page, rotation, textState._textColor, textState._fontSize,
                                                        textBounds, previousRect);
                 previousRect = result.previousRect;
@@ -495,4 +773,5 @@ export class _PdfTextParser {
             return {tempString, extractedText, fontSize, previousRect};
         }
     }
+    /* eslint-enable */
 }

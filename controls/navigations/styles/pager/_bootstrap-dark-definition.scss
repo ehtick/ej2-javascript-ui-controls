@@ -1,7 +1,7 @@
 @use 'sass:math';
 @use 'sass:color';
-@use 'ej2-base/styles/definition/bootstrap-dark' as *;
-@forward 'ej2-base/styles/definition/bootstrap-dark';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $pager-numericitem-border-radius: 4px !default;
 $pager-border-type: $border-type !default;
 $pager-mobile-icon-size: 11px !default;

@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/tailwind' as *;
-@forward 'ej2-base/styles/definition/tailwind';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $tab-skin: 'tailwind' !default;
 $tab-big-vertical-scroll-nav-top-bottom: 23px !default;
 $tab-big-vertical-nav-arrow-size: $text-base !default;

@@ -354,7 +354,10 @@ export class BaseQuickToolbar implements IBaseQuickToolbar {
             dropDownModule: this.dropDownButtons,
             parent: this.parent,
             tbElements: selectAll('.' + classes.CLS_TB_ITEM, this.element),
-            tbItems: this.quickTBarObj.toolbarObj.items
+            tbItems: this.quickTBarObj.toolbarObj.items,
+            fontColorPicker: (this.colorPickerObj && this.colorPickerObj.fontColorPicker) ? this.colorPickerObj.fontColorPicker : undefined,
+            backgroundColorPicker: (this.colorPickerObj && this.colorPickerObj.backgroundColorPicker)
+                ? this.colorPickerObj.backgroundColorPicker : undefined
         };
         setToolbarStatus(options, true, this.parent);
         if (this.type === 'Text' && this.parent.quickToolbarSettings.text && this.parent.quickToolbarSettings.text.length > 0 && this.parent.quickToolbarModule.textQTBar) {
@@ -363,7 +366,11 @@ export class BaseQuickToolbar implements IBaseQuickToolbar {
                 dropDownModule: this.parent.quickToolbarModule.textQTBar.dropDownButtons,
                 parent: this.parent,
                 tbElements: selectAll('.' + classes.CLS_TB_ITEM, this.parent.quickToolbarModule.textQTBar.element),
-                tbItems: this.parent.quickToolbarModule.textQTBar.quickTBarObj.toolbarObj.items
+                tbItems: this.parent.quickToolbarModule.textQTBar.quickTBarObj.toolbarObj.items,
+                fontColorPicker: (this.colorPickerObj && this.colorPickerObj.fontColorPicker)
+                    ? this.colorPickerObj.fontColorPicker : undefined,
+                backgroundColorPicker: (this.colorPickerObj && this.colorPickerObj.backgroundColorPicker) ?
+                    this.colorPickerObj.backgroundColorPicker : undefined
             };
             setToolbarStatus(options, true, this.parent);
             updateUndoRedoStatus(this.parent.quickToolbarModule.textQTBar.quickTBarObj,

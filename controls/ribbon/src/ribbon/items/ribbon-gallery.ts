@@ -421,7 +421,8 @@ export class RibbonGallery {
             className: 'e-ribbon-gallery-popup',
             id: item.id + '_galleryPopup'
         });
-        document.body.append(gallerypopupElement);
+        const appendTarget: HTMLElement = this.parent.getAppendToElement();
+        appendTarget.append(gallerypopupElement);
         const galleryPopup: Popup = new Popup(gallerypopupElement, {
             relateTo: buttonEle,
             content: popupContainer,
@@ -525,6 +526,13 @@ export class RibbonGallery {
                 enableRtl: this.parent.enableRtl,
                 cssClass: 'e-ribbon-gallery-dropdown',
                 disabled: item.disabled,
+                beforeOpen: () => {
+                    const target: HTMLElement = this.parent.getAppendToElement();
+                    const dropDownPopup: HTMLElement = dropdown && dropdown.dropDown ? dropdown.dropDown.element : null;
+                    if (dropDownPopup && !target.contains(dropDownPopup)) {
+                        target.appendChild(dropDownPopup);
+                    }
+                },
                 open: () => {
                     const popupContainerItems: NodeListOf<Element> = popupContainerEle.querySelectorAll('.e-ribbon-gallery-container');
                     this.setWrapperStyle(popup, popupContainerItems);
@@ -645,6 +653,10 @@ export class RibbonGallery {
     private showPopup(popup: Popup, popupEle: HTMLElement, args: Event, gallerySettings: RibbonGallerySettingsModel, itemID: string): void {
         const isCancelled: boolean = this.popupEvents(args, gallerySettings, 'popupOpen', true);
         if (isCancelled) { return; }
+        const target: HTMLElement = this.parent.getAppendToElement();
+        if (!target.contains(popupEle)) {
+            target.appendChild(popupEle);
+        }
         popup.show();
         this.checkCollision(popup, popupEle);
         const buttonEle: HTMLElement = document.querySelector('#' + itemID + '_popupButton');

@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/common/mixin' as *;
-@use '../bootstrap4-definition' as *;
+@use '../variables' as *;
+
 @include export-module('pdfviewer-bootstrap-icons') {
   .e-pdfviewer {
     .e-pv-icon::before {
@@ -581,6 +581,13 @@
   }
   .e-pv-extract-page-icon::before {
     content: '\e936';
+    font-family: 'e-icons';
+  }
+  .e-pv-filter-icon::before {
+    content: '\e714';
+  }
+  .e-pv-ink-eraser-icon::before {
+    content: '\e703';
     font-family: 'e-icons';
   }
 }

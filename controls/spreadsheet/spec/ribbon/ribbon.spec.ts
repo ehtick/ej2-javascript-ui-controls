@@ -1,6 +1,6 @@
 import { Ribbon, RibbonItemModel } from '../../src/ribbon/index';
 import { profile , inMB, getMemoryProfile } from './../common/common.spec';
-import { createElement, selectAll } from '@syncfusion/ej2-base';
+import { createElement, selectAll, getComponent } from '@syncfusion/ej2-base';
 import { MenuItemModel } from '@syncfusion/ej2-navigations';
 import { SpreadsheetModel, Spreadsheet } from '../../src/spreadsheet/index';
 import { SpreadsheetHelper } from '../spreadsheet/util/spreadsheethelper.spec';
@@ -312,11 +312,11 @@ describe('Ribbon ->', () => {
             document.getElementsByTagName("span")[0].click();
                 setTimeout(function () {
                     let toolbarElemCount:number = document.getElementsByClassName('e-toolbar-items')[1].querySelectorAll('.e-toolbar-item').length;
-                    expect(toolbarElemCount).toBe(32);
+                    expect(toolbarElemCount).toBe(34);
                     let spreadsheet:Spreadsheet = helper.getInstance();
                     spreadsheet.addToolbarItems('Home', [{ type: 'Separator' }, { text: 'Custom', tooltipText: 'Custom Btn' }], 15);
                     toolbarElemCount = document.getElementsByClassName('e-toolbar-items')[1].querySelectorAll('.e-toolbar-item').length;
-                    expect(toolbarElemCount).toBe(34);
+                    expect(toolbarElemCount).toBe(36);
                     done();
                 },0);
         });
@@ -346,4 +346,45 @@ describe('Ribbon ->', () => {
                 },0);
         });
     })
+    describe('1021089: Call enableItems method in edit mode ->', () => {
+        beforeEach((done: Function) => {
+            model = {
+             sheets: [{ ranges: [{ dataSource: defaultData }] }],
+            }
+            helper.initializeSpreadsheet(model, done);
+         });
+        afterEach(() => {
+            helper.invoke('destroy');
+        });
+        it('enableItems toggles sub/superscript during edit', (done: Function) => {
+            const spreadsheet: Spreadsheet = helper.getInstance();
+            document.getElementsByTagName('span')[0].click();
+            const subId: string = helper.id + '_sub';
+            const supId: string = helper.id + '_super';
+            const subBtn: HTMLElement = document.getElementById(subId);
+            const supBtn: HTMLElement = document.getElementById(supId);
+            expect(subBtn).not.toBeNull();
+            expect(supBtn).not.toBeNull();
+            spreadsheet.enableToolbarItems('', undefined, false);
+            expect(subBtn.parentElement.classList.contains('e-overlay')).toBeFalsy();
+            expect(supBtn.parentElement.classList.contains('e-overlay')).toBeFalsy();
+            spreadsheet.enableToolbarItems('', undefined, true);
+            expect(subBtn.parentElement.classList.contains('e-overlay')).toBeTruthy();
+            expect(supBtn.parentElement.classList.contains('e-overlay')).toBeTruthy();
+            done();
+        });
+        it('enableToolbarItems with tab only toggles Home tab items', (done: Function) => {
+            const spreadsheet: Spreadsheet = helper.getInstance();
+            document.getElementsByTagName('span')[0].click();
+            const toolbarItems: NodeListOf<Element> = document.getElementsByClassName('e-toolbar-items')[1].querySelectorAll('.e-toolbar-item');
+            const firstItem: HTMLElement = toolbarItems[0] as HTMLElement;
+            expect(firstItem).not.toBeNull();
+            spreadsheet.enableToolbarItems('Home', undefined, false);
+            const homeToolbar: HTMLElement = firstItem.closest('.e-toolbar') as HTMLElement;
+            expect(homeToolbar.classList.contains('e-overlay')).toBeTruthy();
+            spreadsheet.enableToolbarItems('Home', undefined, true);
+            expect(homeToolbar.classList.contains('e-overlay')).toBeFalsy();
+            done();
+        });
+    });
 });

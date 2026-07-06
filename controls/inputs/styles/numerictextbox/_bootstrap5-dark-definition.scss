@@ -1,5 +1,4 @@
-@use 'ej2-base/styles/definition/bootstrap5-dark' as *;
-@forward 'ej2-base/styles/definition/bootstrap5-dark';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 
 $numeric-skin-name: $skin-name !default;
 $numeric-input-icon-size: 14px !default;
@@ -21,3 +20,4 @@ $numeric-bigger-prepend-outline-label-bottom-top: 18px !default;
 $numeric-bigger-prepend-outline-label-top-top: 15px !default;
 $numeric-bigger-prepend-filled-label-bottom-top: 18px !default;
 $numeric-bigger-prepend-filled-label-top-top: 17px !default;
+$numeric-box-full-border-color: $border !default;

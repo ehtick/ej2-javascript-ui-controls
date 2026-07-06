@@ -1,5 +1,4 @@
-@use 'ej2-base/styles/definition/highcontrast' as *;
-@forward 'ej2-base/styles/definition/highcontrast';
+@use '../../node_modules/@syncfusion/ej2-base/styles/common/base-variables' as *;
 
 /*! Kanban component's highcontrast theme definitions and variables */
 $kanban-column-bg-color: $bg-base-10 !default;

@@ -1,6 +1,5 @@
 @use 'sass:math';
-@use 'ej2-base/styles/definition/material-dark' as *;
-@forward 'ej2-base/styles/definition/material-dark';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 
 $pager-font-size: 13px !default;
 $pager-font-line-height: 1 !default;

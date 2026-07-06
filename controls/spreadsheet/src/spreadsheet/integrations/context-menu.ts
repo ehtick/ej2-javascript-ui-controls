@@ -244,7 +244,7 @@ export class ContextMenu {
                 this.parent.notify(replyToComment, null);
                 break;
             case id + '_deleteComment':
-                this.parent.notify(deleteComment, { rowIndex: range[0], columnIndex: range[1] });
+                this.parent.notify(deleteComment, { rowIndex: range[0], columnIndex: range[1], setFoucs: true });
                 break;
             case id + '_hyperlink':
                 this.parent.notify(initiateHyperlink, null);

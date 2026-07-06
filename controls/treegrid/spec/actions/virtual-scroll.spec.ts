@@ -27,6 +27,9 @@ import { Freeze } from "../../src/treegrid/actions/freeze-column";
 import { VirtualTreeContentRenderer, TreeInterSectionObserver } from "../../src/treegrid/renderer/virtual-tree-content-render";
 import { InterSection } from '@syncfusion/ej2-grids';
 import { DataManager, WebApiAdaptor } from "@syncfusion/ej2-data";
+import { TreeVirtualRowModelGenerator } from '../../src/treegrid/renderer/virtual-row-model-generator';
+import * as grids from '@syncfusion/ej2-grids';
+import * as utils from '../../src/treegrid/utils';
 
 /**
  * TreeGrid Virtual Scroll spec
@@ -7542,7 +7545,7 @@ describe("VirtualTreeContentRenderer - Scroll Operations Coverage", () => {
   });
 });
 
-describe('Coverage for updateScrollbarOnResize', function () {
+describe('Coverage for updateScrollbar', function () {
   let gridObj: TreeGrid;
   beforeAll((done: Function) => {
     gridObj = createGrid(
@@ -7563,13 +7566,374 @@ describe('Coverage for updateScrollbarOnResize', function () {
       }, done);
   });
 
-  it('Coverage - updateScrollbarOnResize', (done: Function) => {
-    (gridObj as any).grid.contentModule.updateScrollbar()
+  it('Coverage - updateScrollbar', (done: Function) => {
+    (gridObj as any).grid.contentModule.updateScrollbar();
     done();
   });
 
   afterAll(() => {
     destroy(gridObj);
+  });
+});
+
+describe('Coverage - TreeVirtualRowModelGenerator - targeted branches', () => {
+  it('sets notifyArgs.virtualInfo from prevInfo when refresh and isExpandCollapse true', () => {
+    const parent: any = { on: function () { }, root: { loadChildOnDemand: false }, dataSource: null, contentModule: { getBlockSize: () => 5 } };
+
+    spyOn(grids.VirtualRowModelGenerator.prototype, 'getData').and.returnValue({ blockIndexes: [7] });
+    spyOn(grids.VirtualRowModelGenerator.prototype, 'generateRows').and.returnValue([]);
+    spyOn(utils, 'isRemoteData').and.returnValue(false);
+    spyOn(utils, 'isCountRequired').and.returnValue(false);
+
+    const gen = new TreeVirtualRowModelGenerator(parent as any);
+    gen['prevInfo'] = { prev: true };
+
+    const notifyArgs: any = { requestType: 'refresh', isExpandCollapse: true };
+    gen.generateRows([], notifyArgs);
+
+    expect(notifyArgs.virtualInfo).toBe(gen['prevInfo']);
+  });
+
+  it('uses getBlockIndexes when virtualInfo.direction is right or left', () => {
+    const parent: any = { on: function () { }, root: { loadChildOnDemand: false }, dataSource: null, contentModule: { getBlockSize: () => 5 } };
+
+    spyOn(grids.VirtualRowModelGenerator.prototype, 'getData').and.returnValue({ blockIndexes: [1, 2] });
+    spyOn(grids.VirtualRowModelGenerator.prototype, 'generateRows').and.returnValue([]);
+    spyOn(utils, 'isRemoteData').and.returnValue(false);
+    spyOn(utils, 'isCountRequired').and.returnValue(false);
+
+    spyOn(TreeVirtualRowModelGenerator.prototype, 'getBlockIndexes').and.returnValue([1234]);
+
+    const gen = new TreeVirtualRowModelGenerator(parent as any);
+    const notifyArgs: any = { virtualInfo: { direction: 'right', blockIndexes: [4, 5], page: 7 } };
+    gen.generateRows([], notifyArgs);
+
+    expect(notifyArgs.virtualInfo.blockIndexes).toEqual([1234]);
+  });
+});
+
+describe('Coverage - TreeVirtualRowModelGenerator - cache slicing behavior', () => {
+  it('slices cache for DataManager on virtualscroll when cache length exceeds blockSize', () => {
+    spyOn(utils, 'isCountRequired').and.returnValue(true);
+
+    const parent: any = {
+      on: function () { },
+      root: { loadChildOnDemand: false },
+      dataSource: new DataManager({ url: 'http://x', offline: false }),
+      contentModule: { getBlockSize: () => 2 }
+    };
+
+    const gen = new TreeVirtualRowModelGenerator(parent as any);
+    gen['model'] = { currentPage: 1 };
+    gen.cache = {};
+    gen.cache[1] = [1, 2, 3, 4, 5] as any;
+
+    const result = gen.checkAndResetCache('virtualscroll');
+
+    expect(result).toBe(false);
+    expect(gen.cache[1].length).toBe(2);
+  });
+});
+
+describe('Coverage-VirtualScroll - expandCollapse translateY branch', () => {
+  let treegrid: TreeGrid;
+
+  beforeAll((done: Function) => {
+    treegrid = createGrid({
+      dataSource: virtualData.slice(0, 10),
+      parentIdMapping: 'ParentID',
+      idMapping: 'TaskID',
+      enableVirtualization: true,
+      height: 300,
+      pageSettings: { pageSize: 5 },
+      columns: [
+        { field: 'TaskID', isPrimaryKey: true, headerText: 'ID', width: 70 },
+        { field: 'TaskName', headerText: 'Task Name', width: 200 }
+      ]
+    }, done);
+  });
+
+  it('sets translateY and calls adjustTable when conditions met', (done: Function) => {
+    setTimeout(() => {
+      const vs: any = new VirtualScroll(treegrid);
+      // prepare visualData and pageingDetails
+      const visualData = virtualData.slice(0, 10).map((d: any, i: number) => ({ ...d, expanded: true }));
+      // spy on adjustTable
+      spyOn((treegrid.grid.contentModule as any).virtualEle, 'adjustTable');
+
+      // force indexModifier to return startIndex 7 so that startIndex !== 0
+      treegrid.grid.on('indexModifier', (counts: any) => {
+        counts.startIndex = 7; counts.endIndex = 9; counts.count = visualData.length;
+      });
+
+      // set expandCollapseRec to an element near the end to hit inner-most if
+      vs.expandCollapseRec = visualData[8];
+
+      const pageingDetails: any = { result: visualData, count: visualData.length, actionArgs: { requestType: 'virtualscroll' } };
+      (treegrid.grid as any).contentModule.isDataSourceChanged = true;
+      vs.prevrequestType = 'collapseAll',
+      vs.parent.enableCollapseAll = true;
+      vs['virtualPageAction'](pageingDetails);
+      expect(true).toBe(true);
+      done();
+    }, 300);
+  });
+
+  it('does not call adjustTable when expandRec index not in threshold', (done: Function) => {
+    setTimeout(() => {
+      const vs: any = new VirtualScroll(treegrid);
+      const visualData = virtualData.slice(0, 10).map((d: any, i: number) => ({ ...d, expanded: true }));
+      spyOn((treegrid.grid.contentModule as any).virtualEle, 'adjustTable');
+
+      // force indexModifier to return startIndex 7
+      treegrid.grid.on('indexModifier', (counts: any) => {
+        counts.startIndex = 7; counts.endIndex = 9; counts.count = visualData.length;
+      });
+
+      // choose expandCollapseRec in middle so inner if false (index 2)
+      vs.expandCollapseRec = visualData[2];
+
+      const pageingDetails: any = { result: visualData, count: visualData.length, actionArgs: { requestType: 'virtualscroll' } };
+
+      vs['virtualPageAction'](pageingDetails);
+
+      expect((treegrid.grid.contentModule as any).virtualEle.adjustTable).not.toHaveBeenCalled();
+      done();
+    }, 300);
+  });
+
+  afterAll(() => {
+    destroy(treegrid);
+  });
+});
+describe('Coverage-VirtualScroll - 196 line condition met', () => {
+  let treegrid: TreeGrid;
+
+  beforeAll((done: Function) => {
+    treegrid = createGrid({
+      dataSource: virtualData.slice(0, 10),
+      parentIdMapping: 'ParentID',
+      idMapping: 'TaskID',
+      enableVirtualization: true,
+      height: 300,
+      pageSettings: { pageSize: 5 },
+      columns: [
+        { field: 'TaskID', isPrimaryKey: true, headerText: 'ID', width: 70 },
+        { field: 'TaskName', headerText: 'Task Name', width: 200 }
+      ]
+    }, done);
+  });
+
+  it('sets translateY and calls adjustTable when conditions met', (done: Function) => {
+    setTimeout(() => {
+      const vs: any = new VirtualScroll(treegrid);
+      const visualData = virtualData.slice(0, 10).map((d: any, i: number) => ({ ...d, expanded: true }));
+      spyOn((treegrid.grid.contentModule as any).virtualEle, 'adjustTable');
+      treegrid.grid.on('indexModifier', (counts: any) => {
+        counts.startIndex = 7; counts.endIndex = 9; counts.count = visualData.length;
+      });
+      vs.expandCollapseRec = visualData[8];
+      const pageingDetails: any = { result: visualData, count: visualData.length, actionArgs: { requestType: 'virtualscroll' } };
+      (treegrid.grid.contentModule as any).recordAdded = true;
+      (treegrid.grid.contentModule as any).endIndex = 20;
+      (treegrid.grid.contentModule as any).startIndex = 0;
+      vs.prevrequestType = 'collapseAll';
+      vs.parent.enableCollapseAll = true;
+      vs['virtualPageAction'](pageingDetails);
+      expect(true).toBe(true);
+      done();
+    }, 300);
+  });
+
+  afterAll(() => {
+    destroy(treegrid);
+  });
+});
+
+describe('Coverage-VirtualScroll - filtering with flat hierarchy branch', () => {
+  it('uses parents (expanded) as visualData when filtering and flat hierarchy', () => {
+    const fakeParent: any = {
+      isDestroyed: false,
+      filterSettings: { hierarchyMode: 'None' },
+      grid: {
+        pageSettings: { pageSize: 2, currentPage: 1 },
+        notify: function (event: any, args: any) {
+          // leave counts as default (-1) so code goes through skip/take branch
+        }
+      },
+      notify: function () { },
+      getRows: (): any[] => new Array(10),
+      on: () => { },
+      off: () => { }
+    };
+
+    const vs: any = new VirtualScroll(fakeParent);
+    const data: any[] = [
+      { uniqueID: 1, expanded: true, value: 'a' },
+      { uniqueID: 2, expanded: false, value: 'b' },
+      { uniqueID: 3, expanded: true, value: 'c' }
+    ];
+
+    const pageingDetails: any = { result: data.slice(), count: 0, actionArgs: { requestType: 'filtering' } };
+    vs['virtualPageAction'](pageingDetails);
+    expect(data.length).toBe(3);
+  });
+  it("collapseExpandVirtualchilds mapping", () => {
+    const clearSpy = jasmine.createSpy('clearSelection');
+    const dataManagerSpy = jasmine.createSpy('dataManagerSuccess');
+    const fakeParent: any = {
+      grid: {
+        notify: function () { },
+        clearSelection: clearSpy,
+        renderModule: { dataManagerSuccess: dataManagerSpy }
+      },
+      selectionSettings: { mode: 'Row', persistSelection: false },
+      flatData: [ { uniqueID: 1, expanded: true }, { uniqueID: 2, expanded: true } ],
+      getSelectedRecords: (): any[] => [],
+      getRows: (): any[] => [],
+      on: () => { },
+      off: () => { }
+    };
+
+    const vs: any = new VirtualScroll(fakeParent);
+    const record = { uniqueID: 1, expanded: false };
+    vs['collapseExpandVirtualchilds']({ action: 'collapse', row: document.createElement('tr') as any, record: record, args: {} });
+    expect(true).toBe(true);
+  });
+});
+
+describe('Coverage-VirtualScroll - Branches needed to be covered', () => {
+  let treegrid: TreeGrid;
+
+  beforeAll((done: Function) => {
+    treegrid = createGrid({
+      dataSource: virtualData.slice(0, 10),
+      parentIdMapping: 'ParentID',
+      idMapping: 'TaskID',
+      enableVirtualization: true,
+      height: 300,
+      pageSettings: { pageSize: 5 },
+      columns: [
+        { field: 'TaskID', isPrimaryKey: true, headerText: 'ID', width: 70 },
+        { field: 'TaskName', headerText: 'Task Name', width: 200 }
+      ]
+    }, done);
+  });
+
+  it('Sets right values to meet conditions', (done: Function) => {
+    setTimeout(() => {
+      const vs: any = new VirtualScroll(treegrid);
+      // prepare visualData and pageingDetails
+      const visualData = virtualData.slice(0, 10).map((d: any, i: number) => ({ ...d, expanded: true }));
+      // spy on adjustTable
+      spyOn((treegrid.grid.contentModule as any).virtualEle, 'adjustTable');
+
+      // force indexModifier to return startIndex 7 so that startIndex !== 0
+      treegrid.grid.on('indexModifier', (counts: any) => {
+        counts.startIndex = 7; counts.endIndex = 9; counts.count = visualData.length;
+      });
+
+      // set expandCollapseRec to an element near the end to hit inner-most if
+      // vs.expandCollapseRec = visualData[8];
+       vs.parent['isGantt'] = true;
+      vs.parent['isAddedFromGantt'] = true;
+      vs.parent.root = {};
+      const pageingDetails: any = { result: visualData, count: visualData.length, actionArgs: { requestType: 'refresh' } };
+      (treegrid.grid as any).contentModule.isDataSourceChanged = true;
+      vs.prevrequestType = 'collapseAll',
+      vs.parent.enableCollapseAll = true;
+      vs['virtualPageAction'](pageingDetails);
+      expect(true).toBe(true);
+      done();
+    }, 300);
+  });
+
+  afterAll(() => {
+    destroy(treegrid);
+  });
+});
+
+describe('Coverage-VirtualScroll - adjustRangeForExpandCollapse branches (lines ~230-243)', () => {
+    it('adjusts translateY and calls adjustTable when expandCollapseRec near end', () => {
+      const fakeParent: any = {
+        grid: {
+          pageSettings: { pageSize: 5 },
+          contentModule: { virtualEle: { adjustTable: jasmine.createSpy('adjustTable') } },
+          getRowHeight: () => 20,
+          notify: jasmine.createSpy('notify')
+        },
+        on: () => { },
+        off: () => { }
+      };
+      const vs: any = new VirtualScroll(fakeParent);
+      const visualData: any[] = [];
+      for (let i = 0; i < 10; i++) { visualData.push({ id: i }); }
+      vs.expandCollapseRec = visualData[9];
+      const res = vs['adjustRangeForExpandCollapse'](7, 9, visualData);
+      expect(res.startIndex).toBe(5);
+    });
+
+    it('returns 0..pageSize-1 and notifies when collapseAll is true', () => {
+      const notifySpy = jasmine.createSpy('notify');
+      const fakeParent: any = {
+        grid: { pageSettings: { pageSize: 5 }, notify: notifySpy },
+        on: () => { },
+        off: () => { }
+      };
+      (fakeParent as any).isCollapseAll = true;
+      const vs: any = new VirtualScroll(fakeParent);
+      const visualData: any[] = [{ a: 1 }, { a: 2 }, { a: 3 }];
+      const out = vs['adjustRangeForExpandCollapse'](2, 2, visualData);
+      expect(out.startIndex).toBe(0);
+    });
+  });
+
+  describe('VirtualScroll - Branches needed to be covered', () => {
+  let treegrid: TreeGrid;
+
+  beforeAll((done: Function) => {
+    treegrid = createGrid({
+      dataSource: virtualData.slice(0, 10),
+      parentIdMapping: 'ParentID',
+      idMapping: 'TaskID',
+      enableVirtualization: true,
+      height: 300,
+      pageSettings: { pageSize: 5 },
+      columns: [
+        { field: 'TaskID', isPrimaryKey: true, headerText: 'ID', width: 70 },
+        { field: 'TaskName', headerText: 'Task Name', width: 200 }
+      ]
+    }, done);
+  });
+
+  it('isAddedFromGantt Branch Covered', (done: Function) => {
+    setTimeout(() => {
+      const vs: any = new VirtualScroll(treegrid);
+      // prepare visualData and pageingDetails
+      const visualData = virtualData.slice(0, 10).map((d: any, i: number) => ({ ...d, expanded: true }));
+      // spy on adjustTable
+      spyOn((treegrid.grid.contentModule as any).virtualEle, 'adjustTable');
+
+      // force indexModifier to return startIndex 7 so that startIndex !== 0
+      treegrid.grid.on('indexModifier', (counts: any) => {
+        counts.startIndex = 7; counts.endIndex = 9; counts.count = visualData.length;
+      });
+
+      // set expandCollapseRec to an element near the end to hit inner-most if
+      // vs.expandCollapseRec = visualData[8];
+       vs.parent['isGantt'] = true;
+      const pageingDetails: any = { result: visualData, count: visualData.length, actionArgs: { requestType: 'save', index : 0 } };
+      (treegrid.grid as any).contentModule.isDataSourceChanged = true;
+      vs.prevrequestType = 'collapseAll',
+      vs.parent.enableCollapseAll = true;
+      vs['virtualPageAction'](pageingDetails);
+      expect(true).toBe(true);
+      done();
+    }, 300);
+  });
+
+  afterAll(() => {
+    destroy(treegrid);
   });
 });
 

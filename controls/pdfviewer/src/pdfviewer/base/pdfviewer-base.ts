@@ -5,7 +5,7 @@ import { NavigationPane } from './navigation-pane';
 import { NumericTextBox } from '@syncfusion/ej2-inputs';
 import { TextMarkupAnnotation, StampAnnotation, IPageAnnotations, Annotation, IPoint } from '../annotation';
 import { AjaxHandler } from '../index';
-import { IElement, Point, DrawingElement, PointModel, Rect, Matrix, identityMatrix, transformPointByMatrix, contains, Info, rotateMatrix, PathElement } from '@syncfusion/ej2-drawings';
+import { IElement, Point, DrawingElement, PointModel, Rect, Matrix, identityMatrix, transformPointByMatrix, contains, Info, rotateMatrix, PathElement } from './../ej2-drawings/index';
 import { ToolBase, Actions, MouseEventArgs, SelectTool, MoveTool, ResizeTool, ConnectTool, NodeDrawingTool, PolygonDrawingTool, LineTool, RotateTool, StampTool, InkDrawingTool } from '../drawing/tools';
 import { Selector } from '../drawing/selector';
 import { ActiveElements, findActiveElement } from '../drawing/action';
@@ -31,7 +31,7 @@ import { FormFields } from '../form-fields';
 import { PdfiumRunner } from '../pdfium/pdfium-runner';
 import { PageOrganizer } from '../index';
 import { PageRenderer, PageRotation } from '../index';
-import { PdfDocument, PdfForm, PdfPage, PdfSignatureField, _getPageIndex } from '@syncfusion/ej2-pdf';
+import { PdfAnnotation, PdfDocument, PdfForm, PdfPage, PdfSignatureField, _getPageIndex } from '@syncfusion/ej2-pdf';
 import { PdfViewerSessionStorage, PdfiumTaskScheduler, TaskPriorityLevel } from './pdfviewer-utlis';
 
 /**
@@ -241,6 +241,13 @@ export class PdfViewerBase {
      * @private
      */
     public sessionStorageManager: PdfViewerSessionStorage = new PdfViewerSessionStorage(false);
+    /**
+     * @private
+     */
+    public pdfAnnotationList: {
+        annotationIndex: number; annotation: PdfAnnotation;
+        pageIndex: number; shapeLabelName?: string
+    }[] = [];
     /**
      * @private
      */
@@ -810,6 +817,10 @@ export class PdfViewerBase {
      * @private
      */
     public isSkipDocumentPath: boolean = false;
+    /**
+     * @private
+     */
+    public isSkipThumbnailRender: boolean = false;
     public isSkipZoomValue: boolean = false;
     private isScrollerMoving: boolean = false;
     private isScrollerMovingTimer: any = null;
@@ -835,6 +846,11 @@ export class PdfViewerBase {
      * @private
      */
     public extractAction: boolean =  false;
+
+    /**
+     * @private
+     */
+    public isOrganizePageSaveAction: boolean = false;
 
     /**
      * Initialize the constructor of PDFViewerBase
@@ -1110,6 +1126,7 @@ export class PdfViewerBase {
         this.showLoadingIndicator(true);
         this.hashId = ' ';
         this.isFileName = false;
+        this.pdfAnnotationList = [];
         this.saveDocumentInfo();
         // eslint-disable-next-line
         const proxy: any = this;
@@ -3014,11 +3031,11 @@ export class PdfViewerBase {
         return modifiers;
     }
 
-    private saveAsBlobRequest(): Promise<Blob> {
+    private saveAsBlobRequest(): Promise<Blob | Uint8Array> {
         let proxy: PdfViewerBase = null;
         // eslint-disable-next-line
         proxy = this;
-        const promise: Promise<Blob> = new Promise((resolve: Function, reject: Function) => {
+        const promise: Promise<Blob | Uint8Array> = new Promise((resolve: Function, reject: Function) => {
             const jsonObject: any = proxy.constructJsonDownload();
             if (this.canRedact) {
                 jsonObject['canRedact'] = this.canRedact;
@@ -3058,8 +3075,12 @@ export class PdfViewerBase {
             }
             else if (this.clientSideRendering) {
                 const data: Uint8Array = this.pdfViewer.pdfRendererModule.getDocumentAsUint8Array(jsonObject);
-                const resultdata: any = proxy.saveAsBlobFile(data, proxy);
-                resolve(resultdata);
+                if (proxy.isOrganizePageSaveAction) {
+                    resolve(data);
+                } else {
+                    const resultdata: any = proxy.saveAsBlobFile(data, proxy);
+                    resolve(resultdata);
+                }
             } else {
                 this.dowonloadRequestHandler.send(jsonObject);
             }
@@ -3603,6 +3624,7 @@ export class PdfViewerBase {
             this.notifyDialog = null;
             this.previousScrollbarWidth = 0;
             this.formFieldsData = null;
+            this.isSkipThumbnailRender = null;
         }
         if (!isNullOrUndefined(this.pdfViewer.annotationModule) && this.pdfViewer.annotationModule.measureAnnotationModule) {
             this.pdfViewer.annotationModule.measureAnnotationModule.destroy();
@@ -5521,6 +5543,8 @@ export class PdfViewerBase {
                     event.preventDefault();
                     if (this.pdfViewer.textSearchModule &&
                         this.pdfViewer.enableTextSearch &&
+                        this.pdfViewer.toolbarModule &&
+                        this.pdfViewer.enableToolbar &&
                         this.pdfViewer.toolbarSettings &&
                         this.pdfViewer.toolbarSettings.toolbarItems &&
                         this.pdfViewer.toolbarSettings.toolbarItems.indexOf('SearchOption') !== -1) {
@@ -6369,11 +6393,6 @@ export class PdfViewerBase {
                         !this.getTextMarkupAnnotationMode() && !this.getTextRedactAnnotationMode()) {
                         if (event.detail === 1 && !this.viewerContainer.contains(event.target as HTMLElement) &&
                          !this.contextMenuModule.contextMenuElement.contains(event.target as HTMLElement)) {
-                            //1002696 - Clear collapsed selection when annotation toolbar is clicked to prevent empty-span injection
-                            const isToolbarClick: boolean = !!(event.target as HTMLElement).closest('.e-pv-annotation-freeTextEdit') || !!(event.target as HTMLElement).closest('.e-pv-highlight') || !!(event.target as HTMLElement).closest('.e-pv-underline') || !!(event.target as HTMLElement).closest('.e-pv-strikethrough') || !!(event.target as HTMLElement).closest('.e-pv-squiggly');
-                            if (isToolbarClick && window.getSelection().isCollapsed) {
-                                window.getSelection().removeAllRanges();
-                            }
                             if (window.getSelection().anchorNode !== null && !this.isSearchBoxActive(event.target)) {
                                 this.pdfViewer.textSelectionModule.textSelectionOnMouseup(event);
                             }
@@ -6825,11 +6844,11 @@ export class PdfViewerBase {
         this.touchClientY = event.touches[0].clientY;
         event.preventDefault();
         if (this.pdfViewer.textSelectionModule) {
-            const target: HTMLElement = event.target as HTMLElement;
             if (this.isPanMode || this.isTextSelectionDisabled || !this.pdfViewer.enableTextSelection ||
                 this.getSelectTextMarkupCurrentPage() != null) {
                 return;
             }
+            const target: HTMLElement = event.target as HTMLElement;
             if (target.classList.contains('e-pv-text-selection-none') && target.classList.contains('e-pv-text')) {
                 target.classList.remove('e-pv-text-selection-none');
                 if (Browser.isDevice && !this.pdfViewer.enableDesktopMode) {
@@ -8810,7 +8829,7 @@ export class PdfViewerBase {
             clearTimeout(this.scrollHoldTimer);
         }
         this.scrollHoldTimer = null;
-        if ((this.scrollPosition * this.getZoomFactor()) !== this.viewerContainer.scrollTop) {
+        if (this.viewerContainer && (this.scrollPosition * this.getZoomFactor()) !== this.viewerContainer.scrollTop) {
             this.scrollPosition = this.viewerContainer.scrollTop;
             this.pageViewScrollChanged(this.currentPageNumber);
         }
@@ -8902,19 +8921,16 @@ export class PdfViewerBase {
     }
 
     private renderPreviousPagesInScroll(pageIndex: number): void {
-        const next: number = pageIndex - 1;
-        const pageNumber: number = next - 1;
-        if (next > 0) {
-            if (this.renderedPagesList.indexOf(next) === -1 && !this.getMagnified()) {
-                this.createRequestForRender(next);
+        let prevIndex: number = pageIndex - 1;
+        let accumulatedHeight: number = 0;
+        while (prevIndex >= 0 && this.viewerContainer.clientHeight > accumulatedHeight) {
+            if (this.renderedPagesList.indexOf(prevIndex) === -1 && !this.getMagnified()) {
+                this.renderPageElement(prevIndex);
+                this.createRequestForRender(prevIndex);
                 this.renderCountIncrement();
             }
-            if (pageNumber > 0) {
-                if (this.renderedPagesList.indexOf(pageNumber) === -1 && !this.getMagnified()) {
-                    this.createRequestForRender(pageNumber);
-                    this.renderCountIncrement();
-                }
-            }
+            accumulatedHeight += this.getPageHeight(prevIndex);
+            prevIndex = prevIndex - 1;
         }
     }
 
@@ -9313,10 +9329,11 @@ export class PdfViewerBase {
 
     /**
      * @param {boolean} [isPrint=false] - If true, builds the payload for print (may skip annotations depending on settings).
+     * @param {boolean} isExportImportAnnotation - It describes about export and import annotations
      * @private
      * @returns {object} - The constructed JSON payload to be sent for download/print.
      */
-    public constructJsonDownload(isPrint: boolean = false): object {
+    public constructJsonDownload(isPrint: boolean = false, isExportImportAnnotation?: boolean): object {
         const jsonObject: any = { hashId: this.hashId };
         if (this.jsonDocumentId) {
             jsonObject.documentId = this.jsonDocumentId;
@@ -9364,12 +9381,28 @@ export class PdfViewerBase {
             }
             if (this.isCommentAnnotationModule()) {
                 const stickyAnnotationCollection: string =
-                this.pdfViewer.annotationModule.stickyNotesAnnotationModule.saveStickyAnnotations();
+                    this.pdfViewer.annotationModule.stickyNotesAnnotationModule.saveStickyAnnotations();
                 jsonObject['stickyNotesAnnotation'] = stickyAnnotationCollection;
             }
             if (this.pdfViewer.annotationCollection) {
                 jsonObject['annotationCollection'] = JSON.stringify(this.pdfViewer.annotationCollection);
             }
+            const annotationDetails: any = this.pdfViewer.annotationCollection;
+            const modifiedAnnotations: any[] = [];
+            const newAnnotations: any[] = [];
+            for (let i: number = 0; i < annotationDetails.length; i++) {
+                const annotation: any = annotationDetails[parseInt(i.toString(), 10)];
+                if (annotation.status === 'ExistingModified') {
+                    modifiedAnnotations.push(annotation);
+                } else if (annotation.status === 'NewlyAdded') {
+                    newAnnotations.push(annotation);
+                } else if (annotation.shapeAnnotationType === 'Redaction' && this.canRedact) {
+                    modifiedAnnotations.push(annotation);
+                }
+            }
+            jsonObject['modifiedAnnotations'] = JSON.stringify(modifiedAnnotations);
+            jsonObject['newAnnotations'] = JSON.stringify(newAnnotations);
+
         }
         if (this.isImportAction) {
             const importList: string = JSON.stringify(this.importPageList);
@@ -9422,7 +9455,7 @@ export class PdfViewerBase {
         }
         jsonObject['elementId'] = this.pdfViewer.element.id;
         if (this.pdfViewer.annotationModule) {
-            const annotationsPageList: any = this.getAnnotationsPageList();
+            const annotationsPageList: any = this.getAnnotationsPageList(isExportImportAnnotation);
             jsonObject['isAnnotationsExist'] = this.isAnnotationsExist(jsonObject['textMarkupAnnotations']) || this.isAnnotationsExist(jsonObject['shapeAnnotations']) || this.isAnnotationsExist(jsonObject['measureShapeAnnotations']) || this.isAnnotationsExist(jsonObject['stampAnnotations']) || this.isAnnotationsExist(jsonObject['stickyNotesAnnotation']) || this.isAnnotationsExist(jsonObject['signatureData']) || this.isAnnotationsExist(jsonObject['freeTextAnnotation']) || this.isAnnotationsExist(jsonObject['inkSignatureData']) || this.isAnnotationsExist(jsonObject['redactionAnnotations']) || annotationsPageList.length > 0;
             jsonObject['annotationsPageList'] = JSON.stringify(annotationsPageList);
         }
@@ -9453,14 +9486,45 @@ export class PdfViewerBase {
     }
 
     /**
+     * @param {boolean} isExportImportAnnotation - It describes about export and import annotations
      * @private
      * @returns {boolean} - Returns annotations page number list.
      */
-    private getAnnotationsPageList(): any {
-        const annotCollection: any[] = this.pdfViewer.annotationCollection.map((a: any) => a.pageNumber);
-        const annotActionCollection: number[] = this.pdfViewer.annotationModule.actionCollection.filter((value: any) => value.annotation.propName !== 'formFields' && isNullOrUndefined(value.annotation.formFieldAnnotationType)).map((a: any) => a.pageIndex);
-        const fullPageList: any[] = annotCollection.concat(annotActionCollection, this.modifiedPageIndex);
-        return fullPageList.filter((value: any, index: number, self: any[]) => self.indexOf(value) === index && value !== undefined);
+    private getAnnotationsPageList(isExportImportAnnotation: boolean): any {
+        if (this.clientSideRendering && !isExportImportAnnotation) {
+            const annotActionCollection: any[] = this.pdfViewer.annotationModule.actionCollection
+                .filter((value: any) =>
+                    value.annotation.propName !== 'formFields' &&
+                    (value.action === 'Delete' || value.action === 'Text Markup Deleted') &&
+                    isNullOrUndefined(value.annotation.formFieldAnnotationType) &&
+                    !isNullOrUndefined(value.annotation.annotationIndex)
+                )
+                .map((a: any) => ({
+                    pageIndex: a.pageIndex,
+                    annotationIndex: a.annotation.annotationIndex
+                }));
+            const modifiedPages: any[] = this.modifiedPageIndex.map((pageIndex: number) => ({
+                pageIndex,
+                annotationIndex: null // or undefined, if no annotationIndex is available
+            }));
+            const fullPageList: any[] = [...annotActionCollection, ...modifiedPages];
+            // Remove duplicates based on pageIndex and annotationIndex
+            const uniqueList: any[] = fullPageList.filter((value: any, index: number, self: any[]) =>
+                value.pageIndex !== undefined &&
+                self.findIndex((v: any) =>
+                    v.pageIndex === value.pageIndex &&
+                    v.annotationIndex === value.annotationIndex
+                ) === index
+            );
+
+            return uniqueList;
+        }
+        else {
+            const annotCollection: any[] = this.pdfViewer.annotationCollection.map((a: any) => a.pageNumber);
+            const annotActionCollection: number[] = this.pdfViewer.annotationModule.actionCollection.filter((value: any) => value.annotation.propName !== 'formFields' && isNullOrUndefined(value.annotation.formFieldAnnotationType)).map((a: any) => a.pageIndex);
+            const fullPageList: any[] = annotCollection.concat(annotActionCollection, this.modifiedPageIndex);
+            return fullPageList.filter((value: any, index: number, self: any[]) => self.indexOf(value) === index && value !== undefined);
+        }
     }
 
     /**
@@ -11193,6 +11257,11 @@ export class PdfViewerBase {
             else {
                 offsetX = (e as PointerEvent).offsetX;
                 offsetY = (e as PointerEvent).offsetY;
+                if (offsetX < 0 || offsetY < 0) {
+                    const targetParentRect: DOMRect = currentTarget.getBoundingClientRect() as DOMRect;
+                    offsetX = (e as PointerEvent).clientX - targetParentRect.left;
+                    offsetY = (e as PointerEvent).clientY - targetParentRect.top;
+                }
             }
         }
         return { x: offsetX, y: offsetY };
@@ -11313,6 +11382,9 @@ export class PdfViewerBase {
                 }
             }
             if (this.pdfViewer.selectedItems.annotations.indexOf(obj) > -1) {
+                if (obj.shapeAnnotationType === 'FreeText' && this.pdfViewer.freeTextSettings.allowEditTextOnly) {
+                    return 'Select';
+                }
                 return 'Drag';
             } else if (this.pdfViewer.selectedItems.formFields.indexOf(obj) > -1 && this.pdfViewer.designerMode) {
                 return 'Drag';
@@ -11357,6 +11429,11 @@ export class PdfViewerBase {
         let isSticky: boolean = false;
         let isNodeShape: boolean = false;
         let isInk: boolean = false;
+        if (this.pdfViewer.selectedItems.annotations[0] &&
+            this.pdfViewer.selectedItems.annotations[0].shapeAnnotationType === 'FreeText' &&
+            this.pdfViewer.freeTextSettings.allowEditTextOnly) {
+            return null;
+        }
         let resizerLocation: AnnotationResizerLocation = this.pdfViewer.annotationSelectorSettings.resizerLocation;
         if (resizerLocation < 1 || resizerLocation > 3) {
             resizerLocation = 3 as AnnotationResizerLocation;
@@ -12251,7 +12328,7 @@ export class PdfViewerBase {
             this.pdfViewer.annotationModule.freeTextAnnotationModule.isInuptBoxInFocus) {
             isSkip = true;
         }
-        if (target.parentElement && !target.parentElement.classList.contains('foreign-object') && !target.classList.contains('e-pv-radio-btn') && !target.classList.contains('e-pv-radiobtn-span') && !target.classList.contains('e-pv-checkbox-div') && !target.classList.contains('e-pdfviewer-formFields')
+        if (!(Array.from(document.activeElement.classList).some((cls: any) => cls.includes('e-pv-formdesigner') || cls.includes('e-pv-annotation-handwritten-container'))) && target.parentElement && !target.parentElement.classList.contains('foreign-object') && !target.classList.contains('e-pv-radio-btn') && !target.classList.contains('e-pv-radiobtn-span') && !target.classList.contains('e-pv-checkbox-div') && !target.classList.contains('e-pdfviewer-formFields')
             && !target.classList.contains('e-pdfviewer-ListBox') && !target.classList.contains('e-pdfviewer-signatureformfields')
             && !((target).className === 'free-text-input' && (target).tagName === 'TEXTAREA')
             && !isSkip && !((target).className === 'e-pv-hyperlink') && target.parentElement.classList.length > 0 && !target.parentElement.classList.contains('e-editable-elements') && !this.isAddComment) {
@@ -12648,7 +12725,9 @@ export class PdfViewerBase {
      * @returns {void}
      */
     public setItemInSessionStorage(formFieldsData: any, type: string): void {
-        const formFieldsSize: number = Math.round(JSON.stringify(formFieldsData).length / 1024);
+        // Normalize stored value: if caller already passed a JSON string, avoid stringifying again
+        const valueToStore: string = (typeof formFieldsData === 'string') ? formFieldsData : JSON.stringify(formFieldsData);
+        const formFieldsSize: number = Math.round(valueToStore.length / 1024);
         const sessionSize: number = this.sessionStorageManager.getWindowSessionStorageSize();
         if (formFieldsSize > 4500) {
             this.isStorageExceed = true;
@@ -12660,7 +12739,7 @@ export class PdfViewerBase {
             }
         }
         if (this.isStorageExceed) {
-            this.formFieldStorage[this.documentId + type] = JSON.stringify(formFieldsData);
+            this.formFieldStorage[this.documentId + type] = valueToStore;
         }
         else if ((formFieldsSize + sessionSize) > 4500) {
             this.isStorageExceed = true;
@@ -12668,10 +12747,10 @@ export class PdfViewerBase {
                 this.pdfViewer.formFieldsModule.clearFormFieldStorage();
             }
             this.isFormStorageExceed = true;
-            this.formFieldStorage[this.documentId + type] = JSON.stringify(formFieldsData);
+            this.formFieldStorage[this.documentId + type] = valueToStore;
         } else {
             if (!isNullOrUndefined(formFieldsData)) {
-                this.sessionStorageManager.setItem(this.documentId + type, JSON.stringify(formFieldsData));
+                this.sessionStorageManager.setItem(this.documentId + type, valueToStore);
             }
         }
     }
@@ -12732,7 +12811,7 @@ export class PdfViewerBase {
         proxy = this;
         const promise: Promise<Blob> = new Promise((resolve: Function, reject: Function) => {
             let canExport: boolean = false;
-            const jsonObject: any = this.constructJsonDownload();
+            const jsonObject: any = this.constructJsonDownload(undefined, true);
             jsonObject.annotationDataFormat = annotationDataFormat;
             jsonObject['action'] = 'ExportAnnotations';
             canExport = proxy.pdfViewer.fireExportStart(jsonObject);
@@ -13147,7 +13226,7 @@ export class PdfViewerBase {
             } else {
                 jsonObject = { importedData: importData, action: 'ImportAnnotations', elementId: proxy.pdfViewer.element.id, hashId: proxy.hashId, uniqueId: proxy.documentId, annotationDataFormat: annotationDataFormat };
             }
-            jsonObject = Object.assign(jsonObject, this.constructJsonDownload());
+            jsonObject = Object.assign(jsonObject, this.constructJsonDownload(undefined, true));
             (jsonObject as any)['action'] = 'ImportAnnotations';
             if (proxy.jsonDocumentId) {
                 if ((jsonObject as any).documentId) {
@@ -14682,6 +14761,7 @@ export class PdfViewerBase {
     private updateAnnotationsUndoRedo(): void {
         for (let j: number = 0; j < this.pdfViewer.annotationCollection.length; j++) {
             let currentAnnotation: any = null;
+            let annotationObject: any;
             // eslint-disable-next-line
             const proxy: any = this;
             if (proxy.pdfViewer.annotationCollection[parseInt(j.toString(), 10)].shapeAnnotationType === 'textMarkup') {
@@ -14706,6 +14786,16 @@ export class PdfViewerBase {
                         }
                     }
                 }
+                else {
+                    let undoElement: any = proxy.pdfViewer.annotation.modifyInCollections(currentAnnotation, 'delete');
+                    if (isNullOrUndefined(undoElement)) {
+                        undoElement = proxy.pdfViewer.annotationCollection[parseInt(j.toString(), 10)];
+                        undoElement.annotName = proxy.pdfViewer.annotationCollection[parseInt(j.toString(), 10)].annotationId;
+                        delete undoElement.annotationId;
+                    }
+                    proxy.pdfViewer.annotation.undoCommentsElement.push(undoElement);
+                    proxy.pdfViewer.annotation.addAction(currentAnnotation.pageNumber, null, currentAnnotation, 'Text Markup Deleted', '', undoElement, currentAnnotation);
+                }
                 proxy.pdfViewer.annotation.textMarkupAnnotationModule.manageAnnotations(pageAnnotations, currentAnnotation.pageNumber);
             }
             else {
@@ -14713,7 +14803,7 @@ export class PdfViewerBase {
                 { return s.annotName === proxy.pdfViewer.annotationCollection[parseInt(j.toString(), 10)].annotationId; })[0];
                 if (isNullOrUndefined(currentAnnotation)) {
                     currentAnnotation = new PdfAnnotationBase(this.pdfViewer, 'annotations', proxy.pdfViewer.annotationCollection[parseInt(j.toString(), 10)] as PdfAnnotationBase, true);
-                    currentAnnotation.pageIndex = currentAnnotation.pageNumber;
+                    currentAnnotation.pageIndex = currentAnnotation.pageNumber || currentAnnotation.pageIndex;
                     currentAnnotation.id = proxy.pdfViewer.annotationCollection[parseInt(j.toString(), 10)].uniqueId;
                     currentAnnotation.annotName = proxy.pdfViewer.annotationCollection[parseInt(j.toString(), 10)].annotationId;
                     currentAnnotation.annotationId = null;

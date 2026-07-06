@@ -270,17 +270,17 @@ describe('Html-Editor specs', ()=> {
         let rteObj: RichTextEditor;
         const originalHTML: string = `<div class="relative pl-9" style="border: 0px solid rgb(229, 231, 235); position: relative; padding-left: 2.25rem; color: rgb(75, 85, 99); font-family: "Open Sans", -apple-system, "Segoe UI", system-ui, Roboto, "Helvetica Neue", Arial; font-size: 16px; font-style: normal; font-weight: 400; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; background-color: rgb(255, 255, 255);">
    <dt class="inline font-semibold text-gray-900" style="border: 0px solid rgb(229, 231, 235); display: inline; font-weight: 600; color: rgb(17, 24, 39);">Run Anywhere</dt>
-   <p><span> </span></p>
+   <p><span></span></p>
    <dd class="inline" style="border: 0px solid rgb(229, 231, 235); margin: 0px; display: inline;">Universally compatible with diverse operating systems and environments, including Linux, Windows, macOS, FreeBSD, Kubernetes, and etc. Compatible with multiple architectures, such as x86 and arm64.</dd>
 </div>
 <div class="relative pl-9" style="border: 0px solid rgb(229, 231, 235); position: relative; padding-left: 2.25rem; margin-bottom: 0px; margin-top: 32px; color: rgb(75, 85, 99); font-family: "Open Sans", -apple-system, "Segoe UI", system-ui, Roboto, "Helvetica Neue", Arial; font-size: 16px; font-style: normal; font-weight: 400; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; background-color: rgb(255, 255, 255);">
    <dt class="inline font-semibold text-gray-900" style="border: 0px solid rgb(229, 231, 235); display: inline; font-weight: 600; color: rgb(17, 24, 39);"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" class="absolute left-1 top-1 h-5 w-5 text-blue-600"><path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd"></path></svg>Supported Frequent Databases</dt>
-   <p><span> </span></p>
+   <p><span></span></p>
    <dd class="inline" style="border: 0px solid rgb(229, 231, 235); margin: 0px; display: inline;">Offers seamless integration with various databases, including SQLite, MySQL, PostgreSQL, TiDB, MS SQL, and etc.</dd>
 </div>
 <div class="relative pl-9" style="border: 0px solid rgb(229, 231, 235); position: relative; padding-left: 2.25rem; margin-bottom: 0px; margin-top: 32px; color: rgb(75, 85, 99); font-family: "Open Sans", -apple-system, "Segoe UI", system-ui, Roboto, "Helvetica Neue", Arial; font-size: 16px; font-style: normal; font-weight: 400; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; background-color: rgb(255, 255, 255);">
    <dt class="inline font-semibold text-gray-900" style="border: 0px solid rgb(229, 231, 235); display: inline; font-weight: 600; color: rgb(17, 24, 39);"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" class="absolute left-1 top-1 h-5 w-5 text-blue-600"><path d="M4.632 3.533A2 2 0 016.577 2h6.846a2 2 0 011.945 1.533l1.976 8.234A3.489 3.489 0 0016 11.5H4c-.476 0-.93.095-1.344.267l1.976-8.234z"></path><path fill-rule="evenodd" d="M4 13a2 2 0 100 4h12a2 2 0 100-4H4zm11.24 2a.75.75 0 01.75-.75H16a.75.75 0 01.75.75v.01a.75.75 0 01-.75.75h-.01a.75.75 0 01-.75-.75V15zm-2.25-.75a.75.75 0 00-.75.75v.01c0 .414.336.75.75.75H13a.75.75 0 00.75-.75V15a.75.75 0 00-.75-.75h-.01z" clip-rule="evenodd"></path></svg>Flexible Deployment</dt>
-   <p><span> </span></p>
+   <p><span></span></p>
    <dd class="inline" style="border: 0px solid rgb(229, 231, 235); margin: 0px; display: inline;">Provides flexible deployment options, supporting both single server setups and replication configurations.</dd>
 </div>`;
         beforeEach(() => {
@@ -299,6 +299,43 @@ describe('Html-Editor specs', ()=> {
             rteObj.inputElement.dispatchEvent(backSpaceKeyDown);
             setTimeout(() => {
                 expect(rteObj.inputElement.innerHTML === expectedHTML).toBe(true);
+                done();
+            }, 100);
+        });
+    });
+
+    describe('1021173: Backspace near HR inside list item', () => {
+        let rteObj: RichTextEditor;
+        const rteValue: string = `
+<h1>Welcome to the Syncfusion Rich Text Editor</h1>
+<p>The Rich Text Editor, a WYSIWYG (what you see is what you get) editor, is a user interface that allows you to create, edit, and format rich text content. You can try out a demo of this editor here.</p>
+<h2>Do you know the key features of the editor?</h2>
+<hr/>
+<ul>
+   <li><hr/>
+      Basic features include headings, block quotes, numbered lists, bullet lists, and support to insert images, tables, audio, and video.
+   </li>
+   <li>Inline styles include <b>bold</b>, <em>italic</em>, <span style="text-decoration: underline">underline</span>, <span style="text-decoration: line-through">strikethrough</span>, <a class="e-rte-anchor" href="https://ej2.syncfusion.com/demos/#/material/rich-text-editor/tools.html" title="https://ej2.syncfusion.com/demos/#/material/rich-text-editor/tools.html" aria-label="Open in new window">hyperlinks</a>, 😀 and more.</li>
+</ul>`;
+        beforeEach(() => {
+            rteObj = renderRTE({
+                height: 400,
+                value: rteValue
+            });
+        });
+        afterEach(() => {
+            destroy(rteObj);
+        });
+        it('Backspace at li boundary should leave only one hr element', (done: DoneFn) => {
+            (rteObj.contentModule.getEditPanel() as HTMLElement).focus();
+            const li: HTMLElement = rteObj.inputElement.querySelector('ul li') as HTMLElement;
+            setCursorPoint(li, 1);
+            const backSpaceKeyDown: KeyboardEvent = new KeyboardEvent('keydown', BACKSPACE_EVENT_INIT);
+            const backSpaceKeyUp: KeyboardEvent = new KeyboardEvent('keyup', BACKSPACE_EVENT_INIT);
+            rteObj.inputElement.dispatchEvent(backSpaceKeyDown);
+            rteObj.inputElement.dispatchEvent(backSpaceKeyUp);
+            setTimeout(() => {
+                expect(window.getSelection().getRangeAt(0).startContainer === li).toBe(true);
                 done();
             }, 100);
         });

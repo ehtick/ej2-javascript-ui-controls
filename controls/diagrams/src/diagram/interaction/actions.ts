@@ -122,8 +122,9 @@ export function findToolToActivate(
             //check for resizing tool
             const x: number = offX - element.pivot.x * element.actualSize.width;
             const y: number = offY - element.pivot.y * element.actualSize.height;
+            // Bug 969676: Position relative to left edge: x + pivot offset
             let rotateThumb: PointModel = {
-                x: x + ((element.pivot.x === 0.5 ? element.pivot.x * 2 : element.pivot.x) * element.actualSize.width / 2),
+                x: x + element.pivot.x * element.actualSize.width,
                 y: y - 30 / diagram.scroller.currentZoom
             };
             rotateThumb = transformPointByMatrix(matrix, rotateThumb);

@@ -27,71 +27,335 @@ import { PdfEmbeddedImage } from './image-extraction/pdf-embedded-image';
  * ```
  */
 export class PdfDataExtractor {
+    /** The PDF document being processed.
+     *
+     * @private
+     */
     _document: PdfDocument;
+    /** Current page rotation being processed.
+     *
+     * @private
+     */
     _rotation: number = 0;
+    /** Current text matrix for rendering calculations.
+     *
+     * @private
+     */
     _textMatrix: _MatrixHelper;
+    /** Current text leading value.
+     *
+     * @private
+     */
     _textLeading: number = 0;
+    /** Current text color as RGB array.
+     *
+     * @private
+     */
     _textColor: number[] = [0, 0, 0];
+    /** Current text line matrix.
+     *
+     * @private
+     */
     _textLineMatrix: _MatrixHelper;
+    /** Buffer for the currently extracted text fragment.
+     *
+     * @private
+     */
     _extractedText: string = '';
+    /** Flag indicating a recent leading operation.
+     *
+     * @private
+     */
     _hasLeading: boolean;
+    /** Flag indicating absence of spacing between fragments.
+     *
+     * @private
+     */
     _hasNoSpacing: boolean;
+    /** Collected text lines when extracting layout.
+     *
+     * @private
+     */
     _textLines: TextLine[] = [];
+    /** Stack of transformation matrices used during rendering.
+     *
+     * @private
+     */
     _transformations: _TransformationStack;
+    /** Identity matrix helper.
+     *
+     * @private
+     */
     _identityMatrix: number[] = [1, 0, 0, 1, 0, 0];
+    /** Current text cursor location [x,y].
+     *
+     * @private
+     */
     _currentLocation: number[] = [0, 0]
+    /** Current font name used for extraction.
+     *
+     * @private
+     */
     _currentFont: string;
+    /** Temporary bounding rectangle used while computing word/line bounds.
+     *
+     * @private
+     */
     _tempBoundingRectangle: Rectangle;
+    /** Current bounding rectangle for the most recent glyph.
+     *
+     * @private
+     */
     _boundingRectangle: Rectangle = {x: 0, y: 0, width: 0 , height: 0};
+    /** Previous glyph bounding rectangle.
+     *
+     * @private
+     */
     _previousRect: Rectangle = {x: 0, y: 0, width: 0 , height: 0};
+    /** Current font size in use.
+     *
+     * @private
+     */
     _fontSize: number;
+    /** Horizontal text scaling (percentage).
+     *
+     * @private
+     */
     _textHorizontalScaling: number = 100;
+    /** Previous text matrix snapshot.
+     *
+     * @private
+     */
     _previousTextMatrix: _MatrixHelper = new _MatrixHelper(0, 0, 0, 0, 0, 0);
+    /** Previous font size encountered.
+     *
+     * @private
+     */
     _previousFontSize: number;
+    /** Previously extracted text fragment.
+     *
+     * @private
+     */
     _previousExtractText: string;
+    /** Vertical text rise applied to glyphs.
+     *
+     * @private
+     */
     _arise: number = 0;
+    /** Flag indicating whether current matrix is text matrix.
+     *
+     * @private
+     */
     _isTextMatrix: boolean;
+    /** Current text matrix used for comparisons.
+     *
+     * @private
+     */
     _currentTextMatrix: _MatrixHelper = new _MatrixHelper(0, 0, 0, 0, 0, 0);
+    /** Aggregated text buffer for multi-operator sequences.
+     *
+     * @private
+     */
     _text: string = '';
+    /** Flag indicating a recent TJ operator was processed.
+     *
+     * @private
+     */
     _hasTj: boolean;
+    /** Flag indicating a recent Tm operator was processed.
+     *
+     * @private
+     */
     _hasTm: boolean;
+    /** Flag indicating a recent ET operator (end text) was processed.
+     *
+     * @private
+     */
     _hasET: boolean;
+    /** Character spacing value.
+     *
+     * @private
+     */
     _characterSpacing: number = 0;
+    /** Word spacing value.
+     *
+     * @private
+     */
     _wordSpacing: number = 0;
+    /** Flag indicating a marked content block has begun.
+     *
+     * @private
+     */
     _hasBeginMarkedContent: boolean;
+    /** Temporary x-difference used for spacing heuristics.
+     *
+     * @private
+     */
     _differenceX: number;
+    /** Internal text scale factor.
+     *
+     * @private
+     */
     _textScale: number = 1;
+    /** Internal text rise value.
+     *
+     * @private
+     */
     _textRise: number = 0;
+    /** Accumulated width for word bounds.
+     *
+     * @private
+     */
     _width: number = 0;
+    /** Accumulated height for word bounds.
+     *
+     * @private
+     */
     _height: number = 0;
+    /** PDF cross-reference for object resolution.
+     *
+     * @private
+     */
     _crossReference: _PdfCrossReference;
+    /** Resultant extracted text for the document.
+     *
+     * @private
+     */
     _resultantText: string = '';
+    /** Currently extracted fragment for the active operator.
+     *
+     * @private
+     */
     _currentExtractedText: string;
+    /** Initial transform applied to page content during extraction.
+     *
+     * @private
+     */
     _initialTransForm: _MatrixHelper;
+    /** Accumulated glyphs for the current word.
+     *
+     * @private
+     */
     _textGlyph: TextGlyph[] = [];
+    /** Collected words for the current line.
+     *
+     * @private
+     */
     _textWord: TextWord[] = [];
+    /** Collected text lines for extraction.
+     *
+     * @private
+     */
     _textLine: TextLine[] = []
+    /** Array of extracted text fragments.
+     *
+     * @private
+     */
     _textExtraction: string[] = [];
+    /** Cache of font structures keyed by resource name.
+     *
+     * @private
+     */
     _fontCollection: Map<string, _FontStructure> = new Map<string, _FontStructure>();
+    /** Current CTM (current transformation matrix).
+     *
+     * @private
+     */
     _ctm: _MatrixHelper = new _MatrixHelper(1, 0, 0, 1, 0, 0);
+    /** Stack of object matrices pushed by graphics state.
+     *
+     * @private
+     */
     _objects: _MatrixHelper[] = [];
+    /** Flag toggling layout-aware extraction.
+     *
+     * @private
+     */
     _isLayout: boolean = false;
+    /** Flag indicating the page is rotated.
+     *
+     * @private
+     */
     _isRotatePage: boolean = false;
+    /** Flag for extracting text lines instead of plain text.
+     *
+     * @private
+     */
     _isExtractTextLines: boolean;
+    /** Content parser helper instance.
+     *
+     * @private
+     */
     _contentParser: _PdfContentParserHelper;
+    /** Internal text parser utility.
+     *
+     * @private
+     */
     _parser: _PdfTextParser = new _PdfTextParser();
+    /** Root structure element for tagged PDF extraction.
+     *
+     * @private
+     */
     _structureElement: PdfStructureElement;
+    /** Collection of PDF references encountered.
+     *
+     * @private
+     */
     _referenceCollection: _PdfReference[];
+    /** Order counter used when building structure tree.
+     *
+     * @private
+     */
     _elementOrder: number = 0;
+    /** Cached page-level structure elements.
+     *
+     * @private
+     */
     _pageElements: PdfStructureElement[] = [];
+    /** All discovered structure elements in the document.
+     *
+     * @private
+     */
     _elementCollection: PdfStructureElement[] = [];
+    /** Set used to deduplicate element order indices.
+     *
+     * @private
+     */
     _orderSet: Set<number> = new Set<number>();
+    /** Map of MCID to collected text fragments.
+     *
+     * @private
+     */
     _mcidTextMap: Map<number, string[]> = new Map<number, string[]>();
+    /** Flag indicating extraction of tagged text is enabled.
+     *
+     * @private
+     */
     _extractTaggedText: boolean = false;
+    /** Current marked content id during parsing.
+     *
+     * @private
+     */
     _currentContentId: number;
+    /** Map of element bounds keyed by id arrays.
+     *
+     * @private
+     */
     _elementBoundsMap: Map<number[], number> = new Map<number[], number>();
+    /** Flag indicating the document has content IDs.
+     *
+     * @private
+     */
     _hasContentID: boolean  = false;
+    /** Collection of embedded images discovered.
+     *
+     * @private
+     */
     _imageInfo: PdfEmbeddedImage[] = [];
+    /** Optional canvas provider used for image extraction.
+     *
+     * @private
+     */
     _canvas: any; // eslint-disable-line 
     /**
      * Initialize a new instance of the `PdfDataExtractor` class
@@ -209,7 +473,17 @@ export class PdfDataExtractor {
         this._isLayout = false;
         return this._resultantText;
     }
-    _renderTextAsLayOut(recordCollection: _PdfRecord[],  page: PdfPage, fontCollection: Map<string, _FontStructure>, xObjectCollection: Map<string, any>): any { //eslint-disable-line
+    /* eslint-disable */
+    /** Render text in layout mode for a page record collection.
+     *
+     * @private
+     * @param {_PdfRecord[]} recordCollection - Parsed content stream records for the page.
+     * @param {PdfPage} page - Page being processed.
+     * @param {Map<string, _FontStructure>} fontCollection - Fonts resolved for the page.
+     * @param {Map<string, any>} xObjectCollection - XObject resources for the page.
+     * @returns {any} returns layout parameter.
+     */
+    _renderTextAsLayOut(recordCollection: _PdfRecord[],  page: PdfPage, fontCollection: Map<string, _FontStructure>, xObjectCollection: Map<string, any>): any {
         const currentTd: number[] = [];
         let currentYLocation: number;
         let hexElement: string[];
@@ -377,7 +651,7 @@ export class PdfDataExtractor {
             case 'Tz':
                 this._textHorizontalScaling = Number(element[0]);
                 break;
-            case "'": // eslint-disable-line
+            case "'":
             {
                 this._moveToNextLine(0, this._textLeading, textlineMatrix);
                 textlineMatrix = this._textLineMatrix;
@@ -553,14 +827,24 @@ export class PdfDataExtractor {
             this._mcidTextMap = mcidTextMap;
         }
     }
-    _renderText(page: PdfPage, fontCollection: Map<string, _FontStructure>, xObjectCollection: Map<string, any>, graphicState: _GraphicState, imageExtraction?: boolean): any { // eslint-disable-line
+    /** Render page text using parsed records and the given graphic state.
+     *
+     * @private
+     * @param {PdfPage} page - Page to process.
+     * @param {Map<string, _FontStructure>} fontCollection - Font resources for page.
+     * @param {Map<string, any>} xObjectCollection - XObject resources for page.
+     * @param {_GraphicState} graphicState - Current graphics/text state.
+     * @param {boolean} [imageExtraction] - Whether called for image extraction.
+     * @returns {any} values from rendering text
+     */
+    _renderText(page: PdfPage, fontCollection: Map<string, _FontStructure>, xObjectCollection: Map<string, any>, graphicState: _GraphicState, imageExtraction?: boolean): any {
         if (!(this._contentParser)) {
             this._contentParser = new _PdfContentParserHelper((this._isExtractTextLines ||
                 this._extractTaggedText) ? _TextProcessingMode.textLineExtraction
                 : _TextProcessingMode.textExtraction);
         }
         const recordCollection: _PdfRecord[] = this._contentParser._getPageRecordCollection(page);
-        let text: any; // eslint-disable-line
+        let text: any;
         if (this._isLayout) {
             this._renderTextAsLayOut(recordCollection, page, fontCollection, xObjectCollection);
         } else if (this._isExtractTextLines) {
@@ -575,6 +859,16 @@ export class PdfDataExtractor {
             this._resultantText = text;
         }
     }
+    /* eslint-enable */
+    /** Extract image collection from a page's parsed record collection.
+     *
+     * @private
+     * @param {PdfPage} page - Page to extract images from.
+     * @param {Map<string, _FontStructure>} fontCollection - Font resources available.
+     * @param {Map<string, any>} xObjectCollection - XObject resources to resolve images.
+     * @param {_GraphicState} graphicState - Graphics/text state for extraction.
+     * @returns {Promise<any>} Resolves when image extraction completes.
+     */
     async _extractImagcollection(page: PdfPage, fontCollection: Map<string, _FontStructure>,
         xObjectCollection: Map<string, any>, graphicState: _GraphicState): Promise<any> { // eslint-disable-line
         const recordCollection: _PdfRecord[] = this._contentParser._getPageRecordCollection(page);
@@ -582,13 +876,33 @@ export class PdfDataExtractor {
                                                                                   xObjectCollection, graphicState,
                                                                                   this._canvas);
     }
+    /** Set the text leading (TL operator) for subsequent line moves.
+     *
+     * @private
+     * @param {number} textLeading - Leading value to set.
+     * @returns {void}
+     */
     _setTextLeading(textLeading: number): void {
         this._textLeading = -textLeading;
     }
+    /** Move the text position to the next line by applying a translation.
+     *
+     * @private
+     * @param {number} tx - Translation in x.
+     * @param {number} ty - Translation in y.
+     * @param {_MatrixHelper} textLineMatrix - Current text line matrix.
+     * @returns {void}
+     */
     _moveToNextLine(tx: number, ty: number, textLineMatrix: _MatrixHelper): void {
         const matrix: _MatrixHelper = new _MatrixHelper(1, 0 , 0, 1, tx, ty);
         this._textLineMatrix = this._textMatrix = matrix._multiply(textLineMatrix);
     }
+    /** Update the internal text matrix based on a TJ adjustment.
+     *
+     * @private
+     * @param {number} tj - Adjustment value from TJ array.
+     * @returns {_MatrixHelper} Updated text line matrix.
+     */
     _updateTextMatrix(tj: number): _MatrixHelper {
         const x: number = - (tj * 0.001 * this._fontSize * this._textHorizontalScaling / 100);
         const point: number[] = this._textLineMatrix._transform(0.0, 0.0);
@@ -600,6 +914,13 @@ export class PdfDataExtractor {
         }
         return this._textLineMatrix;
     }
+    /** Advance the internal text line matrix after a character is placed.
+     *
+     * @private
+     * @param {string} char - Character drawn.
+     * @param {number} width - Character width used for advance.
+     * @returns {void}
+     */
     _updateTextLineMatrix(char: string, width: number): void {
         let wordSpacing: number = 0;
         if (char.indexOf(' ') !== -1) {
@@ -610,6 +931,14 @@ export class PdfDataExtractor {
         const result: _MatrixHelper = matrix._multiply(this._textLineMatrix);
         this._textLineMatrix = result;
     }
+    /** Decode and render a TJ/Tj element into an extracted string.
+     *
+     * @private
+     * @param {string[]} elements - Encoded element operands.
+     * @param {PdfPage} page - Page used to compute transforms/metrics.
+     * @param {Map<string, _FontStructure>} fontCollection - Font structures available.
+     * @returns {string} The extracted string content.
+     */
     _renderTextElementFromTJ(elements: string[], page: PdfPage, fontCollection: Map<string, _FontStructure>): string {
         let extractedText: string = '';
         const curretFont: _FontStructure = fontCollection.get(this._currentFont);
@@ -708,6 +1037,13 @@ export class PdfDataExtractor {
         }
         return extractedText;
     }
+    /** Calculate the visual height of text given font metrics and matrices.
+     *
+     * @private
+     * @param {_FontStructure} font - Font metadata used for height calculation.
+     * @param {_MatrixHelper} textMatrix - The text rendering matrix.
+     * @returns {number} Computed height in device units.
+     */
     _getTextHeight(font: _FontStructure, textMatrix: _MatrixHelper): number {
         const tsm: number[] = [this._fontSize * this._textHorizontalScaling / 100, 0, 0, this._fontSize, 0, this._arise];
         if (this._fontSize <= 1 && !_isArrayEqual(font._fontMatrix, [0.001, 0, 0, 0.001, 0, 0])) {
@@ -725,10 +1061,25 @@ export class PdfDataExtractor {
         const height: number = Math.hypot(transform[2], transform[3]);
         return height;
     }
+    /** Multiply two affine matrices represented as [a,b,c,d,e,f].
+     *
+     * @private
+     * @param {number[]} m1 - Left matrix in affine form.
+     * @param {number[]} m2 - Right matrix in affine form.
+     * @returns {number[]} Resulting product matrix.
+     */
     _transform(m1: number[], m2: number[]): number[] {
         return [m1[0] * m2[0] + m1[2] * m2[1], m1[1] * m2[0] + m1[3] * m2[1], m1[0] * m2[2] + m1[2] * m2[3], m1[1] * m2[2] + m1[3] * m2[3]
             , m1[0] * m2[4] + m1[2] * m2[5] + m1[4], m1[1] * m2[4] + m1[3] * m2[5] + m1[5]];
     }
+    /** Build internal TextLine/TextWord structures when rendering rotated text streams.
+     *
+     * @private
+     * @param {string[]} elements - Encoded text operands.
+     * @param {PdfPage} page - Page context for the glyphs.
+     * @param {Map<string, _FontStructure>} fontCollection - Fonts available.
+     * @returns {void}
+     */
     _buildTextContentStream(elements: string[], page: PdfPage, fontCollection: Map<string, _FontStructure>): void {
         const curretFont: _FontStructure = fontCollection.get(this._currentFont);
         let textValues: string[] = [];
@@ -795,6 +1146,16 @@ export class PdfDataExtractor {
         this._textExtraction.push(this._extractedText);
         this._extractedText = '';
     }
+    /** Compute text width and update glyph/word state for a sequence.
+     *
+     * @private
+     * @param {string} text - Text to measure.
+     * @param {number} extraSpacing - Extra spacing applied to the last glyph.
+     * @param {_FontStructure} currentFont - Font used for measurement.
+     * @param {PdfPage} page - Page used for context/rotation.
+     * @param {string} tempString - Current accumulating word string.
+     * @returns {string} Updated accumulating word string.
+     */
     _getTextWidth(text: string, extraSpacing: number, currentFont: _FontStructure, page: PdfPage, tempString: string): string {
         let scale: number = 0;
         if (currentFont._fontMatrix) {
@@ -867,6 +1228,18 @@ export class PdfDataExtractor {
         }
         return tempString;
     }
+    /** Create and split words/glyphs into TextGlyph/TextWord objects.
+     *
+     * @private
+     * @param {string} glyph - Single glyph character.
+     * @param {string} tempString - Accumulating word buffer.
+     * @param {string} fontName - Font name to assign to glyphs.
+     * @param {PdfFontStyle} fontStyle - Font style to assign to glyphs.
+     * @param {PdfPage} page - Page context for rotation and bounds.
+     * @param {number} [rotation] - Optional rotation hint.
+     * @param {number[]} [textColor] - Optional RGB color for glyph.
+     * @returns {string} Updated temporary word string.
+     */
     _splitWords(glyph: string, tempString: string, fontName: string, fontStyle: PdfFontStyle , page: PdfPage,
                 rotation?: number, textColor?: number[]): string {
         let isSpace: boolean = false;
@@ -982,12 +1355,23 @@ export class PdfDataExtractor {
         }
         return tempString;
     }
+    /** Build the text rendering matrix combining font size, Tm/Tlm and CTM.
+     *
+     * @private
+     * @returns {_MatrixHelper} The text rendering matrix.
+     */
     _getTextRenderingMatrix(): _MatrixHelper {
         let matrix: _MatrixHelper = new _MatrixHelper(this._fontSize, 0, 0, -this._fontSize, 0, this._fontSize + this._arise);
         matrix = matrix._multiply(this._textLineMatrix);
         matrix = matrix._multiply(this._ctm);
         return matrix;
     }
+    /** Parse and apply the Tf operator (font and size).
+     *
+     * @private
+     * @param {string[]} fontElements - Operands passed to Tf.
+     * @returns {void}
+     */
     _renderFont(fontElements: string[]): void {
         let i: number = 0;
         for (i; i < fontElements.length; i++) {
@@ -1132,6 +1516,14 @@ export class PdfDataExtractor {
         xObjectCache.clear();
         return this._imageInfo;
     }
+    /** Process page range and perform text/image extraction per page.
+     *
+     * @private
+     * @param {number} startIndex - First page index to process.
+     * @param {number} endIndex - Last page index to process.
+     * @param {boolean} [isImageExtraction] - When true, run image extraction flow.
+     * @returns {void}
+     */
     _processPages(startIndex: number, endIndex: number, isImageExtraction?: boolean): void {
         const fontCache: Map<string, Map<string, _FontStructure>> = new Map();
         const xObjectCache: Map<string, Map<string, _FontStructure>> = new Map();
@@ -1231,6 +1623,13 @@ export class PdfDataExtractor {
         }
         return this._pageElements;
     }
+    /** Collect structure elements that belong to a given page recursively.
+     *
+     * @private
+     * @param {PdfStructureElement} element - Structure element to traverse.
+     * @param {PdfPage} page - Page whose elements should be collected.
+     * @returns {void}
+     */
     _getPageElements(element: PdfStructureElement, page: PdfPage): void {
         if (element.page === page && element.tagType !== PdfTagType.documentType) {
             this._pageElements.push(element);
@@ -1240,6 +1639,11 @@ export class PdfDataExtractor {
             }
         }
     }
+    /** Retrieve the document's StructTreeRoot and build the structure tree.
+     *
+     * @private
+     * @returns {PdfStructureElement} Root structure element or undefined.
+     */
     _getStructureTreeRoot(): PdfStructureElement {
         let structureRoot: PdfStructureElement;
         const catalogDictionary: _PdfDictionary = this._document._catalog._catalogDictionary;
@@ -1260,6 +1664,13 @@ export class PdfDataExtractor {
         }
         return structureRoot;
     }
+    /** Load a structure element from a dictionary and recursively its children.
+     *
+     * @private
+     * @param {_PdfDictionary} structureDictionary - Dictionary representing the element.
+     * @param {PdfStructureElement} [parent] - Optional parent element.
+     * @returns {PdfStructureElement} Loaded structure element.
+     */
     _getStructureElement(structureDictionary: _PdfDictionary, parent?: PdfStructureElement): PdfStructureElement {
         let structureElement: PdfStructureElement;
         if (structureDictionary.has('K')) {
@@ -1357,6 +1768,12 @@ export class PdfDataExtractor {
         }
         return structureElement;
     }
+    /** Determine whether the StructTreeRoot contains a single top-level element.
+     *
+     * @private
+     * @param {_PdfDictionary} treeRoot - The StructTreeRoot dictionary.
+     * @returns {boolean} True when a single root element is present.
+     */
     _isSingleRootElement(treeRoot: _PdfDictionary): boolean {
         let isSingle: boolean = true;
         if (treeRoot.has('K')) {
@@ -1367,6 +1784,13 @@ export class PdfDataExtractor {
         }
         return isSingle;
     }
+    /** Compute bounds for a figure element by scanning page content streams.
+     *
+     * @private
+     * @param {PdfStructureElement} structElement - Structure element representing the figure.
+     * @param {PdfPage} page - Page containing the figure.
+     * @returns {Rectangle} Computed element bounds.
+     */
     _getFigureBounds(structElement: PdfStructureElement, page: PdfPage): Rectangle {
         const combinedContent: Uint8Array = page._combineContent();
         const parser: _ContentParser = new _ContentParser(combinedContent);

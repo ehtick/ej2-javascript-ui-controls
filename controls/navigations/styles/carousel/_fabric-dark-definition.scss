@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/fabric-dark' as *;
-@forward 'ej2-base/styles/definition/fabric-dark';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $carousel-navigator-btn-bg: transparent !default;
 $carousel-navigator-btn-bg-hover: rgba($neutral-primary, .4) !default;
 $carousel-navigator-icon-color: $neutral-primary !default;

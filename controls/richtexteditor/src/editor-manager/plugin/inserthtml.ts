@@ -61,7 +61,10 @@ export class InsertHtml {
         if (closestParentNode && closestParentNode.nodeName === 'BR') {
             closestParentNode = closestParentNode.parentNode;
         } else if (this.isStartContainerMediaEle(nodes[0] as HTMLElement)) {
-            closestParentNode = this.isStartContainerMediaEle(nodes[0] as HTMLElement).parentElement;
+            const mediaParent: HTMLElement| null = this.isStartContainerMediaEle(nodes[0] as HTMLElement).parentElement;
+            if (mediaParent && mediaParent.nodeName !== 'LI') {
+                closestParentNode = mediaParent;
+            }
         }
         // Handling the table insertion inside list items
         if (closestParentNode && closestParentNode.nodeName === 'LI' && isInsertedNodeTable) {
@@ -328,6 +331,18 @@ export class InsertHtml {
         } else if (parentNode && parentNode.nodeName !== 'LI') {
             let lasNode: Node = nodeCutter.GetSpliceNode(range, nodes[nodes.length - 1].parentElement as HTMLElement);
             lasNode = isNOU(lasNode) ? preNode : lasNode;
+            if (lasNode.nodeType === 1) {
+                const lasElem: HTMLElement = lasNode as HTMLElement;
+                const tagName: string = lasElem.tagName.toLowerCase();
+                // If the splice node is a media element, prefer its wrapper element
+                if (tagName === 'video') {
+                    const wrap: HTMLElement = lasElem.closest('.e-video-wrap') as HTMLElement;
+                    lasNode = wrap;
+                } else if (tagName === 'audio') {
+                    const wrap: HTMLElement = lasElem.closest('.e-audio-wrap') as HTMLElement;
+                    lasNode = wrap;
+                }
+            }
             nodeSelection.setSelectionText(
                 docElement, preNode, lasNode, 0,
                 (lasNode.nodeType === 3) ? lasNode.textContent.length : lasNode.childNodes.length);
@@ -920,8 +935,7 @@ export class InsertHtml {
                     lastSelectionNode = lastChildNode;
                 }
                 return lastSelectionNode;
-            }
-            else {
+            }else {
                 immediateBlockNode.appendChild(tempSpan);
             }
         } else {
@@ -1091,7 +1105,7 @@ export class InsertHtml {
         enterAction: string, isCollapsed: boolean
     ): Node {
         let lastSelectionNode: Node = null;
-        const insertedFragment: {fragment: DocumentFragment, lastNode: Node} =
+        const insertedFragment: {fragment: DocumentFragment, lastNode: Node}  =
             this.processInlineNodesBetweenBlocks(insertedNode, enterAction);
         let currentNode: Node | null = range.startContainer;
         let insideInline: boolean = false;
@@ -2647,9 +2661,6 @@ export class InsertHtml {
         const isAnchorInSourceNode: boolean = sourceNode.nodeName === 'A';
         while (sourceNode.firstChild && !isAnchorInSourceNode) {
             const firstChild: ChildNode | null = sourceNode.firstChild;
-            if (firstChild.nodeName === 'UL' || firstChild.nodeName === 'OL') {
-                return;
-            }
             if (isAnchorInTargetNode) {
                 targetNode.parentNode.insertBefore(firstChild, targetNode.nextSibling);
                 targetNode = targetNode.nextSibling;

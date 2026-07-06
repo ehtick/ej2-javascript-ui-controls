@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/bootstrap-dark' as *;
-@forward 'ej2-base/styles/definition/bootstrap-dark';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $tbar-skin: 'bootstrap' !default;
 $tbar-default-bg: $grey-darker !default;
 $tbar-items-default-bg: $tbar-default-bg !default;
@@ -9,6 +9,7 @@ $tbar-pop-btn-bgr-padding: $tbar-zero-value 4px !default;
 $tbar-pop-btn-nrml-padding: $tbar-zero-value 4px !default;
 $tbar-separator-bgr-minheight: 36px !default;
 $tbar-btn-bgr-minwidth: 0 !default;
+$tbar-active-icon-color: $brand-primary-font !default;
 $tbar-separator-vertical-bgr-mrgn: 5px 10px !default;
 $tbar-btn-nrml-minwidth: 0 !default;
 $tbar-btn-weight: 400 !default;

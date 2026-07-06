@@ -912,6 +912,7 @@ export function wrapTextAndInlineNodes(node: Node, parentElement: string, ignore
                     childElement.firstChild &&
                     childElement.firstChild.nodeType === Node.ELEMENT_NODE &&
                     (childElement.firstChild.nodeName === 'P' && childElement.nodeName !== 'DIV') &&
+                    (childElement.nodeName === 'TD' || childElement.nodeName === 'TH') &&
                     (childElement.firstChild as HTMLElement).childNodes.length === 1 &&
                     childElement.firstChild.firstChild &&
                     (childElement.firstChild as HTMLElement).firstChild.nodeType !== Node.ELEMENT_NODE &&

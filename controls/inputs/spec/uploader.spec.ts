@@ -1804,6 +1804,7 @@ describe('Uploader Control', () => {
             let eventArgs = { type: 'click', target: {files: [fileObj]}, preventDefault: (): void => { } };
             uploadObj.onSelectFiles(eventArgs);
             uploadObj.upload(uploadObj.filesData);
+                expect(uploadObj.pauseButton).toBe(undefined);
                 let iconElement = uploadObj.fileList[0].querySelector('.e-icons');
                 iconElement.classList.remove('e-file-remove-btn');
                 iconElement.classList.add('e-file-abort-btn');

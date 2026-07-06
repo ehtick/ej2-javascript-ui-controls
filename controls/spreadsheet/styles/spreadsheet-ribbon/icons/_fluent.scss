@@ -1,9 +1,15 @@
-@use 'ej2-base/styles/common/mixin' as *;
+@use '../variables' as *;
 @include export-module('spreadsheet-ribbon-fluent-icons') {
   .e-spreadsheet .e-ribbon {
     & .e-drop-icon {
       &::before {
         content: '\e729';
+      }
+    }
+
+    & .e-ai-icon {
+      &::before {
+        content: '\e903';
       }
     }
 

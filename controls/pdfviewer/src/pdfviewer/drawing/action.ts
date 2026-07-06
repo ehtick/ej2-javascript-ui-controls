@@ -1,8 +1,4 @@
-import { contains, IElement } from '@syncfusion/ej2-drawings';
-import { PointModel } from '@syncfusion/ej2-drawings';
-import { Rect } from '@syncfusion/ej2-drawings';
-import { DrawingElement , Point, Matrix, identityMatrix, rotateMatrix} from '@syncfusion/ej2-drawings';
-import { Container, transformPointByMatrix } from '@syncfusion/ej2-drawings';
+import { Container, transformPointByMatrix, PointModel, Rect, contains, IElement, DrawingElement , Point, Matrix, identityMatrix, rotateMatrix} from './../ej2-drawings/index';
 import { PdfViewerBase, PdfViewer } from '../index';
 import { PdfAnnotationBaseModel, PdfBoundsModel } from './pdf-annotation-model';
 import { ZOrderPageTable } from './pdf-annotation';
@@ -42,7 +38,7 @@ export function findObjectsUnderMouse(
     let pt: PointModel = pdfBase.currentPosition || { x: event.offsetX, y: event.offsetY };
     pt = { x: pt.x / pdfBase.getZoomFactor(), y: pt.y / pdfBase.getZoomFactor() };
     const pageTable: ZOrderPageTable = pdfViewer.getPageTable(pdfBase.activeElements.activePageID);
-    const objArray: Object[] = findObjects(pt, pageTable.objects, pdfViewer.touchPadding);
+    const objArray: Object[] = findObjects(pt, pageTable.objects, pdfViewer.touchPadding, pdfViewer);
     return objArray as IElement[];
 }
 
@@ -100,6 +96,14 @@ export function findObjectUnderMouse(
     else {
         offsetX = !isNaN(event.offsetX) ? event.offsetX : (event.position ? event.position.x : 0);
         offsetY = !isNaN(event.offsetY) ? event.offsetY : (event.position ? event.position.y : 0);
+        if ((offsetX < 0 || offsetY < 0) && event.target && event.target.parentElement) {
+            const currentTarget: any = event.target.parentElement;
+            if (currentTarget) {
+                const targetParentRect: DOMRect = currentTarget.getBoundingClientRect() as DOMRect;
+                offsetX = (event as PointerEvent).clientX - targetParentRect.left;
+                offsetY = (event as PointerEvent).clientY - targetParentRect.top;
+            }
+        }
     }
     //EJ2-63562 - Reduced the offset selector by half to improve selection of fields in mobile devices
     const offsetForSelector: number = pdfViewer.touchPadding / 2;
@@ -327,13 +331,30 @@ export function findTargetShapeElement(container: Container, position: PointMode
  * @param {PointModel} region - Specified the annotation region point model.
  * @param {PdfAnnotationBaseModel[]} objCollection - Specified the annotation object collections.
  * @param {number} touchPadding - touchPadding
+ * @param {PdfViewer} pdfViewer - Specified the pdfviewer element.
  * @returns {PdfAnnotationBaseModel[]} - Returns the annotation object collections.
  */
 export function findObjects(region: PointModel, objCollection: (PdfAnnotationBaseModel)[],
-                            touchPadding : number): (PdfAnnotationBaseModel)[] {
+                            touchPadding: number, pdfViewer?: PdfViewer): (PdfAnnotationBaseModel)[] {
     const objects: (PdfAnnotationBaseModel)[] = [];
+
+    // Get hidden annotation IDs if filter is active
+    let hiddenAnnotationIds: string[] = [];
+    if (pdfViewer && !isNullOrUndefined(pdfViewer.annotationModule) &&
+        !isNullOrUndefined(pdfViewer.annotationModule.getHiddenAnnotationIds)) {
+        const hiddenIds: any = pdfViewer.annotationModule.getHiddenAnnotationIds();
+        hiddenAnnotationIds = Array.isArray(hiddenIds) ? hiddenIds : [];
+    }
+
     for (const obj of objCollection) {
-        if (findElementUnderMouse(obj as IElement, region, touchPadding)  || ((obj.shapeAnnotationType === 'Stamp') && findElementUnderMouse(obj as IElement, region, 40))) {
+
+        // Skip hidden annotations - they should not be selectable
+        const annotationIdentifier: any = (obj as any).annotationId || (obj as any).annotName || obj.id;
+        if (hiddenAnnotationIds.indexOf(annotationIdentifier) > -1) {
+            continue;
+        }
+
+        if (findElementUnderMouse(obj as IElement, region, touchPadding) || ((obj.shapeAnnotationType === 'Stamp') && findElementUnderMouse(obj as IElement, region, 40))) {
             insertObject(obj, 'zIndex', objects);
         }
     }

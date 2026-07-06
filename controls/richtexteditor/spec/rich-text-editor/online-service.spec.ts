@@ -1,6 +1,6 @@
 import { SuccessEventArgs } from "@syncfusion/ej2-inputs";
 import { RichTextEditor } from "../../src";
-import { IMG_BASE64, INSRT_IMG_EVENT_INIT } from "../constant.spec";
+import { AUDIO_MEDIA_WAV, IMG_BASE64, INSRT_IMG_EVENT_INIT, VIDEO_MEDIA_WAV } from "../constant.spec";
 import { renderRTE, destroy, hostURL } from "./render.spec";
 import { createElement } from "@syncfusion/ej2-base";
 import { NodeSelection } from "../../src/selection/index";
@@ -33,6 +33,35 @@ export function getImageUniqueFIle(): File {
     return file;
 }
 
+export function getAudioUniqueFile(): File {
+    const number: number = Math.floor(100000 + secureRandom() * 900000);
+    const base64Data = AUDIO_MEDIA_WAV;
+    const bytecharacters = atob(base64Data);
+    const baseName: string = 'RTE-Audio_';
+    const byteNumbers = new Array(bytecharacters.length);
+    for (let i = 0; i < bytecharacters.length; i++) {
+        byteNumbers[i] = bytecharacters.charCodeAt(i);
+    }
+    const byteArray: Uint8Array = new Uint8Array(byteNumbers);
+    const blob: Blob = new Blob([byteArray], { type: 'audio/mp3' });
+    const file: File = new File([blob], baseName + number.toString() + '.mp3', { type: 'audio/mp3' });
+    return file;
+}
+
+export function getVideoUniqueFile(): File {
+    const number: number = Math.floor(100000 + secureRandom() * 900000);
+    const base64Data = VIDEO_MEDIA_WAV;
+    const bytecharacters = atob(base64Data);
+    const baseName: string = 'RTE-Video_';
+    const byteNumbers = new Array(bytecharacters.length);
+    for (let i = 0; i < bytecharacters.length; i++) {
+        byteNumbers[i] = bytecharacters.charCodeAt(i);
+    }
+    const byteArray: Uint8Array = new Uint8Array(byteNumbers);
+    const blob: Blob = new Blob([byteArray], { type: 'video/mp4' });
+    const file: File = new File([blob], baseName + number.toString() + '.mp4', { type: 'video/mp4' });
+    return file;
+}
 export function secureRandom(): number {
     const array: Uint32Array = new Uint32Array(1);
     window.crypto.getRandomValues(array);

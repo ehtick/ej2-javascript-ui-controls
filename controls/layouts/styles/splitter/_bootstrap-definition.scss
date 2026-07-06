@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/bootstrap' as *;
-@forward 'ej2-base/styles/definition/bootstrap';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $navigation-arrow-background: $grey-white !default;
 $navigation-icon-background-hover: $brand-primary !default;
 $navigation-icon-border-hover: rgba(49, 122, 185, .5) !default;

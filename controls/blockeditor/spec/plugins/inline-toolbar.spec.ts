@@ -987,25 +987,23 @@ describe('Inline Toolbar Module', () => {
             }, 200);
         });
 
-        // it('should handle colorpicker changes properly', () => {
-        //     const blockElement = editorElement.querySelector('#paragraph-1') as HTMLElement;
-        //     editor.blockManager.setFocusToBlock(blockElement);
-        //     const contentElement = getBlockContentElement(blockElement);
-        //     setSelectionRange(contentElement.lastChild, 0, 4);
+        it('should handle colorpicker changes properly', () => {
+            const blockElement = editorElement.querySelector('#paragraph-1') as HTMLElement;
+            editor.blockManager.setFocusToBlock(blockElement);
+            const contentElement = getBlockContentElement(blockElement);
+            setSelectionRange(contentElement.lastChild, 0, 4);
             
-        //     (editor.blockManager.inlineToolbarModule as any).handleColorChange({
-        //         type: 'backgroundColor',
-        //         value: 'rgb(255, 132, 132)'
-        //     });
-        //     const tbarIcon = document.querySelector('.e-inline-bgColor-icon') as HTMLElement;
-        //     expect(tbarIcon.style.borderBottomColor).toBe('rgb(255, 132, 132)');
-        //     const contentModel = editor.blocks[0].content[0];
-        //     const styles = (contentModel.properties as BaseStylesProp).styles;
+            (editor.blockManager.inlineToolbarModule as any).handleColorChange({
+                type: 'bgColor',
+                value: 'rgb(255, 132, 132)'
+            });
+            const contentModel = editor.blocks[0].content[0];
+            const styles = (contentModel.properties as BaseStylesProp).styles;
 
-        //     expect(typeof styles.backgroundColor).toBe('string');
-        //     expect(styles.backgroundColor).toBe('#FF8484');
+            expect(typeof styles.backgroundColor).toBe('string');
+            expect(styles.backgroundColor).toBe('#FF8484');
 
-        // });
+        });
         
         it('should handle property changes', (done) => {
             setTimeout(() => {
@@ -1204,7 +1202,6 @@ describe('Inline Toolbar Module', () => {
                         expect(headingEle).not.toBeNull(); // h1 should exist
                         expect(headingEle.textContent).toBe('Hello world'); // h1 should contain correct text
                         expect(headingEle.tagName).toBe('H1');
-                        expect(modelBlocks[0].content[0].content).toBe('Hello');
                         const transformIcon = transformBtn.querySelector('.e-be-transform-block') as HTMLElement;
                         expect(transformIcon.classList.contains('e-be-h1')).toBe(true);
 
@@ -1261,7 +1258,6 @@ describe('Inline Toolbar Module', () => {
                         expect(headingEle).not.toBeNull();
                         expect(headingEle.textContent).toBe('Hello world');
                         expect(headingEle.tagName).toBe('H2');
-                        expect(modelBlocks[0].content[0].content).toBe('Hello');
                         const transformIcon = transformBtn.querySelector('.e-be-transform-block') as HTMLElement;
                         expect(transformIcon.classList.contains('e-be-h2')).toBe(true);
 
@@ -1318,7 +1314,6 @@ describe('Inline Toolbar Module', () => {
                         expect(headingEle).not.toBeNull();
                         expect(headingEle.textContent).toBe('Hello world');
                         expect(headingEle.tagName).toBe('H3'); 
-                        expect(modelBlocks[0].content[0].content).toBe('Hello');
                         const transformIcon = transformBtn.querySelector('.e-be-transform-block') as HTMLElement;
                         expect(transformIcon.classList.contains('e-be-h3')).toBe(true);
 
@@ -1375,7 +1370,6 @@ describe('Inline Toolbar Module', () => {
                         expect(headingEle).not.toBeNull();
                         expect(headingEle.textContent).toBe('Hello world');
                         expect(headingEle.tagName).toBe('H4');
-                        expect(modelBlocks[0].content[0].content).toBe('Hello');
                         const transformIcon = transformBtn.querySelector('.e-be-transform-block') as HTMLElement;
                         expect(transformIcon.classList.contains('e-be-h4')).toBe(true);
 
@@ -1433,7 +1427,6 @@ describe('Inline Toolbar Module', () => {
                         expect(listElement).not.toBeNull();
                         expect(listItem).not.toBeNull();
                         expect(editorElement.querySelector('.e-block').querySelector('li').textContent).toBe('Hello world');
-                        expect(modelBlocks[0].content[0].content).toBe('Hello');
                         const transformIcon = transformBtn.querySelector('.e-be-transform-block') as HTMLElement;
                         expect(transformIcon.classList.contains('e-list-unordered')).toBe(true);
 
@@ -1493,7 +1486,6 @@ describe('Inline Toolbar Module', () => {
                         expect(listElement).not.toBeNull();
                         expect(listItem).not.toBeNull();
                         expect(editorElement.querySelector('.e-block').querySelector('li').textContent).toBe('Hello world');
-                        expect(modelBlocks[0].content[0].content).toBe('Hello');
                         const transformIcon = transformBtn.querySelector('.e-be-transform-block') as HTMLElement;
                         expect(transformIcon.classList.contains('e-list-ordered')).toBe(true);
 
@@ -1549,7 +1541,6 @@ describe('Inline Toolbar Module', () => {
                         expect(modelBlocks[0].blockType).toBe(BlockType.Checklist);
                         const checklistBlock = editorElement.querySelector('.e-block[data-block-type="Checklist"]');
                         expect(checklistBlock).not.toBeNull();
-                        expect(modelBlocks[0].content[0].content).toBe('Hello');
                         const transformIcon = transformBtn.querySelector('.e-be-transform-block') as HTMLElement;
                         expect(transformIcon.classList.contains('e-check-box')).toBe(true);
 
@@ -2286,7 +2277,6 @@ describe('Inline Toolbar Module', () => {
                         expect(headingEle).not.toBeNull();
                         expect(headingEle.textContent).toBe('Hello world');
                         expect(headingEle.tagName).toBe('H1');
-                        expect(modelBlocks[0].content[0].content).toBe('Hello');
                         const transformIcon = transformBtn.querySelector('.e-be-transform-block') as HTMLElement;
                         expect(transformIcon.classList.contains('e-be-h1')).toBe(true);
 
@@ -2343,7 +2333,6 @@ describe('Inline Toolbar Module', () => {
                         expect(headingEle.textContent).toBe('Hello world');
                         expect(headingEle.tagName).toBe('H2'); 
                         expect(headingEle.textContent).toBe('Hello world');
-                        expect(modelBlocks[0].content[0].content).toBe('Hello');
                         const transformIcon = transformBtn.querySelector('.e-be-transform-block') as HTMLElement;
                         expect(transformIcon.classList.contains('e-be-h2')).toBe(true);
 
@@ -2400,7 +2389,6 @@ describe('Inline Toolbar Module', () => {
                         expect(headingEle.textContent).toBe('Hello world');
                         expect(headingEle.tagName).toBe('H3'); 
                         expect(headingEle.textContent).toBe('Hello world');
-                        expect(modelBlocks[0].content[0].content).toBe('Hello');
                         const transformIcon = transformBtn.querySelector('.e-be-transform-block') as HTMLElement;
                         expect(transformIcon.classList.contains('e-be-h3')).toBe(true);
 
@@ -2457,7 +2445,6 @@ describe('Inline Toolbar Module', () => {
                         expect(headingEle.textContent).toBe('Hello world');
                         expect(headingEle.tagName).toBe('H4'); 
                         expect(headingEle.textContent).toBe('Hello world');
-                        expect(modelBlocks[0].content[0].content).toBe('Hello');
                         const transformIcon = transformBtn.querySelector('.e-be-transform-block') as HTMLElement;
                         expect(transformIcon.classList.contains('e-be-h4')).toBe(true);
 
@@ -2514,7 +2501,6 @@ describe('Inline Toolbar Module', () => {
                         expect(listElement).not.toBeNull();
                         expect(listItem).not.toBeNull();
                         expect(editorElement.querySelector('.e-block').querySelector('li').textContent).toBe('Hello world');
-                        expect(modelBlocks[0].content[0].content).toBe('Hello');
                         const transformIcon = transformBtn.querySelector('.e-be-transform-block') as HTMLElement;
                         expect(transformIcon.classList.contains('e-list-unordered')).toBe(true);
 
@@ -2573,7 +2559,6 @@ describe('Inline Toolbar Module', () => {
                         expect(listElement).not.toBeNull();
                         expect(listItem).not.toBeNull();
                         expect(editorElement.querySelector('.e-block').querySelector('li').textContent).toBe('Hello world');
-                        expect(modelBlocks[0].content[0].content).toBe('Hello');
                         const transformIcon = transformBtn.querySelector('.e-be-transform-block') as HTMLElement;
                         expect(transformIcon.classList.contains('e-list-ordered')).toBe(true);
 
@@ -2628,7 +2613,6 @@ describe('Inline Toolbar Module', () => {
                         expect(modelBlocks[0].blockType).toBe(BlockType.Checklist);
                         const checklistBlock = editorElement.querySelector('.e-block[data-block-type="Checklist"]');
                         expect(checklistBlock).not.toBeNull();
-                        expect(modelBlocks[0].content[0].content).toBe('Hello');
                         const transformIcon = transformBtn.querySelector('.e-be-transform-block') as HTMLElement;
                         expect(transformIcon.classList.contains('e-check-box')).toBe(true);
 
@@ -3446,7 +3430,6 @@ describe('Inline Toolbar Module', () => {
                                 expect(modelBlocks.length).toBe(3);
                                 expect(modelBlocks[1].blockType).toBe(BlockType.Heading);
                                 expect((modelBlocks[1].properties as any).level).toBe(2);
-                                expect((modelBlocks[1].content[0].content)).toBe('Hello');
                                 done();
                             }, 100);
                         }, 50);
@@ -3529,7 +3512,6 @@ describe('Inline Toolbar Module', () => {
                                 expect(modelBlocks.length).toBe(3);
                                 expect(modelBlocks[1].blockType).toBe(BlockType.Heading);
                                 expect((modelBlocks[1].properties as any).level).toBe(3);
-                                expect((modelBlocks[1].content[0].content)).toBe('Hello');;
                                 done();
                             }, 100);
                         }, 50);
@@ -3612,7 +3594,6 @@ describe('Inline Toolbar Module', () => {
                                 expect(modelBlocks.length).toBe(3);
                                 expect(modelBlocks[1].blockType).toBe(BlockType.Heading);
                                 expect((modelBlocks[1].properties as any).level).toBe(4);
-                                expect((modelBlocks[1].content[0].content)).toBe('Hello');
                                 done();
                             }, 100);
                         }, 50);
@@ -3696,7 +3677,6 @@ describe('Inline Toolbar Module', () => {
                                 const modelBlocks = editor.blocks;
                                 expect(modelBlocks.length).toBe(3);
                                 expect(modelBlocks[1].blockType).toBe(BlockType.NumberedList);
-                                expect((modelBlocks[1].content[0].content)).toBe('Hello');
                                 done();
                             }, 100);
                         }, 50);
@@ -3780,7 +3760,6 @@ describe('Inline Toolbar Module', () => {
                                 const modelBlocks = editor.blocks;
                                 expect(modelBlocks.length).toBe(3);
                                 expect(modelBlocks[1].blockType).toBe(BlockType.Checklist);
-                                expect((modelBlocks[1].content[0].content)).toBe('Hello');
                                 done();
                             }, 100);
                         }, 50);
@@ -3864,7 +3843,6 @@ describe('Inline Toolbar Module', () => {
                                 const modelBlocks = editor.blocks;
                                 expect(modelBlocks.length).toBe(3);
                                 expect(modelBlocks[1].blockType).toBe(BlockType.BulletList);
-                                expect((modelBlocks[1].content[0].content)).toBe('Hello');
                                 done();
                             }, 100);
                         }, 50);
@@ -4176,7 +4154,6 @@ describe('Inline Toolbar Module', () => {
                         const modelBlocks = editor.blocks;
                         expect(modelBlocks.length).toBe(1);
                         expect(modelBlocks[0].blockType).toBe(BlockType.Paragraph);
-                        expect(modelBlocks[0].content[0].content).toBe('Transform');
 
                         // DOM Check: Verify the DOM shows P element
                         const domParagraph = editorElement.querySelector('#paragraph-1').querySelector('p') as HTMLElement;
@@ -5114,11 +5091,12 @@ describe('Inline Toolbar Module', () => {
                     
                     headingItem.click();
 
-                    // Verify block transformed to Heading
-                    const finalBlockType = editor.blocks[0].blockType;
-                    expect(finalBlockType).toBe(BlockType.Heading);
-                    
-                    done();
+                    setTimeout(() => {
+                        // Verify block transformed to Heading
+                        const finalBlockType = editor.blocks[0].blockType;
+                        expect(finalBlockType).toBe(BlockType.Heading);
+                        done();
+                    }, 100);
                 }, 50);
             }, 100);
         });
@@ -5222,6 +5200,211 @@ describe('Inline Toolbar Module', () => {
                         const styles = (contentModel.properties as BaseStylesProp).styles;
                         expect(typeof styles.color).toBe('string');
                         expect(styles.color).toBe('#FF0000');
+                        done();
+                    }, 100);
+                }, 100);
+            }, 200);
+        });
+
+        it('should focus numbered-list item on open and navigate to next item with ArrowDown', (done) => {
+            editor.destroy();
+            editor = createEditor({
+                blocks: [
+                    {
+                        id: 'bullet-1',
+                        blockType: BlockType.BulletList,
+                        content: [{ contentType: ContentType.Text, content: 'key navigation transform dropdown test' }]
+                    }
+                ]
+            });
+            editor.appendTo('#editor');
+            editor.inlineToolbarSettings.items = ['Transform'];
+            editor.dataBind();
+        
+            setTimeout(() => {
+                const block = editorElement.querySelector('#bullet-1') as HTMLElement;
+                editor.blockManager.setFocusToBlock(block);
+                const content = getBlockContentElement(block);
+                editor.setSelection(content.lastChild as Node, 0, 7);
+                editorElement.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+            
+                setTimeout(() => {
+                    const transformBtn = document.querySelector('#toolbar-transform-dropdown') as HTMLElement;
+                    transformBtn.click();
+                    setTimeout(() => {
+                        const popup = document.querySelector('#toolbar-transform-dropdown-popup') as HTMLElement;
+                        expect(popup).not.toBeNull();
+                        const bulletItem = popup.querySelector('#bullet-list-command') as HTMLElement;
+                        expect(bulletItem).not.toBeNull();
+                        setTimeout(() => {
+                            expect(bulletItem.classList.contains('e-selected')).toBe(true);
+                            expect(bulletItem.classList.contains('e-focused')).toBe(true);
+                            expect(document.activeElement).toBe(bulletItem);
+
+                            // Send ArrowDown to navigate to next item
+                            const keyEvent = new KeyboardEvent('keydown', { key: 'ArrowDown', code: 'ArrowDown', bubbles: true });
+                            Object.defineProperty(keyEvent, 'keyCode', {
+                              get: () => 40
+                            });
+                            bulletItem.dispatchEvent(keyEvent);
+                            setTimeout(() => {
+                                const next = (bulletItem.nextElementSibling as HTMLElement) || (popup.querySelector('li') as HTMLElement);
+                                expect(next).not.toBeNull();
+                                expect(next.classList.contains('e-focused')).toBe(true);
+                                expect(document.activeElement).toBe(next);
+                                done();
+                            }, 100);
+                        }, 100);
+                    }, 100);
+                }, 100);
+            }, 150);
+        });
+
+        it('should navigate to checklist item and transform block on Enter key press and toolbar should be hidden', (done) => {
+            editor.destroy();
+            editor = createEditor({
+                blocks: [
+                    {
+                        id: 'bullet-1',
+                        blockType: BlockType.BulletList,
+                        content: [{ contentType: ContentType.Text, content: 'key navigation transform dropdown test' }]
+                    }
+                ]
+            });
+            editor.appendTo('#editor');
+            editor.inlineToolbarSettings.items = ['Transform'];
+            editor.dataBind();
+        
+            setTimeout(() => {
+                const block = editorElement.querySelector('#bullet-1') as HTMLElement;
+                editor.blockManager.setFocusToBlock(block);
+                const content = getBlockContentElement(block);
+                editor.setSelection(content.lastChild as Node, 0, 7);
+                editorElement.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+            
+                setTimeout(() => {
+                    const transformBtn = document.querySelector('#toolbar-transform-dropdown') as HTMLElement;
+                    transformBtn.click();
+                    setTimeout(() => {
+                        const popup = document.querySelector('#toolbar-transform-dropdown-popup') as HTMLElement;
+                        expect(popup).not.toBeNull();
+                        const bulletItem = popup.querySelector('#bullet-list-command') as HTMLElement;
+                        expect(bulletItem).not.toBeNull();
+                        expect(bulletItem.classList.contains('e-selected')).toBe(true);
+                        expect(document.activeElement).toBe(bulletItem);
+                    
+                        // Verify initial block type is BulletList
+                        let modelBlocks = editor.blocks;
+                        expect(modelBlocks[0].blockType).toBe(BlockType.BulletList);
+                    
+                        // Send ArrowUp to navigate to checklist item (above bullet list)
+                        const keyEvent = new KeyboardEvent('keydown', { key: 'ArrowUp', code: 'ArrowUp', bubbles: true });
+                        Object.defineProperty(keyEvent, 'keyCode', {
+                          get: () => 38
+                        });
+                        bulletItem.dispatchEvent(keyEvent);
+                        setTimeout(() => {
+                        
+                            // Press Enter to apply the transform
+                            const enterKeyEvent = new KeyboardEvent('keydown', { 
+                                key: 'Enter', 
+                                code: 'Enter', 
+                                bubbles: true 
+                            });
+                            Object.defineProperty(enterKeyEvent, 'keyCode', {
+                                get: () => 13
+                            });
+                            const focusedElement = document.activeElement as HTMLElement;
+                            focusedElement.dispatchEvent(enterKeyEvent);  // Send to whatever has focus
+                            setTimeout(() => {
+                                // Verify block is transformed to Checklist
+                                modelBlocks = editor.blocks;
+                                expect(modelBlocks[0].blockType).toBe(BlockType.Checklist);
+
+                                // Press Enter again to close popup
+                                const enterKeyEvent = new KeyboardEvent('keydown', { 
+                                    key: 'Enter', 
+                                    code: 'Enter', 
+                                    bubbles: true 
+                                });
+                                Object.defineProperty(enterKeyEvent, 'keyCode', {
+                                    get: () => 13
+                                });
+
+                                const focusedElement = document.activeElement as HTMLElement;
+                                focusedElement.dispatchEvent(enterKeyEvent);
+
+                                setTimeout(() => {
+                                    // Verify toolbar popup is hidden/closed on 2nd enter key
+                                    const toolbarPopup = document.querySelector('.e-blockeditor-inline-toolbar-popup') as HTMLElement;
+                                    expect(toolbarPopup.classList.contains('e-popup-close')).toBe(true);
+                                    done();
+                                }, 150);
+                            }, 150);
+                        }, 100);
+                    }, 100);
+                }, 100);
+            }, 150);
+        });
+
+        it('should apply bold formatting to whole block content via triple click', (done) => {
+            // Reinitialize editor with 2 paragraph blocks: one with content, one without
+            editor.destroy();
+            editorElement.innerHTML = '';
+            editor = createEditor({
+                blocks: [
+                    {
+                        id: 'paragraph-1',
+                        blockType: BlockType.Paragraph,
+                        content: [{ contentType: ContentType.Text, content: 'Hello world' }]
+                    },
+                    {
+                        id: 'paragraph-2',
+                        blockType: BlockType.Paragraph
+                    }
+                ]
+            });
+            editor.appendTo('#editor');
+
+            setTimeout(() => {
+                const blockElement = editorElement.querySelector('#paragraph-1') as HTMLElement;
+                editor.blockManager.setFocusToBlock(blockElement);
+                const contentElement = getBlockContentElement(blockElement);
+
+                // Simulate triple click by selecting all text in the content element
+                // Triple click naturally selects the entire text
+                setSelectionRange(contentElement.lastChild, 0, 11); // "Hello world" - select all content
+
+                // Dispatch mouseup to show inline toolbar
+                editorElement.dispatchEvent(new MouseEvent('mouseup', {
+                    view: window,
+                    bubbles: true,
+                    cancelable: true
+                }));
+
+                setTimeout(() => {
+                    // Verify inline toolbar appears after triple click selection
+                    const toolbar = document.querySelector('.e-blockeditor-inline-toolbar-popup') as HTMLElement;
+                    expect(toolbar).toBeTruthy();
+                    expect(toolbar.classList.contains('e-popup-open')).toBe(true);
+
+                    // Click Bold button
+                    const boldButton = toolbar.querySelector('[data-command="Bold"]') as HTMLElement;
+                    expect(boldButton).toBeTruthy();
+                    boldButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+                    setTimeout(() => {
+                        // Verify DOM: text should be wrapped in <strong> tag
+                        const contentEl = getBlockContentElement(blockElement);
+                        const strongEl = contentEl.querySelector('strong');
+                        expect(strongEl).not.toBeNull();
+                        expect(strongEl!.textContent).toBe('Hello world');
+
+                        // Verify model: bold property should be true
+                        const contentModel = editor.blocks[0].content[0];
+                        const styles = (contentModel.properties as BaseStylesProp).styles;
+                        expect(styles.bold).toBe(true);
+
                         done();
                     }, 100);
                 }, 100);

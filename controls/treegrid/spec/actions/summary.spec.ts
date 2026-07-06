@@ -912,3 +912,76 @@ describe('Child summary after cell editing ', () => {
     destroy(TreegridObj);
   });
 });
+
+describe('Uncovered Summary branches (proposed tests)', () => {
+  let agg: Aggregate;
+  let parent: any;
+  const emptyData: any[] = [];
+
+  beforeEach(() => {
+    parent = {
+      aggregates: [{
+        columns: [{ type: 'Sum', field: 'val', columnName: 'VAL', footerTemplate: 'Sum: ${Sum}' }]
+      }],
+      getColumns: () => ['val'],
+      getColumnByField: (f: string) => ({ type: 'number' }),
+      grid: { locale: 'en-US' },
+      isLocalData: true,
+      dataSource: [],
+      flatData: [],
+      childMapping: 'children'
+    };
+    agg = new Aggregate(parent);
+  });
+
+  it('getSummaryValues - React-template branch calls renderReactTemplates when isReact true and footerTemplate is non-string', () => {
+    (parent as any).isReact = true;
+    parent.renderReactTemplates = jasmine.createSpy('renderReactTemplates');
+
+    const summaryColumn: any = {
+      field: 'val',
+      type: 'Sum',
+      columnName: 'VAL',
+      footerTemplate: { nonString: true },
+      setPropertiesSilent: ()=> {},
+      setFormatter: function () { /* noop */ },
+      getFormatter: ()=> {null},
+      setTemplate: function (h: any) { this._helper = h; },
+      getTemplate: function () {
+         const fn =  function (single: any, parentArg: any, prop: string, a?: any, b?: any, c?: any, cellElem?: HTMLElement) {
+            if (cellElem) {
+              const t = document.createElement('div');
+              t.innerText = 'RCT';
+              cellElem.appendChild(t);
+            }
+            return '<div>RCT</div>';
+          }
+        return {
+
+         fn,
+          property: ''
+        };
+      }
+    };
+    const result = (agg as any).getSummaryValues(summaryColumn, emptyData);
+
+    expect((parent as any).renderReactTemplates).toBeDefined();
+    expect((parent as any).renderReactTemplates).toHaveBeenCalled();
+    expect(typeof(result) === 'string').toBe(true);
+  });
+
+  it('calculateSummaryValue - handles columns without explicit field (covers ternary fallback branch)', () => {
+
+    parent.getColumns = () => [{ headerText: 'NoField' } as any];
+    const filteredData = [{ uniqueID: 1, some: 'x' }];
+    parent.aggregates = [{
+      showChildSummary: false,
+      columns: [{ type: 'Sum', field: 'some', columnName: 'NoField', footerTemplate: 'Sum: ${Sum}' }]
+    }];
+
+    const out = (agg as any).calculateSummaryValue([], filteredData, false);
+    expect(Array.isArray(out)).toBe(true);
+    expect(out.length >= filteredData.length).toBe(true);
+  });
+
+});

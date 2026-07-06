@@ -3,7 +3,7 @@ import { Spreadsheet } from '../base/index';
 import { extend, isNullOrUndefined, remove } from '@syncfusion/ej2-base';
 import { CellModel, SheetModel, getSheetName, getRowsHeight, getColumnsWidth, getData, Workbook, getSheetIndexFromId } from '../../workbook/index';
 import { getCellAddress, getCellIndexes, workbookFormulaOperation, moveOrDuplicateSheet, skipHiddenIdx } from '../../workbook/index';
-import { RefreshArgs, sheetTabs, onContentScroll, deInitProperties, beforeDataBound, updateTranslate, showCommentsPane, getHashPassword } from '../common/index';
+import { RefreshArgs, sheetTabs, onContentScroll, deInitProperties, beforeDataBound, updateTranslate, showCommentsPane, getHashPassword, showAIAssistPane } from '../common/index';
 import { spreadsheetDestroyed, isFormulaBarEdit, editOperation, FormulaBarEdit } from '../common/index';
 import { getSiblingsHeight, refreshSheetTabs, ScrollEventArgs, focus, getUpdatedScrollPosition } from '../common/index';
 import { ribbon, formulaBar, IRenderer, beforeVirtualContentLoaded, setAriaOptions, JsonData } from '../common/index';
@@ -79,12 +79,12 @@ export class Render {
             isTopLeftCell = sheet.frozenRows && sheet.frozenColumns ? indexes[0] + sheet.frozenRows === paneIndexes[0] &&
                 indexes[1] + sheet.frozenColumns === paneIndexes[1] : (sheet.frozenRows ? indexes[0] + sheet.frozenRows === paneIndexes[0]
                 && indexes[1] === 0 : indexes[1] + sheet.frozenColumns === paneIndexes[1] && indexes[0] === 0);
-            if (sheet.frozenRows && indexes[0] && paneIndexes[0] > indexes[0]) {
+            if (indexes[0] && paneIndexes[0] > indexes[0]) {
                 this.parent.viewport.beforeFreezeHeight = getRowsHeight(sheet, 0, indexes[0] - 1, true);
             } else {
                 this.parent.viewport.beforeFreezeHeight = 0;
             }
-            if (sheet.frozenColumns && indexes[1] && paneIndexes[1] > indexes[1]) {
+            if (indexes[1] && paneIndexes[1] > indexes[1]) {
                 this.parent.viewport.beforeFreezeWidth = getColumnsWidth(sheet, 0, indexes[1] - 1, true);
             } else {
                 this.parent.viewport.beforeFreezeWidth = 0;
@@ -148,6 +148,10 @@ export class Render {
         if (!isNullOrUndefined(panel.querySelector('.e-review-panel')) && panel.firstChild !== sheet) {
             sheet.classList.add('e-sheet-with-review-panel');
             panel.insertBefore(sheet, panel.firstChild);
+        } else if (!isNullOrUndefined(panel.querySelector('.e-ai-assist-panel')) && panel.firstChild !== sheet) {
+            sheet.classList.add('e-sheet-with-ai-assist-panel');
+            panel.insertBefore(sheet, panel.firstChild);
+            this.parent.notify(showAIAssistPane, { show: true });
         } else {
             panel.appendChild(sheet);
         }
@@ -444,7 +448,7 @@ export class Render {
         const width: number = offset.width * this.parent.viewport.scaleX;
         this.parent.viewport.width = width - (32 / this.parent.viewport.scaleX);
         this.parent.viewport.rowCount = this.roundValue(height, 20);
-        this.parent.viewport.colCount = this.roundValue(width, this.colMinWidth || 64);
+        this.parent.viewport.colCount = this.roundValue(width, (this.colMinWidth || 64));
     }
 
     private roundValue(size: number, threshold: number): number {
@@ -453,6 +457,10 @@ export class Render {
     }
 
     private moveOrDuplicateSheetHandler(args: { refresh: boolean, isDuplicate: boolean }): void {
+        if (this.parent.paintSuspendCount > 0) {
+            this.parent.queuePaintAction('moveOrDuplicateSheet', (): void => { this.parent.notify(refreshSheetTabs, null); });
+            return;
+        }
         this.parent.notify(refreshSheetTabs, null);
         if (args.refresh) {
             this.refreshSheet(args.isDuplicate);

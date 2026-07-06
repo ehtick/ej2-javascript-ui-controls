@@ -4,7 +4,7 @@ import { Property, NotifyPropertyChanges, INotifyPropertyChanged, ModuleDeclarat
 import { addClass, removeClass, EmitType, Complex, formatUnit, L10n, isNullOrUndefined, Browser } from '@syncfusion/ej2-base';
 import { detach, select, closest, setStyleAttribute, EventHandler } from '@syncfusion/ej2-base';
 import { MenuItemModel, BeforeOpenCloseMenuEventArgs, ItemModel } from '@syncfusion/ej2-navigations';
-import { mouseDown, spreadsheetDestroyed, keyUp, BeforeOpenEventArgs, clearViewer, refreshSheetTabs, positionAutoFillElement, readonlyAlert, deInitProperties, UndoRedoEventArgs, isColumnRange, isRowRange, findDlg, refreshCommentsPane, unProtectSheetPassword, removeWorkbookProtection, getHashPassword } from '../common/index';
+import { mouseDown, spreadsheetDestroyed, keyUp, BeforeOpenEventArgs, clearViewer, refreshSheetTabs, positionAutoFillElement, readonlyAlert, deInitProperties, UndoRedoEventArgs, isColumnRange, isRowRange, findDlg, refreshCommentsPane, unProtectSheetPassword, removeWorkbookProtection, getHashPassword, executePrompt } from '../common/index';
 import { performUndoRedo, overlay, DialogBeforeOpenEventArgs, createImageElement, deleteImage, removeHyperlink } from '../common/index';
 import { HideShowEventArgs, sheetNameUpdate, updateUndoRedoCollection, getUpdateUsingRaf, setAutoFit } from '../common/index';
 import { actionEvents, CollaborativeEditArgs, keyDown, enableFileMenuItems, hideToolbarItems, updateAction } from '../common/index';
@@ -31,6 +31,7 @@ import { FilterOptions, FilterEventArgs, ProtectSettingsModel, findKeyUp, refres
 import { Workbook } from '../../workbook/base/workbook';
 import { SpreadsheetModel } from './spreadsheet-model';
 import { getRequiredModules, ScrollSettings, ScrollSettingsModel, SelectionSettingsModel, enableToolbarItems } from '../common/index';
+import { AIAssistSettings, AIAssistSettingsModel, PromptRequestEventArgs, PromptResponseEventArgs } from '../common/index';
 import { SelectionSettings, BeforeSelectEventArgs, SelectEventArgs, getStartEvent, enableRibbonTabs, getDPRValue } from '../common/index';
 import { createSpinner, showSpinner, hideSpinner } from '@syncfusion/ej2-popups';
 import { setRowHeight, getRowsHeight, getColumnWidth, getRowHeight, getCell, setColumn, setCell, ColumnModel, RowModel, setRow } from './../../workbook/base/index';
@@ -110,6 +111,14 @@ export class Spreadsheet extends Workbook implements INotifyPropertyChanged {
     public showCommentsPane: boolean;
 
     /**
+     * It enables or disables the AI Assist functionalities in the Spreadsheet.
+     *
+     * @default false
+     */
+    @Property(false)
+    public enableAIAssist: boolean;
+
+    /**
      * It enables or disables the clipboard operations (cut, copy, and paste) of the Spreadsheet.
      *
      * @default true
@@ -186,6 +195,31 @@ export class Spreadsheet extends Workbook implements INotifyPropertyChanged {
      */
     @Complex<ScrollSettingsModel>({}, ScrollSettings)
     public scrollSettings: ScrollSettingsModel;
+
+    /**
+     * Configures the Spreadsheet AI assist settings.
+     * Use this property to specify the AI service endpoint, chat input placeholder, and prompt suggestions for the AI Assist.
+     *
+     * @default { requestUrl: null, placeholder: null, promptSuggestions: null }
+     */
+    @Complex<AIAssistSettingsModel>({}, AIAssistSettings)
+    public aiAssistSettings: AIAssistSettingsModel;
+
+    /**
+     * Triggers before the Spreadsheet AI assist sends a prompt request to the configured service.
+     *
+     * @event promptRequest
+     */
+    @Event()
+    public promptRequest: EmitType<PromptRequestEventArgs>;
+
+    /**
+     * Triggers after the Spreadsheet AI assist successfully receives a prompt response.
+     *
+     * @event promptResponse
+     */
+    @Event()
+    public promptResponse: EmitType<PromptResponseEventArgs>;
 
     /**
      * Triggers before the cell appended to the DOM.
@@ -1029,6 +1063,9 @@ export class Spreadsheet extends Workbook implements INotifyPropertyChanged {
      * @returns {void} - To protect the particular sheet.
      */
     public protectSheet(sheet?: number | string, protectSettings?: ProtectSettingsModel, password?: string): void {
+        if (this.paintSuspendCount > 0) {
+            this.pendingPaintRefresh = 'fullSheet';
+        }
         super.protectSheet(sheet, protectSettings, password);
     }
 
@@ -1041,6 +1078,9 @@ export class Spreadsheet extends Workbook implements INotifyPropertyChanged {
      * @returns {void} - To unprotect the particular sheet.
      */
     public unprotectSheet(sheet?: number | string): void {
+        if (this.paintSuspendCount > 0) {
+            this.pendingPaintRefresh = 'fullSheet';
+        }
         super.unprotectSheet(sheet);
     }
 
@@ -1061,6 +1101,7 @@ export class Spreadsheet extends Workbook implements INotifyPropertyChanged {
      * @returns {void} - To find the specified cell value.
      */
     public find(args: FindOptions): void | string {
+        if (!args) { return; }
         const activeCell: string = this.getActiveSheet().activeCell;
         super.findHandler(args);
         if (!args.isAction) {
@@ -1083,8 +1124,21 @@ export class Spreadsheet extends Workbook implements INotifyPropertyChanged {
      * @returns {void} - To replace the specified cell value.
      */
     public replace(args: FindOptions): void {
+        const isModelOnly: boolean = this.paintSuspendCount > 0;
         if (args.showDialog) {
-            this.notify(findDlg, args);
+            if (isModelOnly) {
+                const dialogArgs: FindOptions = {
+                    value: args.value, mode: args.mode ? args.mode : 'Sheet', isCSen: args.isCSen ? args.isCSen : false,
+                    isEMatch: args.isEMatch ? args.isEMatch : false, searchBy: args.searchBy ? args.searchBy : 'By Row',
+                    replaceValue: args.replaceValue, replaceBy: args.replaceBy,
+                    sheetIndex: isUndefined(args.sheetIndex) ? this.activeSheetIndex : args.sheetIndex, findOpt: args.findOpt ? args.findOpt : '',
+                    showDialog: true
+                };
+                this.queuePaintAction('findDlg', (): void => { this.notify(findDlg, dialogArgs); });
+                return;
+            } else {
+                this.notify(findDlg, args);
+            }
         } else {
             args = {
                 value: args.value, mode: args.mode ? args.mode : 'Sheet', isCSen: args.isCSen ? args.isCSen : false,
@@ -1130,10 +1184,14 @@ export class Spreadsheet extends Workbook implements INotifyPropertyChanged {
      * @returns {void} - Used to navigate to cell address within workbook.
      */
     public goTo(address: string): void {
+        if (!address) {
+            return;
+        }
         if (!this.allowScrolling) {
             this.selectRange(address);
             return;
         }
+        const isSuspended: boolean = this.paintSuspendCount > 0;
         if (address.includes('!')) {
             const idx: number = getSheetIndex(this, getSheetNameFromAddress(address));
             if (idx === undefined) { return; }
@@ -1176,10 +1234,20 @@ export class Spreadsheet extends Workbook implements INotifyPropertyChanged {
                 } else {
                     if (cellIndex[0] < this.viewport.rowCount) { cellIndex[0] = 0; }
                     if (cellIndex[1] < this.viewport.colCount) { cellIndex[1] = 0; }
-                    this.updateTopLeftCell(cellIndex[0], cellIndex[1], null, sheet);
+                    if (isSuspended) {
+                        this.setSheetPropertyOnMute(sheet, 'topLeftCell', getCellAddress(cellIndex[0], cellIndex[1]));
+                        this.setSheetPropertyOnMute(sheet, 'paneTopLeftCell', getCellAddress(cellIndex[0], cellIndex[1]));
+                    } else {
+                        this.updateTopLeftCell(cellIndex[0], cellIndex[1], null, sheet);
+                    }
                 }
-                this.activeSheetIndex = idx;
-                this.dataBind();
+                if (isSuspended) {
+                    this.pendingPaintRefresh = 'fullSheet';
+                    this.queuePaintAction('goTo', (): void => { this.activeSheetIndex = idx; });
+                } else {
+                    this.activeSheetIndex = idx;
+                    this.dataBind();
+                }
                 return;
             }
         }
@@ -1244,6 +1312,16 @@ export class Spreadsheet extends Workbook implements INotifyPropertyChanged {
                     indexes[1] < viewportIndexes[3]) { return; }
             }
         }
+        if (isSuspended) {
+            this.selectRange(address);
+            this.queuePaintAction('goTo', () => { this.updateScroll(address, indexes, sheet, frozenRow, frozenCol, insideDomCount); });
+            return;
+        }
+        this.updateScroll(address, indexes, sheet, frozenRow, frozenCol, insideDomCount);
+    }
+
+    private updateScroll(address: string, indexes: number[], sheet: SheetModel, frozenRow: number, frozenCol: number,
+                         insideDomCount: boolean): void {
         let content: Element = this.getMainContent().parentElement;
         let vTrack: HTMLElement; let cVTrack: HTMLElement;
         let offset: number; let vWidth: number; let vHeight: number; let scrollableSize: number;
@@ -1335,12 +1413,13 @@ export class Spreadsheet extends Workbook implements INotifyPropertyChanged {
     public cut(address?: string): Promise<Object> {
         const promise: Promise<Object> =
             new Promise((resolve: Function) => { resolve((() => { /** */ })()); });
+        const isModelOnly: boolean = this.paintSuspendCount > 0;
         this.notify(cut, address ? {
             range: getIndexesFromAddress(address),
             sId: this.sheets[getSheetIndex(this as Workbook, getSheetNameFromAddress(address))] ?
                 this.sheets[getSheetIndex(this as Workbook, getSheetNameFromAddress(address))].id : this.getActiveSheet().id,
-            promise: promise, invokeCopy: true, isPublic: true
-        } : { promise: promise, invokeCopy: true, isPublic: true });
+            promise: promise, invokeCopy: true, isPublic: true, modelUpdateOnly: isModelOnly
+        } : { promise: promise, invokeCopy: true, isPublic: true, modelUpdateOnly: isModelOnly });
         return promise;
     }
 
@@ -1355,12 +1434,13 @@ export class Spreadsheet extends Workbook implements INotifyPropertyChanged {
     public copy(address?: string): Promise<Object> {
         const promise: Promise<Object> =
             new Promise((resolve: Function) => { resolve((() => { /** */ })()); });
+        const isModelOnly: boolean = this.paintSuspendCount > 0;
         this.notify(copy, address ? {
             range: getIndexesFromAddress(address),
             sId: this.sheets[getSheetIndex(this as Workbook, getSheetNameFromAddress(address))] ?
                 this.sheets[getSheetIndex(this as Workbook, getSheetNameFromAddress(address))].id : this.getActiveSheet().id,
-            promise: promise, invokeCopy: true, isPublic: true
-        } : { promise: promise, invokeCopy: true, isPublic: true });
+            promise: promise, invokeCopy: true, isPublic: true, modelUpdateOnly: isModelOnly
+        } : { promise: promise, invokeCopy: true, isPublic: true, modelUpdateOnly: isModelOnly });
         return promise;
     }
 
@@ -1374,10 +1454,14 @@ export class Spreadsheet extends Workbook implements INotifyPropertyChanged {
      * @returns {void} - used to paste the cut or copied cells in to specified address.
      */
     public paste(address?: string, type?: PasteSpecialType): void {
+        const isModelOnly: boolean = this.paintSuspendCount > 0;
+        if (isModelOnly) {
+            this.pendingPaintRefresh = 'fullSheet';
+        }
         this.notify(paste, {
             range: address ? getIndexesFromAddress(address) : address,
             sIdx: address ? getSheetIndex(this as Workbook, getSheetNameFromAddress(address)) : address,
-            type: type, isAction: true, isInternal: true
+            type: type, isAction: true, isInternal: true, modelUpdateOnly: isModelOnly
         });
     }
 
@@ -1421,6 +1505,9 @@ export class Spreadsheet extends Workbook implements INotifyPropertyChanged {
      */
     public setColWidth(width: number | string = 64, colIndex: number = 0, sheetIndex?: number): void {
         const sheet: SheetModel = isNullOrUndefined(sheetIndex) ? this.getActiveSheet() : this.sheets[sheetIndex as number];
+        if (colIndex < 0) {
+            return;
+        }
         if (sheet && (!sheet.isProtected || sheet.protectSettings.formatColumns)) {
             const mIndex: number = colIndex;
             const colWidth: string = (typeof width === 'number') ? width + 'px' : width;
@@ -1431,6 +1518,7 @@ export class Spreadsheet extends Workbook implements INotifyPropertyChanged {
             };
             const frozenCol: number = this.frozenColCount(sheet);
             if (sheet.id === this.getActiveSheet().id) {
+                const isSuspended: boolean = this.paintSuspendCount > 0;
                 if ((colIndex >= this.viewport.leftIndex + frozenCol && colIndex <= this.viewport.rightIndex) ||
                     (frozenCol && colIndex < frozenCol)) {
                     colIndex = this.getViewportIndex(colIndex, true);
@@ -1440,8 +1528,10 @@ export class Spreadsheet extends Workbook implements INotifyPropertyChanged {
                         threshold = -eleWidth;
                     }
                     setColModel();
-                    this.notify(colWidthChanged, { threshold, colIdx: mIndex, checkWrapCell: true });
-                    setResize(mIndex, colIndex, colWidth, true, this);
+                    if (!isSuspended) {
+                        this.notify(colWidthChanged, { threshold, colIdx: mIndex, checkWrapCell: true });
+                        setResize(mIndex, colIndex, colWidth, true, this);
+                    }
                 } else {
                     const oldWidth: number = getColumnWidth(sheet, colIndex);
                     let threshold: number;
@@ -1451,9 +1541,15 @@ export class Spreadsheet extends Workbook implements INotifyPropertyChanged {
                         threshold = -oldWidth;
                     }
                     setColModel();
-                    this.notify(colWidthChanged, { threshold, colIdx: colIndex });
+                    if (!isSuspended) {
+                        this.notify(colWidthChanged, { threshold, colIdx: colIndex });
+                    }
                 }
-                this.notify(positionAutoFillElement, null);
+                if (!isSuspended) {
+                    this.notify(positionAutoFillElement, null);
+                } else {
+                    this.pendingPaintRefresh = 'fullSheet';
+                }
             } else {
                 setColModel();
             }
@@ -1488,6 +1584,7 @@ export class Spreadsheet extends Workbook implements INotifyPropertyChanged {
             };
             if (sheet.id === this.getActiveSheet().id) {
                 const frozenRow: number = this.frozenRowCount(sheet);
+                const isSuspended: boolean = this.paintSuspendCount > 0;
                 if ((rowIndex >= this.viewport.topIndex + frozenRow && rowIndex <= this.viewport.bottomIndex) ||
                     (frozenRow && rowIndex < frozenRow)) {
                     rowIndex = this.getViewportIndex(mIndex);
@@ -1497,13 +1594,13 @@ export class Spreadsheet extends Workbook implements INotifyPropertyChanged {
                         threshold = -eleHeight;
                     }
                     setRowModel();
-                    this.notify(rowHeightChanged, { threshold: threshold, rowIdx: mIndex, isCustomHgt: true });
-                    if (isNullOrUndefined(edited)) {
-                        edited = false;
-                    }
-                    if (!edited) {
-                        setResize(mIndex, rowIndex, rowHeight, false, this);
-                        edited = false;
+                    if (!isSuspended) {
+                        this.notify(rowHeightChanged, { threshold: threshold, rowIdx: mIndex, isCustomHgt: true });
+                        if (isNullOrUndefined(edited)) { edited = false; }
+                        if (!edited) {
+                            setResize(mIndex, rowIndex, rowHeight, false, this);
+                            edited = false;
+                        }
                     }
                 } else {
                     const oldHeight: number = getRowHeight(sheet, rowIndex);
@@ -1514,9 +1611,15 @@ export class Spreadsheet extends Workbook implements INotifyPropertyChanged {
                         threshold = -oldHeight;
                     }
                     setRowModel();
-                    this.notify(rowHeightChanged, { threshold: threshold, rowIdx: mIndex });
+                    if (!isSuspended) {
+                        this.notify(rowHeightChanged, { threshold: threshold, rowIdx: mIndex });
+                    }
                 }
-                this.notify(positionAutoFillElement, null);
+                if (!isSuspended) {
+                    this.notify(positionAutoFillElement, null);
+                } else {
+                    this.pendingPaintRefresh = 'fullSheet';
+                }
             } else {
                 setRowModel();
             }
@@ -1762,15 +1865,23 @@ export class Spreadsheet extends Workbook implements INotifyPropertyChanged {
                     this.trigger(afterHyperlinkCreate, aftArgs);
                     this.notify(completeAction, { action: 'hyperlink', eventArgs: befArgs });
                 }
-                if (sheet === this.getActiveSheet()) {
-                    this.serviceLocator.getService<ICellRenderer>('cell').refreshRange(
-                        cellIdx, false, false, false, true, isImported(this));
-                    for (let i: number = 0; i < classList.length; i++) {
-                        if (!this.getCell(cellIdx[0], cellIdx[1]).classList.contains(classList[i as number])) {
-                            this.getCell(cellIdx[0], cellIdx[1]).classList.add(classList[i as number]);
+                const isSuspended: boolean = this.paintSuspendCount > 0;
+                const refreshHyperlinkUI: Function = (): void => {
+                    if (sheet === this.getActiveSheet()) {
+                        this.serviceLocator.getService<ICellRenderer>('cell').refreshRange(
+                            cellIdx, false, false, false, true, isImported(this));
+                        for (let i: number = 0; i < classList.length; i++) {
+                            if (!this.getCell(cellIdx[0], cellIdx[1]).classList.contains(classList[i as number])) {
+                                this.getCell(cellIdx[0], cellIdx[1]).classList.add(classList[i as number]);
+                            }
                         }
+                        this.notify(refreshRibbonIcons, null);
                     }
-                    this.notify(refreshRibbonIcons, null);
+                };
+                if (isSuspended) {
+                    this.queuePaintAction('insertHyperlink_' + address, (): void => { refreshHyperlinkUI(); });
+                } else {
+                    refreshHyperlinkUI();
                 }
             }
         }
@@ -1871,10 +1982,12 @@ export class Spreadsheet extends Workbook implements INotifyPropertyChanged {
      * @returns {void} - Open the Excel file.
      */
     public open(options: OpenOptions): void {
-        this.isOpen = true;
-        super.open(options);
-        if (this.isOpen) {
-            this.showSpinner();
+        if (options) {
+            this.isOpen = true;
+            super.open(options);
+            if (this.isOpen) {
+                this.showSpinner();
+            }
         }
     }
 
@@ -1887,11 +2000,22 @@ export class Spreadsheet extends Workbook implements INotifyPropertyChanged {
      * @returns {void} - To hide/show the rows in spreadsheet.
      */
     public hideRow(startIndex: number, endIndex: number = startIndex, hide: boolean = true): void {
-        if (this.renderModule) {
+        if (this.renderModule && this.paintSuspendCount === 0) {
             this.notify(hideShow, <HideShowEventArgs>{ startIndex: startIndex, endIndex: endIndex, hide: hide, actionUpdate: false });
-        } else {
-            super.hideRow(startIndex, endIndex, hide);
+            return;
         }
+        if (this.paintSuspendCount > 0) {
+            this.pendingPaintRefresh = 'fullSheet';
+            this.notify(hideShow, <HideShowEventArgs>{
+                startIndex: startIndex,
+                endIndex: endIndex,
+                hide: hide,
+                actionUpdate: false,
+                isSuspended: true
+            });
+            return;
+        }
+        super.hideRow(startIndex, endIndex, hide);
     }
 
     /**
@@ -1903,12 +2027,24 @@ export class Spreadsheet extends Workbook implements INotifyPropertyChanged {
      * @returns {void} - To hide/show the columns in spreadsheet.
      */
     public hideColumn(startIndex: number, endIndex: number = startIndex, hide: boolean = true): void {
-        if (this.renderModule) {
+        if (this.renderModule && this.paintSuspendCount === 0) {
             this.notify(
                 hideShow, <HideShowEventArgs>{ startIndex: startIndex, endIndex: endIndex, hide: hide, isCol: true, actionUpdate: false });
-        } else {
-            super.hideColumn(startIndex, endIndex, hide);
+            return;
         }
+        if (this.paintSuspendCount > 0) {
+            this.pendingPaintRefresh = 'fullSheet';
+            this.notify(hideShow, <HideShowEventArgs>{
+                startIndex: startIndex,
+                endIndex: endIndex,
+                hide: hide,
+                isCol: true,
+                actionUpdate: false,
+                isSuspended: true
+            });
+            return;
+        }
+        super.hideColumn(startIndex, endIndex, hide);
     }
 
     /**
@@ -1976,6 +2112,7 @@ export class Spreadsheet extends Workbook implements INotifyPropertyChanged {
      */
     public insertImage(images: ImageModel[], range?: string): void {
         let i: number;
+        if (!images || images.length === 0) { return; }
         for (i = 0; i < images.length; i++) {
             this.notify(createImageElement, {
                 options: images[i as number],
@@ -2200,8 +2337,16 @@ export class Spreadsheet extends Workbook implements INotifyPropertyChanged {
             }
         }
         this.notify(updateSortCollection, { sortOptions: sortOptions });
+        const isSuspended: boolean = this.paintSuspendCount > 0;
+        if (isSuspended) {
+            this.pendingPaintRefresh = 'fullSheet';
+        }
         return super.sort(sortOptions, range, prevSort).then((args: SortEventArgs) => {
-            this.notify(sortComplete, args);
+            if (isSuspended) {
+                this.queuePaintAction('sortComplete', (): void => { this.notify(sortComplete, args); });
+            } else {
+                this.notify(sortComplete, args);
+            }
             return Promise.resolve(args);
         });
     }
@@ -2227,9 +2372,10 @@ export class Spreadsheet extends Workbook implements INotifyPropertyChanged {
         }
         super.setValueRowCol(sheetId, value, rowIndex, colIndex, formula, isRandomFormula);
         const sheetIdx: number = getSheetIndexFromId(this as Workbook, sheetId);
+        const isSuspended: boolean = (this as Spreadsheet).paintSuspendCount > 0;
         if (this.activeSheetIndex === sheetIdx) {
             if (this.allowEditing) {
-                this.notify(editOperation, { action: 'refreshDependentCellValue', rowIdx: rowIndex, colIdx: colIndex });
+                this.notify(editOperation, { action: 'refreshDependentCellValue', rowIdx: rowIndex, colIdx: colIndex, modelUpdateOnly: isSuspended });
             } else {
                 rowIndex--; colIndex--;
                 const sheet: SheetModel = getSheet(this as Workbook, sheetIdx);
@@ -2254,8 +2400,32 @@ export class Spreadsheet extends Workbook implements INotifyPropertyChanged {
                         formattedText: cell.value, isRightAlign: false, type: 'General', cell: cell,
                         rowIndex: rowIndex, colIndex: colIndex, isRowFill: false
                     };
-                    this.notify(getFormattedCellObject, nodeEventArgs);
-                    this.refreshNode(td, nodeEventArgs);
+                    if (isSuspended) {
+                        this.pendingPaintRefresh = 'fullSheet';
+                        const sIdx: number = sheetIdx;
+                        const rIdx: number = rowIndex;
+                        const cIdx: number = colIndex;
+                        this.queuePaintAction(`setValueRowCol_${sIdx}_${rIdx}_${cIdx}`, () => {
+                            const replaySheet: SheetModel = getSheet(this as Workbook, sIdx);
+                            let tdReplay: HTMLElement;
+                            if (!isHiddenRow(replaySheet, rIdx) && !isHiddenCol(replaySheet, cIdx)) {
+                                tdReplay = this.getCell(rIdx, cIdx);
+                            }
+                            if (tdReplay) {
+                                const cellReplay: CellModel = getCell(rIdx, cIdx, replaySheet);
+                                const replayArgs: NumberFormatArgs = {
+                                    value: cellReplay.value, format: cellReplay.format, onLoad: true,
+                                    formattedText: cellReplay.value, isRightAlign: false, type: 'General', cell: cellReplay,
+                                    rowIndex: rIdx, colIndex: cIdx, isRowFill: false
+                                };
+                                this.notify(getFormattedCellObject, replayArgs);
+                                this.refreshNode(tdReplay, replayArgs);
+                            }
+                        });
+                    } else {
+                        this.notify(getFormattedCellObject, nodeEventArgs);
+                        this.refreshNode(td, nodeEventArgs);
+                    }
                 }
             }
         }
@@ -2313,6 +2483,22 @@ export class Spreadsheet extends Workbook implements INotifyPropertyChanged {
                     const spanFillSecElem: Element = select('.' + 'e-fill-sec', td);
                     if (spanFillSecElem) {
                         detach(spanFillSecElem);
+                    }
+                    if (!(args.cell && args.cell.richText && args.cell.richText.length)) {
+                        const richTextSpan: HTMLElement = td.querySelector('.e-vert-sub') || td.querySelector('.e-vert-super');
+                        const container: HTMLElement = richTextSpan && richTextSpan.parentElement;
+                        if (container) {
+                            const childNotes: NodeListOf<ChildNode> = container.childNodes;
+                            let node: Element;
+                            for (let idx: number = 0; idx < childNotes.length; idx++) {
+                                node = childNotes[idx as number] as Element;
+                                if (node.nodeType === Node.TEXT_NODE || (node.className && node.className.includes('e-vert-'))) {
+                                    container.removeChild(childNotes[idx as number]);
+                                    idx--;
+                                }
+                            }
+                            container.appendChild(document.createTextNode(''));
+                        }
                     }
                 }
                 let alignClass: string;
@@ -2388,7 +2574,7 @@ export class Spreadsheet extends Workbook implements INotifyPropertyChanged {
                     }
                 }
             } else if (node && (node.nodeType === 3 || node.nodeType === 1)) {
-                if (!args.isRowFill) {
+                if (!args.isRowFill && !(args.cell && args.cell.richText && args.cell.richText.length)) {
                     if (!isNullOrUndefined((node as HTMLElement).className) &&
                         (node as HTMLElement).className.indexOf('e-addNoteIndicator') > -1) {
                         node = td.lastChild;
@@ -2592,6 +2778,84 @@ export class Spreadsheet extends Workbook implements INotifyPropertyChanged {
         focus(this.element);
         this.notify(completeAction, { eventArgs: { row: sheet.frozenRows, column: sheet.frozenColumns,
             sheetIndex: this.activeSheetIndex }, action: 'freezePanes' });
+    }
+
+    /**
+     * Tracks what kind of refresh needs to happen after `resumeRefresh`.
+     *
+     * @hidden
+     */
+    public pendingPaintRefresh?: 'cellRange' | 'fullSheet';
+
+    /**
+     * Stores Promise resolvers that must be invoked after all deferred
+     * paint operations are completed during `resumeRefresh()`.
+     *
+     * @hidden
+     */
+    private resumeRefreshPromiseResolvers: Array<() => void> = [];
+
+    /**
+     * Suspends UI updates in the Spreadsheet.
+     * This method sets the update suspension state so that any further public method calls modify only the internal model.
+     * Visual changes in the DOM are deferred until updates are resumed.
+     * By grouping multiple public method operations without triggering immediate UI updates,
+     * it avoids repeated rendering and improves performance.
+     *
+     * @returns {void} - Suspends UI updates in the Spreadsheet.
+     */
+    public suspendRefresh(): void {
+        this.paintSuspendCount++;
+        if (this.paintSuspendCount === 1) {
+            this.pendingPaintRefresh = 'cellRange';
+        }
+    }
+
+    /**
+     * Resumes deferred UI updates in the Spreadsheet.
+     * This public method clears the update suspension state and synchronizes the DOM with the current model.
+     * All changes made through public methods after `suspendRefresh` are rendered in a single, optimized update cycle.
+     * The process applies all pending UI updates together and updates the view in one smooth action.
+     *
+     * @returns {Promise<void>} - Resolves after the DOM update completes.
+     */
+    public resumeRefresh(): Promise<void> {
+        return new Promise<void>((resolve: () => void) => {
+            if (this.paintSuspendCount === 0) {
+                resolve();
+                return;
+            }
+            this.paintSuspendCount--;
+            if (this.paintSuspendCount > 0) {
+                this.resumeRefreshPromiseResolvers.push(resolve);
+                return;
+            }
+
+            const refreshType: 'cellRange' | 'fullSheet' | undefined = this.pendingPaintRefresh;
+            this.pendingPaintRefresh = undefined;
+
+            const resolvers: Array<() => void> = this.resumeRefreshPromiseResolvers;
+            this.resumeRefreshPromiseResolvers = [];
+            resolvers.push(resolve);
+
+            if (refreshType === 'fullSheet') {
+                if (this.renderModule) {
+                    this.renderModule.refreshSheet();
+                }
+            } else if (refreshType === 'cellRange') {
+                this.notify(updateView, {});
+            }
+
+            const pendingActions: Array<{ actionName: string, execute: () => void }> = this.pendingPaintUiActions;
+            this.pendingPaintUiActions = [];
+
+            getUpdateUsingRaf((): void => {
+                pendingActions.forEach((action: { actionName: string, execute: () => void }): void => {
+                    action.execute();
+                });
+                resolvers.forEach((r: () => void) => r());
+            });
+        });
     }
 
     /**
@@ -2845,6 +3109,10 @@ export class Spreadsheet extends Workbook implements INotifyPropertyChanged {
      * @returns {void} - To select the range.
      */
     public selectRange(address: string): void {
+        if (!address) {
+            return;
+        }
+        address = address.trim();
         if (this.isEdit) {
             this.notify(editOperation, { action: 'endEdit' });
         }
@@ -3280,6 +3548,19 @@ export class Spreadsheet extends Workbook implements INotifyPropertyChanged {
             { predicates: predicates, range: range, isInternal: true, promise: promise, sIdx: sheetIdx };
         this.notify(initiateFilterUI, filterArgs);
         return filterArgs.promise as Promise<void>;
+    }
+
+    /**
+     * Executes the specified prompt in the AI Assist.
+     *
+     * @param {string} prompt - The prompt text to be executed.
+     * @returns {void} - The prompt execution is handled.
+     */
+    public executeAIPrompt(prompt: string): void {
+        if (!this.enableAIAssist || typeof prompt !== 'string' || !prompt.trim()) {
+            return;
+        }
+        this.notify(executePrompt, { prompt: prompt });
     }
 
     /**

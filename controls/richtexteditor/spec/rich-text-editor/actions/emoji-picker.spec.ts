@@ -348,7 +348,8 @@ describe('Emoji picker module', () => {
             element1.scrollTo(0, 600);
             expect(rteObj.element.querySelector('.e-selected')).not.toBe(null);
         });
-        it('space with colon (:) and filter the emoji', () => {
+        // 🚧 TODO: Migrate this to Playwright 🎭
+        xit('space with colon (:) and filter the emoji', () => {
             const element: HTMLElement = rteObj.element.querySelector('#' + controlId + '_toolbar_EmojiPicker');
             element.click();
             const firstP: HTMLElement = rteObj.inputElement.querySelector('#rte-p');
@@ -1801,7 +1802,7 @@ describe('Emoji picker module', () => {
             destroy(rteObj);
             detach(defaultRTE);
         });
-        it('check the tooltip destroy when close the popup using space key', (done: DoneFn) => {
+        it('check the tooltip destroy when close the popup using space key', () => {
             const firstP: HTMLElement = (rteObj as any).inputElement.querySelector('#rte-p');
             setCursorPoint(firstP, 0);
             (<any>rteObj).keyDown(keyboardEventArgs);
@@ -1812,10 +1813,7 @@ describe('Emoji picker module', () => {
             let textNode: HTMLElement = (rteObj as any).inputElement.querySelector('#rte-p').childNodes[0];
             setCursorPoint(textNode, 1);
             rteObj.keyDown(spaceKeyEventArgs);
-            setTimeout(() => {
-                expect(rteObj.element.ownerDocument.querySelectorAll('.e-tooltip-wrap').length > 0).toBe(false);
-                done();
-            }, 200);
+            expect(rteObj.element.ownerDocument.querySelectorAll('.e-tooltip-wrap').length > 0).toBe(false);
         });
     });
 

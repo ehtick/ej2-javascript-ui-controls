@@ -1,17 +1,18 @@
 import { Spreadsheet, DialogBeforeOpenEventArgs } from '../index';
 import { EventHandler, KeyboardEventArgs, Browser, closest, isUndefined, isNullOrUndefined, select, detach, getComponent } from '@syncfusion/ej2-base';
 import { getRangeIndexes, getRangeFromAddress, getIndexesFromAddress, getRangeAddress, isSingleCell, getCellAddress } from '../../workbook/common/address';
-import { keyDown, editOperation, clearCopy, enableToolbarItems, completeAction } from '../common/index';
+import { keyDown, editOperation, clearCopy, enableToolbarItems, completeAction, setUndoRedo } from '../common/index';
 import { formulaBarOperation, formulaOperation, setActionData, keyUp, getCellPosition, deleteImage, focus, isLockedCells, isNavigationKey } from '../common/index';
 import { workbookEditOperation, getFormattedBarText, getFormattedCellObject, wrapEvent, isValidation, activeCellMergedRange, activeCellChanged, getUniqueRange, getSortRange, removeUniquecol, removeSortcol, checkUniqueRange, checkSortRange, reApplyFormula, refreshChart, mergedRange } from '../../workbook/common/event';
 import { CellModel, SheetModel, getSheetName, getSheetIndex, getCell, getColumn, ColumnModel, getRowsHeight, getColumnsWidth, Workbook, checkColumnValidation, setCell } from '../../workbook/base/index';
 import { getSheetNameFromAddress, getSheet, selectionComplete, isHiddenRow, isHiddenCol, applyCF, ApplyCFArgs, setVisibleMergeIndex, isReadOnlyCells, getTypeFromFormat } from '../../workbook/index';
-import { beginAction, updateCell, CheckCellValidArgs, NumberFormatArgs, getAutoDetectFormatParser, isReadOnly, getViewportIndexes, getRow } from '../../workbook/index';
+import { beginAction, updateCell, CheckCellValidArgs, getAutoDetectFormatParser, NumberFormatArgs, isReadOnly, getViewportIndexes, getRow } from '../../workbook/index';
 import { CellEditEventArgs, CellSaveEventArgs, ICellRenderer, hasTemplate, editAlert, FormulaBarEdit, getTextWidth, readonlyAlert, finiteAlert } from '../common/index';
 import { getSwapRange, getCellIndexes, wrap as wrapText, checkIsFormula, isNumber, isLocked, MergeArgs, isCellReference, workbookFormulaOperation } from '../../workbook/index';
 import { initiateFormulaReference, initiateCur, clearCellRef, addressHandle, clearRange, dialog, locale } from '../common/index';
 import { editValue, initiateEdit, forRefSelRender, isFormulaBarEdit, deleteChart, activeSheetChanged, mouseDown } from '../common/index';
 import { checkFormulaRef, getData, VisibleMergeIndexArgs, clearFormulaDependentCells } from '../../workbook/index';
+import { CellStyleModel, VerticalAlign, refreshRibbonIcons, RichTextModel } from '../../workbook/common/index';
 import { L10n } from '@syncfusion/ej2-base';
 import { Dialog } from '../services/dialog';
 import { BeforeOpenEventArgs, Dialog as DialogComponent } from '@syncfusion/ej2-popups';
@@ -21,6 +22,7 @@ import { BeforeOpenEventArgs, Dialog as DialogComponent } from '@syncfusion/ej2-
  */
 export class Edit {
     private parent: Spreadsheet;
+    private pendingFormatted: { [key: string]: RichTextModel[] } = {};
     private editorElem: HTMLElement = null;
     private editCellData: IEditCellData = {};
     private isEdit: boolean = false;
@@ -38,7 +40,6 @@ export class Edit {
     private sortActCell: string = '';
     private isSpill: boolean = false;
     private tapedTwice: boolean;
-    private isImeComposing: boolean;
     private keyCodes: { [key: string]: number } = {
         BACKSPACE: 8,
         SPACE: 32,
@@ -127,7 +128,6 @@ export class Edit {
         this.parent.on(readonlyAlert, this.readOnlyAlertHandler, this);
         this.parent.on(finiteAlert, this.finiteAlertHandler, this);
         // IME candidate selection on mobile (e.g. on-screen keyboards)
-        EventHandler.add(this.parent.element, 'compositionstart', this.imeCompositionStartHandler, this);
         EventHandler.add(this.parent.element, 'compositionend', this.imeCompositionEndHandler, this);
     }
 
@@ -154,25 +154,27 @@ export class Edit {
             this.parent.off(readonlyAlert, this.readOnlyAlertHandler);
             this.parent.off(finiteAlert, this.finiteAlertHandler);
         }
-        EventHandler.remove(this.parent.element, 'compositionstart', this.imeCompositionStartHandler);
         EventHandler.remove(this.parent.element, 'compositionend', this.imeCompositionEndHandler);
     }
 
     private getImeEditorTarget(target: EventTarget): HTMLElement | HTMLTextAreaElement | null {
         const targetEle: Element = target as Element;
-        if (!targetEle) {
-            return null;
-        }
+        if (!targetEle) { return null; }
         const formulaBar: HTMLTextAreaElement = this.parent.element.querySelector('.e-formula-bar') as HTMLTextAreaElement;
-        if (formulaBar && closest(targetEle, '.e-formula-bar')) {
-            return formulaBar as HTMLTextAreaElement;
+        if (formulaBar) {
+            const clickedFormulaBar: HTMLTextAreaElement = closest(targetEle, '.e-formula-bar') as HTMLTextAreaElement;
+            if (clickedFormulaBar && (formulaBar.contains(clickedFormulaBar) || formulaBar === clickedFormulaBar)) {
+                return formulaBar;
+            }
         }
-        const editEle: HTMLElement = this.getEditElement(this.parent.getActiveSheet());
-        if (!editEle) {
-            return null;
+        const editEle: HTMLElement = this.getEditElement(this.parent.getActiveSheet()) as HTMLElement;
+        if (editEle) {
+            const clickedEdit: HTMLElement = closest(targetEle, '.e-spreadsheet-edit') as HTMLElement;
+            if (clickedEdit && (editEle.contains(clickedEdit) || editEle === clickedEdit)) {
+                return editEle;
+            }
         }
-        const clickedEdit: HTMLElement = closest(targetEle, '.e-spreadsheet-edit') as HTMLElement;
-        return clickedEdit && (editEle.contains(clickedEdit) || editEle === clickedEdit) ? editEle : null;
+        return null;
     }
 
     private syncEditModelFromEditor(target: HTMLElement | HTMLTextAreaElement | null): void {
@@ -187,16 +189,6 @@ export class Edit {
         }
     }
 
-    private imeCompositionStartHandler(e: CompositionEvent): void {
-        if (!this.isEdit) {
-            return;
-        }
-        const target: HTMLElement = this.getImeEditorTarget(e.target);
-        if (target) {
-            this.isImeComposing = true;
-        }
-    }
-
     private imeCompositionEndHandler(e: CompositionEvent): void {
         if (!this.isEdit) {
             return;
@@ -205,8 +197,19 @@ export class Edit {
         if (!target) {
             return;
         }
-        this.isImeComposing = false;
         this.syncEditModelFromEditor(target);
+    }
+
+    private selectionChangeHandler(): void {
+        if (!this.isEdit) { return; }
+        const editorElem: HTMLElement = this.getEditElement(this.parent.getActiveSheet());
+        if (!editorElem) { return; }
+        const sel: Selection = document.getSelection();
+        if (!sel || !sel.anchorNode) { return; }
+        const anchorNode: Node = sel.anchorNode.nodeType === 3 ? sel.anchorNode.parentNode : sel.anchorNode;
+        if (anchorNode && (editorElem === anchorNode || editorElem.contains(anchorNode))) {
+            this.parent.notify(refreshRibbonIcons, null);
+        }
     }
 
     /**
@@ -222,6 +225,18 @@ export class Edit {
     private performEditOperation(args: { [key: string]: Object }): void {
         const action: string = <string>args.action;
         switch (action) {
+        case 'storeRichText': {
+            const richText: RichTextModel[] = args.richText as RichTextModel[];
+            if (args.address && richText && richText.length) {
+                let address: string = <string>args.address;
+                if (address.indexOf('!') === -1) {
+                    const sheetName: string = getSheetName(this.parent, this.parent.activeSheetIndex);
+                    address = sheetName + '!' + address;
+                }
+                this.pendingFormatted[address as string] = richText;
+            }
+            break;
+        }
         case 'renderEditor':
             this.renderEditor();
             if (args.initLoad && Browser.isDevice && Browser.info.name === 'safari' && (Browser.isIos || Browser.isIos7)) {
@@ -275,10 +290,13 @@ export class Edit {
             if (args.endFormulaRef !== undefined) { args.endFormulaRef = this.endFormulaRef; }
             break;
         case 'refreshDependentCellValue':
-            this.refreshDependentCellValue(<number>args.rowIdx, <number>args.colIdx);
+            this.refreshDependentCellValue(<number>args.rowIdx, <number>args.colIdx, <boolean>args.modelUpdateOnly);
             break;
         case 'getElement':
             args.element = this.getEditElement(this.parent.getActiveSheet());
+            break;
+        case 'richTextFormat':
+            this.richTextFormat({ verticalAlign: <VerticalAlign>args.verticalAlign });
             break;
         case 'focusEditorElem':
             this.editorElem.focus();
@@ -300,9 +318,24 @@ export class Edit {
                     this.altEnter();
                 }
                 this.isAltEnter = true;
-            } else if (this.isCellEdit && this.editCellData.value !== editElement.textContent && e.keyCode !== 16 && (!e.shiftKey ||
+            } else {
+                const lastNode: Node = editElement.lastChild;
+                if (lastNode && lastNode.nodeType === Node.TEXT_NODE) {
+                    let value: string = lastNode.nodeValue || '';
+                    if (value.indexOf('\u200B') !== -1) {
+                        value = value.replace(/\u200B/g, '');
+                        if (value.length === 0) {
+                            editElement.removeChild(lastNode);
+                        } else {
+                            lastNode.nodeValue = value;
+                            this.setCursorPosition();
+                        }
+                    }
+                }
+                if (this.isCellEdit && this.editCellData.value !== editElement.textContent && e.keyCode !== 16 && (!e.shiftKey ||
                     (e.shiftKey && !isNavigationKey(e.keyCode)))) {
-                this.refreshEditor(editElement.textContent, this.isCellEdit);
+                    this.refreshEditor(editElement.textContent, this.isCellEdit);
+                }
             }
             const isFormulaEdit: boolean = checkIsFormula(this.editCellData.value, true);
             if (isFormulaEdit && (!e || (e.keyCode !== 16 && e.keyCode !== 17 && (!e.shiftKey || !isNavigationKey(e.keyCode))))) {
@@ -391,7 +424,7 @@ export class Edit {
                         }
                     }
                 } else if (trgtElem.classList.contains('e-spreadsheet') || (closest(trgtElem, '.e-sheet-panel') &&
-                    !trgtElem.classList.contains('e-comment-input'))) {
+                    (!trgtElem.classList.contains('e-comment-input') && !trgtElem.classList.contains('e-assist-textarea')))) {
                     if (keyCode === 13 && trgtElem.contentEditable === 'true') {
                         e.preventDefault();
                     }
@@ -499,7 +532,16 @@ export class Edit {
         }
         const editorElem: HTMLElement = this.getEditElement(this.parent.getActiveSheet());
         if (refreshEditorElem && editorElem) {
-            editorElem.textContent = value;
+            if (editorElem.querySelector('.e-vert-sub') || editorElem.querySelector('.e-vert-super')) {
+                let runs: RichTextModel[] = this.serializeFormattedText(editorElem);
+                runs = this.updateRunsFromText(runs, value);
+                this.renderRuns(editorElem, runs);
+            } else {
+                editorElem.textContent = value;
+            }
+        }
+        if (editorElem) {
+            this.updateRichText(editorElem);
         }
         if (refreshFormulaBar) {
             this.parent.notify(
@@ -515,6 +557,46 @@ export class Edit {
         // } else {
         //     this.editorElem.style.removeProperty('height');
         // }
+    }
+
+    private updateRunsFromText(runs: RichTextModel[], newText: string): RichTextModel[] {
+        const flatText: string = runs.map((r: RichTextModel) => r.text).join('');
+        if (flatText === newText) {
+            return runs.map((r: RichTextModel) => ({ text: r.text, style: r.style ? { ...(r.style as CellStyleModel) } : {} }));
+        }
+        const runLengths: number[] = runs.map((r: RichTextModel) => r.text ? r.text.length : 0);
+        const cumLens: number[] = [];
+        let acc: number = 0;
+        for (let i: number = 0; i < runLengths.length; i++) { acc += runLengths[i as number]; cumLens.push(acc as number); }
+        const origLen: number = flatText.length;
+        const outputRuns: RichTextModel[] = runs.map((r: RichTextModel) => ({ text: '', style: r.style ? { ...(r.style as CellStyleModel) } : {} }));
+        const getRunForCharIndex: (charIdx: number) => number = (charIdx: number): number => {
+            for (let i: number = 0; i < cumLens.length; i++) {
+                if (charIdx < cumLens[i as number]) { return i; }
+            }
+            return cumLens.length - 1;
+        };
+        let origPos: number = 0;
+        for (let n: number = 0; n < newText.length; n++) {
+            const chNew: string = newText[n as number] as string;
+            const chOrig: string | null = origPos < origLen ? flatText[origPos as number] : null;
+            if (chOrig !== null && chNew === chOrig) {
+                const runIdx: number = getRunForCharIndex(origPos);
+                outputRuns[runIdx as number].text += chNew as string;
+                origPos++;
+            } else {
+                let runIdx: number;
+                if (origPos === 0) {
+                    runIdx = 0;
+                } else {
+                    runIdx = getRunForCharIndex(origPos - 1);
+                }
+                outputRuns[runIdx as number].text += chNew;
+            }
+        }
+        return outputRuns.map((r: RichTextModel, idx: number) => ({
+            text: r.text, style: runs[idx as number].style ? { ...(runs[idx as number].style as CellStyleModel) } : {}
+        }));
     }
 
     private startEdit(address?: string, value?: string, refreshCurPos: boolean = true, preventFormulaReference?: boolean): void {
@@ -543,25 +625,38 @@ export class Edit {
         this.parent.isEdit = this.isEdit = true;
         this.parent.notify(clearCopy, null);
         this.parent.notify(enableToolbarItems, [{ enable: false }]);
+        const editorElem: HTMLElement = this.getEditElement(this.parent.getActiveSheet());
         if (Browser.isDevice && Browser.info.name === 'safari' && (Browser.isIos || Browser.isIos7)) {
-            const editorElem: HTMLElement = this.getEditElement(this.parent.getActiveSheet());
-            if (editorElem) {
-                EventHandler.add(editorElem, 'paste', this.pasteHandler, this);
+            EventHandler.add(editorElem, 'paste', this.pasteHandler, this);
+            const formulaBar: HTMLElement = this.parent.element.querySelector('.e-formula-bar');
+            if (formulaBar) {
+                EventHandler.add(formulaBar, 'paste', this.pasteHandler, this);
             }
         }
+        EventHandler.add(document, 'selectionchange', this.selectionChangeHandler, this);
+        EventHandler.add(editorElem, 'mouseup', this.selectionChangeHandler, this);
         if (cell.formula && !preventFormulaReference) {
             this.parent.notify(initiateFormulaReference, { range: cell.formula, formulaSheetIdx: this.editCellData.sheetIndex });
         }
     }
 
-    private setCursorPosition(): void {
+    private setCursorPosition(isStartEdit?: boolean): void {
         const elem: HTMLElement = this.getEditElement(this.parent.getActiveSheet());
-        const textLen: number = elem.textContent.length;
-        if (textLen) {
+        if (elem.textContent.length) {
             const selection: Selection = document.getSelection();
             const range: Range = document.createRange();
-            range.setStart(elem.firstChild, textLen);
-            range.collapse(true);
+            const lastNode: HTMLElement = elem.lastChild as HTMLElement;
+            const isLastEle: boolean = lastNode && lastNode.nodeType === Node.ELEMENT_NODE;
+            if (isStartEdit && isLastEle && (lastNode.classList.contains('e-vert-sub') || lastNode.classList.contains('e-vert-super'))) {
+                const tn: Text = document.createTextNode('\u200B');
+                elem.appendChild(tn);
+                range.setStart(tn, 1);
+                range.collapse(true);
+            } else {
+                const selectNode: Node = elem.lastChild;
+                range.setStart(isLastEle ? selectNode.firstChild : selectNode, selectNode.textContent.length);
+                range.collapse(true);
+            }
             selection.removeAllRanges();
             selection.addRange(range);
         }
@@ -710,9 +805,22 @@ export class Edit {
                 const trgtElem: HTMLElement = <HTMLElement>e.target;
                 const sheet: SheetModel = this.parent.getActiveSheet();
                 const formulaRefIndicator : HTMLElement = this.parent.element.querySelector('.e-formularef-indicator');
-                this.isCellEdit = trgtElem.classList.contains('e-spreadsheet-edit');
+                this.isCellEdit = trgtElem.classList.contains('e-spreadsheet-edit') ||
+                    trgtElem.classList.contains('e-vert-sub') || trgtElem.classList.contains('e-vert-super');
                 let isFormula: boolean = checkIsFormula(this.editCellData.value, true);
                 const editorElem: HTMLElement = this.getEditElement(sheet);
+                if (editorElem) {
+                    const lastNode: Node = editorElem.lastChild;
+                    if (lastNode && lastNode.nodeType === Node.TEXT_NODE) {
+                        let value: string = lastNode.nodeValue || '';
+                        if (value.indexOf('\u200B') !== -1) {
+                            value = value.replace(/\u200B/g, '');
+                            if (value.length === 0) {
+                                editorElem.removeChild(lastNode);
+                            }
+                        }
+                    }
+                }
                 const validCharacters: string[] = ['+', '-', '*', '/', this.parent.listSeparator, '(', '=', '&', ':'];
                 if (trgtElem.classList.contains('e-cell') || trgtElem.classList.contains('e-header-cell') ||
                     trgtElem.classList.contains('e-selectall') || closest(trgtElem, '.e-toolbar-item.e-active') || closest(trgtElem, '.e-table')) {
@@ -798,14 +906,13 @@ export class Edit {
     }
 
     private pasteHandler(e: ClipboardEvent): void {
-        const target: HTMLElement = e.target as HTMLElement;
         setTimeout(() => {
             if (!this.isEdit) {
                 return;
             }
-            const editorEle: HTMLElement = target.parentElement && closest(target, '.e-spreadsheet-edit') as HTMLElement;
-            if (editorEle) {
-                this.syncEditModelFromEditor(editorEle);
+            const pasteTarget: HTMLElement = this.getImeEditorTarget(e.target as HTMLElement);
+            if (pasteTarget) {
+                this.syncEditModelFromEditor(pasteTarget);
             }
         }, 0);
     }
@@ -953,7 +1060,22 @@ export class Edit {
                 }
                 if (isUndefined(value)) {  value = ''; }
                 this.refreshEditor(value, false, true, false, false, prevCellValue);
-                if (refreshCurPos) { this.setCursorPosition(); }
+                const editorElem: HTMLElement = this.getEditElement(this.parent.getActiveSheet());
+                if (editorElem && cell && (cell as CellModel).richText && (cell as CellModel).richText.length) {
+                    while (editorElem.firstChild) { editorElem.removeChild(editorElem.firstChild); }
+                    (cell as CellModel).richText.forEach((run: RichTextModel) => {
+                        if (run.style && run.style.verticalAlign) {
+                            const span: HTMLElement = this.parent.createElement('span', { className: `e-vert-${run.style.verticalAlign}` }) as HTMLElement;
+                            span.style.verticalAlign = run.style.verticalAlign as string;
+                            span.style.fontSize = '60%';
+                            span.appendChild(document.createTextNode(run.text));
+                            editorElem.appendChild(span);
+                        } else {
+                            editorElem.appendChild(document.createTextNode(run.text));
+                        }
+                    });
+                }
+                if (refreshCurPos) { this.setCursorPosition(true); }
             });
         });
     }
@@ -995,22 +1117,20 @@ export class Edit {
             } else {
                 editWidth = (mainContElement.offsetWidth - (left - cont.scrollLeft) - 28) -
                     this.parent.sheetModule.getRowHeaderWidth(sheet);
-                if (Browser.info.name !== 'safari') {
-                    const tdEleInf: ClientRect = tdElem.getBoundingClientRect();
-                    const verticalScrollBarWidth: number = this.parent.sheetModule.getScrollSize();
-                    const horizontalScrollBar: Element = this.parent.getScrollElement();
-                    const visibleScrollWidth: number = horizontalScrollBar ?
-                        (horizontalScrollBar.getBoundingClientRect().width - verticalScrollBarWidth) : 0;
-                    if (horizontalScrollBar && tdEleInf.width < visibleScrollWidth) {
-                        const mainContEleRect: ClientRect = mainContElement.getBoundingClientRect();
-                        if (this.parent.enableRtl) {
-                            if ((mainContEleRect.left + verticalScrollBarWidth) > tdEleInf.left) {
-                                horizontalScrollBar.scrollLeft -= tdEleInf.width;
-                            }
-                        } else {
-                            if ((mainContEleRect.right - verticalScrollBarWidth) < tdEleInf.right) {
-                                horizontalScrollBar.scrollLeft += (tdEleInf.width - editWidth);
-                            }
+                const tdEleInf: ClientRect = tdElem.getBoundingClientRect();
+                const mainContEleInf: ClientRect = mainContElement.getBoundingClientRect();
+                const getCellRight: number = this.parent.enableRtl ? tdEleInf.left : tdEleInf.right;
+                const getMainConEleRight: number = this.parent.enableRtl ? mainContEleInf.left : mainContEleInf.right;
+                const horizontalScrollBar: Element = this.parent.getScrollElement();
+                const verticalScrollBarWidth: number = this.parent.sheetModule.getScrollSize();
+                if (horizontalScrollBar && tdEleInf.width < horizontalScrollBar.getBoundingClientRect().width - verticalScrollBarWidth) {
+                    if (this.parent.enableRtl) {
+                        if ((getMainConEleRight + verticalScrollBarWidth) > getCellRight) {
+                            horizontalScrollBar.scrollLeft -= tdEleInf.width;
+                        }
+                    } else {
+                        if ((getMainConEleRight - verticalScrollBarWidth) < getCellRight) {
+                            horizontalScrollBar.scrollLeft += tdEleInf.width;
                         }
                     }
                 }
@@ -1031,7 +1151,8 @@ export class Edit {
             });
             const editorElem: HTMLElement = this.getEditElement(sheet, true);
             editorElem.style.cssText = inlineStyles;
-            if (getTextWidth(editorElem.textContent, cell.style, this.parent.cellStyle) > editWidth) {
+            if (getTextWidth(editorElem.textContent, cell.style, this.parent.cellStyle) > editWidth ||
+                (cell.richText && cell.richText.length)) {
                 editorElem.style.height = 'auto';
             }
             // we using edit div height as auto , while editing div enlarges and hide active cell bottom border for that
@@ -1155,7 +1276,17 @@ export class Edit {
         if (curCellValue) {
             curCellValue = curCellValue.toString();
         }
-        const isCellValChanged: boolean = oldCellValue !== curCellValue || checkIsFormula(oldValue);
+        let hasEditorFormattedRun: boolean = false;
+        if (this.editCellData && this.editCellData.fullAddr && this.pendingFormatted &&
+            this.pendingFormatted[this.editCellData.fullAddr]) {
+            const runs: RichTextModel[] = this.pendingFormatted[this.editCellData.fullAddr];
+            hasEditorFormattedRun = !!(runs && runs.length);
+        } else if (this.editCellData && this.editCellData.element) {
+            const editorEl: HTMLElement = this.editCellData.element;
+            hasEditorFormattedRun = !!(editorEl.querySelector('span.e-vert-sub, span.e-vert-super') &&
+                (isUndefined(this.pendingFormatted) && isUndefined(this.pendingFormatted[this.editCellData.fullAddr])));
+        }
+        const isCellValChanged: boolean = oldCellValue !== curCellValue || checkIsFormula(oldValue) || hasEditorFormattedRun;
         if (isCellValChanged) {
             if (this.isAltEnter && curCellValue && curCellValue.includes('\n')) {
                 wrapText(sheet.activeCell, true, this.parent as Workbook, true);
@@ -1195,6 +1326,24 @@ export class Edit {
                 address: this.editCellData.addr, value: this.editCellData.value, skipCellFormat: this.editCellData.showFormattedText
             };
             this.parent.notify(workbookEditOperation, evtArgs);
+            if (this.editCellData && this.editCellData.fullAddr && this.pendingFormatted) {
+                const richText: RichTextModel[] = this.pendingFormatted[this.editCellData.fullAddr];
+                if (richText && richText.length) {
+                    const plainText: string = this.editCellData.value || '';
+                    this.parent.updateCellInfo({ richText: richText, value: plainText }, sheet.activeCell, true);
+                }
+                else {
+                    const plainText: string = this.editCellData.value || '';
+                    const cellModel: CellModel = getCell(this.editCellData.rowIndex, this.editCellData.colIndex, sheet, false, true);
+                    const pendingRuns: RichTextModel[] =
+                        this.pendingFormatted && this.pendingFormatted[this.editCellData.fullAddr];
+                    const pendingEmpty: boolean = !(pendingRuns && pendingRuns.length);
+                    if (cellModel && cellModel.richText && cellModel.richText.length && pendingEmpty) {
+                        delete cellModel.richText;
+                        this.parent.updateCellInfo({ value: plainText }, sheet.activeCell, true);
+                    }
+                }
+            }
             const updatedCell: CellModel = getCell(cellIndex[0], cellIndex[1], sheet, true);
             let cellValue: string;
             if (!isNullOrUndefined(updatedCell) && !isNullOrUndefined(updatedCell.value)) {
@@ -1445,7 +1594,7 @@ export class Edit {
             }
         }
     }
-    private refreshDependentCellValue(rowIdx: number, colIdx: number): void {
+    private refreshDependentCellValue(rowIdx: number, colIdx: number, modelUpdateOnly?: boolean): void {
         if (rowIdx && colIdx) {
             rowIdx--; colIdx--;
             if (this.editCellData.rowIndex !== rowIdx || this.editCellData.colIndex !== colIdx || this.uniqueCell) {
@@ -1471,8 +1620,29 @@ export class Edit {
                     if (actCell[0] === rowIdx && actCell[1] === colIdx) {
                         this.uniqueActCell = cell.value;
                     }
-                    const eventArgs: NumberFormatArgs = this.getRefreshNodeArgs(cell, td, rowIdx, colIdx);
-                    this.parent.refreshNode(td, eventArgs);
+                    const isSuspended: boolean = modelUpdateOnly || this.parent.paintSuspendCount > 0;
+                    if (isSuspended) {
+                        this.parent.pendingPaintRefresh = 'fullSheet';
+                        const sIdx: number = this.parent.activeSheetIndex;
+                        const rIdx: number = rowIdx;
+                        const cIdx: number = colIdx;
+                        this.parent.queuePaintAction(`refreshDependentCell_${sIdx}_${rIdx}_${cIdx}`, () => {
+                            if (!this.parent || this.parent.isDestroyed) { return; }
+                            const sheet: SheetModel = this.parent.getActiveSheet();
+                            let tdReplay: HTMLElement;
+                            if (!isHiddenRow(sheet, rIdx) && !isHiddenCol(sheet, cIdx)) {
+                                tdReplay = this.parent.getCell(rIdx, cIdx);
+                            }
+                            if (tdReplay) {
+                                const cellReplay: CellModel = getCell(rIdx, cIdx, sheet);
+                                const replayArgs: NumberFormatArgs = this.getRefreshNodeArgs(cellReplay, tdReplay, rIdx, cIdx);
+                                this.parent.refreshNode(tdReplay, replayArgs);
+                            }
+                        });
+                    } else {
+                        const eventArgs: NumberFormatArgs = this.getRefreshNodeArgs(cell, td, rowIdx, colIdx);
+                        this.parent.refreshNode(td, eventArgs);
+                    }
                 }
             }
         }
@@ -1513,6 +1683,9 @@ export class Edit {
         this.refreshEditor(this.editCellData.oldValue, refreshFormulaBar, false, false, false);
         if (!isInternal) {
             if (trigEvent) {
+                if (this.editCellData && this.editCellData.fullAddr) {
+                    delete this.pendingFormatted[this.editCellData.fullAddr];
+                }
                 this.triggerEvent('cellSave', event, undefined, true);
             } else {
                 this.triggerEvent('cellEdited');
@@ -1533,6 +1706,7 @@ export class Edit {
             focus(this.parent.element);
         }
         this.parent.notify(enableToolbarItems, [{ enable: true }]);
+        this.parent.notify(setUndoRedo, null);
     }
 
     private triggerEvent(
@@ -1546,7 +1720,8 @@ export class Edit {
             oldValue: this.editCellData.oldValue,
             address: this.editCellData.fullAddr,
             displayText: this.parent.getDisplayText(cell),
-            previousFormulaValue: this.editCellData.prevFormulaValue
+            previousFormulaValue: this.editCellData.prevFormulaValue,
+            richText: this.pendingFormatted[this.editCellData.fullAddr]
         };
         if (eventArgs.address) {
             const indexes: number[] = getRangeIndexes(eventArgs.address);
@@ -1559,8 +1734,8 @@ export class Edit {
         }
         const isValueChanged: boolean = (eventArgs.value || <unknown>eventArgs.value === 0 ? eventArgs.value.toString() : '') !==
             (eventArgs.oldValue || <unknown>eventArgs.oldValue === 0 ? eventArgs.oldValue.toString() : '');
-        if (isValueChanged || (!pvtManualCalc && checkIsFormula(eventArgs.value) && (!cell || !cell.format ||
-            getTypeFromFormat(cell.format) !== 'Text'))) {
+        if (isValueChanged || (eventArgs.richText && eventArgs.richText.length) ||
+            (!pvtManualCalc && checkIsFormula(eventArgs.value) && (!cell || !cell.format || getTypeFromFormat(cell.format) !== 'Text'))) {
             if (eventName !== 'cellSave') { (<CellEditEventArgs>eventArgs).cancel = false; }
             if (eventName === 'beforeCellSave') {
                 this.parent.notify(beginAction, { eventArgs: eventArgs, action: 'cellSave', preventAction: true });
@@ -1607,13 +1782,18 @@ export class Edit {
             offset = node.textContent.length;
         }
         const text: string = node.textContent;
-        const textBefore: string = text.slice(0, offset);
+        let textBefore: string = text.slice(0, offset);
+        const hasZeroSpace: boolean = textBefore.indexOf('\u200B') !== -1;
+        if (hasZeroSpace) {
+            textBefore = textBefore.replace(/\u200B/g, '');
+        }
         const textAfter: string = text.slice(offset) || ' ';
         node.textContent = textBefore + '\n' + textAfter;
         range = document.createRange();
         if (node.nodeType === 3) {
-            range.setStart(node, offset + 1);
-            range.setEnd(node, offset + 1);
+            const cursorPos: number = hasZeroSpace ? 1 : offset + 1;
+            range.setStart(node, cursorPos);
+            range.setEnd(node, cursorPos);
         } else if (node.nodeType === 1) {
             range.setStart(node.firstChild, offset + 1);
             range.setEnd(node.firstChild, offset + 1);
@@ -1623,8 +1803,8 @@ export class Edit {
     }
 
     private resetEditState(elemRefresh: boolean = true): void {
-        const editorElem: HTMLElement = this.getEditElement(this.parent.getActiveSheet());
         if (elemRefresh) {
+            const editorElem: HTMLElement = this.getEditElement(this.parent.getActiveSheet());
             if (checkIsFormula(editorElem.textContent, this.isEdit) || editorElem.textContent === '') {
                 this.parent.notify(clearCellRef, null);
             }
@@ -1638,14 +1818,28 @@ export class Edit {
                 }
             }
         }
+        if (this.editCellData && this.editCellData.fullAddr) {
+            delete this.pendingFormatted[this.editCellData.fullAddr];
+        }
         this.editCellData = {};
         this.parent.isEdit = this.isEdit = false;
+        EventHandler.remove(document, 'selectionchange', this.selectionChangeHandler);
+        const editorElemRem: HTMLElement = this.getEditElement(this.parent.getActiveSheet());
+        EventHandler.remove(editorElemRem, 'mouseup', this.selectionChangeHandler);
+        if (Browser.isDevice && Browser.info.name === 'safari' && (Browser.isIos || Browser.isIos7)) {
+            EventHandler.remove(editorElemRem, 'paste', this.pasteHandler);
+            const formulaBar: HTMLElement = this.parent.element.querySelector('.e-formula-bar');
+            if (formulaBar) {
+                EventHandler.remove(formulaBar, 'paste', this.pasteHandler);
+            }
+        }
+        const subBtn: HTMLElement = this.parent.element.querySelector('#spreadsheet_sub') as HTMLElement;
+        if (subBtn) { subBtn.classList.remove('e-active', 'e-selected'); }
+        const superBtn: HTMLElement = this.parent.element.querySelector('#spreadsheet_super') as HTMLElement;
+        if (superBtn) { superBtn.classList.remove('e-active', 'e-selected'); }
         this.isCellEdit = true;
         this.isAltEnter = false;
         this.parent.notify(formulaOperation, { action: 'endEdit' });
-        if (Browser.isDevice && Browser.info.name === 'safari' && (Browser.isIos || Browser.isIos7)) {
-            EventHandler.remove(editorElem, 'paste', this.pasteHandler);
-        }
         if (this.parent.showSheetTabs && !this.parent.isProtected) {
             const addSheetBtn: Element = this.parent.element.querySelector('.e-add-sheet-tab');
             if (addSheetBtn) {
@@ -1726,7 +1920,11 @@ export class Edit {
                 this.curStartPos = this.curEndPos;
                 startVal += address;
             } else {
-                startVal = editedValue.substring(0, this.curStartPos) + address;
+                startVal = Browser.isDevice
+                    ? this.editCellData && this.editCellData.addr && this.editCellData.addr !== address
+                        ? editedValue.substring(0, this.curStartPos) + address
+                        : editedValue.substring(0, this.curStartPos)
+                    : editedValue.substring(0, this.curStartPos) + address;
                 endVal = editedValue.substring(this.curStartPos);
                 if (args.isNameBoxSelect) {
                     this.refreshEditor(startVal + endVal, true, true);
@@ -1760,7 +1958,11 @@ export class Edit {
                 this.curStartPos = this.curEndPos;
                 startVal += address;
             } else {
-                startVal = value.substring(0, this.curStartPos) + address;
+                startVal = Browser.isDevice
+                    ? this.editCellData && this.editCellData.addr && this.editCellData.addr !== address
+                        ? value.substring(0, this.curStartPos) + address
+                        : value.substring(0, this.curStartPos)
+                    : value.substring(0, this.curStartPos) + address;
                 endVal = value.substring(this.curStartPos);
             }
             formulaBar.value = startVal + endVal;
@@ -1809,8 +2011,9 @@ export class Edit {
         }
         const value: string = el.innerText;
         const selection: Selection = window.getSelection();
-        if ((selection && selection.focusNode && (selection.focusNode as Element).classList &&
-            (selection.focusNode as Element).classList.contains('e-formula-bar-panel'))) {
+        const focusElem: Element = selection && (selection.focusNode as Element);
+        if (focusElem.classList && (focusElem.classList.contains('e-formula-bar-panel') ||
+            focusElem.classList.contains('e-formula-bar'))) {
             const formulaBar: HTMLTextAreaElement =
                 this.parent.element.querySelector('.e-formula-bar') as HTMLTextAreaElement;
             this.setFormulaBarCurPosition(formulaBar, this.curEndPos, this.curEndPos);
@@ -2001,6 +2204,298 @@ export class Edit {
         if (formulaRefIndicator) {
             formulaRefIndicator.parentElement.removeChild(formulaRefIndicator);
         }
+    }
+
+    private updateRichText(editorElem: HTMLElement): void {
+        if (!editorElem || !this.editCellData || !this.editCellData.fullAddr) { return; }
+        this.mergeAdjacentRichText(editorElem);
+        const richText: RichTextModel[] = this.serializeFormattedText(editorElem);
+        const hasRichTextStyle: boolean = richText && richText.some((r: RichTextModel) => !!(r.style && r.style.verticalAlign));
+        if (hasRichTextStyle) {
+            this.pendingFormatted[this.editCellData.fullAddr] = richText;
+        } else if (this.pendingFormatted && this.pendingFormatted[this.editCellData.fullAddr]) {
+            delete this.pendingFormatted[this.editCellData.fullAddr];
+        }
+    }
+
+    private serializeFormattedText(el: Node): RichTextModel[] {
+        const richText: RichTextModel[] = [];
+        const pushText: (txt: string, style?: CellStyleModel) => void = (txt: string, style?: CellStyleModel): void => {
+            if (txt === null || txt === undefined) { return; }
+            if (txt.length === 0) { return; }
+            richText.push(style ? { text: txt, style: style } : { text: txt });
+        };
+        const walker: (node: Node) => void = (node: Node): void => {
+            if (!node) { return; }
+            if (node.nodeType === 3) {
+                const txtVal: string = (node as Text).nodeValue || '';
+                const cleaned: string = txtVal.replace(/\u200B/g, '');
+                if (cleaned.length) { pushText(cleaned); }
+            } else if (node.nodeType === 1) {
+                const elem: HTMLElement = node as HTMLElement;
+                if (elem.tagName === 'BR') {
+                    pushText('\n');
+                } else if (elem.tagName === 'SPAN' && elem.className && elem.className.indexOf('e-vert-') > -1) {
+                    const vtype: VerticalAlign = elem.className.indexOf('e-vert-super') > -1 ? 'super' : 'sub';
+                    const style: CellStyleModel = { verticalAlign: vtype };
+                    pushText(elem.textContent || '', style);
+                } else {
+                    for (let i: number = 0; i < elem.childNodes.length; i++) {
+                        const child: Node | null = elem.childNodes.item(i);
+                        if (child) {
+                            walker(child);
+                        }
+                    }
+                }
+            }
+        };
+        for (let i: number = 0; i < el.childNodes.length; i++) {
+            const child: Node | null = el.childNodes.item(i);
+            if (child) {
+                walker(child);
+            }
+        }
+        return richText;
+    }
+
+    private mergeAdjacentRichText(el: Node): void {
+        if (!el || el.nodeType !== 1) { return; }
+        const elem: HTMLElement = el as HTMLElement;
+        for (let i: number = 0; i < elem.childNodes.length; i++) {
+            const node: Node | null = elem.childNodes.item(i);
+            if (!node) { continue; }
+            if (node.nodeType === 3 && !(node as Text).nodeValue) {
+                elem.removeChild(node);
+                i--;
+                continue;
+            }
+            if (node.nodeType === 3) {
+                let next: Node | null = elem.childNodes.item(i + 1);
+                while (next && next.nodeType === 3) {
+                    const textNode: Text = node as Text;
+                    const nextText: Text = next as Text;
+                    textNode.nodeValue = (textNode.nodeValue || '') + (nextText.nodeValue || '');
+                    elem.removeChild(next);
+                    next = elem.childNodes.item(i + 1);
+                }
+            } else if (node.nodeType === 1) {
+                const childEl: HTMLElement = node as HTMLElement;
+                if (childEl.childNodes && childEl.childNodes.length) {
+                    this.mergeAdjacentRichText(childEl);
+                }
+                if (childEl.tagName === 'SPAN' && childEl.className && childEl.className.indexOf('e-vert-') > -1) {
+                    let nextSpan: Node | null = elem.childNodes.item(i + 1);
+                    while (nextSpan && nextSpan.nodeType === 3 && !(nextSpan as Text).nodeValue) {
+                        elem.removeChild(nextSpan);
+                        nextSpan = elem.childNodes.item(i + 1);
+                    }
+                    while (nextSpan && nextSpan.nodeType === 1) {
+                        const nextEl: HTMLElement = nextSpan as HTMLElement;
+                        if (nextEl.tagName !== 'SPAN' || !nextEl.className || nextEl.className.indexOf('e-vert-') === -1) { break; }
+                        if (nextEl.className === childEl.className &&
+                            (nextEl.style.verticalAlign || '') === (childEl.style.verticalAlign || '') &&
+                            (nextEl.style.fontSize || '') === (childEl.style.fontSize || '')) {
+                            while (nextEl.firstChild) { childEl.appendChild(nextEl.firstChild); }
+                            elem.removeChild(nextEl);
+                            nextSpan = elem.childNodes.item(i + 1);
+                        } else {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private richTextFormat(args: { verticalAlign?: VerticalAlign }): void {
+        const sel: Selection = document.getSelection();
+        if (!sel || (sel.isCollapsed && !(sel.anchorNode as Element).classList.contains('e-formula-bar-panel')) ||
+            !args.verticalAlign) { return; }
+        const editorElem: HTMLElement = this.getEditElement(this.parent.getActiveSheet());
+        if (editorElem) {
+            const editorText: string = (editorElem.textContent || '').trim();
+            if (checkIsFormula(editorText, this.isEdit)) { return; }
+            const sheet: SheetModel = getSheet(this.parent as Workbook, this.editCellData.sheetIndex);
+            const cell: CellModel = getCell(this.editCellData.rowIndex, this.editCellData.colIndex, sheet, false, true);
+            const fmtType: string = getTypeFromFormat(cell.format ? cell.format : 'General', true);
+            if (((fmtType !== 'General' || (cell.format && cell.format !== 'General')) && fmtType !== 'Text') ||
+                (isNumber(editorText) && fmtType !== 'Text')) {
+                return;
+            }
+        }
+        let start: number = 0; let end: number = 0;
+        const anchorNode: Node | null = sel && sel.anchorNode ? sel.anchorNode : null;
+        const anchorElem: Element | null = anchorNode &&
+            (anchorNode.nodeType === 1 ? anchorNode as Element : (anchorNode.parentElement as Element));
+        const selAnchorIsFormulaPanel: boolean = !!(anchorElem && anchorElem.classList &&
+            anchorElem.classList.contains('e-formula-bar-panel'));
+        if (selAnchorIsFormulaPanel) {
+            const formulaBar: HTMLTextAreaElement | null = document.querySelector<HTMLTextAreaElement>('.e-formula-bar');
+            start = formulaBar ? (isNaN(formulaBar.selectionStart) ? 0 : formulaBar.selectionStart) : 0;
+            end = formulaBar ? (isNaN(formulaBar.selectionEnd) ? 0 : formulaBar.selectionEnd) : 0;
+        } else {
+            const selRange: { start: number, end: number } = this.getSelectionIndexes(editorElem, sel);
+            start = selRange.start; end = selRange.end;
+        }
+        if (start === end) { return; }
+        let runs: RichTextModel[] = this.serializeFormattedText(editorElem);
+        runs = this.applyVerticalAlignByIndex(runs, start, end, args.verticalAlign);
+        this.renderRuns(editorElem, runs);
+        if (editorElem.style.height !== 'auto') {
+            editorElem.style.height = 'auto';
+        }
+        this.restoreSelection(editorElem, start, end);
+        const sheet: SheetModel = this.parent.getActiveSheet();
+        const activeAddr: string = sheet.activeCell;
+        this.parent.notify(editOperation, {
+            action: 'storeRichText',
+            address: activeAddr,
+            richText: runs
+        });
+        this.parent.notify(refreshRibbonIcons, null);
+    }
+
+    private getSelectionIndexes(root: HTMLElement, sel: Selection): { start: number, end: number } {
+        const range: Range = sel.getRangeAt(0);
+        let start: number = 0;
+        let end: number = 0;
+        let index: number = 0;
+        const walker: TreeWalker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+        let node: Node | null = walker.nextNode();
+        while (node) {
+            const len: number = node.nodeValue.length || 0;
+            if (node === range.startContainer) {
+                start = index + range.startOffset;
+            }
+            if (node === range.endContainer) {
+                end = index + range.endOffset;
+                break;
+            }
+            index += len;
+            node = walker.nextNode();
+        }
+        return { start, end };
+    }
+
+    private applyVerticalAlignByIndex(
+        runs: RichTextModel[],
+        start: number,
+        end: number,
+        type: VerticalAlign
+    ): RichTextModel[] {
+        const result: RichTextModel[] = [];
+        let pos: number = 0;
+        let isUniform: boolean = true;
+        let hasSelection: boolean = false;
+        runs.forEach((run: RichTextModel) => {
+            const len: number = run.text.length;
+            const runStart: number = pos;
+            const runEnd: number = pos + len;
+            if (!(runEnd <= start || runStart >= end)) {
+                hasSelection = true;
+                const style: CellStyleModel = run.style || {} as CellStyleModel;
+                if (style.verticalAlign !== type) {
+                    isUniform = false;
+                }
+            }
+            pos += len;
+        });
+        if (!hasSelection) {
+            return runs;
+        }
+        pos = 0;
+        runs.forEach((run: RichTextModel) => {
+            const text: string = run.text;
+            const len: number = text.length;
+            const runStart: number = pos;
+            const runEnd: number = pos + len;
+            if (runEnd <= start || runStart >= end) {
+                result.push(run);
+            } else {
+                const before: string = text.slice(0, Math.max(0, start - runStart));
+                const middle: string = text.slice(
+                    Math.max(0, start - runStart),
+                    Math.min(len, end - runStart)
+                );
+                const after: string = text.slice(Math.min(len, end - runStart));
+                if (before) {
+                    result.push({ text: before, style: { ...(run.style as CellStyleModel) } });
+                }
+                if (middle) {
+                    const newStyle: CellStyleModel = { ...((run.style as CellStyleModel) || {}) };
+                    if (isUniform) {
+                        delete newStyle.verticalAlign;
+                    } else {
+                        newStyle.verticalAlign = type;
+                    }
+                    result.push({ text: middle, style: newStyle });
+                }
+                if (after) {
+                    result.push({ text: after, style: { ...(run.style as CellStyleModel) } });
+                }
+            }
+            pos += len;
+        });
+        return this.mergeRuns(result);
+    }
+
+    private mergeRuns(runs: RichTextModel[]): RichTextModel[] {
+        const merged: RichTextModel[] = [];
+        runs.forEach((run: RichTextModel) => {
+            const prev: RichTextModel | undefined = merged[merged.length - 1];
+            if (
+                prev &&
+                JSON.stringify(prev.style) === JSON.stringify(run.style)
+            ) {
+                prev.text += run.text;
+            } else {
+                merged.push({ ...run });
+            }
+        });
+        return merged;
+    }
+
+    private renderRuns(container: HTMLElement, runs: RichTextModel[]): void {
+        container.innerHTML = '';
+        runs.forEach((run: RichTextModel) => {
+            let node: HTMLElement | Text;
+            const style: CellStyleModel = run.style || {};
+            const verticalAlign: string | undefined = style.verticalAlign && style.verticalAlign.toLowerCase();
+            if (verticalAlign === 'sub' || verticalAlign === 'super') {
+                const span: HTMLSpanElement = document.createElement('span');
+                span.textContent = run.text;
+                span.className = `e-vert-${verticalAlign}`;
+                span.style.verticalAlign = verticalAlign;
+                span.style.fontSize = '60%';
+                node = span;
+            }
+            else {
+                node = document.createTextNode(run.text);
+            }
+            container.appendChild(node);
+        });
+    }
+
+    private restoreSelection(root: HTMLElement, start: number, end: number): void {
+        const range: Range = document.createRange();
+        const sel: Selection = document.getSelection();
+        let index: number = 0;
+        const walker: TreeWalker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+        let node: Node | null = walker.nextNode();
+        while (node) {
+            const len: number = node.nodeValue.length || 0;
+            if (start >= index && start <= index + len) {
+                range.setStart(node, start - index);
+            }
+            if (end >= index && end <= index + len) {
+                range.setEnd(node, end - index);
+                break;
+            }
+            index += len;
+            node = walker.nextNode();
+        }
+        sel.removeAllRanges();
+        sel.addRange(range);
     }
 
     private finiteAlertHandler(): void {

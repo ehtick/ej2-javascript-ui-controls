@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/material' as *;
-@forward 'ej2-base/styles/definition/material';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $acrdn-skin: 'material' !default;
 $acrdn-slct-header-font-weight: normal;
 $acrdn-nrml-header-minheight: 36px !default;

@@ -20,51 +20,6 @@ export class ActionEvents {
     constructor(parent: Spreadsheet) {
         this.parent = parent;
         this.addEventListener();
-        //this.initializeActionBegin();
-        //this.initializeActionComplete();
-    }
-
-    private initializeActionBegin(): void {
-        const cellFormat: Function = this.parent.beforeCellFormat;
-        this.parent.beforeCellFormat = (args: BeforeCellFormatArgs) => {
-            this.actionEventHandler({ evtArgs: args, evtFunc: cellFormat, actionType: 'begin', eventType: 'format' });
-        };
-        const beforeOpen: Function = this.parent.beforeOpen;
-        this.parent.beforeOpen = (args: BeforeOpenEventArgs) => {
-            this.actionEventHandler({ evtArgs: args, evtFunc: beforeOpen, actionType: 'begin', eventType: 'beforeOpen' });
-        };
-        const beforeSave: Function = this.parent.beforeSave;
-        this.parent.beforeSave = (args: BeforeSaveEventArgs) => {
-            this.actionEventHandler({ evtArgs: args, evtFunc: beforeSave, actionType: 'begin', eventType: 'beforeSave' });
-        };
-        const beforeSort: Function = this.parent.beforeSort;
-        this.parent.beforeSort = (args: BeforeSortEventArgs) => {
-            this.actionEventHandler({ evtArgs: args, evtFunc: beforeSort, actionType: 'begin', eventType: 'beforeSort' });
-        };
-    }
-
-
-    private initializeActionComplete(): void {
-        const sortComplete: Function = this.parent.sortComplete;
-        this.parent.sortComplete = (args: SortEventArgs) => {
-            this.actionEventHandler({ evtArgs: args, evtFunc: sortComplete, actionType: 'complete', eventType: 'sorting' });
-        };
-        const cellSave: Function = this.parent.cellSave;
-        this.parent.cellSave = (args: CellSaveEventArgs) => {
-            this.actionEventHandler({ evtArgs: args, evtFunc: cellSave, actionType: 'complete', eventType: 'cellSave' });
-        };
-    }
-
-    private actionEventHandler(args: { evtArgs: Object, evtFunc: Function, actionType: string, eventType: string }): void {
-        if (args.evtFunc) {
-            args.evtFunc.apply(this, [args]);
-        }
-        if (args.actionType === 'begin') {
-            this.actionBeginHandler({ eventArgs: args.evtArgs, action: args.eventType });
-        } else {
-            this.actionCompleteHandler({ eventArgs: args.evtArgs, action: args.eventType });
-        }
-
     }
 
     private actionBeginHandler(args: {

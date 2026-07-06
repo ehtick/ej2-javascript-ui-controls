@@ -1,4 +1,4 @@
-@use 'ej2-base/styles/common/mixin' as *;
+@use '../variables' as *;
 @use '../fabric-definition' as *;
 @include export-module('pdfviewer-fabric-icons') {
   .e-pdfviewer {
@@ -589,6 +589,13 @@
   }
   .e-pv-extract-page-icon::before {
     content: '\e1c9';
+    font-family: 'e-icons';
+  }
+  .e-pv-filter-icon::before {
+    content: '\e250';
+  }
+  .e-pv-ink-eraser-icon::before {
+    content: '\e340';
     font-family: 'e-icons';
   }
 }

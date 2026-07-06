@@ -15,6 +15,7 @@ The [JavaScript Accordion](https://www.syncfusion.com/javascript-ui-controls/js-
   <a href="https://ej2.syncfusion.com/demos/?utm_source=npm&utm_medium=listing&utm_campaign=javascript-navigation-npm#/material/accordion/default.html">Online demos</a> .
   <a href="https://www.syncfusion.com/javascript-ui-controls/js-accordion?utm_source=npm&utm_medium=listing&utm_campaign=javascript-navigation-npm">Learn more</a>
 </p>
+
 <p align="center">
 <img alt="JavaScript Accordion Control" src="https://raw.githubusercontent.com/SyncfusionExamples/nuget-img/master/javascript/javascript-accordion.png">
 </p>

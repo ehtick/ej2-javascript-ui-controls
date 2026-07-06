@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/fusionnew' as *;
-@forward 'ej2-base/styles/definition/fusionnew';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $menu-bigger-caret-font-size: $cmenu-bigger-caret-font-size !default;
 $menu-bigger-caret-li-padding: 32px !default;
 $menu-bigger-caret-right: 12px !default;

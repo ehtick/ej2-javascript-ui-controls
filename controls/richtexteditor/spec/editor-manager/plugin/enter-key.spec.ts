@@ -503,6 +503,33 @@ describe('Enter Key plugin', ()=> {
             });
         });
 
+        describe('1011813: When pressing enter at the end of the strong element, unwanted element has been creating', () => {
+            let editor: RichTextEditor;
+            beforeEach(() => {
+                editor = renderRTE({
+                    enterKey: 'P',
+                    value: `<p><b>Rich text editor</b> qwwqwwq</p>`
+                });
+            });
+            afterEach(() => {
+                destroy(editor);
+            });
+            it('should not create a empty element after pressing enter', (done: DoneFn) => {
+                editor.focusIn();
+                const p: Element = editor.inputElement.firstElementChild;
+                const textNode: any = p.firstChild.firstChild;
+                // Place cursor at end of the word "editor"
+                setCursorPoint(textNode, textNode.textContent.length);
+                editor.inputElement.dispatchEvent(ENTER_KEY_DOWN_EVENT);
+                editor.inputElement.dispatchEvent(ENTER_KEY_UP_EVENT);
+                setTimeout(() => {
+                    const expectedElem: string = '<p><b>Rich text editor</b></p><p>&nbsp;qwwqwwq</p>';
+                    expect(editor.inputElement.innerHTML).toBe(expectedElem);
+                    done();
+                }, 100);
+            });
+        });
+
         describe('1011822: Enter creates a <div> inside a <span> when editing image caption(Enter)', () => {
             let editor: RichTextEditor;
             beforeEach(() => {
@@ -1274,6 +1301,88 @@ describe('Enter Key plugin', ()=> {
             editor.inputElement.dispatchEvent(ENTER_KEY_UP_EVENT);
             setTimeout(() => {
                 expect(consoleSpy).not.toHaveBeenCalled();
+                done();
+            }, 100);
+        });
+    });
+
+    describe('1011774: Unwanted empty <p> tags inserted when pressing Enter after selecting image and text', () => {
+        let editor: RichTextEditor;
+        beforeEach(() => {
+            editor = renderRTE({
+                enterKey: 'P',
+                value: `<p>Selecting a range that includes an image and adjacent text and pressing Enter inserts empty </p>
+                <p><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 440px" class="e-rte-image e-img-inline"></p>`
+            });
+        });
+        afterEach(() => {
+            destroy(editor);
+        });
+
+        it('should not insert empty <p> tags at the caret location after pressing Enter on image and text selection (text first, image second)', (done: DoneFn) => {
+            editor.focusIn();
+            const firstParagraph: Node = editor.inputElement.querySelector('p');
+            const secondParagraph: Node = editor.inputElement.querySelectorAll('p')[1];
+            const nodeSelection: NodeSelection = new NodeSelection(editor.inputElement);
+            nodeSelection.setSelectionText(document, firstParagraph.firstChild, secondParagraph, 0, 1);
+            editor.inputElement.dispatchEvent(ENTER_KEY_DOWN_EVENT);
+            editor.inputElement.dispatchEvent(ENTER_KEY_UP_EVENT);
+            setTimeout(() => {
+                const pTags: NodeListOf<HTMLParagraphElement> = editor.inputElement.querySelectorAll('p');
+                // Verify no empty <p> tags exist
+                let isEmptyPFound: boolean = false;
+                for (let i: number = 0; i < pTags.length; i++) {
+                    const content: string = pTags[i as number].innerHTML.trim();
+                    if (content === '') {
+                        isEmptyPFound = true;
+                        break;
+                    }
+                }
+                expect(isEmptyPFound).toBe(false);
+                expect(pTags.length).toBe(1);
+                expect(editor.inputElement.innerHTML === '<p><br></p>')
+                done();
+            }, 100);
+        });
+    });
+
+    describe('1011774: Unwanted empty <p> tags inserted when pressing Enter after selecting image and text (image first variant)', () => {
+        let editor: RichTextEditor;
+        beforeEach(() => {
+            editor = renderRTE({
+                enterKey: 'P',
+                value: `<p><img alt="Sky with sun" src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Overview.png" style="width: 440px" class="e-rte-image e-img-inline"></p>
+                <p>Selecting a range that includes an image and adjacent text and pressing Enter inserts empty </p>`
+            });
+        });
+        afterEach(() => {
+            destroy(editor);
+        });
+
+        it('should not insert empty <p> tags when selecting from image to text and pressing Enter (image first, text second)', (done: DoneFn) => {
+            editor.focusIn();
+            const firstParagraph: Node = editor.inputElement.querySelector('p');
+            const secondParagraph: Node = editor.inputElement.querySelectorAll('p')[1];
+            const nodeSelection: NodeSelection = new NodeSelection(editor.inputElement);
+            const textContent: string = secondParagraph.firstChild.textContent;
+            nodeSelection.setSelectionText(document, firstParagraph, secondParagraph.firstChild, 0, textContent.length);
+            editor.inputElement.dispatchEvent(ENTER_KEY_DOWN_EVENT);
+            editor.inputElement.dispatchEvent(ENTER_KEY_UP_EVENT);
+            setTimeout(() => {
+                const pTags: NodeListOf<HTMLParagraphElement> = editor.inputElement.querySelectorAll('p');
+                // Verify no empty <p> tags exist
+                let isEmptyPFound: boolean = false;
+                for (let i: number = 0; i < pTags.length; i++) {
+                    const content: string = pTags[i as number].innerHTML.trim();
+                    if (content === '') {
+                        isEmptyPFound = true;
+                        break;
+                    }
+                }
+                expect(isEmptyPFound).toBe(false);
+                // Secondary check: Verify result is a single paragraph with a line break
+                expect(pTags.length).toBe(1);
+                expect(editor.inputElement.innerHTML === '<p><br></p>')
                 done();
             }, 100);
         });

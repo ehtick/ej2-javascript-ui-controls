@@ -1,4 +1,6 @@
 @use 'sass:color';
+@use 'variables' as *;
+
 @mixin button-focus {
   background: $btn-focus-bgcolor;
   @if $skin-name == 'Material3' {
@@ -671,5 +673,11 @@
   text-decoration: none;
   @if $skin-name == 'FluentUI' {
     outline: none;
+  }
+}
+
+@mixin fluent-focus-visible {
+  @if $skin-name == 'FluentUI' {
+    outline: none !important; /* stylelint-disable-line declaration-no-important */
   }
 }

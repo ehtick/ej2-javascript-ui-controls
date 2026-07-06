@@ -1,7 +1,7 @@
 @use 'sass:color';
-@use 'ej2-base/styles/definition/bootstrap5' as *;
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 @use '../document-editor/bootstrap5-definition' as *;
-@forward 'ej2-base/styles/definition/bootstrap5';
+
 @forward '../document-editor/bootstrap5-definition';
 
 $de-ctnr-height: calc(100%) !default;
@@ -179,8 +179,8 @@ $de-ctnr-layout-margin-bottom: 2px;
 $de-ctnr-picture-margin-bottom: 0;
 $de-ctnr-picture-simplified-margin-top: 12px;
 
-$de-ribbon-simplified-ctnr-collapsed-editor-height: calc(100% - 54px) !default;
-$de-ribbon-classic-collapsed-editor-height: calc(100% - 64px) !default;
+$de-ribbon-simplified-ctnr-collapsed-editor-height: calc(100% - 82px) !default;
+$de-ribbon-classic-collapsed-editor-height: calc(100% - 77px) !default;
 
 // layout.scss
 $de-toolbar-line-height: 0;

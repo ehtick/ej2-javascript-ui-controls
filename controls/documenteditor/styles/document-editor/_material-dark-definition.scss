@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/material-dark' as *;
-@forward 'ej2-base/styles/definition/material-dark';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $de-padding-half: 6px;
 $de-padding-half-bigger: 8px;
 $de-padding-full: 12px;

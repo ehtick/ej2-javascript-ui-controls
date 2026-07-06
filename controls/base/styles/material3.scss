@@ -1,3 +1,4 @@
-@use 'ej2-icons/styles/material3' as *;
-@forward 'material3-definition';
-@use 'all.material3' as *;
+@use '@syncfusion/ej2-icons/styles/material3.scss' as *;
+@use 'material3-definition' as *;
+@use './common/all' as *;
+@use './animation/all' as *;

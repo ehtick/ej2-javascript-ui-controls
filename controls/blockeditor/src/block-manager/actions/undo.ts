@@ -1,5 +1,5 @@
 import { isNullOrUndefined as isNOU } from '@syncfusion/ej2-base';
-import { BlockModel } from '../../models/index';
+import { BlockModel } from '../../models/block/block-model';
 import { getBlockContentElement, getBlockIndexById, getBlockModelById } from '../../common/utils/block';
 import { setCursorPosition, getNodeFromPath, captureSelectionState, getTextOffset } from '../../common/utils/selection';
 import { IUndoRedoState, IBlockData, IMoveBlocksInteraction, IBlockSelectionState, IClipboardPasteOperation, IIndentOperation, IAddBlockInteraction, IAddBulkBlocksInteraction, IDeleteBlockInteraction, IFromBlockData, ITransformOperation, IMultipleBlocksTransformOperation, ILineBreakOperation, IFormattingOperation } from '../../common/interface';
@@ -10,9 +10,14 @@ import { BlockType } from '../../models/enums';
 import { BlockManager } from '../base/block-manager';
 import { UndoRedoManager } from '../plugins/common/undo-manager';
 import { IBulkColumnsDeleteOperation, IBulkRowsDeleteOperation, ITableCellsClearOperation, ITableCellsPasteOperation, ITableColumnInsertOptions, ITableColumnResizeOperation, ITableHeaderInputOperation, ITableRowInsertOptions } from '../base/interface';
+/* Collaboration Start */
+import { UndoPlugin as YjsUndoPlugin } from '../../collaboration/y-blockeditor/plugins/undo-plugin';
+import { YjsAdapter } from '../../models/interface';
+/* Collaboration End */
 
 /**
  * `UndoRedoManager` module is used to handle undo and redo actions.
+ * Supports both local snapshot-based undo and collaborative Yjs-based undo.
  */
 export class UndoRedoAction {
     private parent: BlockManager;
@@ -26,6 +31,11 @@ export class UndoRedoAction {
     public isUndoing: boolean = false;
     /** @hidden */
     public isRedoing: boolean = false;
+    /* Collaboration Start */
+    /** @hidden */
+    private yUndoPlugin: YjsUndoPlugin;
+    private adapter: YjsAdapter;
+    /* Collaboration End */
     private preventRestores: Set<actionType> = new Set<actionType>([
         actionType.tableRowInserted, actionType.tableRowDeleted, actionType.tableColumnDeleted, actionType.tableColumnInserted,
         actionType.tableCellsCleared,
@@ -40,6 +50,9 @@ export class UndoRedoAction {
     constructor(manager: BlockManager) {
         this.parent = manager;
         this.undoRedoManager = new UndoRedoManager(this.parent, this);
+        /* Collaboration Start */
+        this.adapter = this.parent.collaborationSettings.adapter;
+        /* Collaboration End */
         this.addEventListener();
     }
 
@@ -52,76 +65,40 @@ export class UndoRedoAction {
     }
 
     /**
-     * Begins a batch mode for tracking multiple block transformations as a single undo action
-     *
-     * @returns {void}
-     * @hidden
-     */
-    public beginBatchTransform(): void {
-        this.isBatchMode = true;
-        this.batchedTransforms = [];
-    }
-
-    /**
-     * Resets the batch mode state and clears batched transformations
-     *
-     * @returns {void}
-     * @private
-     */
-    private resetBatchState(): void {
-        this.isBatchMode = false;
-        this.batchedTransforms = [];
-    }
-
-    /**
-     * Ends batch mode and pushes all accumulated block transformations as a single undo entry
-     *
-     * @returns {void}
-     * @hidden
-     */
-    public endBatchTransform(): void {
-        if (!this.isBatchMode || this.batchedTransforms.length === 0) {
-            this.resetBatchState();
-            return;
-        }
-
-        this.pushActionIntoUndoStack({
-            action: actionType.multipleBlocksTransformed,
-            data: {
-                transformedBlocks: decoupleReference(this.batchedTransforms)
-            }
-        });
-
-        this.resetBatchState();
-    }
-
-    /**
-     * Checks if batch mode is currently active
-     *
-     * @returns {boolean} True if in batch mode
-     * @hidden
-     */
-    public getIsBatchMode(): boolean {
-        return this.isBatchMode;
-    }
-
-    /**
      * Handles the undo operation.
+     * Delegates to Yjs UndoManager if in collaborative mode, otherwise uses local snapshot-based undo.
      *
      * @returns {void}
      * @hidden
      */
     public undo(): void {
+        /* Collaboration Start */
+        // Use Yjs UndoManager if available (collaborative mode)
+        if (this.adapter && this.adapter.yXmlFragment) {
+            this.yUndoPlugin.undo();
+            return;
+        }
+        /* Collaboration End */
+        // Otherwise use local snapshot-based undo
         this.performUndoRedo(true, 'isUndoing');
     }
 
     /**
      * Handles the redo operation.
+     * Delegates to Yjs UndoManager if in collaborative mode, otherwise uses local snapshot-based redo.
      *
      * @returns {void}
      * @hidden
      */
     public redo(): void {
+        /* Collaboration Start */
+        // Use Yjs UndoManager if available (collaborative mode)
+        if (this.adapter && this.adapter.yXmlFragment) {
+            this.yUndoPlugin.redo();
+            return;
+        }
+        /* Collaboration End */
+        // Otherwise use local snapshot-based redo
         this.performUndoRedo(false, 'isRedoing');
     }
 
@@ -689,7 +666,7 @@ export class UndoRedoAction {
      * @hidden
      */
     public trackTableRowInsertionForUndoRedo(args: ITableRowInsertOptions): void {
-        if (args.isUndoRedoAction) { return; }
+        if (args.preventTracking) { return; }
 
         this.pushActionIntoUndoStack({
             action: actionType.tableRowInserted,
@@ -705,7 +682,7 @@ export class UndoRedoAction {
      * @hidden
      */
     public trackTableRowDeletionForUndoRedo(args: ITableRowInsertOptions): void {
-        if (args.isUndoRedoAction) { return; }
+        if (args.preventTracking) { return; }
 
         this.pushActionIntoUndoStack({
             action: actionType.tableRowDeleted,
@@ -721,7 +698,7 @@ export class UndoRedoAction {
      * @hidden
      */
     public trackTableColumnInsertionForUndoRedo(args: ITableColumnInsertOptions): void {
-        if (args.isUndoRedoAction) { return; }
+        if (args.preventTracking) { return; }
 
         this.pushActionIntoUndoStack({
             action: actionType.tableColumnInserted,
@@ -742,7 +719,7 @@ export class UndoRedoAction {
      * @hidden
      */
     public trackTableColumnDeletionForUndoRedo(args: ITableColumnInsertOptions): void {
-        if (args.isUndoRedoAction) { return; }
+        if (args.preventTracking) { return; }
 
         this.pushActionIntoUndoStack({
             action: actionType.tableColumnDeleted,
@@ -852,21 +829,37 @@ export class UndoRedoAction {
 
     /**
      * Checks whether the undo stack is empty or not.
+     * Checks Yjs UndoManager if in collaborative mode, otherwise checks local snapshot stack.
      *
      * @returns {boolean} Returns true if the undo stack is not empty.
      * @hidden
      */
     public canUndo(): boolean {
+        /* Collaboration Start */
+        // Use Yjs UndoManager if available (collaborative mode)
+        if (this.adapter && this.adapter.yXmlFragment) {
+            return this.yUndoPlugin.canUndo();
+        }
+        /* Collaboration End */
+        // Otherwise check local snapshot-based stack
         return this.index >= 0 && this.undoRedoStack.length > 0;
     }
 
     /**
      * Checks whether the redo stack is empty or not.
+     * Checks Yjs UndoManager if in collaborative mode, otherwise checks local snapshot stack.
      *
      * @returns {boolean} Returns true if the redo stack is not empty.
      * @hidden
      */
     public canRedo(): boolean {
+        /* Collaboration Start */
+        // Use Yjs UndoManager if available (collaborative mode)
+        if (this.adapter && this.adapter.yXmlFragment) {
+            return this.yUndoPlugin.canRedo();
+        }
+        /* Collaboration End */
+        // Otherwise check local snapshot-based stack
         return this.undoRedoStack.length > 0 && this.index < this.undoRedoStack.length - 1;
     }
 
@@ -879,12 +872,6 @@ export class UndoRedoAction {
     public clear(): void {
         this.undoRedoStack = [];
         this.index = -1;
-    }
-
-    public destroy(): void {
-        this.removeEventListener();
-        this.clear();
-        this.undoRedoManager = null;
     }
 
     /**
@@ -936,5 +923,81 @@ export class UndoRedoAction {
                 this.index--;
             }
         }
+    }
+
+    /* Collaboration Start */
+    /**
+     * Sets the Yjs UndoPlugin instance for collaborative undo/redo operations.
+     *
+     * @param {YjsUndoPlugin} undoPlugin - The yjs undo plugin instance
+     * @returns {void}
+     * @hidden
+     */
+    public setYjsUndoPlugin(undoPlugin: YjsUndoPlugin): void {
+        this.yUndoPlugin = undoPlugin;
+    }
+    /* Collaboration End */
+
+    /**
+     * Begins a batch mode for tracking multiple block transformations as a single undo action
+     *
+     * @returns {void}
+     * @hidden
+     */
+    public beginBatchTransform(): void {
+        this.isBatchMode = true;
+        this.batchedTransforms = [];
+    }
+
+    /**
+     * Resets the batch mode state and clears batched transformations
+     *
+     * @returns {void}
+     * @private
+     */
+    private resetBatchState(): void {
+        this.isBatchMode = false;
+        this.batchedTransforms = [];
+    }
+
+    /**
+     * Ends batch mode and pushes all accumulated block transformations as a single undo entry
+     *
+     * @returns {void}
+     * @hidden
+     */
+    public endBatchTransform(): void {
+        if (!this.isBatchMode || this.batchedTransforms.length === 0) {
+            this.resetBatchState();
+            return;
+        }
+
+        this.pushActionIntoUndoStack({
+            action: actionType.multipleBlocksTransformed,
+            data: {
+                transformedBlocks: decoupleReference(this.batchedTransforms)
+            }
+        });
+
+        this.resetBatchState();
+    }
+
+    /**
+     * Checks if batch mode is currently active
+     *
+     * @returns {boolean} True if in batch mode
+     * @hidden
+     */
+    public getIsBatchMode(): boolean {
+        return this.isBatchMode;
+    }
+
+    public destroy(): void {
+        this.removeEventListener();
+        this.clear();
+        this.undoRedoManager = null;
+        /* Collaboration Start */
+        this.yUndoPlugin = null;
+        /* Collaboration End */
     }
 }

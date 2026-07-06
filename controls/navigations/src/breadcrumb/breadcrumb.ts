@@ -790,7 +790,6 @@ export class Breadcrumb extends Component<HTMLElement> implements INotifyPropert
             detach(this.popupObj.element);
         }
     }
-
     private resize(e?: Event): void {
         this._maxItems = this.maxItems;
         this.initPvtProps();

@@ -3,7 +3,7 @@ import {
     PdfViewer, Toolbar, Magnification, Navigation, LinkAnnotation, ThumbnailView, BookmarkView,
     TextSelection, TextSearch, Print, Annotation, FormFields, AnnotationDataFormat, FormDesigner, PageOrganizer
 } from "../../../../src/index";
-import { EMPTY_PDF_B64, READONLY_FORM_PDF_B64 } from "../../Data/pdf-data.spec";
+import { EMPTY_PDF_B64, READONLY_FORM_PDF_B64, FORM_OPTIONS_B64 } from "../../Data/pdf-data.spec";
 import { mouseMoveEvent, mouseDownEvent } from "../../utils.spec";
 
 describe('PDF_Viewer_FormFields', () => {
@@ -321,5 +321,41 @@ describe('PDF_Viewer_FormFields', () => {
         catch (e) {
             done.fail(e);
         }
-    });  
+    }); 
+    
+    it('1016588-Handle SelectedValue for DropDown and ListBox Fields on Reload', (done) => {
+        let load: HTMLElement = createElement('button', { id: 'load_fields' });
+        document.body.appendChild(load);
+        load.addEventListener('click', function () {
+            var dataUrl = 'data:application/pdf;base64,' + FORM_OPTIONS_B64;
+            pdfviewer_formFields.load(dataUrl, null);
+        });
+        try {
+            pdfviewer_formFields.documentLoad = function () {
+                // --- Form Field Collection ---
+                expect(pdfviewer_formFields.formFieldCollection).not.toBeNull();
+                expect(pdfviewer_formFields.formFieldCollection.length).toEqual(2);
+                // --- Form Fields Session Data ---
+                const fieldSessionData = pdfviewer_formFields.viewerBase.getItemFromSessionStorage('_formfields');
+                const fieldParsedData = JSON.parse(fieldSessionData);
+                expect(fieldParsedData.length).toEqual(2);
+                // --- Ensure Value is NOT an empty array ---
+                expect(Array.isArray(fieldParsedData[0].SelectedValue)).toBeFalsy();
+                expect(Array.isArray(fieldParsedData[1].SelectedValue)).toBeFalsy();
+                // --- Form Designer Session Data ---
+                const designerSessionData = pdfviewer_formFields.viewerBase.getItemFromSessionStorage('_formDesigner');
+                const designerParsedData = JSON.parse(designerSessionData);
+                expect(designerParsedData.length).toEqual(2);
+                // --- Field Values: Should be empty strings ---
+                expect(designerParsedData[0].FormField.value).toBe("");
+                expect(designerParsedData[1].FormField.value).toBe("");
+                done();
+            };
+            load.click();
+        } catch (e) {
+            done.fail(e as Error);
+        } finally {
+            if (load && load.parentNode) { load.parentNode.removeChild(load); }
+        }
+    });
 });

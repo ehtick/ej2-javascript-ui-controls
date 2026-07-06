@@ -1,5 +1,5 @@
 import { Spreadsheet, removeDesignChart, clearChartBorder } from '../index';
-import { getCellPosition, refreshImgCellObj, BeforeImageRefreshData, refreshChartCellObj, insertDesignChart, refreshOverlayElem } from '../common/index';
+import { getCellPosition, refreshImgCellObj, BeforeImageRefreshData, refreshChartCellObj, insertDesignChart, refreshOverlayElem, renderSidePanel, getDPRValue } from '../common/index';
 import { getRowIdxFromClientY, getColIdxFromClientX, overlayEleSize, getStartEvent, getMoveEvent, selectionStatus } from '../common/index';
 import { getEndEvent, getClientX, getClientY, spreadsheetDestroyed, getPageX, getPageY, isTouchMove } from '../common/index';
 import { getRangeIndexes, SheetModel, refreshChartSize, focusChartBorder, getRowsHeight, getCellIndexes, addDPRValue } from '../../workbook/index';
@@ -46,6 +46,7 @@ export class Overlay {
         this.parent = parent;
         this.parent.on(selectionStatus, this.isOverlaySelected, this);
         this.parent.on(refreshOverlayElem, this.refreshOverlayElem, this);
+        this.parent.on(renderSidePanel, this.renderSidePanel, this);
         this.parent.on(spreadsheetDestroyed, this.destroy, this);
     }
 
@@ -115,16 +116,21 @@ export class Overlay {
         }
         div.style.top = Number(addDPRValue(pos.top).toFixed(2)) + 'px';
         div.style.left = Number(addDPRValue(pos.left).toFixed(2)) + 'px';
+        const isSuspended: boolean = this.parent.paintSuspendCount > 0;
         if (sheetIndex === this.parent.activeSheetIndex) {
-            parent.appendChild(div);
-            this.renderResizeHandler(div);
-            this.addEventListener(div);
+            if (!isSuspended) {
+                parent.appendChild(div);
+                this.renderResizeHandler(div);
+                this.addEventListener(div);
+                this.originalWidth = parseFloat(getComputedStyle(div, null).getPropertyValue('width').replace('px', ''));
+                this.originalHeight = parseFloat(getComputedStyle(div, null).getPropertyValue('height').replace('px', ''));
+            }
         } else if (this.parent.isPrintingProcessing) {
-            div.style.visibility = 'hidden';
-            document.body.append(div);
+            if (!isSuspended) {
+                div.style.visibility = 'hidden';
+                document.body.append(div);
+            }
         }
-        this.originalWidth = parseFloat(getComputedStyle(div, null).getPropertyValue('width').replace('px', ''));
-        this.originalHeight = parseFloat(getComputedStyle(div, null).getPropertyValue('height').replace('px', ''));
         return { element: div, top: pos.top, dprTop: pos.dprTop, left: pos.left };
     }
 
@@ -189,6 +195,9 @@ export class Overlay {
     }
 
     private overlayMouseMoveHandler(e: MouseEvent & TouchEvent): void {
+        if (!this.parent) {
+            return;
+        }
         const target: HTMLElement = e.target as HTMLElement;
         const overlayElem: HTMLElement = document.getElementsByClassName('e-ss-overlay-active')[0] as HTMLElement;
         const sheet: SheetModel = this.parent.getActiveSheet();
@@ -296,7 +305,7 @@ export class Overlay {
             let currColIdx: { clientX: number, isImage?: boolean, target?: Element, size?: number };
             const prevRowIdx: { clientY: number, isImage?: boolean, target?: Element, size?: number, isOverlay?: boolean,
                 isCheckDPR?: boolean} =
-             { clientY: eventArgs.prevTop, isImage: true, isCheckDPR: elem.id && elem.id.includes('_overlay_picture_') };
+            { clientY: eventArgs.prevTop, isImage: true, isCheckDPR: elem.id && elem.id.includes('_overlay_picture_') };
             const prevColIdx: { clientX: number, isImage?: boolean, target?: Element, size?: number } =
              { clientX: eventArgs.prevLeft, isImage: true };
             const overlayEle: HTMLElement = this.parent.element.getElementsByClassName('e-ss-overlay-active')[0] as HTMLElement;
@@ -508,7 +517,39 @@ export class Overlay {
             this.parent.off(overlayEleSize, this.setOriginalSize);
             this.parent.off(selectionStatus, this.isOverlaySelected);
             this.parent.off(refreshOverlayElem, this.refreshOverlayElem);
+            this.parent.off(renderSidePanel, this.renderSidePanel);
             this.parent.off(spreadsheetDestroyed, this.destroy);
+        }
+    }
+
+    private renderSidePanel(args: { show: boolean, isComment: boolean }): void {
+        const host: HTMLElement = this.parent.element;
+        const id: string = host.id;
+        const sheetPanel: HTMLElement = host.querySelector(`#${id}_sheet_panel`);
+        const sheetEl: HTMLElement = host.querySelector(`#${id}_sheet`);
+        const sheetTabPanel: HTMLElement = host.querySelector(`#${id}_sheet_tab_panel`);
+        if (!sheetPanel || !sheetEl || !sheetTabPanel) {
+            return;
+        }
+        const panelName: string = args.isComment ? 'review' : 'ai-assist';
+        let sidePanel: HTMLElement = sheetPanel.querySelector(`#${id}_review_panel`);
+        if (!sidePanel) {
+            sidePanel = sheetPanel.querySelector(`#${id}_ai-assist_panel`);
+        }
+        if (!args.show) {
+            sheetEl.classList.remove(`e-sheet-with-${panelName}-panel`);
+            sheetTabPanel.classList.remove(`e-sheet-panel-with-${panelName}-panel`);
+        } else {
+            if (!sidePanel) {
+                sidePanel = this.parent.createElement('div', {
+                    id: `${id}_${panelName}_panel`,
+                    className: `e-${panelName}-panel`
+                });
+                sheetPanel.appendChild(sidePanel);
+            }
+            sheetEl.classList.add(`e-sheet-with-${panelName}-panel`);
+            sheetTabPanel.classList.add(`e-sheet-panel-with-${panelName}-panel`);
+            sidePanel.style.height = `calc(100% + ${getDPRValue(sheetTabPanel.getBoundingClientRect().height)}px)`;
         }
     }
 

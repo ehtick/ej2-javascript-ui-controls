@@ -583,6 +583,8 @@ export interface ISetToolbarStatusArgs {
     tbElements: HTMLElement[]
     tbItems: IToolbarItemModel[]
     dropDownModule: DropDownButtons
+    fontColorPicker?: ColorPicker
+    backgroundColorPicker?: ColorPicker
 }
 
 /**

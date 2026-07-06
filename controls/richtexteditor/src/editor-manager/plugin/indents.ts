@@ -96,7 +96,13 @@ export class Indents {
             });
         }
         for (let i: number = 0; i < indentsNodes.length; i++) {
-            const parentNode: HTMLElement = indentsNodes[i as number] as HTMLElement;
+            let parentNode: HTMLElement;
+            if (indentsNodes[i as number] && (indentsNodes[i as number] as HTMLElement).classList.contains('e-table-fake-selection') &&
+                editEle.querySelector('table.e-cell-select')) {
+                parentNode = editEle.querySelector('table.e-cell-select');
+            } else {
+                parentNode = indentsNodes[i as number] as HTMLElement;
+            }
             const marginLeftOrRight: string = isRtl ? parentNode.style.marginRight : parentNode.style.marginLeft;
             let indentsValue: string;
             if (parentNode.tagName !== 'HR') {

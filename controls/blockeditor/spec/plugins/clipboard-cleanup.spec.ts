@@ -1201,9 +1201,104 @@ describe('Clipboard Cleanup Module', () => {
             });
             
             expect(result).toBeDefined();
-            expect(result.indexOf('color:red')).toBeGreaterThan(-1);
+            expect(result.indexOf('color: red')).toBeGreaterThan(-1);
             expect(result.indexOf('background-color')).toBeGreaterThan(-1);
-            expect(result.indexOf('font-size:14px')).toBe(-1);
+            expect(result.indexOf('font-size: 14px')).toBe(-1);
+        });
+
+        it('should preserve divider block in multi-block content', () => {
+            const html = '<div class="scriptor-paragraph"><span></span><hr class="e-be-hr"><span>Content</span></div>';
+            
+            const result = cleanupModule.cleanupPaste({
+                html: html
+            });
+            
+            expect(result).toBeDefined();
+            expect(result.indexOf('<hr')).toBeGreaterThan(-1);
+            expect(result.indexOf('e-be-hr')).toBeGreaterThan(-1);
+        });
+
+        it('should preserve divider block wrapped in e-divider-block class', () => {
+            const html = '<div class="e-block e-divider-block" data-block-type="Divider"><div class="e-be-hr-wrapper"><hr class="e-be-hr"></hr></div></div>';
+            
+            const result = cleanupModule.cleanupPaste({
+                html: html
+            });
+            
+            expect(result).toBeDefined();
+            expect(result.indexOf('e-divider-block')).toBeGreaterThan(-1);
+            expect(result.indexOf('data-block-type="Divider"')).toBeGreaterThan(-1);
+            expect(result.indexOf('<hr')).toBeGreaterThan(-1);
+        });
+
+        it('should cleanup multi-block content with divider between paragraphs', () => {
+            const html = `
+                <div class="scriptor-paragraph"><span></span>Paragraph 1<span></span></div>
+                <div class="scriptor-paragraph"><span></span><hr class="e-be-hr"><span></span></div>
+                <div class="scriptor-paragraph"><span></span>Paragraph 2<span></span></div>
+            `;
+            
+            const result = cleanupModule.cleanupPaste({
+                html: html
+            });
+            
+            expect(result).toBeDefined();
+            expect(result.indexOf('Paragraph 1')).toBeGreaterThan(-1);
+            expect(result.indexOf('<hr')).toBeGreaterThan(-1);
+            expect(result.indexOf('Paragraph 2')).toBeGreaterThan(-1);
+        });
+
+        it('should not remove HR tag from parent when parent appears empty', () => {
+            const html = '<div class="scriptor-paragraph" attribution="test"><span></span><hr attribution="hr-attr"><span><!--ScriptorEndFragment--></span></div>';
+            
+            const result = cleanupModule.cleanupPaste({
+                html: html
+            });
+            
+            expect(result).toBeDefined();
+            // HR should be preserved even though parent has no text content
+            expect(result.indexOf('<hr')).toBeGreaterThan(-1);
+            // Parent wrapper should also be preserved to maintain structure
+            expect(result.length).toBeGreaterThan(0);
+        });
+
+        it('should preserve multiple divider blocks in multi-block paste', () => {
+            const html = `
+                <div class="scriptor-paragraph"><span></span>Text 1<span></span></div>
+                <div class="e-block e-divider-block" data-block-type="Divider">
+                    <div class="e-be-hr-wrapper"><hr class="e-be-hr"></hr></div>
+                </div>
+                <div class="scriptor-paragraph"><span></span>Text 2<span></span></div>
+                <div class="e-block e-divider-block" data-block-type="Divider">
+                    <div class="e-be-hr-wrapper"><hr class="e-be-hr"></hr></div>
+                </div>
+                <div class="scriptor-paragraph"><span></span>Text 3<span></span></div>
+            `;
+            
+            const result = cleanupModule.cleanupPaste({
+                html: html
+            });
+            
+            expect(result).toBeDefined();
+            expect(result.indexOf('Text 1')).toBeGreaterThan(-1);
+            expect(result.indexOf('Text 2')).toBeGreaterThan(-1);
+            expect(result.indexOf('Text 3')).toBeGreaterThan(-1);
+            // Both dividers should be preserved
+            expect(result.match(/<hr/g)).toBeTruthy();
+            expect(result.match(/<hr/g).length).toBe(2);
+        });
+
+        it('should handle divider block with loop page HTML format', () => {
+            const html = '<div class="scriptor-paragraph" attribution="loop-page-attr"><span></span><hr attribution="loop-hr-attr"><span>Text after hr</span></div>';
+            
+            const result = cleanupModule.cleanupPaste({
+                html: html
+            });
+            
+            expect(result).toBeDefined();
+            // HR should survive cleanup even in loop page format
+            expect(result.indexOf('<hr')).toBeGreaterThan(-1);
+            expect(result.indexOf('Text after hr')).toBeGreaterThan(-1);
         });
     });
 

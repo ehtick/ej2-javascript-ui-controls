@@ -282,7 +282,7 @@ export class MsWordPaste {
     /* Determines if an image shape is unsupported */
     private isUnsupportedImageShape(shapesValue: string): boolean {
         const supportedShapes: string[] = [
-            'Picture', 'Chart', '圖片', 'Grafik', 'image', 'Graphic',
+            'Picture', 'Chart', '圖片', '图片', 'Grafik', 'image', 'Graphic',
             '_x0000_s', '_x0000_i', 'img1', 'Immagine'
         ];
         for (let i: number = 0; i < supportedShapes.length; i++) {

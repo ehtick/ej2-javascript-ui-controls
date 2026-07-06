@@ -181,12 +181,8 @@ export class Overview extends Component<HTMLElement> implements INotifyPropertyC
      * @private
      */
     protected preRender(): void {
-        if (this.element.id === '') {
-            const collection: number = document.getElementsByClassName('e-overview').length;
-            this.element.id = 'overview_' + this.overviewid + '_' + collection;
-        }
         //EJ2-64637 - Diagram element in the overview disappears on window resize.
-        this.id = this.element.id ? this.element.id : this.id;
+        this.id = this.element.id;
         this.element.style.background = 'transparent';
         this.unWireEvents();
         this.wireEvents();
@@ -748,11 +744,7 @@ export class Overview extends Component<HTMLElement> implements INotifyPropertyC
         if (this.actionName === 'scale' || this.actionName === 'draw') {
             this.parent.scroller.zoom(zoom / this.parent.scroller.currentZoom, delx, dely, focusPoint);
         } else {
-            if (!isBlazor()) {
-                this.parent.pan(delx, dely, focusPoint, canOverview);
-            } else {
-                this.parent.scroller.zoom(1, delx, dely, focusPoint);
-            }
+            this.parent.pan(delx, dely, focusPoint, canOverview);
         }
     }
 

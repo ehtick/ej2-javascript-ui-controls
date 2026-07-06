@@ -1,6 +1,6 @@
-@use 'ej2-base/styles/definition/fabric' as *;
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 @use '../context-menu/fabric-definition' as *;
-@forward 'ej2-base/styles/definition/fabric';
+
 @forward '../context-menu/fabric-definition';
 $menu-bigger-caret-font-size: $cmenu-bigger-caret-font-size !default;
 $menu-bigger-caret-li-padding: 30px !default;

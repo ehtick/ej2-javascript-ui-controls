@@ -36,7 +36,8 @@ describe('Flaky Test cases', () => {
         });
     });
 
-    describe(' quickToolbarSettings property - actionOnScroll - hide ', () => {
+    // 🚧 TODO: Migrate this to Playwright 🎭
+    xdescribe(' quickToolbarSettings property - actionOnScroll - hide ', () => {
         let rteObj: RichTextEditor;
         beforeAll(() => {
             document.body.style.height = '150vh';

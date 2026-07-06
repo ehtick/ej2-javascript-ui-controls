@@ -257,7 +257,8 @@ describe('Dom', () => {
             expect(clickFn).toHaveBeenCalledTimes(1);
             expect(!!document.querySelector('#removee')).toBe(false);
         });
-         it('should handle null element gracefully', () => {
+
+        it('should handle null element gracefully', () => {
             expect(() => {
                 Dom.remove(null as any);
             }).not.toThrow();
@@ -465,6 +466,7 @@ describe('Dom', () => {
             expect(element.style.cssText).toBe('color: blue; display: block;');
         });
     });
+
     describe('siblings - parentNode null handling', () => {
         it('should return empty array for null input', () => {
             // calling with null should not throw and should return an empty array

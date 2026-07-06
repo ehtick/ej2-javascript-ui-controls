@@ -330,7 +330,7 @@ export function isHeightCheckNeeded(style: CellStyleModel, onActionUpdate?: bool
     const keys: string[] = Object.keys(style);
     return (onActionUpdate ? keys.indexOf('fontSize') > -1 : keys.indexOf('fontSize') > -1
         && Number(style.fontSize.split('pt')[0]) > 12) || keys.indexOf('fontFamily') > -1 || keys.indexOf('borderTop') > -1
-        || keys.indexOf('borderBottom') > -1;
+        || keys.indexOf('borderBottom') > -1 || keys.indexOf('border') > -1;
 }
 
 /**
@@ -525,6 +525,11 @@ export function updateCell(context: Workbook, sheet: SheetModel, prop: CellUpdat
             const prevCell: CellModel = getCell(args.rowIndex, args.colIndex, sheet);
             const prevCellVal: string = !prop.preventEvt && context.getDisplayText(prevCell);
             const isFormulaCell: boolean = !!(prevCell && prevCell.formula);
+            if (args.cell && (args.cell as CellModel).richText) {
+                if (prevCell && prevCell.richText && prevCell.richText.length) {
+                    delete prevCell.richText;
+                }
+            }
             setCell(args.rowIndex, args.colIndex, sheet, args.cell, !prop.pvtExtend);
             const cell: CellModel = getCell(args.rowIndex, args.colIndex, sheet, false, true);
             if (prop.mergedCells) {
@@ -590,6 +595,7 @@ export function updateCell(context: Workbook, sheet: SheetModel, prop: CellUpdat
                 delete cell.value;
                 delete cell.formula;
                 delete cell.hyperlink;
+                delete cell.richText;
             }
             if (prop.uiRefresh) {
                 context.serviceLocator.getService<{ refresh: Function }>('cell').refresh(
@@ -610,6 +616,12 @@ export function updateCell(context: Workbook, sheet: SheetModel, prop: CellUpdat
                 }
             }
         } else {
+            if (args.cell && (args.cell as CellModel).richText) {
+                const existingCell: CellModel = getCell(args.rowIndex, args.colIndex, sheet, false, true);
+                if (existingCell && existingCell.richText) {
+                    delete existingCell.richText;
+                }
+            }
             setCell(args.rowIndex, args.colIndex, sheet, args.cell, !prop.pvtExtend);
             if (args.cell && args.cell.style) {
                 const cell: CellModel = getCell(args.rowIndex, args.colIndex, sheet, false, true);
@@ -1218,48 +1230,85 @@ export function addDPRValue(size: number): number {
 }
 
 /**
- * Updated the top border of the adjacent merged cells
+ * Updates the top or left borders of cells that are adjacent to merged cells.
  *
  * @param {Workbook} context - The spreadsheet instance.
- * @param {number[]} rowIndexes - An array of row indexes that top border need to be updated.
- * @param {number[]} colIndexes - An array of col indexes that top border need to be updated.
+ * @param {number[]} rowIndexes - An array of row indexes that top/left border need to be updated.
+ * @param {number[]} colIndexes - An array of col indexes that top/left border need to be updated.
+ * @param {boolean} isCol - Specifies whether the border processing is column-based (left border).
  * @returns {void}
  * @hidden
  */
-export function updateMergeBorder(context: Workbook, rowIndexes: number[], colIndexes?: number[]): void {
-    if (!rowIndexes.length) {
-        return;
-    }
-    const sheet: SheetModel = context.getActiveSheet(); let style: CellStyleModel;
-    const parent: ExtendedWorkbook = context as ExtendedWorkbook; const frozenCol: number = context.frozenColCount(sheet);
-    const startCol: number = (colIndexes && colIndexes[0]) ||
-        (frozenCol ? getCellIndexes(sheet.topLeftCell)[1] : parent.viewport.leftIndex);
-    const endCol: number = (colIndexes && colIndexes[1]) || parent.viewport.rightIndex;
-    rowIndexes.forEach((rowIdx: number) => {
-        for (let col: number = startCol; col <= endCol; col++) {
-            if (col === frozenCol) {
-                col += parent.viewport.leftIndex;
-            }
-            style = getCell(rowIdx, col, sheet, false, true).style;
-            const prevModel: CellModel = getCell(rowIdx - 1, col, sheet, false, true);
-            if (((!prevModel.rowSpan || prevModel.rowSpan === 1)
-                || (!prevModel.colSpan || prevModel.colSpan === 1)) &&
-                (!prevModel.style || !prevModel.style.borderBottom || prevModel.style.borderBottom === 'none' ||
-                    (style && style.borderTop === prevModel.style.borderBottom))) {
-                if (style && style.borderTop) {
-                    const prevCell: HTMLElement = context.getCell(rowIdx - 1, col);
-                    if (prevCell && prevCell.style.borderBottom) {
-                        const curCell: HTMLElement = context.getCell(rowIdx, col);
-                        if (curCell) {
-                            prevCell.style.borderBottom = '';
-                            curCell.style.borderTop = style.borderTop;
+export function updateMergeBorder(context: Workbook, rowIndexes: number[], colIndexes?: number[], isCol?: boolean): void {
+    const sheet: SheetModel = context.getActiveSheet();
+    const parent: ExtendedWorkbook = context as ExtendedWorkbook;
+    if (!isCol) {
+        if (!rowIndexes || !rowIndexes.length) {
+            return;
+        }
+        const frozenCol: number = context.frozenColCount(sheet);
+        const startCol: number = (colIndexes && colIndexes[0]) ||
+            (frozenCol ? getCellIndexes(sheet.topLeftCell)[1] : parent.viewport.leftIndex);
+        const endCol: number = (colIndexes && colIndexes[1]) || parent.viewport.rightIndex;
+        rowIndexes.forEach((rowIdx: number) => {
+            for (let col: number = startCol; col <= endCol; col++) {
+                if (col === frozenCol) {
+                    col += parent.viewport.leftIndex;
+                }
+                const style: CellStyleModel = getCell(rowIdx, col, sheet, false, true).style;
+                const prevModel: CellModel = getCell(rowIdx - 1, col, sheet, false, true);
+                if (((!prevModel.rowSpan || prevModel.rowSpan === 1)
+                    || (!prevModel.colSpan || prevModel.colSpan === 1)) &&
+                    (!prevModel.style || !prevModel.style.borderBottom || prevModel.style.borderBottom === 'none' ||
+                        (style && style.borderTop === prevModel.style.borderBottom))) {
+                    if (style && style.borderTop) {
+                        const prevCell: HTMLElement = context.getCell(rowIdx - 1, col);
+                        if (prevCell && prevCell.style.borderBottom) {
+                            const curCell: HTMLElement = context.getCell(rowIdx, col);
+                            if (curCell) {
+                                prevCell.style.borderBottom = '';
+                                curCell.style.borderTop = style.borderTop;
+                            }
                         }
                     }
                 }
             }
+        });
+    } else {
+        if (!colIndexes || !colIndexes.length) {
+            return;
         }
-    });
+        const frozenRow: number = context.frozenRowCount(sheet);
+        const startRow: number = (rowIndexes && rowIndexes[0]) ||
+            (frozenRow ? getCellIndexes(sheet.topLeftCell)[0] : parent.viewport.topIndex);
+        const endRow: number = (rowIndexes && rowIndexes[1]) || parent.viewport.bottomIndex;
+        colIndexes.forEach((colIdx: number) => {
+            for (let row: number = startRow; row <= endRow; row++) {
+                if (row === frozenRow) {
+                    row += parent.viewport.topIndex;
+                }
+                const style: CellStyleModel = getCell(row, colIdx, sheet, false, true).style;
+                const prevModel: CellModel = getCell(row, colIdx - 1, sheet, false, true);
+                if (((!prevModel.colSpan || prevModel.colSpan === 1)
+                    || (!prevModel.rowSpan || prevModel.rowSpan === 1)) &&
+                    (!prevModel.style || !prevModel.style.borderRight || prevModel.style.borderRight === 'none' ||
+                        (style && style.borderLeft === prevModel.style.borderRight))) {
+                    if (style && style.borderLeft) {
+                        const prevCell: HTMLElement = context.getCell(row, colIdx - 1);
+                        if (prevCell && prevCell.style.borderRight) {
+                            const curCell: HTMLElement = context.getCell(row, colIdx);
+                            if (curCell) {
+                                prevCell.style.borderRight = '';
+                                curCell.style.borderLeft = style.borderLeft;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
 }
+
 
 /**
  * Normalize createdTime from various formats to ISO format

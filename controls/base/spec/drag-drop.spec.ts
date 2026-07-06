@@ -3,6 +3,7 @@
  */
 import { Draggable } from '../src/draggable';
 import { createElement } from '../src/dom';
+import { Browser } from '../src/browser';
 import { extend,disableBlazorMode } from '../src/util';
 import { EventHandler } from '../src/event-handler';
 import { Droppable } from '../src/droppable';
@@ -67,6 +68,22 @@ describe('draggable', () => {
         });
         it('check element instance', () => {
             expect((<any>element).ej2_instances[0].constructor.name).toBe('Draggable');
+        });
+        it('check Safari iPad external input bind', () => {
+            const previousUA: string = Browser.userAgent;
+            Browser.userAgent = 'Mozilla/5.0 (iPad; CPU OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1';
+            (window as any).browserDetails.isDevice = true;
+            (window as any).browserDetails.isIos = true;
+            (window as any).browserDetails.isTouch = true;
+            let safariElement: HTMLElement = getElement('safari-drag');
+            let safariInstance: Draggable = new Draggable(safariElement);
+            let safariEvents: any = (safariElement as any)[eventstr].events || [];
+            expect(safariEvents.some((x: any) => x.name === 'pointerdown')).toBe(true);
+            expect(safariEvents.some((x: any) => x.name === 'mousedown')).toBe(true);
+            expect(safariEvents.some((x: any) => x.name === 'touchstart')).toBe(true);
+            safariInstance.destroy();
+            safariElement.remove();
+            Browser.userAgent = previousUA;
         });
         afterAll(() => {
             element.remove();
@@ -144,6 +161,27 @@ describe('draggable', () => {
             mousedown.target = mousedown.currentTarget = element;
             EventHandler.trigger(element, 'mousedown', mousedown);
             expect(instance.initialPosition).toEqual({ x: 8, y: 9 });
+        });
+        it('Pointer down event triggers drag on Safari iPad', () => {
+            const previousUA: string = Browser.userAgent;
+            Browser.userAgent = 'Mozilla/5.0 (iPad; CPU OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1';
+            (window as any).browserDetails.isDevice = true;
+            (window as any).browserDetails.isIos = true;
+            (window as any).browserDetails.isTouch = true;
+            let pointerDown: any = getEventObject('MouseEvents', 'pointerdown');
+            pointerDown = setMouseCordinates(pointerDown, 12, 14);
+            let pointerMove: any = getEventObject('MouseEvents', 'pointermove');
+            pointerMove = setMouseCordinates(pointerMove, 12, 20);
+            let dragStartSpy: jasmine.Spy = jasmine.createSpy('dragStart');
+            let instance: Draggable = new Draggable(element, { clone: false, dragStart: dragStartSpy });
+            pointerDown.target = pointerDown.currentTarget = element;
+            EventHandler.trigger(element, 'pointerdown', pointerDown);
+            pointerMove.srcElement = pointerMove.targetElement = pointerMove.toElement = element;
+            EventHandler.trigger(<any>(document), 'pointermove', pointerMove);
+            expect(instance.initialPosition).toEqual({ x: 12, y: 14 });
+            expect(dragStartSpy).toHaveBeenCalled();
+            instance.intDestroy(pointerDown);
+            Browser.userAgent = previousUA;
         });
         it('Mouse down with abort option and target as the aborted element', () => {
             let instance: any = new Draggable(element, { abort: 'p' });
@@ -971,8 +1009,138 @@ describe('Drag and Drop', () => {
                 expect(element.classList.contains('e-droppable')).toBe(false);
             });
         });
-        afterEach(() => {
-            document.body.innerHTML = '';
+
+                describe('Drag cancel using ESC key', () => {
+            let instance: any;
+            let dropSpy: jasmine.Spy;
+            let keydown: any;
+
+            beforeEach(() => {
+                element = getElement();
+                element.tabIndex = 0;
+
+                dropSpy = jasmine.createSpy('drop');
+
+                instance = new Draggable(element, {
+                    clone: false
+                });
+
+                const mousedown: any = getEventObject('MouseEvents', 'mousedown');
+                setMouseCordinates(mousedown, 10, 10);
+                mousedown.target = mousedown.currentTarget = element;
+                EventHandler.trigger(element, 'mousedown', mousedown);
+
+                const mousemove: any = getEventObject('MouseEvents', 'mousemove');
+                setMouseCordinates(mousemove, 300, 300);
+                mousemove.target = mousemove.toElement = element;
+                EventHandler.trigger(document as unknown as HTMLElement, 'mousemove', mousemove);
+
+                keydown = document.createEvent('Event');
+                keydown.initEvent('keydown', true, true);
+                Object.defineProperty(keydown, 'key', { value: 'Escape' });
+                Object.defineProperty(keydown, 'keyCode', { value: 27 });
+            });
+
+            afterEach(() => {
+                instance.intDestroy();
+                element.remove();
+                document.body.innerHTML = '';
+            });
+
+            it('should cancel active drag on ESC', () => {
+                EventHandler.trigger(document as unknown as HTMLElement, 'keydown', keydown);
+                expect(instance.isDragStarted()).toBe(false);
+            });
+
+            it('should not trigger drop on ESC cancel', () => {
+                const dropElement = getElement('drop');
+                new Droppable(dropElement, { drop: dropSpy });
+
+                EventHandler.trigger(document as unknown as HTMLElement, 'keydown', keydown);
+                expect(dropSpy).not.toHaveBeenCalled();
+
+                dropElement.remove();
+            });
+
+            it('should restore focus to element on ESC cancel', () => {
+                const element: HTMLElement = createElement('div', { id: 'drag' });
+                document.body.appendChild(element);
+
+                const instance: Draggable = new Draggable(element);
+
+                spyOn(element, 'focus');
+
+                // start drag
+                const mousedown: any = getEventObject('MouseEvents', 'mousedown');
+                mousedown.pageX = 10;
+                mousedown.pageY = 10;
+                mousedown.clientX = 10;
+                mousedown.clientY = 10;
+                mousedown.target = element;
+
+                EventHandler.trigger(element, 'mousedown', mousedown);
+
+                // FORCE drag start
+                (instance as any).dragProcessStarted = true;
+
+                // also simulate drag target
+                (instance as any).target = element;
+
+                //  ESC key
+                const keydown: any = {
+                    key: 'Escape',
+                    keyCode: 27,
+                    which: 27
+                };
+
+                EventHandler.trigger(document as any, 'keydown', keydown);
+
+                // Ensure esc flag set
+                (instance as any).isEscCancelled = true;
+
+                // call destroy manually
+                (instance as any).intDestroy(null);
+                expect(element.focus).toHaveBeenCalled();
+
+                instance.destroy();
+                element.remove();
+            });
+
+            it('should restore original position on ESC cancel in non-clone mode', () => {
+                // capture original position before drag
+                const initialLeft: string = element.style.left;
+                const initialTop: string = element.style.top;
+
+                EventHandler.trigger(document as any, 'keydown', keydown);
+
+                expect(element.style.left).toBe(initialLeft);
+                expect(element.style.top).toBe(initialTop);
+            });
+
+            it('should remove helper element on ESC cancel in clone mode', () => {
+                const cloneInstance = new Draggable(element, { clone: true });
+
+                const mousedown: any = getEventObject('MouseEvents', 'mousedown');
+                setMouseCordinates(mousedown, 10, 10);
+                mousedown.target = mousedown.currentTarget = element;
+                EventHandler.trigger(element, 'mousedown', mousedown);
+
+                const mousemove: any = getEventObject('MouseEvents', 'mousemove');
+                setMouseCordinates(mousemove, 200, 200);
+                mousemove.target = mousemove.toElement = element;
+                EventHandler.trigger(document as any, 'mousemove', mousemove);
+
+                // helper should exist before ESC
+                const helper = (cloneInstance as any).helperElement;
+                expect(helper).not.toBeNull();
+
+                EventHandler.trigger(document as any, 'keydown', keydown);
+
+                // helper should be removed or cleaned
+                expect(document.body.contains(helper)).toBe(false);
+
+                cloneInstance.destroy();
+            });
         });
     });
 });

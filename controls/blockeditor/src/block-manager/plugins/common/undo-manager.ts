@@ -2,7 +2,7 @@ import { BlockType, ContentType } from '../../../models/enums';
 import { DeletionType } from '../../../common/enums';
 import { BaseChildrenProp, BlockModel, TableCellModel, ITableBlockSettings, TableColumnModel } from '../../../models/index';
 import { getAdjacentBlock, getBlockContentElement, getBlockModelById, isNonContentEditableBlock } from '../../../common/utils/block';
-import { IUndoRedoState, IMoveOperation, IBlockData, IAddOperation, IMoveBlocksInteraction, ITransformOperation, IMultipleBlocksTransformOperation, IMultiDeleteOperation, IClipboardPasteOperation, IDeleteBlockInteraction, IFromBlockData, IFormattingOperation, BlockDatas, IToBlockData } from '../../../common/interface';
+import { IUndoRedoState, IMoveOperation, IBlockData, IAddOperation, IMoveBlocksInteraction, ITransformOperation, IMultipleBlocksTransformOperation, IMultiDeleteOperation, IClipboardPasteOperation, IDeleteBlockInteraction, IFromBlockData, IFormattingOperation, InternalBlockData, IToBlockData } from '../../../common/interface';
 import { UndoRedoAction } from '../../actions/undo';
 import * as constants from '../../../common/constant';
 import { actionType } from '../../../common/constant';
@@ -134,7 +134,7 @@ export class UndoRedoManager {
                     isMovingUp: !args.isMovedUp,
                     prevParent: prevParent ? prevParent.model : undefined,
                     currentParent: currParent ? currParent : undefined
-                } as BlockDatas
+                } as InternalBlockData
             });
         });
         this.parent.observer.notify('triggerBlockChange', this.parent.eventService.getChanges());
@@ -507,13 +507,13 @@ export class UndoRedoManager {
                 blockId: data.blockId,
                 rowIndex: data.rowIndex,
                 rowModel: data.rowModel,
-                isUndoRedoAction: true
+                preventTracking: true
             });
         } else {
             this.parent.tableService.deleteRowAt({
                 blockId: data.blockId,
                 modelIndex: data.rowIndex,
-                isUndoRedoAction: true
+                preventTracking: true
             });
         }
     }
@@ -543,13 +543,13 @@ export class UndoRedoManager {
                 colIndex: data.colIndex,
                 columnModel: data.columnModel,
                 columnCells: data.columnCells,
-                isUndoRedoAction: true
+                preventTracking: true
             });
         } else {
             this.parent.tableService.deleteColumnAt({
                 blockId: data.blockId,
                 colIndex: data.colIndex,
-                isUndoRedoAction: true
+                preventTracking: true
             });
         }
     }
@@ -578,7 +578,7 @@ export class UndoRedoManager {
         data.cells.forEach((cell: PayloadCell) => this.parent.tableService.applyCellChange(table, cell, mode));
 
         const updatedBlock: BlockModel = decoupleReference(getBlockModelById(data.blockId, this.parent.getEditorBlocks()));
-        this.parent.tableService.triggerBlockUpdate(updatedBlock, oldBlock);
+        this.parent.tableService.triggerBlockUpdate({ block: updatedBlock, oldBlock });
         const blockId: string = data.blockId;
         const blockEle: HTMLElement | null = this.parent.getBlockElementById(blockId);
         if (blockEle) {
@@ -610,12 +610,16 @@ export class UndoRedoManager {
             if (data.structureDelta) {
                 if (data.structureDelta.colsAdded && data.structureDelta.colsAdded.length) {
                     [...data.structureDelta.colsAdded].sort((a: number, b: number) => b - a).forEach((c: number) => {
-                        this.parent.tableService.deleteColumnAt({ blockId: data.blockId, colIndex: c, isUndoRedoAction: true });
+                        this.parent.tableService.deleteColumnAt({
+                            blockId: data.blockId, colIndex: c, preventTracking: true
+                        });
                     });
                 }
                 if (data.structureDelta.rowsAdded && data.structureDelta.rowsAdded.length) {
                     [...data.structureDelta.rowsAdded].sort((a: number, b: number) => b - a).forEach((r: number) => {
-                        this.parent.tableService.deleteRowAt({ blockId: data.blockId, modelIndex: r, isUndoRedoAction: true });
+                        this.parent.tableService.deleteRowAt({
+                            blockId: data.blockId, modelIndex: r, preventTracking: true
+                        });
                     });
                 }
             }
@@ -625,12 +629,16 @@ export class UndoRedoManager {
             if (data.structureDelta) {
                 if (data.structureDelta.rowsAdded && data.structureDelta.rowsAdded.length) {
                     [...data.structureDelta.rowsAdded].sort((a: number, b: number) => a - b).forEach((r: number) => {
-                        this.parent.tableService.addRowAt({ blockId: data.blockId, rowIndex: r, isUndoRedoAction: true });
+                        this.parent.tableService.addRowAt({
+                            blockId: data.blockId, rowIndex: r, preventTracking: true
+                        });
                     });
                 }
                 if (data.structureDelta.colsAdded && data.structureDelta.colsAdded.length) {
                     [...data.structureDelta.colsAdded].sort((a: number, b: number) => a - b).forEach((c: number) => {
-                        this.parent.tableService.addColumnAt({ blockId: data.blockId, colIndex: c, isUndoRedoAction: true });
+                        this.parent.tableService.addColumnAt({
+                            blockId: data.blockId, colIndex: c, preventTracking: true
+                        });
                     });
                 }
             }
@@ -647,7 +655,7 @@ export class UndoRedoManager {
         }
 
         const updatedBlock: BlockModel = decoupleReference(getBlockModelById(data.blockId, this.parent.getEditorBlocks()));
-        this.parent.tableService.triggerBlockUpdate(updatedBlock, oldBlock);
+        this.parent.tableService.triggerBlockUpdate({ block: updatedBlock, oldBlock });
     }
 
     public handleBulkRowsDeleted(currentState: IUndoRedoState): void {
@@ -664,7 +672,7 @@ export class UndoRedoManager {
                     blockId: data.blockId,
                     rowIndex: r.index,
                     rowModel: r.rowModel,
-                    isUndoRedoAction: true
+                    preventTracking: true
                 });
             });
         } else {
@@ -673,7 +681,7 @@ export class UndoRedoManager {
                 this.parent.tableService.deleteRowAt({
                     blockId: data.blockId,
                     modelIndex: r.index,
-                    isUndoRedoAction: true
+                    preventTracking: true
                 });
             });
         }
@@ -694,7 +702,7 @@ export class UndoRedoManager {
                     colIndex: c.index,
                     columnModel: c.columnModel,
                     columnCells: c.columnCells,
-                    isUndoRedoAction: true
+                    preventTracking: true
                 });
             });
         } else {
@@ -703,7 +711,7 @@ export class UndoRedoManager {
                 this.parent.tableService.deleteColumnAt({
                     blockId: data.blockId,
                     colIndex: c.index,
-                    isUndoRedoAction: true
+                    preventTracking: true
                 });
             });
         }

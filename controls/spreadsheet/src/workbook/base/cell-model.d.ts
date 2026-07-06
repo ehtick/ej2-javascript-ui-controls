@@ -1,4 +1,4 @@
-import { extend, Property, ChildProperty, Complex, Collection } from '@syncfusion/ej2-base';import { SheetModel } from './index';import { CellStyleModel, HyperlinkModel, CellStyle, wrapEvent, ValidationModel, Chart, ChartModel, ExtendedWorkbook, ThreadedComment } from '../common/index';import { ImageModel, Image, updateCell, ThreadedCommentModel, NoteModel } from '../common/index';import { getRow } from './index';import { RowModel } from './row-model';import { Workbook } from './workbook';import { getSheet } from './sheet';
+import { extend, Property, ChildProperty, Complex, Collection } from '@syncfusion/ej2-base';import { SheetModel } from './index';import { CellStyleModel, HyperlinkModel, CellStyle, wrapEvent, ValidationModel, Chart, ChartModel, ExtendedWorkbook, ThreadedComment } from '../common/index';import { ImageModel, Image, updateCell, ThreadedCommentModel, NoteModel, RichTextModel, RichText } from '../common/index';import { getRow } from './index';import { RowModel } from './row-model';import { Workbook } from './workbook';import { getSheet } from './sheet';import { positionAutoFillElement } from '../../spreadsheet/common/event';
 
 /**
  * Interface for a class Cell
@@ -157,6 +157,17 @@ export interface CellModel {
      * @hidden
      */
     formattedText?: string;
+
+    /**
+     * Specifies the rich text segments for the cell text, allowing superscript and subscript formatting within the content.
+     * Uses the RichText model to apply formatting to specific text segments. The options are:
+     * - **text**: Specifies the text content for each segment.
+     * - **style**: Specifies the style for each segment; it supports superscript and subscript formatting.
+     * Set `verticalAlign` as `super` for superscript formatting and `sub` for subscript formatting.
+     *
+     * @default []
+     */
+    richText?: RichTextModel[];
 
     /**
      * It allows to set the cell row height.

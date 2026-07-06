@@ -9,7 +9,7 @@ import { PointModel } from '../../../src/diagram/primitives/point-model';
 import { Rect } from '../../../src/diagram/primitives/rect';
 import { Matrix, transformPointByMatrix, identityMatrix } from '../../../src/diagram/primitives/matrix';
 import { UmlSequenceDiagramModel, UmlSequenceParticipantModel, UmlSequenceMessageModel, UmlSequenceFragmentModel } from "../../../src/diagram/diagram/sequence-diagram-model";
-import { UmlSequenceMessageType, UmlSequenceFragmentType, UmlSequenceDiagram } from "../../../src/diagram/diagram/sequence-diagram";
+import { UmlSequenceMessageType, UmlSequenceFragmentType, UmlSequenceDiagram, UmlSequenceParticipantStereotype, UmlSequenceMessageLineStyle, UmlSequenceMessageArrowShape, UmlSequenceMessage } from "../../../src/diagram/diagram/sequence-diagram";
 
 import { SymbolPalette, SymbolInfo, } from '../../../src/symbol-palette/index';
 import { MouseEvents } from '../interaction/mouseevents.spec';
@@ -3031,7 +3031,7 @@ describe('Diagram Control', () => {
         deactivate Bob
     end
     create participant Eve as Evaluator
-    Alice-->Eve: Can you assist Bob with that?
+    Alice-)Eve: Can you assist Bob with that?
     activate Eve
     alt Assistance Workflow
         Eve->>Bob: Let's get this done together.
@@ -3053,7 +3053,7 @@ describe('Diagram Control', () => {
     end
     opt Finalize Report
         create actor Carol as Customer
-        Bob-->Carol: Report is finalized, sending it to you.
+        Bob-)Carol: Report is finalized, sending it to you.
         Carol->>Bob: Received, thank you.
     end
     Alice->>Dave: Thanks for the review
@@ -3410,6 +3410,298 @@ describe('Diagram Control', () => {
                 expect(diagram.nodes.length).toBe(8);
                 expect(diagram.connectors.length).toBe(12);
                 done();
+            });
+        });
+
+        describe('Sequence Mermaid data-4', () => {
+            let diagram: Diagram;
+            let ele: HTMLElement;
+            beforeAll((): void => {
+                ele = createElement('div', { id: 'mermaidSeqDiagram-6', styles: 'width:100%;height:800px;' });
+                document.body.appendChild(ele);
+                diagram = new Diagram({
+                    width: '100%',
+                    height: '800px',
+                });
+                diagram.appendTo('#mermaidSeqDiagram-6');
+            });
+
+            afterAll((): void => {
+                diagram.destroy();
+                ele.remove();
+                (diagram as any) = null; (ele as any) = null;
+            });
+            it('Half arrow and central connections', (done: Function) => {
+                const mermaidData: string = String.raw`sequenceDiagram
+    %% Participants and aliases
+    participant A as Actor A
+    participant B as Actor B
+    participant Alice as Alice<br/>Johnson
+    participant John
+
+    %% Cross and broken arrows
+    A-x()B: Login request
+    B()--xA: Query user
+
+    %% Half arrowheads – normal direction
+    A -|\ B: Half Top
+    A --|\ B: Half Top Dot
+    A -|/ B: Half Bottom
+    A --|/ B: Half Bottom Dot
+
+    %% Half arrowheads – reverse direction
+    A /|- B: Reverse Half Top
+    A /|-- B: Reverse Half Top Dot
+    A \\- B: Reverse Half Bottom
+    A \\-- B: Reverse Half Bottom Dot
+
+    %% Stick half arrowheads – normal direction
+    A -\\ B: Stick Top
+    A --\\ B: Stick Top Dot
+    A -// B: Stick Bottom
+    A --// B: Stick Bottom Dot
+
+    %% Stick half arrowheads – reverse direction
+    A //- B: Reverse Stick Top
+    A //-- B: Reverse Stick Top Dot
+    A \\- B: Reverse Stick Bottom
+    A \\-- B: Reverse Stick Bottom Dot`;
+                diagram.loadDiagramFromMermaid(mermaidData);
+                expect(diagram.nodes.length).toBe(4);
+                expect(diagram.connectors.length).toBe(22);
+                done();
+            });
+        });
+
+        describe('Sequence Mermaid data-5', () => {
+            let diagram: Diagram;
+            let ele: HTMLElement;
+            beforeAll((): void => {
+                ele = createElement('div', { id: 'mermaidSeqDiagram-7', styles: 'width:100%;height:800px;' });
+                document.body.appendChild(ele);
+                diagram = new Diagram({
+                    width: '100%',
+                    height: '800px',
+                });
+                diagram.appendTo('#mermaidSeqDiagram-7');
+            });
+
+            afterAll((): void => {
+                diagram.destroy();
+                ele.remove();
+                (diagram as any) = null; (ele as any) = null;
+            });
+            it('stereotypes and inline aliases', (done: Function) => {
+                const mermaidData: string =
+                    `sequenceDiagram
+    participant Boundary@{ "type": "boundary", "alias": "UI" }
+    create participant Control@{ "type": "control", "alias": "Service" }
+    participant Entity@{ "type": "entity", "alias": "Domain Object" }
+    participant Database@{ "type": "database", "alias": "DB" }
+    participant Collections@{ "type": "collections", "alias": "Cache" }
+    participant Queue@{ "type": "queue", "alias": "Event Queue" }
+
+    Boundary->>Control: Submit request
+    Control->>Entity: Validate input
+    Entity->>Database: Read / Write data
+    Database-->>Entity: Persisted data
+    Entity->>Collections: Update cache
+    Collections->>Queue: Publish event
+    Queue-->>Control: Notify completion
+    Control-->>Boundary: Send response`;
+                diagram.loadDiagramFromMermaid(mermaidData);
+                expect(diagram.nodes.length).toBe(6);
+                expect(diagram.connectors.length).toBe(14);
+                done();
+            });
+        });
+        describe('Participant Types and Message Arrow Properties', () => {
+            describe('Test-1: All Participant Types and Message Arrow Properties', () => {
+                let diagram: Diagram;
+                let ele: HTMLElement;
+                beforeAll((): void => {
+                    ele = createElement('div', { id: 'participantTypesAndArrows-1', styles: 'width:100%;height:900px;' });
+                    document.body.appendChild(ele);
+
+                    const model: UmlSequenceDiagramModel = {
+                        spaceBetweenParticipants: 150,
+                        participants: [
+                            // Test standard Participant type
+                            { id: 'p1', content: 'Standard Participant', stereotype: UmlSequenceParticipantStereotype.Default, isActor: false },
+                            // Test Actor type (both new type property and legacy isActor)
+                            { id: 'p2', content: 'Actor', stereotype: UmlSequenceParticipantStereotype.Actor, isActor: true },
+                            // Test Boundary type
+                            { id: 'p3', content: 'Boundary', stereotype: UmlSequenceParticipantStereotype.Boundary},
+                            // Test Control type
+                            { id: 'p4', content: 'Control', stereotype: UmlSequenceParticipantStereotype.Control},
+                            // Test Entity type
+                            { id: 'p5', content: 'Entity', stereotype: UmlSequenceParticipantStereotype.Entity},
+                            // Test Database type
+                            { id: 'p6', content: 'Database', stereotype: UmlSequenceParticipantStereotype.Database},
+                            // Test Collections type
+                            { id: 'p7', content: 'Collections', stereotype: UmlSequenceParticipantStereotype.Database},
+                            // Test Queue type
+                            { id: 'p8', content: 'Queue', stereotype: UmlSequenceParticipantStereotype.Database}
+                        ],
+                        messages: [
+                            // Test message with Solid line type and Arrow types
+                            { id: 'm1', content: 'sync_solid_arrow', fromParticipantID: 'p1', toParticipantID: 'p2', 
+                              type: UmlSequenceMessageType.Synchronous, 
+                              lineStyle: UmlSequenceMessageLineStyle.Solid, 
+                              sourceArrow: UmlSequenceMessageArrowShape.Arrow, 
+                              targetArrow: UmlSequenceMessageArrowShape.Arrow } as UmlSequenceMessage,
+                            
+                            // Test message with Dotted line type and different arrow types
+                            { id: 'm2', content: 'async_dotted_open', fromParticipantID: 'p2', toParticipantID: 'p3', 
+                              type: UmlSequenceMessageType.Asynchronous, 
+                              lineStyle: UmlSequenceMessageLineStyle.Dashed, 
+                              sourceArrow: UmlSequenceMessageArrowShape.OpenArrow, 
+                              targetArrow: UmlSequenceMessageArrowShape.OpenArrow } as UmlSequenceMessage,
+                            
+                            // Test Reply message with specific arrow types
+                            { id: 'm3', content: 'reply_none_arrow', fromParticipantID: 'p3', toParticipantID: 'p1', 
+                              type: UmlSequenceMessageType.Reply, 
+                              lineStyle: UmlSequenceMessageLineStyle.Dashed, 
+                              sourceArrow: UmlSequenceMessageArrowShape.None, 
+                              targetArrow: UmlSequenceMessageArrowShape.None } as UmlSequenceMessage,
+                            
+                            // Test message with Cross arrow type
+                            { id: 'm4', content: 'cross_arrows', fromParticipantID: 'p4', toParticipantID: 'p5', 
+                              type: UmlSequenceMessageType.Synchronous, 
+                              lineStyle: UmlSequenceMessageLineStyle.Solid, 
+                              sourceArrow: UmlSequenceMessageArrowShape.Cross, 
+                              targetArrow: UmlSequenceMessageArrowShape.Cross } as UmlSequenceMessage,
+                            
+                            // Test message with TopHalfArrow and BottomHalfArrow
+                            { id: 'm5', content: 'half_arrows', fromParticipantID: 'p5', toParticipantID: 'p6', 
+                              type: UmlSequenceMessageType.Synchronous, 
+                              lineStyle: UmlSequenceMessageLineStyle.Solid, 
+                              sourceArrow: UmlSequenceMessageArrowShape.TopHalfArrow, 
+                              targetArrow: UmlSequenceMessageArrowShape.BottomHalfArrow } as UmlSequenceMessage,
+                            
+                            // Test message with Stick half arrows
+                            { id: 'm6', content: 'stick_half', fromParticipantID: 'p6', toParticipantID: 'p7', 
+                              type: UmlSequenceMessageType.Synchronous, 
+                              lineStyle: UmlSequenceMessageLineStyle.Dashed, 
+                              sourceArrow: UmlSequenceMessageArrowShape.TopStickHalfArrow, 
+                              targetArrow: UmlSequenceMessageArrowShape.BottomStickHalfArrow } as UmlSequenceMessage,
+                            
+                            // Test message with FilledArrow
+                            { id: 'm7', content: 'filled_arrow', fromParticipantID: 'p7', toParticipantID: 'p8', 
+                              type: UmlSequenceMessageType.Synchronous, 
+                              lineStyle: UmlSequenceMessageLineStyle.Solid, 
+                              sourceArrow: UmlSequenceMessageArrowShape.Arrow, 
+                              targetArrow: UmlSequenceMessageArrowShape.Arrow } as UmlSequenceMessage,
+
+                            { id: 'm8', content: 'half_arrows1', fromParticipantID: 'p3', toParticipantID: 'p8', 
+                              type: UmlSequenceMessageType.Synchronous, 
+                              lineStyle: UmlSequenceMessageLineStyle.Dashed,
+                              sourceArrow: UmlSequenceMessageArrowShape.BottomHalfArrow, 
+                              targetArrow: UmlSequenceMessageArrowShape.TopHalfArrow } as UmlSequenceMessage,
+
+                            { id: 'm9', content: 'half_arrows1', fromParticipantID: 'p6', toParticipantID: 'p8', 
+                              type: UmlSequenceMessageType.Synchronous, 
+                              lineStyle: UmlSequenceMessageLineStyle.Dashed, 
+                              sourceArrow: UmlSequenceMessageArrowShape.BottomStickHalfArrow, 
+                              targetArrow: UmlSequenceMessageArrowShape.TopStickHalfArrow } as UmlSequenceMessage,
+                            
+
+                        ]
+                    };
+
+                    diagram = new Diagram({
+                        width: '100%',
+                        height: '900px',
+                        model: model
+                    });
+                    diagram.appendTo('#participantTypesAndArrows-1');
+                });
+
+                afterAll((): void => {
+                    diagram.destroy();
+                    ele.remove();
+                    (diagram as any) = null; (ele as any) = null;
+                });
+
+                // Main test covering all participant types
+                it('All 8 participant types render correctly with proper shapes', (done: Function) => {
+                    // Verify all 8 participants are created
+                    expect(diagram.nodes.length).toBe(8); // 8 participants + 8 lifelings
+                    done();
+                });
+
+                 it('Save diagram as mermaid', (done: Function) => {
+                    const mermaidText: string = diagram.saveDiagramAsMermaid()
+                    expect(diagram.nodes.length).toBe(8);
+                    done();
+                });
+
+            });
+
+            describe('Test-2: Backward Compatibility and Type Precedence', () => {
+                let diagram: Diagram;
+                let ele: HTMLElement;
+                beforeAll((): void => {
+                    ele = createElement('div', { id: 'backwardCompatibility-1', styles: 'width:100%;height:800px;' });
+                    document.body.appendChild(ele);
+
+                    const model: UmlSequenceDiagramModel = {
+                        spaceBetweenParticipants: 200,
+                        participants: [
+                            // Legacy isActor property (backward compatibility - no type property)
+                            { id: 'legacy_actor', content: 'Legacy Actor', isActor: true },
+                            
+                            // Legacy non-actor (backward compatibility - no type property)
+                            { id: 'legacy_nonactor', content: 'Legacy Non-Actor', isActor: false },
+                            
+                            // Type property takes precedence over isActor
+                            { id: 'precedence_boundary', content: 'Precedence Test', 
+                              stereotype: UmlSequenceParticipantStereotype.Boundary, 
+                              isActor: true }, // isActor is true but type should take precedence
+                            
+                            // Only type property (no isActor)
+                            { id: 'type_only_control', content: 'Type Only', 
+                              stereotype: UmlSequenceParticipantStereotype.Control }
+                        ],
+                        messages: [
+                            // Message with only semantic type (no arrow properties)
+                            { id: 'legacy_msg1', content: 'Legacy Sync', fromParticipantID: 'legacy_actor', 
+                              toParticipantID: 'legacy_nonactor', type: UmlSequenceMessageType.Synchronous, sourceArrow: UmlSequenceMessageArrowShape.BottomHalfArrow, 
+                              targetArrow: UmlSequenceMessageArrowShape.None } as UmlSequenceMessage,
+                            
+                            // Message with semantic type AND arrow properties (new feature)
+                            { id: 'enhanced_msg1', content: 'Enhanced Message', fromParticipantID: 'precedence_boundary', 
+                              toParticipantID: 'type_only_control', type: UmlSequenceMessageType.Asynchronous,sourceArrow: UmlSequenceMessageArrowShape.Arrow, 
+                              targetArrow: UmlSequenceMessageArrowShape.Arrow  } as UmlSequenceMessage,
+                            
+                            // Message with only line type (no arrow types)
+                            { id: 'msg_line_only', content: 'Line Type Only', fromParticipantID: 'legacy_nonactor', 
+                              toParticipantID: 'precedence_boundary', type: UmlSequenceMessageType.Reply,sourceArrow: UmlSequenceMessageArrowShape.None, 
+                              targetArrow: UmlSequenceMessageArrowShape.None } as UmlSequenceMessage
+                        ],
+                    };
+
+                    diagram = new Diagram({
+                        width: '100%',
+                        height: '800px',
+                        model: model
+                    });
+                    diagram.appendTo('#backwardCompatibility-1');
+                });
+
+                afterAll((): void => {
+                    diagram.destroy();
+                    ele.remove();
+                    (diagram as any) = null; (ele as any) = null;
+                });
+
+                // Test backward compatibility with legacy isActor property
+                it('Legacy diagrams using isActor property continue to work without type property', (done: Function) => {
+                    // Verify diagram renders without errors
+                    const mermaidText: string = diagram.saveDiagramAsMermaid()
+                    expect(diagram.nodes.length).toBe(4);
+                    done();
+                });
             });
         });
     });

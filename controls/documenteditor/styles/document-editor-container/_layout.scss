@@ -1,5 +1,13 @@
-@use 'ej2-base/styles/common/mixin' as *;
+@use 'variables' as *;
 @include export-module('document-editor-container-layout') {
+  
+  .e-de-status-bar .e-dropdown-btn,
+  .e-de-status-bar .e-dropdown-btn.e-btn {
+    @if $skin-name == 'tailwind3' or $skin-name == 'tailwind3-dark' {
+      white-space: nowrap;
+    }
+  }
+
   .e-de-toolbar {
     height: $e-de-toolbar-height;
   }
@@ -61,7 +69,7 @@
     padding-top: $de-hglt-no-color-padding-top;
     width: 157px;
 
-    #{if(&, '&', '*')}:hover {
+    &:hover {
       background-color: $de-hover-bg;
       cursor: pointer;
     }

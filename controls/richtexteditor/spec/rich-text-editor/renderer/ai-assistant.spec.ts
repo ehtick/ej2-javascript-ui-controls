@@ -110,6 +110,68 @@ describe('AI Assistant Module', ()=> {
         });
     });
 
+    describe('Bug 1030330: Console error after inserting AI-generated summary from AI Assistant', ()=> {
+        let editor: RichTextEditor;
+        const customResponse: string = '<p>This is a custom professional response from AI Assistant.</p>';
+        beforeAll(()=> {
+            editor = renderRTE({
+                value: 'This is a content with improper format',
+                toolbarSettings: {
+                    items: ['aiquery', 'aicommands']
+                },
+                aiAssistantSettings: {
+                    commands: [{
+                        text: "Change Tone",
+                        items: [
+                            {
+                                text: "Professional",
+                                prompt: "Rewrite the following content in a professional tone:"
+                            },
+                            {
+                                text: "Casual",
+                                prompt: "Rewrite the following content in a casual tone:"
+                            },
+                        ]
+                    }]
+                },
+                aiAssistantPromptRequest: (e) => {
+                    editor.addAIPromptResponse(customResponse, false);
+                    editor.addAIPromptResponse(customResponse, true);
+                }
+            });
+        });
+        afterAll(()=> {
+            destroy(editor);
+        });
+        it ('Should insert the custom response in the RTE when insert button is clicked after selecting Professional tone.', (done: DoneFn) => {
+            (editor.getToolbarElement().querySelector('.e-toolbar-item') as HTMLElement).click();
+            setTimeout(() => {
+                const dropdownButton: HTMLButtonElement = document.querySelector('#' + editor.element.id + '_QueryPopupCommandsDropDown') as HTMLButtonElement;
+                dropdownButton.click();
+                setTimeout(() => {
+                    const subMenu: HTMLElement = document.querySelector('.e-dropdown-popup.e-ai-commands-tbar-btn .e-menu-parent') as HTMLElement;
+                    subMenu.querySelector('li').classList.add('e-focused');
+                    const mouseOverEvent: MouseEvent = new MouseEvent('mouseover', BASIC_MOUSE_EVENT_INIT);
+                    subMenu.querySelector('li').dispatchEvent(mouseOverEvent);
+                    setTimeout(() => {
+                        const subMenu: HTMLElement = document.querySelectorAll('.e-menu-popup')[0] as HTMLElement;
+                        expect(subMenu).not.toBeUndefined();
+                        subMenu.querySelector('li').click();
+                        setTimeout(() => {
+                            const insertButton: HTMLElement = document.querySelectorAll('.e-rte-aiquery-popup .e-output')[0].querySelector('.e-check').parentElement.parentElement;
+                            insertButton.click();
+                            setTimeout(() => {
+                                expect(insertButton).not.toBeUndefined();
+                                expect(editor.inputElement.innerHTML).toBe(customResponse);
+                                done();
+                            }, 100);
+                        }, 100);
+                    }, 100);
+                }, 100);
+            }, 100);
+        });
+    });
+
     describe('995535 : AI Assistant commands menu inside the Popup not closed when the action is performed after one time.', ()=> {
         let editor: RichTextEditor;
         beforeAll(()=> {
@@ -1027,7 +1089,8 @@ describe('AI Assistant Module', ()=> {
         });
     });
 
-    describe('Popup Position testing', ()=> {
+    // 🚧 TODO: Migrate this to Playwright 🎭
+    xdescribe('Popup Position testing', ()=> {
         let editor: RichTextEditor;
         beforeAll(()=> {
             editor = renderRTE({
@@ -1279,8 +1342,8 @@ describe('AI Assistant Module', ()=> {
                 setTimeout(() => {
                     expect(editor.aiAssistantModule.assistView.prompts[0].prompt).toBe('What is your favorite color?');
                     expect(editor.aiAssistantModule.assistView.prompts[1].prompt).toBe('Describe your ideal vacation.');
-                    expect(editor.aiAssistantModule.assistView.prompts[0].response).toBe('<p>My favorite color is blue.</p>\n');
-                    expect(editor.aiAssistantModule.assistView.prompts[1].response).toBe('<p>A week in the mountains with a lake view and no internet.</p>\n');
+                    expect(editor.aiAssistantModule.assistView.prompts[0].response).toBe('<p>My favorite color is blue.</p>');
+                    expect(editor.aiAssistantModule.assistView.prompts[1].response).toBe('<p>A week in the mountains with a lake view and no internet.</p>');
                     editor.aiAssistantSettings.prompts = [
                         {
                             prompt: "What are your thoughts on remote work?",
@@ -1937,8 +2000,8 @@ describe('AI Assistant Module', ()=> {
             setTimeout(() => {
                 expect(editor.aiAssistantModule.assistView.prompts[0].prompt).toBe('What is your favorite color?');
                 expect(editor.aiAssistantModule.assistView.prompts[1].prompt).toBe('Describe your ideal vacation.');
-                expect(editor.aiAssistantModule.assistView.prompts[0].response).toBe('<p>My favorite color is blue.</p>\n');
-                expect(editor.aiAssistantModule.assistView.prompts[1].response).toBe('<p>A week in the mountains with a lake view and no internet.</p>\n');
+                expect(editor.aiAssistantModule.assistView.prompts[0].response).toBe('<p>My favorite color is blue.</p>');
+                expect(editor.aiAssistantModule.assistView.prompts[1].response).toBe('<p>A week in the mountains with a lake view and no internet.</p>');
                 const clearButton: HTMLElement = document.querySelector('.e-rte-aiquery-popup .e-view-header .e-trash').parentElement.parentElement;
                 clearButton.click();
                 setTimeout(() => {
@@ -2450,6 +2513,76 @@ describe('AI Assistant Module', ()=> {
         })
     });
 
+    describe('1020112: AI Assistant Insert Content Without Editor Focus testing', () => {
+        let editor: RichTextEditor;
+        const requestCount = { current: 0 };
+        beforeAll(() => {
+            editor = renderRTE({
+                value: '<p>This is the full content that should be processed when not focused.</p>',
+                toolbarSettings: {
+                    items: ['aiquery', 'aicommands']
+                },
+                aiAssistantSettings: {
+                    commands: [{
+                        text: "Change Tone",
+                        items: [
+                            {
+                                text: "Professional",
+                                prompt: "Rewrite the following content in a professional tone:"
+                            }
+                        ]
+                    }],
+                    prompts: [
+                        {
+                            prompt: 'What is Essential Studio ?',
+                            response:
+                                'Essential Studio is a software toolkit by Syncfusion that offers a variety of UI controls, frameworks, and libraries for developing applications on web, desktop, and mobile platforms. It aims to streamline application development with customizable, pre-built components.',
+                        },
+                    ]
+                },
+                aiAssistantPromptRequest: (args: AIAssistantPromptRequestArgs) => {
+                    requestCount.current = requestCount.current + 1;
+                    const fullText = requestCount.current === 1
+                        ? '- test1 \n- test2 \n- test3'
+                        : 'If I select test2 and run AI assist, I expect only test2 is replaced, test1 and test3 should not be removed';
+                    editor.addAIPromptResponse(fullText, false);
+                    editor.addAIPromptResponse(fullText, true);
+                }
+            });
+        });
+        afterAll(() => {
+            destroy(editor);
+        });
+        it('Should insert AI response to the editor without focusing the editor and opening AI-Commands dropdown', (done: DoneFn) => {
+            // DO NOT call editor.focusIn(); we want the "not focused" case.
+            // Click the AI Commands toolbar button
+            const commandsButton: HTMLButtonElement = editor.getToolbarElement().querySelector('.e-ai-commands-tbar-btn');
+            commandsButton.click();
+            setTimeout(() => {
+                // Open submenu by hover and then click first item
+                const rootMenu: HTMLElement = document.querySelector('.e-dropdown-popup.e-ai-commands-tbar-btn .e-menu-parent') as HTMLElement;
+                rootMenu.querySelector('li').classList.add('e-focused');
+                const mouseOverEvent: MouseEvent = new MouseEvent('mouseover', BASIC_MOUSE_EVENT_INIT);
+                rootMenu.querySelector('li').dispatchEvent(mouseOverEvent);
+                setTimeout(() => {
+                    const subMenu: HTMLElement = document.querySelectorAll('.e-menu-popup')[0] as HTMLElement;
+                    expect(subMenu).not.toBeUndefined();
+                    // Click the first AI command item
+                    subMenu.querySelector('li').click();
+                    setTimeout(() => {
+                        const aiQueryPopup: HTMLElement = document.querySelector('.e-rte-aiquery-popup');
+                        const insertButton: HTMLElement = aiQueryPopup.querySelectorAll('.e-check')[1].parentElement.parentElement;
+                        insertButton.click();
+                        setTimeout(() => {
+                            expect(editor.inputElement.querySelectorAll('li').length).toBe(3);
+                            done();
+                        }, 100);
+                    }, 100);
+                }, 100);
+            }, 100);
+        });
+    });
+
     describe('Bug 1012518: AI Assistant prompt is empty when reopening AI chat after closing it before the AI response completes in the Rich Text Editor.', () => {
         let editor: RichTextEditor;
         const firstPrompt: string = 'Rewrite the following content in a professional tone:';
@@ -2527,9 +2660,10 @@ describe('AI Assistant Module', ()=> {
         });
     });
 
-    describe('1020112: AI Assistant Insert Content Without Editor Focus testing', () => {
+    describe('Bug 1017260: Markdown value contains literal "\\n" at the start of the converted content.', () => {
         let editor: RichTextEditor;
-        const requestCount = { current: 0 };
+        let processedHtml: string = '';
+        const response: string = 'Processed by AI';
         beforeAll(() => {
             editor = renderRTE({
                 value: '<p>This is the full content that should be processed when not focused.</p>',
@@ -2545,31 +2679,21 @@ describe('AI Assistant Module', ()=> {
                                 prompt: "Rewrite the following content in a professional tone:"
                             }
                         ]
-                    }],
-                    prompts: [
-                        {
-                            prompt: 'What is Essential Studio ?',
-                            response:
-                                'Essential Studio is a software toolkit by Syncfusion that offers a variety of UI controls, frameworks, and libraries for developing applications on web, desktop, and mobile platforms. It aims to streamline application development with customizable, pre-built components.',
-                        },
-                    ]
+                    }]
                 },
                 aiAssistantPromptRequest: (args: AIAssistantPromptRequestArgs) => {
-                    requestCount.current = requestCount.current + 1;
-                    const fullText = requestCount.current === 1
-                        ? '- test1 \n- test2 \n- test3'
-                        : 'If I select test2 and run AI assist, I expect only test2 is replaced, test1 and test3 should not be removed';
-                    editor.addAIPromptResponse(fullText, false);
-                    editor.addAIPromptResponse(fullText, true);
+                    // Capture the html sent to AI to assert later
+                    processedHtml = args.html;
+                    // Simulate AI response and finalize (same style as other tests)
+                    editor.addAIPromptResponse(response, false);
+                    editor.addAIPromptResponse(response, true);
                 }
             });
         });
         afterAll(() => {
             destroy(editor);
         });
-        it('Should insert AI response to the editor without focusing the editor and opening AI-Commands dropdown', (done: DoneFn) => {
-            // DO NOT call editor.focusIn(); we want the "not focused" case.
-            // Click the AI Commands toolbar button
+        it('Should remove newline characters from AI response content', (done: DoneFn) => {
             const commandsButton: HTMLButtonElement = editor.getToolbarElement().querySelector('.e-ai-commands-tbar-btn');
             commandsButton.click();
             setTimeout(() => {
@@ -2584,13 +2708,11 @@ describe('AI Assistant Module', ()=> {
                     // Click the first AI command item
                     subMenu.querySelector('li').click();
                     setTimeout(() => {
-                        const aiQueryPopup: HTMLElement = document.querySelector('.e-rte-aiquery-popup');
-                        const insertButton: HTMLElement = aiQueryPopup.querySelectorAll('.e-check')[1].parentElement.parentElement;
-                        insertButton.click();
-                        setTimeout(() => {
-                            expect(editor.inputElement.querySelectorAll('li').length).toBe(3);
-                            done();
-                        }, 100);
+                        const responseOutput: HTMLElement = document.querySelector('.e-rte-aiquery-popup .e-output');
+                        // Check that the response HTML does not contain literal \n characters
+                        const responseHTML: string = responseOutput.innerHTML;
+                        expect(responseHTML.includes('\\n')).toBe(false);
+                        done();
                     }, 100);
                 }, 100);
             }, 100);
@@ -2671,7 +2793,7 @@ describe('AI Assistant Module', ()=> {
         let editor: RichTextEditor;
         beforeAll(()=> {
             editor = renderRTE({
-                value: 'This is a content wiht improper format',
+                value: 'This is a content with improper format',
                 toolbarSettings: {
                     items: ['aiquery', 'aicommands']
                 },

@@ -680,6 +680,7 @@ export class TreeView extends Component<HTMLElement> implements INotifyPropertyC
     private isInteracted: boolean = false;
     private isRightClick: boolean = false;
     private mouseDownStatus: boolean = false;
+    private isKeyboardFocus: boolean = false;
     private isDropIn: boolean = false;
     private DDTTreeData: { [key: string]: Object }[];
     private OldCheckedData: { [key: string]: Object; }[] = [];
@@ -4142,19 +4143,25 @@ export class TreeView extends Component<HTMLElement> implements INotifyPropertyC
     }
 
     private focusIn(): void {
+        const focusedElement: Element = this.getFocusedNode();
+        if (!focusedElement) { return; }
         if (!this.mouseDownStatus) {
-            const focusedElement: Element = this.getFocusedNode();
             if (focusedElement.classList.contains('e-disable')) {
                 focusedElement.setAttribute('tabindex', '-1');
                 this.navigateNode(true);
             } else {
                 focusedElement.setAttribute('tabindex', '0');
                 addClass([focusedElement], FOCUS);
-                addClass([focusedElement], FOCUSED);
+                if (this.isKeyboardFocus) {
+                    addClass([focusedElement], FOCUSED);
+                }
                 EventHandler.add(focusedElement, 'blur', this.focusOut, this);
             }
             this.mouseDownStatus = false;
+        } else if (this.isKeyboardFocus && !focusedElement.classList.contains('e-disable')) {
+            addClass([focusedElement], FOCUSED);
         }
+        this.isKeyboardFocus = false;
     }
 
     private focusOut(event: Event): void {
@@ -5799,11 +5806,18 @@ export class TreeView extends Component<HTMLElement> implements INotifyPropertyC
 
     private mouseDownHandler(e: MouseEvent): void {
         this.mouseDownStatus = true;
+        this.isKeyboardFocus = false;
         if (e.shiftKey || e.ctrlKey) {
             e.preventDefault();
         }
         if (e.ctrlKey && this.allowMultiSelection) {
             EventHandler.add(this.element, 'contextmenu', this.preventContextMenu, this);
+        }
+    }
+
+    private keyDownHandler(e: KeyboardEvent): void {
+        if (e.key === 'Tab' || e.keyCode === 9) {
+            this.isKeyboardFocus = true;
         }
     }
 
@@ -5813,6 +5827,7 @@ export class TreeView extends Component<HTMLElement> implements INotifyPropertyC
 
     private wireEvents(): void {
         EventHandler.add(this.element, 'mousedown', this.mouseDownHandler, this);
+        EventHandler.add(document, 'keydown', this.keyDownHandler, this);
         this.wireClickEvent(true);
         if (this.expandOnType !== 'None') {
             this.wireExpandOnEvent(true);
@@ -5831,6 +5846,7 @@ export class TreeView extends Component<HTMLElement> implements INotifyPropertyC
 
     private unWireEvents(): void {
         EventHandler.remove(this.element, 'mousedown', this.mouseDownHandler);
+        EventHandler.remove(document, 'keydown', this.keyDownHandler);
         this.wireClickEvent(false);
         this.wireExpandOnEvent(false);
         EventHandler.remove(this.element, 'mouseover', this.onMouseOver);

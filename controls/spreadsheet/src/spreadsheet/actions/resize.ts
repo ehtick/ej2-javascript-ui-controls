@@ -442,6 +442,7 @@ export class Resize {
         document.body.appendChild(wrapper);
         const offset: ClientRect = table.getBoundingClientRect();
         document.body.removeChild(wrapper);
+        const isSuspended: boolean = this.parent.paintSuspendCount > 0;
         const fitSize: number = Math.ceil(isCol ? offset.width : offset.height);
         let autofitValue: number = (isCol ? this.getFloatingElementWidth(fitSize + (wrapCell ? 1 : 0), idx) : fitSize) || oldValue;
         let threshold: number;
@@ -455,12 +456,12 @@ export class Resize {
             if ((frozenCol && idx >= getRangeIndexes(sheet.topLeftCell)[1] && idx < frozenCol) ||
                 (idx >= this.parent.viewport.leftIndex + frozenCol && idx <= this.parent.viewport.rightIndex)) {
                 getColumn(sheet, idx).width = autofitValue > 0 ? autofitValue : 0;
-                if (isActiveSheet) {
+                if (isActiveSheet && !isSuspended) {
                     this.resizeStart(idx, this.parent.getViewportIndex(idx, true), autofitValue + 'px', isCol, true, prevData);
                     this.parent.notify(colWidthChanged, { threshold: threshold, colIdx: idx });
                 }
             } else {
-                if (isActiveSheet) {
+                if (isActiveSheet && !isSuspended) {
                     this.parent.notify(colWidthChanged, { threshold: threshold, colIdx: idx });
                 }
                 getColumn(sheet, idx).width = autofitValue > 0 ? autofitValue : 0;
@@ -476,19 +477,22 @@ export class Resize {
                 (idx >= this.parent.viewport.topIndex + frozenRow && idx <= this.parent.viewport.bottomIndex)) {
                 setRowHeight(sheet, idx, autofitValue);
                 setRow(sheet, idx, { customHeight: false });
-                if (isActiveSheet) {
+                if (isActiveSheet && !isSuspended) {
                     this.resizeStart(idx, this.parent.getViewportIndex(idx), autofitValue + 'px', isCol, true, prevData);
                     this.parent.notify(rowHeightChanged, { threshold: threshold, rowIdx: idx });
                 }
             } else {
-                if (isActiveSheet) {
+                if (isActiveSheet && !isSuspended) {
                     this.parent.notify(rowHeightChanged, { threshold: threshold, rowIdx: idx });
                 }
                 setRowHeight(sheet, idx, autofitValue);
             }
         }
-        if (isActiveSheet) {
+        if (isActiveSheet && !isSuspended) {
             this.parent.selectRange(sheet.selectedRange);
+        }
+        if (isSuspended) {
+            this.parent.pendingPaintRefresh = 'fullSheet';
         }
     }
 

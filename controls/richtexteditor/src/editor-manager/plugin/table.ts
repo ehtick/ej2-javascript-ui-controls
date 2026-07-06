@@ -98,6 +98,7 @@ export class TableCommand {
         this.parent.observer.on(CONSTANT.TABLE_STYLES, this.tableStyles, this);
         this.parent.observer.on(CONSTANT.TABLE_BACKGROUND_COLOR, this.setBGColor, this);
         this.parent.observer.on(CONSTANT.TABLE_MOVE, this.tableMove, this);
+        this.parent.observer.on(EVENTS.ON_TABLE_EDIT_DIALOG_OPEN, this.onTableEditDialogOpen, this);
         this.parent.observer.on(EVENTS.INTERNAL_DESTROY, this.destroy, this);
     }
 
@@ -119,6 +120,7 @@ export class TableCommand {
         this.parent.observer.off(CONSTANT.TABLE_STYLES, this.tableStyles);
         this.parent.observer.off(CONSTANT.TABLE_BACKGROUND_COLOR, this.setBGColor);
         this.parent.observer.off(CONSTANT.TABLE_MOVE, this.tableMove);
+        this.parent.observer.off(EVENTS.ON_TABLE_EDIT_DIALOG_OPEN, this.onTableEditDialogOpen);
         this.parent.observer.off(EVENTS.INTERNAL_DESTROY, this.destroy);
 
         // Browser-specific event handlers for table resizing
@@ -179,6 +181,11 @@ export class TableCommand {
         const rowsWithSelection: Map<number, Set<number>> = this.buildSelectionMap(originalTable, selectedCells, isCut);
         this.cleanTableToSelection(clonedTable, rowsWithSelection);
         return clonedTable;
+    }
+
+    private onTableEditDialogOpen(): void {
+        this.hideRowColumnAddIcons(this.curTable);
+        this.removeSelectionWrappers(true);
     }
 
     /* Builds a map of selected cell coordinates and clears original cell content if cut */
@@ -949,7 +956,9 @@ export class TableCommand {
             // Update colgroup structure after deletion
             this.updateColgroupAfterColumnDeletion(this.curTable, selectedMinMaxIndex.startColumn, selectedMinMaxIndex.endColumn);
         }
-
+        if (this.curTable.querySelectorAll('th,td').length === 0) {
+            this.removeEntireTable(e);
+        }
         this.executeDeleteColumnCallback(e);
     }
 
@@ -1259,13 +1268,17 @@ export class TableCommand {
             nextFocusCell.classList.add('e-cell-select');
         } else {
             const firstCell: HTMLElement = this.curTable.querySelector('td');
-            e.item.selection.setSelectionText(
-                this.tableModel.getDocument(),
-                firstCell,
-                firstCell,
-                0, 0
-            );
-            firstCell.classList.add('e-cell-select');
+            if (firstCell) {
+                e.item.selection.setSelectionText(
+                    this.tableModel.getDocument(),
+                    firstCell,
+                    firstCell,
+                    0, 0
+                );
+                firstCell.classList.add('e-cell-select');
+            } else {
+                e.item.selection.setCursorPoint(this.parent.currentDocument, this.curTable.nextElementSibling, 0);
+            }
         }
     }
 
@@ -3807,14 +3820,16 @@ export class TableCommand {
         const cellType: string = isColumn ? 'column' : 'row';
         let subCommand: string;
         if (cellType === 'column') {
-            subCommand = 'InsertColumnLeft';
             if (iconAttrValue > this.currentColIndex) {
                 subCommand = 'InsertColumnRight';
+            } else {
+                subCommand = 'InsertColumnLeft';
             }
         } else { // row
-            subCommand = 'InsertRowBefore';
             if (iconAttrValue === this.currentRowIndex) {
                 subCommand = 'InsertRowAfter';
+            } else {
+                subCommand = 'InsertRowBefore';
             }
         }
         this.insertTableElement(cellType, indexValue, allCells, subCommand);
@@ -4135,7 +4150,14 @@ export class TableCommand {
         }
     }
 
-    private removeSelectionWrappers(removetableIcon: boolean): void {
+    /**
+     * For internal use only - keydown the event handler;
+     *
+     * @param {boolean} removetableIcon - specifies the event.
+     * @returns {void}
+     * @hidden
+     */
+    public removeSelectionWrappers(removetableIcon: boolean): void {
         const rowselectIcon: HTMLElement = (this.tableModel.getEditPanel() as HTMLElement).querySelector('.e-row-wrapper');
         const colselectIcon: HTMLElement = (this.tableModel.getEditPanel() as HTMLElement).querySelector('.e-col-wrapper');
         const tableselectIcon: HTMLElement = (this.tableModel.getEditPanel() as HTMLElement).querySelector('.e-table-wrapper');
@@ -5418,16 +5440,11 @@ export class TableCommand {
      * or expanded, handling the special case of a collapsed range at the edit panel.
      */
     private getNodeCollection(range: Range): Node[] {
-        let nodes: Node[] = [];
-        if (range.collapsed && this.tableModel.getEditPanel() === range.startContainer
-            && range.startContainer.childNodes.length > 0) {
-            const index: number = Math.max(0, Math.min(
-                range.startContainer.childNodes.length - 1,
-                range.endOffset - 1
-            ));
-            nodes.push(range.startContainer.childNodes[index as number]);
-        } else {
-            nodes = this.parent.nodeSelection.getNodeCollection(range);
+        const nodes: Node[] = [];
+        const startContainer: HTMLElement = range.startContainer.nodeName === '#text' ? range.startContainer.parentElement : range.startContainer as HTMLElement;
+        if (range.collapsed && startContainer.querySelector('table') && startContainer.childNodes.length > 0) {
+            const index: number = Math.max(0, Math.min(startContainer.childNodes.length - 1, range.endOffset - 1));
+            nodes.push(startContainer.childNodes[index as number]);
         }
         return nodes;
     }
@@ -5912,6 +5929,10 @@ export class TableCommand {
     public afterKeyDown(): void {
         if (this.curTable) {
             this.resizeIconPositionTime = setTimeout(() => {
+                if (isNOU(this.curTable.parentElement)) {
+                    this.parent.nodeSelection.restore();
+                    this.curTable = closest(this.parent.nodeSelection.range.startContainer.parentElement, 'table') as HTMLTableElement;
+                }
                 this.updateResizeIconPosition();
                 if (this.tableModel.tableSelectionFeature) {
                     this.updateSelectionWrappers();

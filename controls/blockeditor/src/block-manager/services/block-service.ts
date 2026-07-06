@@ -480,7 +480,7 @@ export class BlockService {
         const mergedBlock: BlockModel = { ...clonedBlock };
 
         // Merge block-level properties
-        Object.keys(properties).forEach((key: keyof BlockModel) => {
+        Object.keys(properties).forEach((key: string) => {
             if (key === 'content' && properties.content) {
                 mergedBlock.content = properties.content.map((newContent: ContentModel) => {
                     return BlockFactory.createContentFromPartial(newContent);

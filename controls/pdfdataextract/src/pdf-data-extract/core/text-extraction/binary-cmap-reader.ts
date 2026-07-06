@@ -1,6 +1,24 @@
 import { FormatError } from '@syncfusion/ej2-pdf';
+/**
+ * Reader that parses a binary CMap stream and populates a character map.
+ *
+ * @private
+ */
 export class _PdfBinaryCharacterMapReader {
+    /**
+     * Maximum byte length used for temporary buffers while decoding.
+     *
+     * @private
+     */
     _maximumSize: number = 16;
+    /**
+     * Converts a big-endian byte array (hex) to an unsigned integer.
+     *
+     * @private
+     * @param {Uint8Array} data Byte array containing big-endian bytes.
+     * @param {number} size Index of the last byte to include (0-based).
+     * @returns {number} The converted unsigned integer.
+     */
     _convertHexToInt(data: Uint8Array, size: number): number {
         let n: number = 0;
         for (let i: number = 0; i <= size; i++) {
@@ -8,6 +26,14 @@ export class _PdfBinaryCharacterMapReader {
         }
         return n >>> 0;
     }
+    /**
+     * Converts a byte array slice into a JavaScript string (UTF-16 code units).
+     *
+     * @private
+     * @param {any} data Byte array or typed array containing character codes.
+     * @param {number} size Last index (0-based) to include in the output.
+     * @returns {string} The resulting string from the provided bytes.
+     */
     _hexArrayToString(data: any, size: number): string { //eslint-disable-line
         if (size === 1) {
             return String.fromCharCode(data[0], data[1]);
@@ -17,6 +43,16 @@ export class _PdfBinaryCharacterMapReader {
         }
         return String.fromCharCode(...data.subarray(0, size + 1));
     }
+    /**
+     * Adds two multi-byte big-endian arrays (place-wise) storing the result
+     * back into the first array.
+     *
+     * @private
+     * @param {Uint8Array} data Target byte array which receives the sum.
+     * @param {Uint8Array} incrementData Byte array to add to the target.
+     * @param {number} size Index of the last byte (0-based) to process.
+     * @returns {void} nothing.
+     */
     _addHexData(data: Uint8Array, incrementData: Uint8Array, size: number): void {
         let c: number = 0;
         for (let i: number = size; i >= 0; i--) {
@@ -25,6 +61,14 @@ export class _PdfBinaryCharacterMapReader {
             c >>= 8;
         }
     }
+    /**
+     * Increments a multi-byte big-endian number stored in a byte array.
+     *
+     * @private
+     * @param {Uint8Array} data Byte array holding the big-endian number.
+     * @param {number} size Last index (0-based) to increment.
+     * @returns {void} nothing.
+     */
     _performHexIncrement(data: Uint8Array, size: number): void {
         let c: number = 1;
         for (let i: number = size; i >= 0 && c > 0; i--) {
@@ -33,6 +77,15 @@ export class _PdfBinaryCharacterMapReader {
             c >>= 8;
         }
     }
+    /**
+     * Processes the binary CMap stream and populates the provided character map.
+     *
+     * @private
+     * @param {any} data Raw CMap binary data (typed array or buffer).
+     * @param {any} characterMap Target character map object to populate.
+     * @param {any} enhance Optional callback to resolve useCharacterMap values.
+     * @returns {any} The populated character map or the result of `enhance` when used.
+     */
     _process(data: any, characterMap: any, enhance: any) { // eslint-disable-line
         const stream: _PdfBinaryCMapStream = new _PdfBinaryCMapStream(data);
         const header: any = stream._readByteData(); // eslint-disable-line
@@ -204,12 +257,50 @@ export class _PdfBinaryCharacterMapReader {
         return characterMap;
     }
 }
+/**
+ * Internal binary reader for compact CMap streams used in PDF font mappings.
+ *
+ * Provides support for reading variable length encoded integers, signed values,
+ * hex blocks, and CMap string entries following the PDF specification.
+ *
+ * @private
+ */
 export class _PdfBinaryCMapStream {
+    /**
+     * Backing buffer containing the binary CMap data.
+     *
+     * @private
+     */
     _buffer: any; //eslint-disable-line
+    /**
+     * Current reading position within the buffer.
+     *
+     * @private
+     */
     _pos: number;
+    /**
+     * The end offset of the buffer (exclusive).
+     *
+     * @private
+     */
     _end: number;
+    /**
+     * Temporary buffer used for decoding variable length base 128 numbers.
+     *
+     * @private
+     */
     _tempBuffer: Uint8Array;
+    /**
+     * Maximum fixed byte size used for specific hex decoding cases.
+     *
+     * @private
+     */
     _maximumSize: number = 16;
+    /**
+     * Maximum expected encoded number length for variable length integers.
+     *
+     * @private
+     */
     _maxEncodedNumberSize: number = 19;
     constructor(data: any) { //eslint-disable-line
         this._buffer = data;
@@ -217,9 +308,23 @@ export class _PdfBinaryCMapStream {
         this._end = data.length;
         this._tempBuffer = new Uint8Array(this._maxEncodedNumberSize);
     }
+    /**
+     * Reads a single byte from the stream.
+     *
+     * @private
+     * @returns {any} The byte value or -1 if no more data is available. // eslint-disable-line
+     */
     _readByteData(): any { //eslint-disable-line
         return (this._pos >= this._end) ? -1 : this._buffer[this._pos++];
     }
+    /**
+     * Reads an unsigned variable length integer encoded in base 128 format.
+     *
+     * High bit (0x80) indicates continuation.
+     *
+     * @private
+     * @returns {number} The decoded integer.
+     */
     _readNumber(): number {
         let n: number = 0;
         let last: boolean;
@@ -230,6 +335,12 @@ export class _PdfBinaryCMapStream {
         } while (!last);
         return n;
     }
+    /**
+     * Reads a signed variable length integer using zig zag encoding.
+     *
+     * @private
+     * @returns {number} The decoded signed integer.
+     */
     _readSignedData(): number {
         const n: number = this._readNumber();
         return n & 1 ? ~(n >>> 1) : n >>> 1;
@@ -238,6 +349,16 @@ export class _PdfBinaryCMapStream {
         number.set(this._buffer.subarray(this._pos, this._pos + size + 1));
         this._pos += size + 1;
     }
+    /**
+     * Reads a block of bytes and copies them into the provided buffer.
+     *
+     * Reads `size + 1` bytes from the current position.
+     *
+     * @private
+     * @param {any} number Destination buffer. // eslint-disable-line
+     * @param {number} size Number of bytes to read.
+     * @returns {void} nothing.
+     */
     _readHexDataNumber(number: any, size: number): void { //eslint-disable-line
         let last: boolean;
         const stack: any = this._tempBuffer; //eslint-disable-line
@@ -261,6 +382,14 @@ export class _PdfBinaryCMapStream {
             bufferSize -= 8;
         }
     }
+    /**
+     * Reads a signed hex encoded number and applies sign extension to the output bytes.
+     *
+     * @private
+     * @param {any} number Destination byte array. // eslint-disable-line
+     * @param {number} size Number of payload bytes.
+     * @returns {void} nothing.
+     */
     _readHexSignedData(number: any, size: number): void { //eslint-disable-line
         this._readHexDataNumber(number, size);
         const sign: number = number[Number.parseInt(size.toString(), 10)] & 1 ? 255 : 0;
@@ -270,6 +399,15 @@ export class _PdfBinaryCMapStream {
             number[Number.parseInt(i.toString(), 10)] = (c >> 1) ^ sign;
         }
     }
+    /**
+     * Reads a string from the stream:
+     * 1. Reads its length as a variable length integer.
+     * 2. Reads `length` encoded integers.
+     * 3. Converts them to a JavaScript string via char codes.
+     *
+     * @private
+     * @returns {string} The decoded string.
+     */
     _readStringFromData(): string {
         const length: number = this._readNumber();
         let buffer: any[] = new Array(length); //eslint-disable-line

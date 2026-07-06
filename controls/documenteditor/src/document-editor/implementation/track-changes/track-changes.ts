@@ -291,7 +291,7 @@ export class Revision {
         //The boolean was used to check that if the revision from the item was was already removed or not.
         let isItemAlreadyUnlinked: boolean = this.owner.selectionModule.selectRevision(this, undefined, undefined, undefined, true, isAccept);
         if (!isItemAlreadyUnlinked) {
-            let removeChanges: boolean = (!isNullOrUndefined(isAccept)) && ((this.revisionType === 'MoveFrom' || this.revisionType === 'Deletion') && isAccept ) || ((this.revisionType === 'Insertion' || this.revisionType === 'MoveTo') && !isAccept);
+            let removeChanges: boolean = (!isNullOrUndefined(isAccept)) && ((this.revisionType === 'MoveFrom' || this.revisionType === 'Deletion') && isAccept) || ((this.revisionType === 'Insertion' || this.revisionType === 'MoveTo') && !isAccept);
             let comments: CommentCharacterElementBox[];
             if (removeChanges) {
                 let commentInfo: SelectedCommentInfo = this.owner.editorModule.getSelectedComments();
@@ -317,7 +317,7 @@ export class Revision {
                     if (comments[k].indexInOwner < 0) {
                         //Deleting revision from comment
                         const index = comments[k].getAllRevision().indexOf(this);
-                        if(index !== -1){
+                        if (index !== -1) {
                             comments[k].removeRevision(index);
                         }
                         comments[k].removedIds = [];

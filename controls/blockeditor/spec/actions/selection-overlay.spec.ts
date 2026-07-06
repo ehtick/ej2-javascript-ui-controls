@@ -1,5 +1,5 @@
 import { createElement } from '@syncfusion/ej2-base';
-import { BlockEditor } from '../../src/index';
+import { BlockEditor, ITableBlockSettings } from '../../src/index';
 import { createEditor } from '../common/util.spec';
 import { BlockType, ContentType } from '../../src/models/enums';
 import { getBlockContentElement } from '../../src/common/utils/index';
@@ -223,6 +223,162 @@ describe('Selection Overlay actions', () => {
             expect((editor.blockManager as any).selectionOverlay.selectionOverlayInfo.element.id).toBe('p1');
             done();
         }, 150);
+    });
+
+    it('Drag icon click sets overlay and opens action menu when rtl enabled with height', (done) => {
+        editorElement = createElement('div', { id: 'editor' });
+        document.body.appendChild(editorElement);
+        
+        // Create 8 blocks each with 200px height to trigger scrollbar
+        const blocks = [];
+        for (let i = 1; i <= 8; i++) {
+            blocks.push({
+                id: `p${i}`,
+                blockType: BlockType.Paragraph,
+                content: [{ contentType: ContentType.Text, content: `Paragraph ${i}` }]
+            });
+        }
+        editor = createEditor({ 
+            blocks: blocks
+         });
+        editor.enableRtl = true;
+        editor.height = '200px';
+        editor.appendTo('#editor');
+
+        // Target the 5th block (middle block after scrolling potential)
+        const target = editor.element.querySelector('#p5') as HTMLElement;
+        editor.blockManager.setFocusToBlock(target);
+        editor.blockManager.currentHoveredBlock = target;
+        triggerMouseMove(target, 10, 10);
+
+        const dragIcon = editor.floatingIconRenderer.floatingIconContainer.querySelector('.e-block-drag-icon') as HTMLElement;
+        expect(dragIcon).not.toBeNull();
+        dragIcon.click();
+
+        setTimeout(() => {
+            const overlay = editor.element.querySelector('.e-be-selection-overlay') as HTMLElement;
+            const popup = document.querySelector('.e-blockeditor-blockaction-popup') as HTMLElement;
+            const targetRect = target.getBoundingClientRect();
+            const overlayRect = overlay.getBoundingClientRect();
+            const paddingleft = parseFloat(getComputedStyle(target).paddingLeft);
+            //Dom assertion
+            expect(dragIcon.classList.contains('e-drag-icon-selected')).toBe(true);
+            expect(overlay).not.toBeNull();
+            expect(overlay.style.display).toBe('block');
+            expect(overlay.getAttribute('data-target-id')).toBe('p5');
+            const domBlocks = editor.element.querySelectorAll('.e-block');
+            expect(domBlocks.length).toBe(8);
+            expect(popup.classList.contains('e-popup-open')).toBe(true);
+
+            //Overlay positioning assertion - overlay should be positioned over the target block
+            expect(overlayRect.top).not.toBeGreaterThan(targetRect.top);
+            expect(overlayRect.left).not.toBeLessThan(targetRect.left + paddingleft);
+            expect(overlayRect.width).toBeLessThan(targetRect.width);
+            expect(overlayRect.height).not.toBeLessThan(targetRect.height);
+
+            //Model assertion
+            expect(editor.blocks.length).toBe(8);
+            expect(editor.blocks[4].id).toBe('p5');
+
+            //selectionOverlayInfo
+            expect((editor.blockManager as any).selectionOverlay.selectionOverlayInfo).not.toBeNull();
+            expect((editor.blockManager as any).selectionOverlay.selectionOverlayInfo.element.id).toBe('p5');
+            done();
+        }, 50);
+    });
+
+    it('Drag icon click on table sets overlay and opens action menu when rtl enabled with height', (done) => {
+        editorElement = createElement('div', { id: 'editor' });
+        document.body.appendChild(editorElement);
+        
+        const blocks = [];
+        for (let i = 1; i <= 8; i++) {
+            blocks.push({
+                id: `p${i}`,
+                blockType: BlockType.Paragraph,
+                content: [{ contentType: ContentType.Text, content: `Paragraph ${i}` }]
+            });
+        }
+        blocks.push(
+        { 
+                    id: 'table1', 
+                    blockType: BlockType.Table, 
+                    properties: {
+                        enableHeader: true,
+                        enableRowNumbers: true,
+                        columns: [
+                            { id: 'c1', headerText: 'Column A' },
+                            { id: 'c2', headerText: 'Column B' }
+                        ],
+                        rows: [
+                            {
+                                cells: [
+                                    { 
+                                        columnId: 'c1', 
+                                        blocks: [{ 
+                                            id: 'cell-p1', 
+                                            blockType: BlockType.Paragraph, 
+                                            content: [{ contentType: ContentType.Text, content: 'Row 1 Col 1' }] 
+                                        }] 
+                                    },
+                                    { 
+                                        columnId: 'c2', 
+                                        blocks: [{ 
+                                            id: 'cell-p2', 
+                                            blockType: BlockType.Paragraph, 
+                                            content: [{ contentType: ContentType.Text, content: 'Row 1 Col 2' }] 
+                                        }] 
+                                    }
+                                ]
+                            }
+                        ]
+                    } as ITableBlockSettings
+                }
+        );
+        editor = createEditor({ 
+            blocks: blocks
+         });
+        editor.enableRtl = true;
+        editor.appendTo('#editor');
+
+        const target = editor.element.querySelector('#table1') as HTMLElement;
+        editor.blockManager.setFocusToBlock(target);
+        editor.blockManager.currentHoveredBlock = target;
+        triggerMouseMove(target, 10, 10);
+
+        const dragIcon = editor.floatingIconRenderer.floatingIconContainer.querySelector('.e-block-drag-icon') as HTMLElement;
+        expect(dragIcon).not.toBeNull();
+        dragIcon.click();
+
+        setTimeout(() => {
+            const overlay = editor.element.querySelector('.e-be-selection-overlay') as HTMLElement;
+            const popup = document.querySelector('.e-blockeditor-blockaction-popup') as HTMLElement;
+            const targetRect = target.getBoundingClientRect();
+            const overlayRect = overlay.getBoundingClientRect();
+            const paddingleft = parseFloat(getComputedStyle(target).paddingLeft);
+            //Dom assertion
+            expect(dragIcon.classList.contains('e-drag-icon-selected')).toBe(true);
+            expect(overlay).not.toBeNull();
+            expect(overlay.style.display).toBe('block');
+            expect(overlay.getAttribute('data-target-id')).toBe('table1');
+            const domBlocks = editor.element.querySelectorAll('.e-block');
+            expect(popup.classList.contains('e-popup-open')).toBe(true);
+
+            //Overlay positioning assertion - overlay should be positioned over the target block
+            expect(overlayRect.top).not.toBeGreaterThan(targetRect.top);
+            expect(overlayRect.left).not.toBeLessThan(targetRect.left + paddingleft);
+            expect(overlayRect.width).toBeLessThan(targetRect.width);
+            expect(overlayRect.height).not.toBeLessThan(targetRect.height);
+
+            //Model assertion
+            expect(editor.blocks.length).toBe(9);
+            expect(editor.blocks[editor.blocks.length - 1].id).toBe('table1');
+
+            //selectionOverlayInfo
+            expect((editor.blockManager as any).selectionOverlay.selectionOverlayInfo).not.toBeNull();
+            expect((editor.blockManager as any).selectionOverlay.selectionOverlayInfo.element.id).toBe('table1');
+            done();
+        }, 50);
     });
 
     // 5
@@ -514,29 +670,6 @@ describe('Selection Overlay actions', () => {
             expect(editor.blocks[2].id).toBe('p2');
             done();
         }, 40);
-    });
-
-    // 14
-    it('EventAction.destroy clears overlay', () => {
-        buildEditor();
-        (editor.blockManager as any).selectionOverlay.show('p1');
-        const overlay = editor.element.querySelector('.e-be-selection-overlay') as HTMLElement;
-        expect(overlay).not.toBeNull();
-        (editor.blockManager as any).eventAction.destroy();
-        //Dom assertion
-        const after = editor.element.querySelector('.e-be-selection-overlay') as HTMLElement;
-        if (after) { expect(after.style.display).toBe('none'); }
-        const domBlocks11 = editor.element.querySelectorAll('.e-block');
-        expect(domBlocks11.length).toBe(3);
-        expect((domBlocks11[0] as HTMLElement).id).toBe('divider1');
-        expect((domBlocks11[1] as HTMLElement).id).toBe('p1');
-        expect((domBlocks11[2] as HTMLElement).id).toBe('p2');
-        //Model assertion
-        expect(editor.blocks.length).toBe(3);
-        expect(editor.blocks[0].id).toBe('divider1');
-        expect(editor.blocks[1].id).toBe('p1');
-        expect(editor.blocks[2].id).toBe('p2');
-        expect((editor.blockManager as any).selectionOverlay.selectionOverlayInfo).toBeNull();
     });
 
     // 15

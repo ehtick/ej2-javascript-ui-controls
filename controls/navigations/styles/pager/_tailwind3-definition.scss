@@ -1,8 +1,7 @@
 @use 'sass:math';
-@use 'ej2-base/styles/definition/tailwind3' as *;
-@forward 'ej2-base/styles/definition/tailwind3';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 
-$pager-numericitem-border-radius: $radius-0 !default;
+$pager-numericitem-border-radius: 0 !default;
 $pager-border-type: solid !default;
 $pager-mobile-icon-size: 11px !default;
 $pager-icon-width: 'auto' !default;

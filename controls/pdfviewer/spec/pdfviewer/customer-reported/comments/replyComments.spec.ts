@@ -49,30 +49,16 @@ describe('PDF_Viewer_ReplyComments', () => {
      * Creates a Sticky Note, adds one main comment and two replies via API, locks the annotation and comments,
      * then validates the corresponding entry in viewer.nameTable using object-key scan.
      */
-    it('1011169 - Sticky Note: programmatic main comment + 2 replies → lock → nameTable validates', async function (done) {
+    it('1011169 - Sticky Note: programmatic main comment + 2 replies → lock → nameTable validates', (done) => {
+        let btn: HTMLElement;
+        let replyBtn: HTMLElement;
+        let replyBtn2: HTMLElement;
+        let replyBtn3: HTMLElement;
+        let settingBtn: HTMLElement;
         try {
             let annotName: string | null = null;
-
-            // 1) Enable Sticky Notes annotation mode
-            pdfviewer_replyComments.annotation.setAnnotationMode('StickyNotes');
-
-            // 2) Create a Sticky Note using mouse events at a fixed offset on page 0
-            const target: HTMLElement =
-                (document.querySelector('#pdfviewer_replyComments_textLayer_0') as HTMLElement) ||
-                (document.getElementById('pdfviewer_replyComments') as HTMLElement);
-
-            const rect = target.getBoundingClientRect();
-            const x = Math.round(rect.left + 140);
-            const y = Math.round(rect.top + 140);
-
-            mouseDownEvent(target, x, y);
-            mouseUpEvent(target, x, y);
-            // Wait until an annotation exists and the comment UI is present
-            await waitFor(() => pdfviewer_replyComments.annotationCollection && pdfviewer_replyComments.annotationCollection.length > 0);
-            await waitFor(() => !!document.querySelector('#pdfviewer_replyComments_commentdiv_1_0'));
-
             // Create a temporary button to trigger programmatic main comment add
-            const btn = document.createElement('button');
+            btn = document.createElement('button');
             btn.id = 'test-view-button_0';
             btn.textContent = 'View';
             document.body.appendChild(btn);
@@ -84,15 +70,11 @@ describe('PDF_Viewer_ReplyComments', () => {
                     annot.commentType = 'add';
                     annot.note = 'API Main Comment';
                     pdfviewer_replyComments.annotation.editAnnotation(annot);
-                    console.log(pdfviewer_replyComments.annotationCollection[0]);
                 }
 
             });
-            // Trigger the click handler to perform the main comment add
-            btn.click();
-
             // Add first reply via a temporary button click (API-driven)
-            const replyBtn = document.createElement('button');
+            replyBtn = document.createElement('button');
             replyBtn.id = 'test-view-button_1';
             replyBtn.textContent = 'View';
             document.body.appendChild(replyBtn);
@@ -103,10 +85,10 @@ describe('PDF_Viewer_ReplyComments', () => {
                 annot.replyComment = ['API Reply 1'];
                 pdfviewer_replyComments.annotation.editAnnotation(annot);
             });
-            replyBtn.click();
+
 
             // Add second reply via a temporary button click (API-driven)
-            const replyBtn2 = document.createElement('button');
+            replyBtn2 = document.createElement('button');
             replyBtn2.id = 'test-view-button_2';
             replyBtn2.textContent = 'View';
             document.body.appendChild(replyBtn2);
@@ -117,10 +99,10 @@ describe('PDF_Viewer_ReplyComments', () => {
                 annot.replyComment = ['API Reply 2'];
                 pdfviewer_replyComments.annotation.editAnnotation(annot);
             });
-            replyBtn2.click();
+
 
             // Add third reply via a temporary button click (API-driven)
-            const replyBtn3 = document.createElement('button');
+            replyBtn3 = document.createElement('button');
             replyBtn3.id = 'test-view-button_3';
             replyBtn3.textContent = 'View';
             document.body.appendChild(replyBtn3);
@@ -131,24 +113,50 @@ describe('PDF_Viewer_ReplyComments', () => {
                 annot.replyComment = ['API Reply 3'];
                 pdfviewer_replyComments.annotation.editAnnotation(annot);
             });
-            replyBtn3.click();
 
             // Prepare to lock the annotation and its comments
-            const annotCollection = pdfviewer_replyComments.annotationCollection[pdfviewer_replyComments.annotationCollection.length - 1];
-            const settingBtn = document.createElement('button');
+            settingBtn = document.createElement('button');
             settingBtn.id = 'test-view-button_4';
             settingBtn.textContent = 'View';
             document.body.appendChild(settingBtn);
             settingBtn.addEventListener('click', () => {
+                const annotCollection = pdfviewer_replyComments.annotationCollection[pdfviewer_replyComments.annotationCollection.length - 1];
                 // 8) Lock annotation and all comments/replies
                 annotCollection.annotationSettings = annotCollection.annotationSettings || {};
                 annotCollection.annotationSettings.isLock = true;
                 (annotCollection as any).isCommentLock = true;
                 pdfviewer_replyComments.annotation.editAnnotation(annotCollection);
             });
-            // Trigger lock operation
-            settingBtn.click();
+            pdfviewer_replyComments.annotationAdd = function () {
+                expect(pdfviewer_replyComments.annotationCollection.length).toBeGreaterThan(0);
+                btn.click();
+                replyBtn.click();
+                replyBtn2.click();
+                replyBtn3.click();
+                settingBtn.click();
+                // Validate that nameTable contains an entry for this annotation with at least 3 comments
+                const nameEntry = getAnnotationFromNameTable(annotName);
+                expect(nameEntry).toBeTruthy();
+                expect(nameEntry.annotName).toBe(annotName);
+                expect(Array.isArray(nameEntry.comments)).toBe(true);
+                expect(nameEntry.comments.length).toBeGreaterThanOrEqual(3);
+                // Signal test completion
+                done();
+            };
 
+            // 1) Enable Sticky Notes annotation mode
+            pdfviewer_replyComments.annotation.setAnnotationMode('StickyNotes');
+
+            // 2) Create a Sticky Note using mouse events at a fixed offset on page 0
+            const target: HTMLElement =
+                (document.querySelector('#pdfviewer_replyComments_textLayer_0') as HTMLElement);
+
+            const rect = target.getBoundingClientRect();
+            const x = Math.round(rect.left + 140);
+            const y = Math.round(rect.top + 140);
+
+            mouseDownEvent(target, x, y);
+            mouseUpEvent(target, x, y);
 
             // Helper function to scan viewer.nameTable for the current annotation by its annotName
             const getAnnotationFromNameTable = (annotationName: string): any => {
@@ -165,14 +173,10 @@ describe('PDF_Viewer_ReplyComments', () => {
                 }
                 return null;
             };
-
-            // Validate that nameTable contains an entry for this annotation with at least 3 comments
-            const nameEntry = getAnnotationFromNameTable(annotName);
-            expect(nameEntry).toBeTruthy();
-            expect(nameEntry.annotName).toBe(annotName);
-            expect(Array.isArray(nameEntry.comments)).toBe(true);
-            expect(nameEntry.comments.length).toBeGreaterThanOrEqual(3);
-
+        } catch (err) {
+            // Surface any unexpected error to Jasmine
+            done.fail(err as any);
+        } finally {
             // Remove all temporary buttons created for this test
             if (btn.parentNode) {
                 btn.parentNode.removeChild(btn);
@@ -189,13 +193,6 @@ describe('PDF_Viewer_ReplyComments', () => {
             if (settingBtn.parentNode) {
                 settingBtn.parentNode.removeChild(settingBtn);
             }
-
-            // Signal test completion
-            done();
-        } catch (err) {
-            // Surface any unexpected error to Jasmine
-            fail(err as any);
-            done();
         }
     });
 

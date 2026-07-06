@@ -1,9 +1,34 @@
 import { Point } from '@syncfusion/ej2-pdf';
 
+/**
+ * Represents an intersection point between two polygon edges with parametric positions.
+ *
+ * @private
+ */
 export class _PdfIntersection {
+    /**
+     * Intersection X coordinate.
+     *
+     * @private
+     */
     _x: number;
+    /**
+     * Intersection Y coordinate.
+     *
+     * @private
+     */
     _y: number;
+    /**
+     * Parametric position along the source edge.
+     *
+     * @private
+     */
     _toSource: number;
+    /**
+     * Parametric position along the clip edge.
+     *
+     * @private
+     */
     _toClip: number;
     constructor(s1: _PdfVertex, s2: _PdfVertex, c1: _PdfVertex, c2: _PdfVertex) {
         this._x = 0.0;
@@ -23,6 +48,12 @@ export class _PdfIntersection {
             }
         }
     }
+    /**
+     * Returns whether the intersection lies strictly within both segments (0..1).
+     *
+     * @private
+     * @returns {boolean} `true` if valid; otherwise, `false`.
+     */
     _isValid(): boolean {
         return (
             0 < this._toSource &&
@@ -32,12 +63,27 @@ export class _PdfIntersection {
         );
     }
 }
+/**
+ * Polygon helper for clipping paths against redaction rectangles.
+ *
+ * @private
+ */
 export class _PdfPolygon {
+    /**
+     * First vertex in the closed linked list of vertices.
+     *
+     * @private
+     */
     _first: _PdfVertex;
     private _vertices: number;
     private _lastUnprocessed: _PdfVertex;
     private _firstIntersect: _PdfVertex;
     private _arrayVertices: boolean;
+    /**
+     * Global intersections found while clipping.
+     *
+     * @private
+     */
     _globalIntersections: Point[] = [];
     constructor(p: Point[], arrayVertices?: boolean) {
         this._first = null;
@@ -49,6 +95,13 @@ export class _PdfPolygon {
             this._addVertex(new _PdfVertex(point.x, point.y));
         });
     }
+    /**
+     * Appends a vertex to the polygon's circular list.
+     *
+     * @private
+     * @param {_PdfVertex} vertex Vertex to add.
+     * @returns {void} nothing.
+     */
     _addVertex(vertex: _PdfVertex): void {
         if (this._first === null) {
             this._first = vertex;
@@ -66,6 +119,15 @@ export class _PdfPolygon {
         }
         this._vertices++;
     }
+    /**
+     * Inserts an intersection vertex in order between two vertices.
+     *
+     * @private
+     * @param {_PdfVertex} vertex Intersection vertex.
+     * @param {_PdfVertex} start Start vertex of the edge.
+     * @param {_PdfVertex} end End vertex of the edge.
+     * @returns {void} nothing.
+     */
     _insertVertex(vertex: _PdfVertex, start: _PdfVertex, end: _PdfVertex): void {
         let curr: _PdfVertex = start;
         while (!curr._equals(end) && curr._distance < vertex._distance) {
@@ -80,6 +142,13 @@ export class _PdfPolygon {
         curr._prev = vertex;
         this._vertices++;
     }
+    /**
+     * Returns the next non-intersection vertex from the given vertex.
+     *
+     * @private
+     * @param {_PdfVertex} v Starting vertex.
+     * @returns {_PdfVertex} The next source vertex.
+     */
     _getNext(v: _PdfVertex): _PdfVertex {
         let c: _PdfVertex = v;
         while (c._isIntersection) {
@@ -87,6 +156,12 @@ export class _PdfPolygon {
         }
         return c;
     }
+    /**
+     * Finds the first unvisited intersection vertex to start a clipped polygon trace.
+     *
+     * @private
+     * @returns {_PdfVertex} The first unvisited intersection vertex.
+     */
     _getFirstIntersect(): _PdfVertex {
         let v: _PdfVertex = this._firstIntersect || this._first;
         do {
@@ -98,6 +173,12 @@ export class _PdfPolygon {
         this._firstIntersect = v;
         return v;
     }
+    /**
+     * Determines whether there is at least one unvisited intersection vertex.
+     *
+     * @private
+     * @returns {boolean} `true` if work remains; otherwise, `false`.
+     */
     _hasUnprocessed(): boolean {
         let v: _PdfVertex = this._lastUnprocessed || this._first;
         do {
@@ -110,6 +191,12 @@ export class _PdfPolygon {
         this._lastUnprocessed = null;
         return false;
     }
+    /**
+     * Returns the polygon's vertices as a point array.
+     *
+     * @private
+     * @returns {Point[]} Polygon point list.
+     */
     _getPoints(): Point[] {
         const points: Point[] = [];
         let v: _PdfVertex = this._first;
@@ -119,6 +206,15 @@ export class _PdfPolygon {
         } while (v !== this._first);
         return points;
     }
+    /**
+     * Clips this polygon by `clip` polygon and returns resulting paths.
+     *
+     * @private
+     * @param {_PdfPolygon} clip The clipping polygon.
+     * @param {boolean} sourceForwards Initial source traversal direction flag.
+     * @param {boolean} clipForwards Initial clip traversal direction flag.
+     * @returns {Point} Resulting polygon rings.
+     */
     _clip(clip: _PdfPolygon, sourceForwards: boolean, clipForwards: boolean): Point[][] {
         this._computeIntersections(clip);
         ({ sourceForwards, clipForwards } = this._setEntryExitFlags(clip, sourceForwards, clipForwards));
@@ -217,15 +313,65 @@ export class _PdfPolygon {
         }
     }
 }
+/**
+ * Vertex used by the polygon clipping algorithm with linked-list topology.
+ *
+ * @private
+ */
 export class _PdfVertex {
+    /**
+     * X coordinate.
+     *
+     * @private
+     */
     _x: number;
+    /**
+     * Y coordinate.
+     *
+     * @private
+     */
     _y: number;
+    /**
+     * Next vertex in the circular list.
+     *
+     * @private
+     */
     _next: _PdfVertex;
+    /**
+     * Previous vertex in the circular list.
+     *
+     * @private
+     */
     _prev: _PdfVertex;
+    /**
+     * Corresponding intersection vertex on the opposite polygon.
+     *
+     * @private
+     */
     _corresponding: _PdfVertex;
+    /**
+     * Parametric distance along the edge for intersections.
+     *
+     * @private
+     */
     _distance: number;
+    /**
+     * Indicates whether this intersection is an entry point.
+     *
+     * @private
+     */
     _isEntry: boolean;
+    /**
+     * Indicates whether this vertex is an intersection.
+     *
+     * @private
+     */
     _isIntersection: boolean;
+    /**
+     * Indicates whether this intersection vertex was visited.
+     *
+     * @private
+     */
     _visited: boolean;
     constructor(x: number, y: number) {
         if (typeof x !== 'number' || typeof y !== 'number') {
@@ -243,6 +389,15 @@ export class _PdfVertex {
         this._isIntersection = false;
         this._visited = false;
     }
+    /**
+     * Creates and returns an intersection vertex derived from this vertex edge.
+     *
+     * @private
+     * @param {number} x Intersection X.
+     * @param {number} y Intersection Y.
+     * @param {number} distance Parametric distance along the edge.
+     * @returns {_PdfVertex} The created intersection vertex.
+     */
     _createIntersection(x: number, y: number, distance: number): _PdfVertex {
         const vertex: _PdfVertex = new _PdfVertex(x, y);
         vertex._distance = distance;
@@ -250,15 +405,35 @@ export class _PdfVertex {
         vertex._isEntry = false;
         return vertex;
     }
+    /**
+     * Marks this vertex as visited, and propagates to the corresponding vertex.
+     *
+     * @private
+     * @returns {void} nothing.
+     */
     _visit(): void {
         this._visited = true;
         if (this._corresponding !== null && !this._corresponding._visited) {
             this._corresponding._visit();
         }
     }
+    /**
+     * Compares equality with another vertex .
+     *
+     * @private
+     * @param {_PdfVertex} v Other vertex.
+     * @returns {boolean} `true` if both coordinates match; otherwise, `false`.
+     */
     _equals(v: _PdfVertex): boolean {
         return this._x === v._x && this._y === v._y;
     }
+    /**
+     * Determines whether this vertex lies inside the given polygon.
+     *
+     * @private
+     * @param {_PdfPolygon} poly Polygon to test against.
+     * @returns {boolean} `true` if inside; otherwise, `false`.
+     */
     _isInside(poly: _PdfPolygon): boolean {
         let oddNodes: boolean = false;
         let vertex: _PdfVertex = poly._first;

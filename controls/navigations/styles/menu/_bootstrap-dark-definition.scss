@@ -1,6 +1,6 @@
-@use 'ej2-base/styles/definition/bootstrap-dark' as *;
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 @use '../context-menu/bootstrap-dark-definition' as *;
-@forward 'ej2-base/styles/definition/bootstrap-dark';
+
 @forward '../context-menu/bootstrap-dark-definition';
 $menu-bigger-li-right-padding: 15px !default;
 $menu-bigger-icon-margin-right: 10px !default;

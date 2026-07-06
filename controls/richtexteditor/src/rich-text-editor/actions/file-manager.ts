@@ -194,7 +194,7 @@ export class FileManager {
         }
         if (url !== '') {
             if (this.parent.editorMode === 'HTML' &&
-                isNOU(closest(this.selectObj.selection.range.startContainer.parentNode, '#' + this.contentModule.getPanel().id))) {
+                isNOU(closest(this.selectObj.selection.range.startContainer.parentNode, '#' + this.contentModule.getEditPanel().id))) {
                 (this.contentModule.getEditPanel() as HTMLElement).focus();
                 const range: Range = this.parent.formatter.editorManager.nodeSelection.getRange(this.contentModule.getDocument());
                 this.selectObj.selection = this.parent.formatter.editorManager.nodeSelection.save(range, this.contentModule.getDocument());

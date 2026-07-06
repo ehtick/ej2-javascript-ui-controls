@@ -602,6 +602,7 @@ export class OtpInput extends Component<HTMLElement> implements INotifyPropertyC
     private handlePaste(index: number, event: ClipboardEvent): void {
         const clipboardData: DataTransfer = event.clipboardData;
         if (clipboardData) {
+            event.preventDefault();
             const pastedText: string = clipboardData.getData('text');
             const pastedValues: string[] = pastedText.split('');
             let pastedValueIndex: number = 0;

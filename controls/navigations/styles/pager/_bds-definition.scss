@@ -1,6 +1,5 @@
 @use 'sass:math';
-@use 'ej2-base/styles/definition/bds' as *;
-@forward 'ej2-base/styles/definition/bds';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 
 $pager-numericitem-border-radius: 0 !default;
 $pager-border-type: solid !default;

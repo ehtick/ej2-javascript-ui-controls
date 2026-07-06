@@ -285,7 +285,15 @@ export class EnterKeyAction {
             startBlockParent = startBlockParent === this.parent.editableElement ?
                 this.range.startContainer as HTMLElement : startBlockParent;
         }
-        const lastPosition: { node: Node, offset: number} = this.nodeSelection.findLastTextPosition(startBlockParent);
+        let lastPosition: { node: Node, offset: number} = this.nodeSelection.findLastTextPosition(startBlockParent);
+        const startContainerElement: Node = this.range.startContainer;
+        if (startContainerElement.nodeName === '#text' && startContainerElement.nextSibling && startContainerElement.nextSibling.nodeName === '#text' &&
+            (startContainerElement as HTMLElement).previousElementSibling && (startContainerElement as HTMLElement).previousElementSibling.classList.contains('e-mention-chip')) {
+            lastPosition = {
+                node: startContainerElement, offset: startContainerElement.textContent ?
+                    startContainerElement.textContent.length : 0
+            };
+        }
         if (this.isEndDirectRange()) {
             return true;
         }
@@ -722,7 +730,7 @@ export class EnterKeyAction {
                 this.range.startContainer.appendChild(focusElem);
                 this.nodeSelection.setCursorPoint(this.parent.currentDocument, focusElem, 0);
                 return true;
-            } else {
+            } else if (this.range.startContainer === this.range.endContainer) {
                 const startElement: HTMLElement = this.range.startContainer as HTMLElement;
                 this.nodeSelection.setCursorPoint(this.parent.currentDocument, startElement, 1);
                 return false;
@@ -769,8 +777,14 @@ export class EnterKeyAction {
                     detach(focusElem.previousSibling);
                     if (!shiftKey) {
                         let currentFocusElem: Node = !isNOU(focusElem.lastChild) ? focusElem.lastChild : focusElem;
-                        while (!isNOU(currentFocusElem) && currentFocusElem.nodeName !== '#text' && currentFocusElem.nodeName !== 'BR') {
+                        while (!isNOU(currentFocusElem) && currentFocusElem.nodeName !== '#text' && currentFocusElem.nodeName !== 'BR'
+                            && currentFocusElem.childNodes.length > 0) {
                             currentFocusElem = currentFocusElem.lastChild;
+                        }
+                        const isCurrentFocusEmpty: boolean = (!isNOU(currentFocusElem) && (currentFocusElem.childNodes.length === 0) && currentFocusElem.nodeName !== 'BR' &&
+                            currentFocusElem.nodeName !== '#text' && currentFocusElem.textContent.length === 0);
+                        if (isCurrentFocusEmpty) {
+                            (currentFocusElem as HTMLElement).innerHTML = '<br>';
                         }
                         if (!isNOU(currentFocusElem) && currentFocusElem.nodeName !== 'BR' && currentFocusElem.parentElement.textContent.length === 0 && currentFocusElem.parentElement.innerHTML.length === 0 &&
                         currentFocusElem.parentElement.nodeName !== 'BR') {
@@ -779,8 +793,11 @@ export class EnterKeyAction {
                         if (!isNOU(currentFocusElem)) {
                             this.nodeSelection.setCursorPoint(
                                 this.parent.currentDocument,
-                                currentFocusElem.nodeName === 'BR' ? currentFocusElem as Element : currentFocusElem.parentElement as Element,
+                                currentFocusElem.nodeName === 'BR' || (currentFocusElem as HTMLElement).innerHTML === '<br>' ? currentFocusElem as Element : currentFocusElem.parentElement as Element,
                                 currentFocusElem.parentElement.textContent.length >= 0 || currentFocusElem.nodeName === 'BR' ? 0 : 1);
+                        }
+                        if (isCurrentFocusEmpty || hadMediaNode) {
+                            return true;
                         }
                     }
                 } else if (focusElem.textContent.length === 0) {

@@ -10,6 +10,7 @@ import { ApplicationPlatform } from './image-extraction';
 /**
  * Removes escape sequences from a text string and returns the cleaned text.
  *
+ * @private
  * @param {string} text - The string to process.
  * @returns {string} The processed string without escape sequences.
  */
@@ -34,6 +35,7 @@ export function _ignoreEscapeSequence(text: string): string {
 /**
  * Adds font resources from a PDF dictionary into a collection.
  *
+ * @private
  * @param {_PdfDictionary} dictionary - PDF Dictionary containing font resources.
  * @param {_PdfCrossReference} crossReference - The cross-reference of the PDF document.
  * @returns {Map<string, _FontStructure>} A map of font structure objects.
@@ -53,6 +55,7 @@ export function _addFontResources(dictionary: _PdfDictionary, crossReference: _P
 /**
  * Retrieves XObject resources from a PDF dictionary and their associated cross-references.
  *
+ * @private
  * @param {_PdfDictionary} resources - The resources dictionary from a PDF page.
  * @param {_PdfCrossReference} crossReference - The cross-reference of the PDF document.
  * @param { _TextProcessingMode } [mode] - Optional processing mode that controls how XObjects are interpreted
@@ -100,6 +103,7 @@ export function _getXObjectResources(resources: _PdfDictionary, crossReference: 
 /**
  * Converts a hexadecimal string to its equivalent character representation.
  *
+ * @private
  * @param {string} hex - The hexadecimal string to convert.
  * @returns {string} The resulting string of characters.
  */
@@ -119,6 +123,7 @@ export function _hexToChar(hex: string): string {
 /**
  * Skips recognized escape sequences in a text string.
  *
+ * @private
  * @param {string} text - The string containing escape sequences.
  * @returns {string} A new string with escape sequences removed or handled appropriately.
  */
@@ -214,6 +219,7 @@ export function _skipEscapeSequence(text: string): string {
 /**
  * Converts escape sequences in a string to their corresponding literal characters.
  *
+ * @private
  * @param {string} text The input string containing escape sequences.
  *
  * @returns {string} The parsed string with escape sequences replaced by literal characters.
@@ -254,6 +260,7 @@ export function _parseEscapedText(text: string): string {
 /**
  * Retrieves a literal string, decoding escape sequences and null characters.
  *
+ * @private
  * @param {string} encodedText - The encoded string to decode.
  * @param {string} [encoding] - The encoding used in the text.
  * @returns {string} The decoded literal string.
@@ -315,6 +322,7 @@ export function _getLiteralString(encodedText: string, encoding?: string): strin
 /**
  * Decodes encoded text using the specified font structure, adjusting for encoding differences.
  *
+ * @private
  * @param {string} encodedText - The encoded string to decode.
  * @param {_FontStructure} font - The font structure for decoding glyphs.
  * @param {string[]} inputText - An array of strings representing parts of the text.
@@ -402,6 +410,7 @@ export function _decodeEncodedText(encodedText: string, font: _FontStructure, in
 /**
  * Retrieves a content stream object for a specified XObject, processing it according to the provided mode.
  *
+ * @private
  * @param {string[]} xObjectElement - The XObject elements to process.
  * @param {PdfPage} page - The PDF page to which the content stream belongs.
  * @param {Map<string, any>} xObjectCollection - A collection of XObject elements.
@@ -467,6 +476,7 @@ export function _getXObject(xObjectElement: string[], page: PdfPage, xObjectColl
 /**
  * Parses encoded text and returns both the decoded string list and width table.
  *
+ * @private
  * @param {string} encodedText - The encoded text string to be parsed.
  * @param {_FontStructure} font - The font structure used to map encoded characters to glyphs.
  * @returns {object} An object containing `decodedStrings`, a list of decoded strings, and `charWidths`, a list of character widths.
@@ -636,6 +646,7 @@ export function _parseEncodedText(encodedText: string, font: _FontStructure): [s
  * This function checks if two arrays have the same length and
  * identical elements in the same order.
  *
+ * @private
  * @param {number[]} arr1 - The first array to compare.
  * @param {number[]} arr2 - The second array to compare.
  * @returns {boolean} 'true' if the arrays are equal, otherwise 'false'.
@@ -654,6 +665,7 @@ export function _isArrayEqual(arr1: number[], arr2: number[]): boolean {
 /**
  * Convert a Base64-encoded string into a Uint8Array of bytes.
  *
+ * @private
  * @param {string} base64String - The Base64-encoded string to decode.
  * @returns {Uint8Array} A Uint8Array containing the decoded bytes.
  *
@@ -670,6 +682,7 @@ export function _base64ToUint8Array(base64String: string): Uint8Array {
 /**
  * Represents a callback function that returns a canvas element.
  *
+ * @private
  * @returns {{canvas: any, applicationPlatform: ApplicationPlatform}} An object instance
  *
  * ```typescript

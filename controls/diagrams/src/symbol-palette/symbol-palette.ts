@@ -22,6 +22,8 @@ import { Rect } from '../diagram/primitives/rect';
 import { SymbolSizeModel, SymbolPaletteInfoModel } from '../diagram/objects/preview-model';
 import { Tooltip, TooltipModel } from '@syncfusion/ej2-popups';
 import { DiagramHtmlElement } from '../diagram/core/elements/html-element';
+import { ErConnectorRenderer, ErShape, ErShapeModel, ErConnectorShapeModel, ErRelationshipTypes, ErMultiplicityModel } from '../diagram/index';
+
 // eslint-disable-next-line
 let getObjectType: Function = (obj: Object): Object => {
     const conn: Connector = obj as Connector;
@@ -678,8 +680,8 @@ export class SymbolPalette extends Component<HTMLElement> implements INotifyProp
             const headerTemplate: string | Function = initializeCSPTemplate(headerTemplateFunction, this) as string | Function;
             this.headerTemplateFn = headerTemplateFunction;
             this.accordionElement = new Accordion({
-                expandMode: this.expandMode,
-                headerTemplate: headerTemplate
+                headerTemplate: headerTemplate,
+                expandMode: this.expandMode
             });
             if (!this.enableAnimation) {
                 this.accordionElement.animation = { expand: { duration: 0 }, collapse: { duration: 0 } };
@@ -952,6 +954,30 @@ export class SymbolPalette extends Component<HTMLElement> implements INotifyProp
                     containerObj.children = [containerBody.id, headerObj.id ];
                 }
             }
+            // Handle ER entity symbols by creating a path-based preview based on field data.
+            if (symbol.shape.type === 'Er' && symbol instanceof Node) {
+                const erObj: NodeModel = symbol as NodeModel;
+                const erShape: ErShapeModel = symbol.shape as ErShapeModel;
+
+                // Calculate the actual number of columns based on field structure.
+                const columnCount: number = this.calculateEREntityColumnCount(erShape);
+
+                // Generate path data based on actual column count.
+                const pathData: string = this.generateEREntityPathData(columnCount);
+
+                // Create a path shape node for preview.
+                const erPathNode: NodeModel = {
+                    id: 'erPath' + randomId(),
+                    shape: { type: 'Path', data: pathData } as PathModel,
+                    width: erObj.width || this.symbolWidth || 120,
+                    height: erObj.height || this.symbolHeight || 100,
+                    style: erObj.style || { fill: '#ffffff', strokeColor: '#000000', strokeWidth: 1 }
+                };
+                this.addPaletteItem(symbolGroup.id, erPathNode, true);
+
+                // Set the path node as a child for palette preview rendering.
+                erObj.children = [erPathNode.id];
+            }
             //Rendering the UML node as an HTML group node ensures that it is visually represented exactly as intended in the diagram
             if (symbol.shape.type === 'UmlClassifier' && !(symbol.shape as RelationShipModel).relationship) {
                 const umlObj: NodeModel = symbol as NodeModel;
@@ -1035,6 +1061,27 @@ export class SymbolPalette extends Component<HTMLElement> implements INotifyProp
                 if ((symbol.shape as RelationShipModel).relationship === 'Aggregation') {
                     (symbol as Connector).sourceDecorator.style.fill = (symbol as Connector).sourceDecorator.style.fill === 'black' ? 'white' : (symbol as Connector).sourceDecorator.style.fill;
                 }
+            }
+            // Handle ER connectors with relationship specifications matching ERConnectorRenderer
+            if ((symbol.shape as ErConnectorShapeModel).type === 'Er' && (symbol.shape as ErConnectorShapeModel).relationship) {
+                const erRelationship: ErRelationshipTypes  = (symbol.shape as ErConnectorShapeModel).relationship as ErRelationshipTypes ;
+                const erConnector: ErConnectorShapeModel = symbol.shape as ErConnectorShapeModel;
+                const connector: Connector = symbol as Connector;
+
+                // Apply line style based on relationship type
+                if (erRelationship === 'Identifying') {
+                    // Solid line for identifying relationships
+                    connector.style.strokeDashArray = '';
+                } else {
+                    // Dashed line for non-identifying relationships
+                    connector.style.strokeDashArray = connector.style.strokeDashArray ? connector.style.strokeDashArray : '5,5';
+                }
+
+                // Compute and apply cardinality decorators using ERConnectorRenderer
+                // This applies the actual Crow's Foot paths based on cardinality
+                const erRenderer: ErConnectorRenderer = new ErConnectorRenderer();
+                connector.sourceDecorator = erRenderer.getDecoratorForCardinality(erConnector.sourceMultiplicity as ErMultiplicityModel);
+                connector.targetDecorator = erRenderer.getDecoratorForCardinality(erConnector.targetMultiplicity as ErMultiplicityModel);
             }
             if (symbol instanceof Node) {
 
@@ -1191,7 +1238,8 @@ export class SymbolPalette extends Component<HTMLElement> implements INotifyProp
             if (obj.children) {
                 content = this.getContainer(obj as Node, container);
             } else {
-                if (symbol instanceof Connector && symbol.shape.type === 'UmlClassifier' && (symbol.shape as RelationShipModel).relationship) {
+                if ((symbol instanceof Connector && symbol.shape.type === 'UmlClassifier' && (symbol.shape as RelationShipModel).relationship) ||
+                    (symbol instanceof Connector && symbol.shape.type === 'Er' && (symbol.shape as ErConnectorShapeModel).relationship)) {
                     content = (symbol as Connector).init(this);
                     for (let i: number = (content as Canvas).children.length - 1; i >= 0; i--) {
                         if ((content as Canvas).children[parseInt(i.toString(), 10)] instanceof TextElement) {
@@ -1299,6 +1347,108 @@ export class SymbolPalette extends Component<HTMLElement> implements INotifyProp
             container.arrange(container.desiredSize);
         }
     }
+
+    /**
+     * Calculate the number of columns that will be displayed for ER entity fields.
+     * Columns:
+     * - Key/Constraint indicator column: if any field has isPrimaryKey, isForeignKey, isNotNull, or isUnique
+     * - Field name column: always present if fields exist
+     * - Data type column: if any field has dataType
+     *
+     * @param {ErShapeModel} erShape - The ER entity shape
+     * @returns {number} Column count: 0 (no fields), 1 (name only), 2 (name + type/constraint), or 3 (all)
+     * @private
+     */
+    private calculateEREntityColumnCount(erShape: ErShapeModel): number {
+        // No fields = 0 columns
+        if (!erShape.fields || erShape.fields.length === 0) {
+            return 0;
+        }
+
+        let hasConstraintColumn: boolean = false;
+        let hasDataTypeColumn: boolean = false;
+        let hasKeyColumn: boolean = false;
+        for (const field of erShape.fields) {
+            // Check for key/constraint column
+            if (field.constraints && (field.constraints.indexOf('NotNull') !== -1 || field.constraints.indexOf('Unique') !== -1)) {
+                hasConstraintColumn = true;
+            }
+            // Check for data type column
+            if (field.dataType !== undefined && field.dataType !== null && String(field.dataType).trim() !== '') {
+                hasDataTypeColumn = true;
+            }
+            // Check for Key Column
+            if (field.isPrimaryKey || field.isForeignKey) {
+                hasKeyColumn = true;
+            }
+
+            if (hasConstraintColumn && hasDataTypeColumn) {
+                break;
+            }
+        }
+
+        (erShape as ErShape).hasFieldKeys = hasKeyColumn;
+        (erShape as ErShape).hasFieldDataTypes = hasDataTypeColumn;
+        (erShape as ErShape).hasFieldConstraints = hasConstraintColumn;
+
+        // Base: 1 column (name)
+        // +1 if has key/constraint
+        // +1 if has data type
+        let columnCount: number = 1;
+        if (hasKeyColumn) {
+            columnCount++;
+        }
+        if (hasConstraintColumn) {
+            columnCount++;
+        }
+        if (hasDataTypeColumn) {
+            columnCount++;
+        }
+
+        return columnCount;
+    }
+
+    /**
+     * Generate path data for ER entity preview based on column count.
+     * Uses predefined path templates scaled to the entity dimensions.
+     * Columns are counted as: name + optional key/constraint indicator + optional data type.
+     *
+     * @param {number} columnCount - Number of columns to display (0-3)
+     * @returns {string} SVG path data
+     * @private
+     */
+    private generateEREntityPathData(columnCount: number): string {
+        // Base paths for a 30x25 coordinate system
+        const basePaths: any = {
+            // No fields - simple empty body
+            noFields: 'M0.5 6.5V24.5C0.5 25.0523 0.947716 25.5 1.5 25.5H28.5C29.0523 25.5 29.5 25.0523 29.5 24.5V6.5M0.5 6.5V1.5C0.5 0.947715 0.947715 0.5 1.5 0.5H28.5C29.0523 0.5 29.5 0.947715 29.5 1.5V6.5M0.5 6.5H29.5M4.5 11.5H25.5M4.5 16.5H25.5M4.5 21.5H25.5',
+
+            // 1 column - name only (same as noFields for simplicity)
+            oneColumn: 'M0.5 6.5V24.5C0.5 25.0523 0.947716 25.5 1.5 25.5H28.5C29.0523 25.5 29.5 25.0523 29.5 24.5V6.5M0.5 6.5V1.5C0.5 0.947715 0.947715 0.5 1.5 0.5H28.5C29.0523 0.5 29.5 0.947715 29.5 1.5V6.5M0.5 6.5H29.5M4.5 11.5H25.5M4.5 16.5H25.5M4.5 21.5H25.5',
+
+            // 2 columns - name + (type or constraint)
+            twoColumns: 'M0.5 6.5V24.5C0.5 25.0523 0.947716 25.5 1.5 25.5H28.5C29.0523 25.5 29.5 25.0523 29.5 24.5V6.5M0.5 6.5V1.5C0.5 0.947715 0.947715 0.5 1.5 0.5H28.5C29.0523 0.5 29.5 0.947715 29.5 1.5V6.5M0.5 6.5H29.5M4.5 11.5H11.5M18.5 11.5H25.5M4.5 16.5H11.5M18.5 16.5H25.5M4.5 21.5H11.5M18.5 21.5H25.5M15 7V25.5',
+
+            // 3 columns - name + type + constraint
+            threeColumns: 'M0.5 6.5V24.5C0.5 25.0523 0.947716 25.5 1.5 25.5H28.5C29.0523 25.5 29.5 25.0523 29.5 24.5V6.5M0.5 6.5V1.5C0.5 0.947715 0.947715 0.5 1.5 0.5H28.5C29.0523 0.5 29.5 0.947715 29.5 1.5V6.5M0.5 6.5H29.5M3.5 11.5H8.5M12.5 11.5H17.5M21.5 11.5H26.5M3.5 16.5H8.5M12.5 16.5H17.5M21.5 16.5H26.5M3.5 21.5H8.5M12.5 21.5H17.5M21.5 21.5H26.5M10.5 6.5V25.5M19.5 6.5V25.5'
+        };
+
+        // Select path based on column count
+        switch (columnCount) {
+        case 0:
+            return basePaths.noFields;
+        case 1:
+            return basePaths.oneColumn;
+        case 2:
+            return basePaths.twoColumns;
+        case 3:
+        case 4:
+            return basePaths.threeColumns;
+        default:
+            return basePaths.noFields;
+        }
+    }
+
     // private getBlazorSymbolInfo(symbol: NodeModel | ConnectorModel, symbolInfo: SymbolInfo): SymbolInfo {
     //     const node: NodeModel | ConnectorModel = symbol as NodeModel | ConnectorModel;
     //     const shapeSymbolInfo: SymbolPaletteInfoModel = node.symbolInfo;

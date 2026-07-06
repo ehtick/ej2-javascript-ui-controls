@@ -1,4 +1,4 @@
-@use 'ej2-base/styles/common/mixin' as *;
+@use 'variables' as *;
 @include export-module('documenteditor-theme') {
     /* stylelint-disable */
     .e-de-background {
@@ -831,15 +831,15 @@
                 @if $skin-name !='Material3' {
                     border-color: $de-style-dlg-btn-border-color;
                 }
-                #{if(&, '&', '*')}:focus {
+                &:focus {
                     background-color: $de-style-btn-bg-color;
                     box-shadow: $de-toggle-btn-border;
                 }
-                #{if(&, '&', '*')}:active {
+                &:active {
                     background-color: $de-style-btn-bg-color;
                     box-shadow: $de-toggle-btn-border;
                 }
-                #{if(&, '&', '*')}:hover {
+                &:hover {
                     background-color: $de-style-btn-bg-color;
                     box-shadow: $de-toggle-btn-border;
                 }
@@ -2758,12 +2758,12 @@
             border-radius: $dialog-headericon-border-radius;
             color: $dialog-btn-clr;
             border: none;
-            #{if(&, '&', '*')}:active {
+            &:active {
                 background-color: $dialog-closeicon-btn-active-color !important;
                 border-color: $dialog-btn-border-color !important;
                 box-shadow: none;
             }
-            #{if(&, '&', '*')}:hover {
+            &:hover {
                 background-color: $dialog-closeicon-btn-hover-color !important;
                 box-shadow: none;
                 color: $dialog-active-icon-color;

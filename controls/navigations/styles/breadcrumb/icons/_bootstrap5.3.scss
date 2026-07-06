@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/common/mixin' as *;
-@use '../bootstrap5.3-definition' as *;
+@use '../variables' as *;
+
 @include export-module('breadcrumb-bootstrap5-icons') {
   .e-breadcrumb {
     .e-breadcrumb-collapsed::before,

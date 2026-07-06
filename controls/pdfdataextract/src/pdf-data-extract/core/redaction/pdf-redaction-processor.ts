@@ -1,6 +1,21 @@
 import { _FieldFlag, _getInheritableProperty, _PdfAnnotationType, _PdfBaseStream, _PdfContentStream, _PdfDictionary, _PdfName, _PdfReference, PdfAnnotation, PdfBrush, PdfButtonField, PdfCheckBoxField, PdfComboBoxField, PdfDocument, PdfField, PdfForm, PdfInkAnnotation, PdfLineAnnotation, PdfListBoxField, PdfPage, PdfPolygonAnnotation, PdfPolyLineAnnotation, PdfRadioButtonListField, PdfSignatureField, PdfTextBoxField, PdfTextMarkupAnnotation, Point, Rectangle, _convertPointToNumberArray, _convertPointsToNumberArrays, PdfRectangleAnnotation, PdfSquareAnnotation, PdfCircleAnnotation, PdfEllipseAnnotation } from '@syncfusion/ej2-pdf';
 import { PdfRedactionRegion } from './pdf-redaction-region';
+/**
+ * Internal processor that applies redaction updates to page content streams and annotations.
+ *
+ * @private
+ */
 export class _PdfRedactionProcessor {
+    /**
+     * Replaces the page `Contents` with a newly built stream and paints visual redaction overlays.
+     *
+     * @private
+     * @param {PdfPage} page The page to update.
+     * @param {_PdfContentStream} stream The rebuilt content stream to set on the page.
+     * @param {PdfRedactionRegion[]} options Redaction regions to render.
+     * @param {PdfDocument} document The owning document.
+     * @returns {void} nothing.
+     */
     _updateContentStream(page: PdfPage, stream: _PdfContentStream, options: PdfRedactionRegion[], document: PdfDocument): void {
         if (typeof(stream) !== 'undefined' && page._pageDictionary.has('Contents')) {
             let contents: any = page._pageDictionary.getRaw('Contents'); // eslint-disable-line
@@ -42,6 +57,15 @@ export class _PdfRedactionProcessor {
             }
         }
     }
+    /**
+     * Removes/redacts form fields intersecting with redaction regions.
+     *
+     * @private
+     * @param {PdfPage} page The current page.
+     * @param {PdfRedactionRegion[]} options Redaction regions on the page.
+     * @param {PdfDocument} document The owning document.
+     * @returns {void} nothing.
+     */
     _processFormFields(page: PdfPage, options: PdfRedactionRegion[], document: PdfDocument): void {
         const form: PdfForm = document.form;
         let isValidField: boolean = true;
@@ -162,20 +186,56 @@ export class _PdfRedactionProcessor {
             }
         }
     }
+    /**
+     * Checks whether two rectangles intersect.
+     *
+     * @private
+     * @param {Rectangle} values The first rectangle.
+     * @param {Rectangle} redactionBounds The second rectangle.
+     * @returns {boolean} `true` if the rectangles intersect otherwise, `false`.
+     */
     _isFound(values: Rectangle, redactionBounds: Rectangle): boolean {
         if (this._intersectsWith(redactionBounds, values)) {
             return true;
         }
         return false;
     }
+    /* eslint-disable */
+    /**
+     * Tests two axis-aligned rectangles for intersection.
+     *
+     * @private
+     * @param {{x: number, y: number, width: number, height: number}} rect1 First rectangle.
+     * @param {{x: number, y: number, width: number, height: number}} rect2 Second rectangle.
+     * @returns {boolean} `true` if they intersect; otherwise, `false`.
+     */
     _intersectsWith(rect1: {x: number, y: number, width: number, height: number}, rect2: {x: number, y: number, width: number,
         height: number}): boolean {
         return (rect2.x < rect1.x + rect1.width) && (rect1.x < (rect2.x + rect2.width)) && (rect2.y < rect1.y + rect1.height) &&
          (rect1.y < rect2.y + rect2.height);
     }
+    /* eslint-enable */
+    /**
+     * Returns whether a rectangle dimension is empty or invalid.
+     *
+     * @private
+     * @param {number} width Rectangle width.
+     * @param {number} height Rectangle height.
+     * @returns {boolean} `true` if width/height is non-positive; otherwise, `false`.
+     */
     _isEmptyRectangle(width: number, height: number): boolean {
         return (width <= 0 || height <= 0);
     }
+    /**
+     * Normalizes raw coordinates into a `Rectangle` with positive width and height.
+     *
+     * @private
+     * @param {number} x X1 or X2.
+     * @param {number} y Y1 or Y2.
+     * @param {number} width X2 or X1.
+     * @param {number} height Y2 or Y1.
+     * @returns {{x: number, y: number, width: number, height: number}} Normalized rectangle.
+     */
     _toRectangle(x: number, y: number, width: number, height: number): {x: number, y: number, width: number, height: number} {
         const x1: number = Math.min(x, width);
         const y1: number = Math.min(y, height);
@@ -184,6 +244,14 @@ export class _PdfRedactionProcessor {
         const bounds: Rectangle = {x: x1, y: y1, width: x2, height: y2};
         return bounds;
     }
+    /**
+     * Checks whether a form field kid belongs to the given page.
+     *
+     * @private
+     * @param {_PdfDictionary} kid Kid dictionary.
+     * @param {PdfPage} page Page to compare with.
+     * @returns {boolean} `true` if kid belongs to `page`; otherwise, `false`.
+     */
     _isKidInSamePage(kid: _PdfDictionary, page: PdfPage): boolean {
         const pageReference: _PdfReference  = page._ref;
         const reference: _PdfReference = kid.getRaw('P');
@@ -193,6 +261,13 @@ export class _PdfRedactionProcessor {
             return false;
         }
     }
+    /**
+     * Resolves a best-effort annotation type for loaded/unloaded annotations.
+     *
+     * @private
+     * @param {PdfAnnotation} annotation The annotation object.
+     * @returns {_PdfAnnotationType} The inferred annotation type.
+     */
     _checkAnnotationType(annotation: PdfAnnotation): _PdfAnnotationType {
         let annotationType: _PdfAnnotationType;
         if (annotation instanceof PdfRectangleAnnotation) {
@@ -206,6 +281,14 @@ export class _PdfRedactionProcessor {
         }
         return annotationType;
     }
+    /**
+     * Removes annotations that intersect redaction regions as needed.
+     *
+     * @private
+     * @param {PdfPage} page The page whose annotations are processed.
+     * @param {PdfRedactionRegion[]} options Redaction regions on page.
+     * @returns {void} nothing.
+     */
     _processAnnotation(page: PdfPage, options: PdfRedactionRegion[]): void {
         let markupAnnotation: PdfTextMarkupAnnotation;
         const annotbounds: Array<Rectangle> = [];
@@ -368,6 +451,15 @@ export class _PdfRedactionProcessor {
             }
         }
     }
+    /* eslint-disable */
+    /**
+     * Computes a bounding rectangle from a flat coordinates array in page space.
+     *
+     * @private
+     * @param {number[]} points Flat sequence of coordinates.
+     * @param {PdfPage} loadedPage Page whose height is used to normalize Y.
+     * @returns {{ bounds: { x: number; y: number; width: number; height: number }, isValidAnnotation: boolean }} Bounds and validity flag.
+     */
     _getBoundsFromPoints(points: number[], loadedPage: PdfPage): { bounds: { x: number; y: number; width: number; height: number };
         isValidAnnotation: boolean } {
         let isValidAnnotation: boolean = false;
@@ -392,6 +484,17 @@ export class _PdfRedactionProcessor {
         }
         return { bounds: { x: 0, y: 0, width: 0, height: 0 }, isValidAnnotation };
     }
+    /**
+     * Checks whether a line segment intersects an axis-aligned rectangle.
+     *
+     * @private
+     * @param {{x: number, y: number, width: number, height: number}} redactBounds Rectangle bounds.
+     * @param {number} p1X First point X.
+     * @param {number} p1Y First point Y.
+     * @param {number} p2X Second point X.
+     * @param {number} p2Y Second point Y.
+     * @returns {boolean} `true` if intersects; otherwise, `false`.
+     */
     _isLineIntersectRectangle(
         redactBounds: { x: number; y: number; width: number; height: number },
         p1X: number,
@@ -439,6 +542,14 @@ export class _PdfRedactionProcessor {
         }
         return true;
     }
+    /**
+     * Compares two rectangles for exact equality.
+     *
+     * @private
+     * @param {{x: number, y: number, width: number, height: number}} bounds1 First rectangle.
+     * @param {{x: number, y: number, width: number, height: number}} bounds2 Second rectangle.
+     * @returns {boolean} `true` if same; otherwise, `false`.
+     */
     _isBoundsEqual(bounds1: {x: number, y: number, width: number, height: number}, bounds2: {x: number, y: number, width: number,
         height: number}): boolean {
         return bounds1.x === bounds2.x &&
@@ -446,6 +557,14 @@ export class _PdfRedactionProcessor {
                bounds1.width === bounds2.width &&
                bounds1.height === bounds2.height;
     }
+    /* eslint-enable */
+    /**
+     * Resolves the `_PdfAnnotationType` from a raw annotation dictionary.
+     *
+     * @private
+     * @param {_PdfDictionary} dictionary Raw annotation dictionary.
+     * @returns {_PdfAnnotationType} Resolved annotation type.
+     */
     _getAnnotationType(dictionary: _PdfDictionary): _PdfAnnotationType {
         let name: string = '';
         if (dictionary && dictionary.has('Subtype')) {
@@ -582,6 +701,13 @@ export class _PdfRedactionProcessor {
         }
         return type;
     }
+    /**
+     * Returns `true` if a border array indicates a text web link annotation.
+     *
+     * @private
+     * @param {any[]} array Border array or nested arrays.
+     * @returns {boolean} `true` when border is effectively zero otherwise, `false`.
+     */
     _findAnnotation(array: any[]): boolean { // eslint-disable-line
         if (typeof(array) === 'undefined') {
             return false;

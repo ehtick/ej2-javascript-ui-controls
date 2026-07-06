@@ -104,6 +104,7 @@ export const BLOCKEDITOR_INLINETBAR_ID: string = '_inline-toolbar';
 export const INLINE_TBAR_POPUP_ID: string = '_inline-toolbar-popup';
 export const INLINE_TBAR_TOOLTIP_ID: string = '_inline-toolbar-tooltip';
 export const LINKDIALOG_ID: string = '_linkDialog';
+export const IMAGE_POPUP_ID: string = '_image-upload-popup';
 
 export const BLOCKACTION_MENUBAR_CLS: string = 'e-blockeditor-blockaction-menubar';
 export const BLOCKACTION_POPUP_CLS: string = 'e-blockeditor-blockaction-popup';

@@ -3,7 +3,7 @@ import { PdfViewerBase, PdfAnnotationBaseModel } from '../index';
 import { createElement, Browser, isNullOrUndefined } from '@syncfusion/ej2-base';
 import { AjaxHandler } from '../index';
 import { DiagramHtmlElement } from '../drawing/html-element';
-import { Size } from '@syncfusion/ej2-drawings';
+import { Size } from './../ej2-drawings/index';
 import { TaskPriorityLevel } from '../base/pdfviewer-utlis';
 import { FormFieldModel } from '../pdfviewer-model';
 import { PdfFormFieldBaseModel } from '../drawing';

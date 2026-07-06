@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/highcontrast' as *;
-@forward 'ej2-base/styles/definition/highcontrast';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $sidebar-background: $bg-base-0 !default;
 $sidebar-border: $border-default !default;
 $sidebar-box-shadow: 0 0 16px rgba(0, 0, 0, .3) !default;

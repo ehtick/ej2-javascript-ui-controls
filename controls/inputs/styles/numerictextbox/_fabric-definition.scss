@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/fabric' as *;
-@forward 'ej2-base/styles/definition/fabric';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $numeric-skin-name: 'fabric' !default;
 $numeric-input-icon-size: 12px !default;
 $numeric-input-bigger-icon-size: 12px !default;
@@ -20,3 +20,4 @@ $numeric-bigger-prepend-outline-label-bottom-top: 19px !default;
 $numeric-bigger-prepend-outline-label-top-top: 20px !default;
 $numeric-bigger-prepend-filled-label-bottom-top: 20px !default;
 $numeric-bigger-prepend-filled-label-top-top: 20px !default;
+$numeric-box-full-border-color: $neutral-tertiary-alt !default;

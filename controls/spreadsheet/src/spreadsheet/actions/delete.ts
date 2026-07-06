@@ -20,6 +20,9 @@ export class Delete {
     }
     private delete(actionArgs: ActionEventArgs): void {
         const args: InsertDeleteEventArgs = actionArgs.eventArgs;
+        const isSuspended: boolean = this.parent.paintSuspendCount > 0;
+        const shouldDeferRowColDom: boolean = isSuspended && args.modelType !== 'Sheet' &&
+            args.activeSheetIndex === this.parent.activeSheetIndex;
         if (args.modelType === 'Sheet') {
             const activeSheetDeleted: boolean = args.activeSheetIndex >= args.startIndex && args.activeSheetIndex <= args.endIndex;
             if (activeSheetDeleted) {
@@ -31,91 +34,102 @@ export class Delete {
                 this.parent.setProperties(
                     { activeSheetIndex: args.activeSheetIndex - ((args.endIndex + 1) - args.startIndex) }, true);
             }
-            this.parent.notify(refreshSheetTabs, null);
-            if (activeSheetDeleted) {
-                this.parent.renderModule.refreshSheet(false, false, true);
+            if (!isSuspended) {
+                this.parent.notify(refreshSheetTabs, null);
+                if (activeSheetDeleted) {
+                    this.parent.renderModule.refreshSheet(false, false, true);
+                }
+            } else {
+                this.parent.pendingPaintRefresh = 'fullSheet';
+                this.parent.queuePaintAction('deleteSheetTabs', () => { this.parent.notify(refreshSheetTabs, null); });
             }
         } else if (args.activeSheetIndex === this.parent.activeSheetIndex) {
             const sheet: SheetModel = this.parent.getActiveSheet();
             const frozenRow: number = this.parent.frozenRowCount(sheet); const frozenCol: number = this.parent.frozenColCount(sheet);
-            if (args.modelType === 'Row') {
-                if (!this.parent.scrollSettings.enableVirtualization || args.startIndex <= this.parent.viewport.bottomIndex) {
-                    if (this.parent.scrollSettings.enableVirtualization) {
-                        if (args.startIndex < getCellIndexes(sheet.paneTopLeftCell)[0]) {
-                            this.parent.updateTopLeftCell(
-                                skipHiddenIdx(sheet, args.startIndex - 1 < frozenRow ? frozenRow : args.startIndex - 1, true) - frozenRow,
-                                null, 'col');
-                            this.parent.renderModule.refreshSheet(false, false, true);
-                        } else {
-                            if (args.freezePane || (this.parent.scrollSettings.isFinite &&
-                                this.parent.viewport.bottomIndex >= skipHiddenIdx(sheet, sheet.rowCount - 1, false))) {
+            if (!shouldDeferRowColDom) {
+                if (args.modelType === 'Row') {
+                    if (!this.parent.scrollSettings.enableVirtualization || args.startIndex <= this.parent.viewport.bottomIndex) {
+                        if (this.parent.scrollSettings.enableVirtualization) {
+                            if (args.startIndex < getCellIndexes(sheet.paneTopLeftCell)[0]) {
+                                this.parent.updateTopLeftCell(
+                                    skipHiddenIdx(sheet, args.startIndex - 1 < frozenRow ? frozenRow : args.startIndex - 1, true)
+                                        - frozenRow, null, 'col');
                                 this.parent.renderModule.refreshSheet(false, false, true);
                             } else {
-                                const frozenIndexes: number[] = [];
-                                const frozenCol: number = this.parent.frozenColCount(sheet);
-                                let colIndex: number;
-                                const viewportColIdx: number = this.parent.viewport.leftIndex;
-                                if (frozenCol) {
-                                    frozenIndexes.push(frozenRow);
-                                    frozenIndexes.push(viewportColIdx + frozenCol);
-                                    colIndex = getCellIndexes(sheet.topLeftCell)[1];
+                                if (args.freezePane || (this.parent.scrollSettings.isFinite &&
+                                    this.parent.viewport.bottomIndex >= skipHiddenIdx(sheet, sheet.rowCount - 1, false))) {
+                                    this.parent.renderModule.refreshSheet(false, false, true);
                                 } else {
-                                    colIndex = viewportColIdx;
+                                    const frozenIndexes: number[] = [];
+                                    const frozenCol: number = this.parent.frozenColCount(sheet);
+                                    let colIndex: number;
+                                    const viewportColIdx: number = this.parent.viewport.leftIndex;
+                                    if (frozenCol) {
+                                        frozenIndexes.push(frozenRow);
+                                        frozenIndexes.push(viewportColIdx + frozenCol);
+                                        colIndex = getCellIndexes(sheet.topLeftCell)[1];
+                                    } else {
+                                        colIndex = viewportColIdx;
+                                    }
+                                    this.parent.renderModule.refreshUI(
+                                        { rowIndex: this.parent.viewport.topIndex, refresh: 'Row', colIndex: colIndex, skipUpdateOnFirst:
+                                        this.parent.viewport.topIndex + frozenRow === skipHiddenIdx(sheet, frozenRow, true),
+                                        frozenIndexes: frozenIndexes });
+                                    if (frozenCol) {
+                                        this.parent.viewport.leftIndex = viewportColIdx;
+                                    }
+                                    this.parent.selectRange(sheet.selectedRange);
                                 }
-                                this.parent.renderModule.refreshUI(
-                                    { rowIndex: this.parent.viewport.topIndex, refresh: 'Row', colIndex: colIndex, skipUpdateOnFirst:
-                                    this.parent.viewport.topIndex + frozenRow === skipHiddenIdx(sheet, frozenRow, true),
-                                    frozenIndexes: frozenIndexes });
-                                if (frozenCol) {
-                                    this.parent.viewport.leftIndex = viewportColIdx;
-                                }
-                                this.parent.selectRange(sheet.selectedRange);
                             }
-                        }
-                    } else {
-                        this.parent.renderModule.refreshSheet(false, false, true);
-                    }
-                }
-            } else {
-                if (args.refreshSheet !== false && (!this.parent.scrollSettings.enableVirtualization ||
-                    args.startIndex <= this.parent.viewport.rightIndex)) {
-                    if (this.parent.scrollSettings.enableVirtualization) {
-                        if (args.startIndex < getCellIndexes(sheet.paneTopLeftCell)[1]) {
-                            this.parent.updateTopLeftCell(
-                                null, skipHiddenIdx(sheet, args.startIndex - 1 < frozenCol ? frozenCol :
-                                    args.startIndex - 1, true, 'columns') - frozenCol, 'row');
-                            this.parent.renderModule.refreshSheet(false, false, true);
                         } else {
-                            if (args.freezePane || args.refreshSheet === true) {
+                            this.parent.renderModule.refreshSheet(false, false, true);
+                        }
+                    }
+                } else {
+                    if (args.refreshSheet !== false && (!this.parent.scrollSettings.enableVirtualization ||
+                        args.startIndex <= this.parent.viewport.rightIndex)) {
+                        if (this.parent.scrollSettings.enableVirtualization) {
+                            if (args.startIndex < getCellIndexes(sheet.paneTopLeftCell)[1]) {
+                                this.parent.updateTopLeftCell(
+                                    null, skipHiddenIdx(sheet, args.startIndex - 1 < frozenCol ? frozenCol :
+                                        args.startIndex - 1, true, 'columns') - frozenCol, 'row');
                                 this.parent.renderModule.refreshSheet(false, false, true);
                             } else {
-                                const frozenRow: number = this.parent.frozenRowCount(sheet);
-                                let frozenIndexes: number[] = [];
-                                const viewportRowIdx: number = this.parent.viewport.topIndex;
-                                const rowIndex: number = frozenRow ? getCellIndexes(sheet.topLeftCell)[0] : viewportRowIdx;
-                                if (frozenRow) {
-                                    frozenIndexes = [frozenRow + viewportRowIdx, frozenCol];
+                                if (args.freezePane || args.refreshSheet === true) {
+                                    this.parent.renderModule.refreshSheet(false, false, true);
+                                } else {
+                                    const frozenRow: number = this.parent.frozenRowCount(sheet);
+                                    let frozenIndexes: number[] = [];
+                                    const viewportRowIdx: number = this.parent.viewport.topIndex;
+                                    const rowIndex: number = frozenRow ? getCellIndexes(sheet.topLeftCell)[0] : viewportRowIdx;
+                                    if (frozenRow) {
+                                        frozenIndexes = [frozenRow + viewportRowIdx, frozenCol];
+                                    }
+                                    this.parent.renderModule.refreshUI(
+                                        { rowIndex: rowIndex, refresh: 'Column', colIndex: this.parent.viewport.leftIndex, insertDelete: true,
+                                            skipUpdateOnFirst: this.parent.viewport.leftIndex + frozenCol === skipHiddenIdx(
+                                                sheet, frozenCol, true, 'columns'), frozenIndexes: frozenIndexes });
+                                    if (frozenRow) {
+                                        this.parent.viewport.topIndex = viewportRowIdx;
+                                    }
+                                    this.parent.selectRange(sheet.selectedRange);
                                 }
-                                this.parent.renderModule.refreshUI(
-                                    { rowIndex: rowIndex, refresh: 'Column', colIndex: this.parent.viewport.leftIndex, insertDelete: true,
-                                        skipUpdateOnFirst: this.parent.viewport.leftIndex + frozenCol === skipHiddenIdx(
-                                            sheet, frozenCol, true, 'columns'), frozenIndexes: frozenIndexes });
-                                if (frozenRow) {
-                                    this.parent.viewport.topIndex = viewportRowIdx;
-                                }
-                                this.parent.selectRange(sheet.selectedRange);
                             }
+                        } else {
+                            this.parent.renderModule.refreshSheet(false, false, true);
                         }
-                    } else {
-                        this.parent.renderModule.refreshSheet(false, false, true);
                     }
+                    delete args.refreshSheet;
                 }
-                delete args.refreshSheet;
             }
-            this.parent.notify(refreshCommentsPane, { sheetIdx: args.activeSheetIndex });
-            this.parent.notify(updateNoteContainer, null);
+            if (!isSuspended) {
+                this.parent.notify(refreshCommentsPane, { sheetIdx: args.activeSheetIndex });
+                this.parent.notify(updateNoteContainer, null);
+            }
         }
-        this.refreshImgChartElement(args.deletedModel.length, this.parent.activeSheetIndex, args.modelType, args.startIndex);
+        if (!isSuspended) {
+            this.refreshImgChartElement(args.deletedModel.length, this.parent.activeSheetIndex, args.modelType, args.startIndex);
+        }
         if (args.isAction) {
             delete args.isAction;
             this.parent.notify(completeAction, actionArgs);
@@ -123,6 +137,11 @@ export class Delete {
         } else if (!args.isUndoRedo) {
             args.isMethod = true;
             this.parent.notify(triggerDataChange, actionArgs);
+        }
+        if (isSuspended) {
+            this.parent.queuePaintAction('deleteImgChart_' + args.modelType + '_' + args.startIndex, () => {
+                this.refreshImgChartElement(args.deletedModel.length, this.parent.activeSheetIndex, args.modelType, args.startIndex);
+            });
         }
     }
 

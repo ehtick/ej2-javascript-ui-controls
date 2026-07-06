@@ -1,5 +1,5 @@
 import { Property, NotifyPropertyChanges, INotifyPropertyChanged, Component, isBlazor, isRippleEnabled } from '@syncfusion/ej2-base';import { addClass, Event, EmitType, detach, removeClass } from '@syncfusion/ej2-base';import { rippleEffect, EventHandler, Observer, SanitizeHtmlHelper } from '@syncfusion/ej2-base';import { getTextNode } from '../common/common';
-import {IconPosition} from "./button";
+import {IconPosition,ClickedEventArgs} from "./button";
 import {ComponentModel} from '@syncfusion/ej2-base';
 
 /**
@@ -67,6 +67,33 @@ export interface ButtonModel extends ComponentModel{
     isToggle?: boolean;
 
     /**
+     * Enables hold-to-repeat behavior on the Button when set to `true`.
+     * While the button is held down (pointer or keyboard), repeated `clicked` events are fired
+     * at the rate controlled by `repeatDelay` and `repeatInterval`.
+     *
+     * @default false
+     */
+    enableRepeat?: boolean;
+
+    /**
+     * Specifies the delay in milliseconds before repeat firing begins after the initial press.
+     * Only applicable when `enableRepeat` is `true`.
+     * Changes to this property take effect on the next hold cycle.
+     *
+     * @default 400
+     */
+    repeatDelay?: number;
+
+    /**
+     * Specifies the interval in milliseconds between repeated `clicked` fires during a hold.
+     * When set to `0` (default), pointer repeat uses 100ms; keyboard repeat defers to the native OS rate.
+     * Changes to this property take effect on the next hold cycle.
+     *
+     * @default 0
+     */
+    repeatInterval?: number;
+
+    /**
      * Overrides the global culture and localization value for this component. Default global culture is 'en-US'.
      *
      * @private
@@ -87,5 +114,15 @@ export interface ButtonModel extends ComponentModel{
      * @event created
      */
     created?: EmitType<Event>;
+
+    /**
+     * Triggers on every click fire — both the initial press and each repeat while the button is held.
+     * The event argument carries `originalEvent` (the originating DOM event) and `isRepeat`
+     * (`false` for the first press, `true` for subsequent repeat fires).
+     * Only emitted when `enableRepeat` is `true`.
+     *
+     * @event clicked
+     */
+    clicked?: EmitType<ClickedEventArgs>;
 
 }

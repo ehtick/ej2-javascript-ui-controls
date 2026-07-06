@@ -1,6 +1,6 @@
 import { SpreadsheetHelper } from '../util/spreadsheethelper.spec';
 import { defaultData, ipeSurveyData } from '../util/datasource.spec';
-import { NoteModel, ExtendedSheet, ExtendedNoteModel, getCell, CellModel, setCell, focus } from '../../../src/index';
+import { NoteModel, ExtendedSheet, ExtendedNoteModel, getCell, CellModel, setCell, focus, SortEventArgs } from '../../../src/index';
 
 describe('Note ->', () => {
     const helper: SpreadsheetHelper = new SpreadsheetHelper('spreadsheet');
@@ -966,6 +966,33 @@ describe('Note ->', () => {
             expect(helper.getElements('.e-addNoteContainer')[1].value).toBe('Note4');
             done();
         });
+        it('EJ2-1012260-Notes Indicator Correctly Placed After Sorting but the container is not updated in spreadsheet', (done: Function) => {
+            const spreadsheet: any = helper.getInstance();
+            helper.invoke('updateCell', [{ notes: { text: 'Sorting', isVisible: true } }, 'G6']);
+            const notesId: string = (spreadsheet.sheets[0].rows[5].cells[6].notes as ExtendedNoteModel).id;
+            expect((spreadsheet.sheets[0].rows[5].cells[6].notes as ExtendedNoteModel).text).toBe('Sorting');
+            expect((spreadsheet.sheets[0].rows[5].cells[6].notes as ExtendedNoteModel).isVisible).toBeTruthy();
+            expect((spreadsheet.sheets[0].rows[5].cells[6].notes as ExtendedNoteModel).rowIdx).toBe(5);
+            expect((spreadsheet.sheets[0].rows[5].cells[6].notes as ExtendedNoteModel).colIdx).toBe(6);
+            expect((spreadsheet.sheets[0] as ExtendedSheet).notes[3].text).toBe('Sorting');
+            expect((spreadsheet.sheets[0] as ExtendedSheet).notes[3].isVisible).toBeTruthy();
+            expect((spreadsheet.sheets[0] as ExtendedSheet).notes[3].rowIdx).toBe(5);
+            expect((spreadsheet.sheets[0] as ExtendedSheet).notes[3].colIdx).toBe(6);
+            helper.invoke('selectRange', ['G1:G11']);
+            helper.invoke('sort', [{ sortDescriptors: { order: 'Ascending' } }]).then((args: SortEventArgs) => {
+                expect((spreadsheet.sheets[0].rows[7].cells[6].notes as ExtendedNoteModel).text).toBe('Sorting');
+                expect((spreadsheet.sheets[0].rows[7].cells[6].notes as ExtendedNoteModel).isVisible).toBeTruthy();
+                expect((spreadsheet.sheets[0].rows[7].cells[6].notes as ExtendedNoteModel).rowIdx).toBe(7);
+                expect((spreadsheet.sheets[0].rows[7].cells[6].notes as ExtendedNoteModel).colIdx).toBe(6);
+                expect((spreadsheet.sheets[0].rows[7].cells[6].notes as ExtendedNoteModel).id).not.toBe(notesId);
+                expect((spreadsheet.sheets[0] as ExtendedSheet).notes[3].text).toBe('Sorting');
+                expect((spreadsheet.sheets[0] as ExtendedSheet).notes[3].isVisible).toBeTruthy();
+                expect((spreadsheet.sheets[0] as ExtendedSheet).notes[3].rowIdx).toBe(7);
+                expect((spreadsheet.sheets[0] as ExtendedSheet).notes[3].colIdx).toBe(6);
+                expect(spreadsheet.sheets[0].rows[5].cells[6].notes).toBeUndefined();
+                done();
+            });
+        });
     });
     describe('Notes protection - Add/Edit/Delete disabled when sheet/workbook is protected ->', () => {
         beforeAll((done: Function) => {
@@ -998,12 +1025,13 @@ describe('Note ->', () => {
             });
         });
     });
+
     describe('EJ2-1017610 ->', () => {
         beforeAll((done: Function) => {
             helper.initializeSpreadsheet({
                 sheets: [{
                     ranges: [{ dataSource: ipeSurveyData, startCell: 'A2' }],
-                    columns: [{ width: 100 }, { width: 300 }, { width: 600 }],
+                    columns: [{ width: 100 }, { width: 200 }, { width: 200 }],
                     rows: [{ index: 0, cells: [{ index: 0, value: 'IPE Global Equities Survey 2018', colSpan: 3 }] }]
                 }]
             }, done);
@@ -1021,9 +1049,13 @@ describe('Note ->', () => {
             const sheet: any = inst.getActiveSheet();
             const note: any = sheet.notes[sheet.notes.length - 1];
             const noteModule: any = inst.spreadsheetNoteModule;
+            note.isVisible = false;
+            noteModule.updateNoteContainer();
             noteModule.mouseOver.call([noteModule, 2, 2]);
             const noteContainer: HTMLElement = document.getElementById(noteModule.getNoteId(note));
             expect(noteContainer).not.toBeNull();
+            note.isVisible = false;
+            noteModule.updateNoteContainer();
             done();
         });
     });

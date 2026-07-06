@@ -1,6 +1,7 @@
-@use 'ej2-base/styles/definition/fluent2' as *;
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+@use '@syncfusion/ej2-navigations/styles/toolbar/fluent2-definition' as *;
 @use '../spreadsheet-ribbon/fluent2-definition' as *;
-@forward 'ej2-base/styles/definition/fluent2';
+
 $sheet-skin: $skin-name !default;
 $spreadsheet-border-width: 1px;
 $select-all-size: 26px !default;
@@ -107,6 +108,10 @@ $spreadsheet-formula-bar-expanded-separator-height: 60px !default;
 $bigger-name-box-ddl-input-height: 30px !default;
 $bigger-formula-bar-drop-icon-line-height: 30px !default;
 $bigger-insert-function-height: 89px !default;
+$sheet-bar-default-font-color: $tbar-default-font !default;
+$sheet-bar-btn-box-shadow: $tbar-btn-box-shadow !default;
+$sheet-bar-active-icon-color: $tbar-active-icon-color !default;
+$sheet-bar-default-icon-color: $tbar-default-icon-color !default;
 
 //Insert dialog box
 $dlg-list-border: $spreadsheet-border !default;
@@ -143,6 +148,7 @@ $spreadsheet-ribbon-item-hover-border-color: transparent !default;
 $spreadsheet-ribbon-item-active-border-color: transparent !default;
 $spreadsheet-ribbon-item-active-background-color: $content-bg-color-selected !default;
 $font-family-collection: ('Arial', 'Arial Black', 'Axettac Demo', 'Batang', 'Book Antiqua', 'Calibri', 'Comic Sans MS', 'Courier', 'Courier New', 'Din Condensed', 'Georgia', 'Helvetica', 'Helvetica New', 'Roboto', 'Tahoma', 'Times New Roman', 'Verdana') !default;
+$sf-font-family-collection: ('Algerian', 'Arial', 'Calibri', 'Cambria', 'Cambria Math', 'Courier New', 'Candara', 'Georgia', 'Impact', 'Segoe Print', 'Segoe Script', 'Segoe UI', sans-serif, 'Times New Roman', 'Verdana', sans-serif) !default;
 $normal-btn-padding: 8px !default;
 $bigger-cpicker-btn-line-height: $bigger-spreadsheet-ribbon-btn-height - 4 !default;
 $bigger-cpicker-btn-padding-bottom: 0 !default;
@@ -264,7 +270,7 @@ $mac-scrollbar-background: rgba(0, 0, 0, .5) !default;
 $custom-listview-color: $border-light;
 $custom-format-dlg-input-margin-right: 12px !default;
 $custom-format-dlg-sample-margin: 16px 0 4px !default;
-$expand-icon-color: $icon-color !default;
+$spreadsheet-ribbon-expand-icon-color: $expand-icon-color !default;
 $spread-dialog-listview-border-radius: $radius-3 !default;
 
 //File Name Dialog
@@ -304,7 +310,6 @@ $bigger-spreadsheet-chart-icon-font-size: 36px !default;
 $bigger-spreadsheet-addchart-icon-font-size: $font-icon-26 !default;
 
 //Mixins
-$spreadsheet-ribbon-tab-text-wrap-height: 44px !default;
 $open-dialog-extension-font-size: $text-sm !default;
 $spreadsheet-cf-header-margin-bottom: 4px !default;
 $spreadsheet-cfmain-header-margin-bottom: 12px !default;
@@ -328,7 +333,8 @@ $validation-dlg-content-padding: 6px !default;
 $validation-dropdown-icon-size: $font-icon-14 !default;
 $aggregate-list-font-weight: $font-weight-normal !default;
 $spreadsheet-sort-dlg-error-bottom: -12px !default;
-$bigger-spread-ribbon-tab-text-wrap-height: 56px !default;
+$bigger-spreadsheet-ribbon-tab-text-wrap-height: 56px !default;
+$bigger-spread-tab-nav-arrow-font: $font-icon-18 !default;
 $bigger-spread-ribbon-tab-menu-items-height: 56px !default;
 $bigger-spread-ribbon-tab-menu-items-line-height: 56px !default;
 $bigger-formula-bar-height: 30px !default;
@@ -491,9 +497,12 @@ $spread-comment-text-color: $content-text-color !default;
 $spread-comment-timestamp-color: $content-text-color-alt3 !default;
 $spread-comment-input-height: 32px !default;
 $spread-comment-input-border-bottom-focused: 2px solid $primary !default;
-$spread-comment-border: 1px solid $border-light !default;
 $spread-comment-menu-height: 32px !default;
 $spread-comment-menu-width: 32px !default;
 $spread-comment-postbtn-padding: 6px 12px !default;
 $spread-comment-header-wrap-gap: 8px !default;
 $spread-comment-listview-active-border-color: $content-text-color;
+$spread-border-color: $content-text-color !default;
+
+//Side panel
+$spread-side-panel-border: 1px solid $border-light !default;

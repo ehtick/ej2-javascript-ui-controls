@@ -1,5 +1,19 @@
 import { _PdfOpenJpegRunner } from './openjpeg-runner';
+/**
+ * Worker-backed image processor that decodes JPX images into raw bytes.
+ *
+ * @private
+ */
 export class _PdfImageProcessor {
+    /**
+     * Decodes a JPX stream using a dedicated Web Worker running the OpenJPEG runtime.
+     *
+     * @private
+     * @param {Uint8Array} bytes Raw JPX bytes.
+     * @param {any} jpxStream Stream object that can supply bytes when `bytes` is not provided.
+     * @param {string} platform Host application/platform used to resolve asset base URLs.
+     * @returns {Promise<Uint8Array>} Resolves to decoded image bytes.
+     */
     async _decodeImage(bytes: Uint8Array, jpxStream: any, platform: string): Promise<Uint8Array> { //eslint-disable-line
         const workerBob: Blob = new Blob([_PdfOpenJpegRunner.toString().replace(/^[^{]*{([\s\S]*)}$/m, '$1')], { type: 'text/javascript' });
         const workerBlobUrl: string = URL.createObjectURL(workerBob);

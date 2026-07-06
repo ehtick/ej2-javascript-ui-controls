@@ -31,3 +31,15 @@ export type TransformCommandName = 'Paragraph'| 'Heading1'| 'Heading2'| 'Heading
  * Defines types to be used as colorMode for color selection in the BlockEditor.
  */
 export declare type ColorModeType = 'Picker' | 'Palette';
+
+/**
+ * Specifies the commands available for table context menu items.
+ *
+ */
+export type TableCommandName = 'Insert' | 'Delete';
+
+/**
+ * Specifies the commands available for link context menu items.
+ *
+ */
+export type LinkCommandName = 'Edit' | 'Copy' | 'Open' | 'Remove';

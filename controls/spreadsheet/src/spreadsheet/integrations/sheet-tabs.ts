@@ -302,8 +302,6 @@ export class SheetTabs {
         if (args.element.classList.contains('e-contextmenu') && args.items[0] &&
             args.items[0].id === `${this.parent.element.id}_cmenu_insert_sheet`) {
             if (this.skipHiddenSheets() === 1) {
-                //let id: string = `${this.parent.element.id}_cmenu`;
-                //this.parent.enableFileMenuItems([`${id}_hide_sheet`, `${id}_delete_sheet`], false, true);
                 disableItems.push(`${id}_hide_sheet`, `${id}_delete_sheet`);
             }
             if (!this.parent.allowInsert || this.parent.isProtected) { disableItems.push(`${id}_insert_sheet`); }
@@ -664,7 +662,8 @@ export class SheetTabs {
             const key: string = this.aggregateContent;
             const content: string = `${key}: ${eventArgs[key.toString()]}`;
             if (!this.aggregateDropDown) {
-                const aggregateEle: HTMLElement = this.parent.createElement('button', { id: this.parent.element.id + '_aggregate', attrs: { 'type': 'button' } });
+                const aggregateEle: HTMLElement = this.parent.createElement(
+                    'button', { id: this.parent.element.id + '_aggregate', attrs: { 'type': 'button' } });
                 document.getElementById(`${this.parent.element.id}_sheet_tab_panel`).appendChild(aggregateEle);
                 this.aggregateDropDown = new DropDownButton({
                     content: content,

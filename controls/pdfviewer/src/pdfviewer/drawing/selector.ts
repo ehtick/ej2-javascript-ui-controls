@@ -1,8 +1,5 @@
 import { Property, ChildProperty, Collection, Complex, isNullOrUndefined } from '@syncfusion/ej2-base';
-import { IElement, ThumbsConstraints } from '@syncfusion/ej2-drawings';
-import { Container } from '@syncfusion/ej2-drawings';
-import { PointModel } from '@syncfusion/ej2-drawings';
-import { Point } from '@syncfusion/ej2-drawings';
+import { Point, PointModel, Container, IElement, ThumbsConstraints } from './../ej2-drawings/index';
 import { PdfAnnotationBaseModel, PdfFormFieldBaseModel } from './pdf-annotation-model';
 import { PdfAnnotationBase, PdfFormFieldBase } from './pdf-annotation';
 

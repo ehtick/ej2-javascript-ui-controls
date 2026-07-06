@@ -1,6 +1,6 @@
-@use 'ej2-base/styles/definition/highcontrast-light' as *;
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 @use '../context-menu/highcontrast-light-definition' as *;
-@forward 'ej2-base/styles/definition/highcontrast-light';
+
 @forward '../context-menu/highcontrast-light-definition';
 $menu-bigger-li-right-padding: 10px;
 $menu-bigger-icon-margin-right: 10px;

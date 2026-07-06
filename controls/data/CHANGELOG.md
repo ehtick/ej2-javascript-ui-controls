@@ -2,31 +2,7 @@
 
 ## [Unreleased]
 
-## 33.2.15 (2026-06-23)
-
-### DataManager
-
-#### Bug Fixes
-
-- `FB74307` - Resolved an issue where changing the page size did not trigger a server request when `enableCaching` was enabled in the `DataManager`.
-
-## 33.2.5 (2026-05-05)
-
-### DataManager
-
-#### Bug Fixes
-
-- `I827616` - Fixed an issue where the Excel filter dialog failed to load data after performing a grid search.
-
-## 33.1.45 (2026-03-24)
-
-### DataManager
-
-#### Bug Fixes
-
-- `#I817121` - Fixed an issue where the `applyPreRequestMiddlewares` did not execute while deleting multiple records from a remote data source.
-
-## 33.1.44 (2026-03-16)
+## 34.1.29 (2026-07-06)
 
 ### DataManager
 

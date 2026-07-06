@@ -1,5 +1,5 @@
 import { PdfAnnotationBaseModel } from './pdf-annotation-model';
-import { PointModel, PathElement, Rect, DrawingElement, Point, Size, RotateTransform, TextElement, randomId, Matrix, identityMatrix, rotateMatrix, transformPointByMatrix, DecoratorShapes, Intersection, Segment, intersect3 } from '@syncfusion/ej2-drawings';
+import { PointModel, PathElement, Rect, DrawingElement, Point, Size, RotateTransform, TextElement, randomId, Matrix, identityMatrix, rotateMatrix, transformPointByMatrix, DecoratorShapes, Intersection, Segment, intersect3 } from './../ej2-drawings/index';
 import { setElementStype, findPointsLength } from './drawing-util';
 import { isNullOrUndefined } from '@syncfusion/ej2-base';
 import { MeasureAnnotation, PdfViewer } from '../index';
@@ -205,6 +205,8 @@ export function initDistanceLabel(obj: PdfAnnotationBaseModel, points: PointMode
     const textele: TextElement = textElement(obj, angle);
     if (!pdfviewer.enableImportAnnotationMeasurement && obj.notes && obj.notes !== '') {
         textele.content = obj.notes;
+    } else if (obj.enableShapeLabel && obj.labelContent) {
+        textele.content = obj.labelContent;
     } else {
         textele.content = measure.setConversion(findPointsLength([points[0], points[1]]) * measure.pixelToPointFactor, obj);
     }
@@ -281,6 +283,8 @@ export function initPerimeterLabel(obj: PdfAnnotationBaseModel, points: PointMod
     const textele: TextElement = textElement(obj, angle);
     if (!pdfviewer.enableImportAnnotationMeasurement && obj.notes && obj.notes !== '') {
         textele.content = obj.notes;
+    } else if (obj.enableShapeLabel && obj.labelContent) {
+        textele.content = obj.labelContent;
     } else {
         textele.content = measure.calculatePerimeter(obj);
     }

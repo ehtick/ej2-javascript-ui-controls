@@ -62,6 +62,34 @@ describe('Insert & Delete ->', () => {
             });
         });
     });
+
+    describe('EJ2-1018336 - Resolve insertSheet() throws script error when passed negative index', () => {
+        beforeAll((done: Function) => {
+            helper.initializeSpreadsheet({ sheets: [{ ranges: [{ dataSource: defaultData }] }] }, done);
+        });
+        afterAll(() => {
+            helper.invoke('destroy');
+        });
+        it('insertSheet(-1) should not throw any error', (done: Function) => {
+            const spreadsheet: Spreadsheet = helper.getInstance();
+            const initialCount: number = spreadsheet.sheets.length;
+            expect(() => { spreadsheet.insertSheet(-1); }).not.toThrow();
+            setTimeout(() => {
+                expect(spreadsheet.sheets.length).toBe(initialCount);
+                done();
+            }, 0);
+        });
+        it('insertSheet(non-integer) should not throw any error', (done: Function) => {
+            const spreadsheet: Spreadsheet = helper.getInstance();
+            const initialCount: number = spreadsheet.sheets.length;
+            expect(() => { spreadsheet.insertSheet(2,-1); }).not.toThrow();
+            setTimeout(() => {
+                expect(spreadsheet.sheets.length).toBe(initialCount);
+                done();
+            }, 0);
+        });
+    });
+
     describe('UI interaction ->', () => {
         beforeAll((done: Function) => {
             helper.initializeSpreadsheet({
@@ -528,7 +556,158 @@ describe('Insert & Delete ->', () => {
             });
         });
     });
-    
+    describe('1002819 - Insert multiple rows with all borders ->', () => {
+        beforeAll((done: Function) => {
+            helper.initializeSpreadsheet({
+                sheets: [{ ranges: [{ dataSource: defaultData }] }]
+            }, done);
+        });
+        afterAll(() => {
+            helper.invoke('destroy');
+        });
+        it('Insert multiple rows below should inherit all borders', (done: Function) => {
+            const spreadsheet: Spreadsheet = helper.getInstance();
+            spreadsheet.setBorder({ border: '1px solid #000000' }, 'A1:D11');
+            expect(spreadsheet.sheets[0].rows[4].cells[0].style.borderTop).toBe('1px solid #000000');
+            expect(spreadsheet.sheets[0].rows[4].cells[0].style.borderBottom).toBe('1px solid #000000');
+            expect(spreadsheet.sheets[0].rows[4].cells[0].style.borderLeft).toBe('1px solid #000000');
+            expect(spreadsheet.sheets[0].rows[4].cells[0].style.borderRight).toBe('1px solid #000000');
+            spreadsheet.selectRange('A5:D6');
+            helper.setAnimationToNone('#' + helper.id + '_contextmenu');
+            helper.openAndClickCMenuItem(6, 0, [6, 2], true);
+            setTimeout(() => {
+                expect(spreadsheet.sheets[0].rows[6].cells[0].value).toBeUndefined();
+                expect(spreadsheet.sheets[0].rows[6].cells[0].style.borderTop).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[6].cells[0].style.borderBottom).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[6].cells[0].style.borderLeft).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[6].cells[0].style.borderRight).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[7].cells[0].value).toBeUndefined();
+                expect(spreadsheet.sheets[0].rows[7].cells[0].style.borderTop).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[7].cells[0].style.borderBottom).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[7].cells[0].style.borderLeft).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[7].cells[0].style.borderRight).toBe('1px solid #000000');
+                helper.click('#spreadsheet_undo');
+                expect(spreadsheet.sheets[0].rows[6].cells[0].value).toBe('Sneakers');
+                expect(spreadsheet.sheets[0].rows[7].cells[0].value).toBe('Running Shoes');
+                helper.click('#spreadsheet_redo');
+                expect(spreadsheet.sheets[0].rows[6].cells[0].value).toBeUndefined();
+                expect(spreadsheet.sheets[0].rows[6].cells[0].style.borderTop).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[6].cells[0].style.borderBottom).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[6].cells[0].style.borderLeft).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[6].cells[0].style.borderRight).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[7].cells[0].value).toBeUndefined();
+                expect(spreadsheet.sheets[0].rows[7].cells[0].style.borderTop).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[7].cells[0].style.borderBottom).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[7].cells[0].style.borderLeft).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[7].cells[0].style.borderRight).toBe('1px solid #000000');
+                done();
+            });
+        });
+        it('Insert 2 rows above should inherit all borders', (done: Function) => {
+            const spreadsheet: Spreadsheet = helper.getInstance();
+            spreadsheet.selectRange('A5:D7');
+            helper.setAnimationToNone('#' + helper.id + '_contextmenu');
+            helper.openAndClickCMenuItem(4, 0, [6, 1], true);
+            setTimeout(() => {
+                expect(spreadsheet.sheets[0].rows[4].cells[0].value).toBeUndefined();
+                expect(spreadsheet.sheets[0].rows[4].cells[0].style.borderTop).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[4].cells[0].style.borderBottom).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[4].cells[0].style.borderLeft).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[4].cells[0].style.borderRight).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[5].cells[0].value).toBeUndefined();
+                expect(spreadsheet.sheets[0].rows[5].cells[0].style.borderTop).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[5].cells[0].style.borderBottom).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[5].cells[0].style.borderLeft).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[5].cells[0].style.borderRight).toBe('1px solid #000000');
+                helper.click('#spreadsheet_undo');
+                expect(spreadsheet.sheets[0].rows[4].cells[0].value).toBe('Sandals & Floaters');
+                expect(spreadsheet.sheets[0].rows[5].cells[0].value).toBe('Flip- Flops & Slippers');
+                helper.click('#spreadsheet_redo');
+                expect(spreadsheet.sheets[0].rows[4].cells[0].value).toBeUndefined();
+                expect(spreadsheet.sheets[0].rows[4].cells[0].style.borderTop).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[4].cells[0].style.borderBottom).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[4].cells[0].style.borderLeft).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[4].cells[0].style.borderRight).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[5].cells[0].value).toBeUndefined();
+                expect(spreadsheet.sheets[0].rows[5].cells[0].style.borderTop).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[5].cells[0].style.borderBottom).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[5].cells[0].style.borderLeft).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[5].cells[0].style.borderRight).toBe('1px solid #000000');
+                done();
+            });
+        });
+        it('Insert 2 columns after B and C should inherit all borders', (done: Function) => {
+            const spreadsheet: Spreadsheet = helper.getInstance();
+            spreadsheet.setBorder({ border: '1px solid #000000' }, 'A1:D11');
+            expect(spreadsheet.sheets[0].rows[4].cells[1].style.borderTop).toBe('1px solid #000000');
+            expect(spreadsheet.sheets[0].rows[4].cells[1].style.borderBottom).toBe('1px solid #000000');
+            expect(spreadsheet.sheets[0].rows[4].cells[1].style.borderLeft).toBe('1px solid #000000');
+            expect(spreadsheet.sheets[0].rows[4].cells[1].style.borderRight).toBe('1px solid #000000');
+            spreadsheet.selectRange('B1:C11');
+            helper.setAnimationToNone('#' + helper.id + '_contextmenu');
+            helper.openAndClickCMenuItem(0, 1, [6, 2], false, true);
+            setTimeout(() => {
+                expect(spreadsheet.sheets[0].rows[0].cells[3].value).toBeUndefined();
+                expect(spreadsheet.sheets[0].rows[0].cells[3].style.borderTop).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[0].cells[3].style.borderBottom).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[0].cells[3].style.borderLeft).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[0].cells[3].style.borderRight).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[0].cells[4].value).toBeUndefined();
+                expect(spreadsheet.sheets[0].rows[0].cells[4].style.borderTop).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[0].cells[4].style.borderBottom).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[0].cells[4].style.borderLeft).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[0].cells[4].style.borderRight).toBe('1px solid #000000');
+                helper.click('#spreadsheet_undo');
+                expect(spreadsheet.sheets[0].rows[0].cells[2].value).toBe('Time');
+                expect(spreadsheet.sheets[0].rows[0].cells[3].value).toBe('Quantity');
+                helper.click('#spreadsheet_redo');
+                expect(spreadsheet.sheets[0].rows[0].cells[3].value).toBeUndefined();
+                expect(spreadsheet.sheets[0].rows[0].cells[3].style.borderTop).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[0].cells[3].style.borderBottom).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[0].cells[3].style.borderLeft).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[0].cells[3].style.borderRight).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[0].cells[4].value).toBeUndefined();
+                expect(spreadsheet.sheets[0].rows[0].cells[4].style.borderTop).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[0].cells[4].style.borderBottom).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[0].cells[4].style.borderLeft).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[0].cells[4].style.borderRight).toBe('1px solid #000000');
+                done();
+            });
+        });
+        it('Insert 2 columns before B and C should inherit all borders', (done: Function) => {
+            const spreadsheet: Spreadsheet = helper.getInstance();
+            spreadsheet.selectRange('B1:C17');
+            helper.setAnimationToNone('#' + helper.id + '_contextmenu');
+            helper.openAndClickCMenuItem(0, 1, [6, 1], false, true);
+            setTimeout(() => {
+                expect(spreadsheet.sheets[0].rows[0].cells[1].value).toBeUndefined();
+                expect(spreadsheet.sheets[0].rows[0].cells[1].style.borderTop).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[0].cells[1].style.borderBottom).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[0].cells[1].style.borderLeft).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[0].cells[1].style.borderRight).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[0].cells[2].value).toBeUndefined();
+                expect(spreadsheet.sheets[0].rows[0].cells[2].style.borderTop).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[0].cells[2].style.borderBottom).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[0].cells[2].style.borderLeft).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[0].cells[2].style.borderRight).toBe('1px solid #000000');
+                helper.click('#spreadsheet_undo');
+                expect(spreadsheet.sheets[0].rows[0].cells[1].value).toBe('Date');
+                expect(spreadsheet.sheets[0].rows[0].cells[2].value).toBe('Time');
+                helper.click('#spreadsheet_redo');
+                expect(spreadsheet.sheets[0].rows[0].cells[1].value).toBeUndefined();
+                expect(spreadsheet.sheets[0].rows[0].cells[1].style.borderTop).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[0].cells[1].style.borderBottom).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[0].cells[1].style.borderLeft).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[0].cells[1].style.borderRight).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[0].cells[2].value).toBeUndefined();
+                expect(spreadsheet.sheets[0].rows[0].cells[2].style.borderTop).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[0].cells[2].style.borderBottom).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[0].cells[2].style.borderLeft).toBe('1px solid #000000');
+                expect(spreadsheet.sheets[0].rows[0].cells[2].style.borderRight).toBe('1px solid #000000');
+                done();
+            });
+        });
+    });
     describe('UI_Interaction for Delete with Image', () => {
         beforeAll((done: Function) => {
             helper.initializeSpreadsheet({ sheets: [{ ranges: [{ dataSource: defaultData }] }] }, done);
@@ -2464,6 +2643,7 @@ describe('Insert & Delete ->', () => {
             beforeEach((done: Function) => {
                 helper.initializeSpreadsheet({
                     sheets: [{ ranges: [{ dataSource: defaultData }] }],
+                    showCommentsPane: true,
                     created: (): void => {
                         const spreadsheet: Spreadsheet = helper.getInstance();
                         for (var i = 0; i < 3; i++) {
@@ -2479,6 +2659,7 @@ describe('Insert & Delete ->', () => {
                 helper.invoke('destroy');
             });
             it('Row model is not updated while inserting the new sheet using insertSheet Method->', (done: Function) => {
+                expect(helper.getInstance().showCommentsPane).toBe(true);
                 setTimeout(() => {
                     const spreadsheet: Spreadsheet = helper.getInstance();
                     expect(spreadsheet.sheets[1].rows).not.toBeUndefined();

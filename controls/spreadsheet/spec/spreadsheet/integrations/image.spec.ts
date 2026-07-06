@@ -23,6 +23,7 @@ describe('Image ->', () => {
             expect(image.width).toBe(110);
             expect(image.top).toBe(40);
             expect(image.left).toBe(192);
+            expect(() => { helper.invoke('insertImage'); }).not.toThrow();
             const imageOverlay: HTMLElement = helper.getElementFromSpreadsheet('#' + image.id);
             expect(imageOverlay.style.backgroundImage).toBe('url("https://www.w3schools.com/images/w3schools_green.jpg")');
             done();
@@ -916,15 +917,15 @@ describe('Image ->', () => {
         it('should import multiple images with correct position mapping', (done: Function) => {
             const json: object = {
                 Workbook: { sheets: [{ columns: [{ width: 25 }, { width: 23 }, { width: 26 }], rows: [
-                    { index: 3, height: 16.77777779, cells: [{ value: 'A4' }] }, { height: 13, cells: [{ value: 'A5' },] },
-                    { height: 16.77777779, cells: [{ value: 'A6' }] }, { height: 16.77777779, cells: [{ value: 'A7' }] },
-                    { height: 16.77777779, cells: [{ value: 'A8' }] }, { height: 7.77777779, cells: [{ value: 'A9' }] },
-                    { height: 16.77777779, cells: [{ value: 'A20' }] }, { height: 5.77777779, cells: [{ value: 'A11' }, { value: 'B11', style: {borderBottom: '3px solid rgb(0, 0, 0)' }}] },
-                    { index: 34, height: 16.77777779, cells: [{ value: '' }] }, { index: 44, height: 16.77777779, cells: [{ value: 'A' }] }],
-                    imageColl: [{address: [0,0], src: 'https://www.w3schools.com/images/w3schools_green.jpg', height: 41, width: 42, top: 4.6, left: 9.6, preservePos: true },
-                    { address: [34,0], src: 'https://www.w3schools.com/images/w3schools_green.jpg', height: 41, width: 42, top: 615, left: 9.6, preservePos: true },
-                    { address: [44,0], src: 'https://www.w3schools.com/images/w3schools_green.jpg', height: 41, width: 42, top: 802, left: 9.6, preservePos: true },
-                    { address: [68, 0], src: 'https://www.w3schools.com/images/w3schools_green.jpg', height: 41, width: 42, top: 123, left: 9.6, preservePos: true }], standardHeight: 19.2, }]}
+                        { index: 3, height: 16.77777779, cells: [{ value: 'A4' }] }, { height: 13, cells: [{ value: 'A5' },] },
+                        { height: 16.77777779, cells: [{ value: 'A6' }] }, { height: 16.77777779, cells: [{ value: 'A7' }] },
+                        { height: 16.77777779, cells: [{ value: 'A8' }] }, { height: 7.77777779, cells: [{ value: 'A9' }] },
+                        { height: 16.77777779, cells: [{ value: 'A20' }] }, { height: 5.77777779, cells: [{ value: 'A11' }, { value: 'B11', style: { borderBottom: '3px solid rgb(0, 0, 0)' } }] },
+                        { index: 34, height: 16.77777779, cells: [{ value: '' }] }, { index: 44, height: 16.77777779, cells: [{ value: 'A' }] }],
+                        imageColl: [{ address: [0, 0], src: 'https://www.w3schools.com/images/w3schools_green.jpg', height: 41, width: 42, top: 4.6, left: 9.6, preservePos: true },
+                        { address: [34, 0], src: 'https://www.w3schools.com/images/w3schools_green.jpg', height: 41, width: 42, top: 615, left: 9.6, preservePos: true },
+                        { address: [44, 0], src: 'https://www.w3schools.com/images/w3schools_green.jpg', height: 41, width: 42, top: 802, left: 9.6, preservePos: true },
+                        { address: [68, 0], src: 'https://www.w3schools.com/images/w3schools_green.jpg', height: 41, width: 42, top: 123, left: 9.6, preservePos: true }], standardHeight: 19.2,}]}
             };
             helper.getInstance().openFromJson({ file: json });
             setTimeout(() => {

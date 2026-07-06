@@ -1,4 +1,4 @@
-import { createElement, isNullOrUndefined as isNOU, detach, addClass, Browser } from '@syncfusion/ej2-base';
+import { createElement, isNullOrUndefined as isNOU, detach, addClass, Browser, setStyleAttribute } from '@syncfusion/ej2-base';
 import { ClipboardCleanupModule } from './clipboard-cleanup';
 
 /**
@@ -696,7 +696,9 @@ export class WordListConverter {
         for (let i: number = 0; i < listIgnoreTags.length; i++) {
             const tag: Element = listIgnoreTags[i as number];
             const style: string = tag.getAttribute('style').replace(/\n/g, '');
-            tag.setAttribute('style', style);
+            // Parse style string into key-value pairs and use setStyleAttribute to preserve mso-list
+            const styleObj: { [key: string]: string } = this.parseStyleString(style);
+            setStyleAttribute(tag as HTMLElement, styleObj);
         }
     }
 
@@ -707,7 +709,9 @@ export class WordListConverter {
             let style: string = listOrderCleanup.getAttribute('style');
             if (style) {
                 style = style.replace(/\s*:\s*/g, ':');
-                listOrderCleanup.setAttribute('style', style);
+                // Parse style string into key-value pairs and use setStyleAttribute to preserve mso-list
+                const styleObj: { [key: string]: string } = this.parseStyleString(style);
+                setStyleAttribute(listOrderCleanup as HTMLElement, styleObj);
             }
         }
         return firstChild.querySelector('span[style="mso-list:Ignore"]');
@@ -743,4 +747,28 @@ export class WordListConverter {
         return textContent;
     }
 
+    /* Parses style string into key-value pairs */
+    private parseStyleString(style: string): { [key: string]: string } {
+        const styleObj: { [key: string]: string } = {};
+        if (!style) {
+            return styleObj;
+        }
+        // Split by semicolon to get individual style declarations
+        const declarations: string[] = style.split(';');
+        for (let i: number = 0; i < declarations.length; i++) {
+            const declaration: string = declarations[i as number].trim();
+            if (declaration) {
+                // Split by colon to get property and value
+                const colonIndex: number = declaration.indexOf(':');
+                if (colonIndex > -1) {
+                    const property: string = declaration.substring(0, colonIndex).trim();
+                    const value: string = declaration.substring(colonIndex + 1).trim();
+                    if (property && value) {
+                        styleObj[`${property}`] = value;
+                    }
+                }
+            }
+        }
+        return styleObj;
+    }
 }

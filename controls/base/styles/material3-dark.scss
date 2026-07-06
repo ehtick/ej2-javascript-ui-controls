@@ -1,3 +1,4 @@
-@use 'ej2-icons/styles/material3' as *;
-@forward 'material3-dark-definition';
-@use 'all.material3-dark' as *;
+@use '@syncfusion/ej2-icons/styles/material3.scss' as *;
+@use 'material3-dark-definition' as *;
+@use './common/all' as *;
+@use './animation/all' as *;

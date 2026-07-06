@@ -68,6 +68,10 @@ export const enableToolbarItems: string = 'enableToolbarItems';
 /** @hidden */
 export const tabSwitch: string = 'tabSwitch';
 /** @hidden */
+export const showAIAssistPane: string = 'showAIAssistPane';
+/** @hidden */
+export const executePrompt: string = 'executePrompt';
+/** @hidden */
 export const selectRange: string = 'selectRange';
 /** @hidden */
 export const rangeSelectionByKeydown: string = 'rangeSelectionByKeydown';
@@ -297,6 +301,8 @@ export const forRefSelRender: string = 'forRefSelRender';
 export const insertImage: string = 'insertImage';
 /** @hidden */
 export const refreshOverlayElem: string = 'refreshOverlayElem';
+/** @hidden */
+export const renderSidePanel: string = 'renderSidePanel';
 /** @hidden */
 export const refreshImgCellObj: string = 'refreshImgCellObj';
 /** @hidden */

@@ -1,4 +1,4 @@
-@use 'ej2-base/styles/common/mixin' as *;
+@use 'variables' as *;
 @include export-module('blockeditor-layout') {
 
   /* ======== Main Editor ======== */
@@ -523,6 +523,7 @@
         padding-left: calc(0px + var(--block-indent) * 1px);
         .e-block-content {
           overflow-wrap: anywhere;
+          white-space: normal;
         }
       }
     }
@@ -701,6 +702,78 @@
       opacity: .5;
       z-index: 1000;
       border-radius: $be-selection-overlay-border-radius;
+    }
+
+    /* ======== Collaborative cursor overlay styles ======== */
+    .e-be-sel-highlight {
+      position: absolute;
+      border-radius: 2px;
+      pointer-events: none;
+    }
+
+    .e-be-cursor-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 9999;
+      overflow: visible;
+
+      .e-be-cursor {
+        position: absolute;
+        width: 0;
+        overflow: visible;
+        pointer-events: none;
+      }
+
+      /* 2 px bar. height and background are set inline (runtime-computed). */
+      .e-be-cursor-line {
+        position: absolute;
+        left: -1px;
+        top: 0;
+        width: 2px;
+        border-radius: 1px;
+      }
+
+      .e-be-cursor-head {
+        position: absolute;
+        left: -4px;
+
+        /* -(dot-size/2) centres 8px dot */
+        top: -10px;
+
+        /* -(dot-size + 2) dot bottom flush with line top */
+        display: flex;
+        align-items: center;
+        cursor: default;
+        pointer-events: auto;
+      }
+
+      .e-be-cursor-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+
+      /* Name label (hidden by default). Background is set inline (user colour). */
+      .e-be-cursor-label {
+        max-width: 0;
+        opacity: 0;
+        overflow: hidden;
+        white-space: nowrap;
+        font-size: 11px;
+        padding: 0;
+        user-select: none;
+        pointer-events: none;
+        border-radius: 10px;
+        transition: $be-cursor-label-transition;
+      }
+
+      .e-be-cursor-label.e-active {
+        max-width: 200px;
+        opacity: 1;
+        padding: 1px 6px 1px 4px;
+      }
     }
 
     /* ======== RTL Styles ======== */
@@ -963,6 +1036,27 @@
     }
 
     /* ======== Inline toolbar Transform item popup styles ======== */
+    .e-transform-item-template {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      .e-transform-icon-info {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+    }
+
+    .e-transform-item-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-grow: 1;
+    }
+  }
+
+  /* ======== Blazor specific Transform item popup styles ======== */
+  .e-blockeditor-command-menu.e-be-transform {
     .e-transform-item-template {
       display: flex;
       align-items: center;

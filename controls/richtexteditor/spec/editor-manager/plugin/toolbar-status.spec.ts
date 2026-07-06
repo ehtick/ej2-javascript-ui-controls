@@ -182,7 +182,7 @@ describe('Update Toolbar commands', () => {
         domSelection.setSelectionText(document, node.childNodes[0], node.childNodes[0], 5, 5);
         let format: IToolbarStatus = ToolbarStatus.get(document, parentDiv, ['p'], ['8pt'], ['Arial']);
         expect(format.fontname).toEqual(null);
-        expect(format.fontcolor).toEqual('rgb(0, 0, 0)');
+        expect(format.fontcolor).toEqual(null);
     });
     it('Check single font name tag with specfic correct family', () => {
         let node: Node = document.getElementById('name31');
@@ -203,7 +203,7 @@ describe('Update Toolbar commands', () => {
         domSelection.setSelectionText(document, node.childNodes[0], node.childNodes[0], 5, 5);
         let format: IToolbarStatus = ToolbarStatus.get(document, parentDiv, ['p'], ['10pt'], ['Arial']);
         expect(format.fontsize).toEqual(null);
-        expect(format.fontcolor).toEqual('rgb(0, 0, 0)');
+        expect(format.fontcolor).toEqual(null);
     });
     it('Check single font size tag with specfic coorect size', () => {
         let node: Node = document.getElementById('size31');
@@ -337,7 +337,7 @@ describe('EJ2-61863 - Font-family value property as case-sensitive', () => {
         domSelection.setSelectionText(document, node.childNodes[0], node.childNodes[0], 5, 5);
         let format: IToolbarStatus = ToolbarStatus.get(document, parentDiv, ['p'], ['8pt'], ['arial,sans-serif']);
         expect(format.fontname).toEqual('arial,sans-serif');
-        expect(format.fontcolor).toEqual('rgb(0, 0, 0)');
+        expect(format.fontcolor).toEqual(null);
     });
 });
 

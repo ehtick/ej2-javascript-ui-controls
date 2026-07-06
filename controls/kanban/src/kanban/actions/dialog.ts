@@ -367,6 +367,16 @@ export class KanbanDialog {
                             this.cardData[this.parent.cardSettings.contentField] =
                                 SanitizeHtmlHelper.sanitize(this.cardData[this.parent.cardSettings.contentField]);
                         }
+                        const fields: DialogFieldsModel[] = this.parent.dialogSettings.fields;
+                        fields.forEach((field: DialogFieldsModel) => {
+                            if (field.type === 'TextArea') {
+                                const key: string = field.key;
+                                const value: string = this.cardData[key as string];
+                                if (value) {
+                                    this.cardData[key as string] = SanitizeHtmlHelper.sanitize(value);
+                                }
+                            }
+                        });
                     }
                     this.parent.crudModule.updateCard(this.cardData, updateIndex);
                 }

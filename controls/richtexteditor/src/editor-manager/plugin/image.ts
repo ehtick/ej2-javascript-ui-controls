@@ -301,6 +301,7 @@ export class ImageCommand {
                 detach(closest(e.item.selectNode[0], '.e-img-caption-container'));
             } else {
                 const imgParentElem: HTMLElement = e.item.selectNode[0].parentElement;
+                this.removeNbspAfterImage(e.item.selectNode[0] as HTMLElement);
                 detach(e.item.selectNode[0]);
                 if (imgParentElem.childNodes.length === 0) {
                     imgParentElem.appendChild(document.createElement('br'));
@@ -328,6 +329,21 @@ export class ImageCommand {
             }
         }
         this.callBack(e);
+    }
+    private removeNbspAfterImage(imgElem: HTMLElement): void {
+        if (isNOU(imgElem) || imgElem.tagName !== 'IMG') {
+            return;
+        }
+        const nextSibling: ChildNode = imgElem.nextSibling as ChildNode;
+        if (!isNOU(nextSibling) && nextSibling.nodeType === Node.TEXT_NODE &&
+            nextSibling.textContent.charAt(0) === '\u00A0') {
+            const trimmedText: string = nextSibling.textContent.substring(1);
+            if (trimmedText.length === 0) {
+                detach(nextSibling as HTMLElement);
+            } else {
+                nextSibling.textContent = trimmedText;
+            }
+        }
     }
     private insertAltTextImage(e: IHtmlItem): void {
         (e.item.selectNode[0] as HTMLElement).setAttribute('alt', e.item.altText);

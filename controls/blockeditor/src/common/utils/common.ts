@@ -393,3 +393,34 @@ export function getRandomNumber(): number {
     window.crypto.getRandomValues(array);
     return array[0] / (0xFFFFFFFF + 1);
 }
+
+/**
+ * Checks if a source string is a base64 data URL.
+ *
+ * @param {string} src - The image source to check.
+ * @returns {boolean} True if the source is a base64 data URL.
+ * @hidden
+ */
+export function isBase64DataUrl(src: string): boolean {
+    if (!src || typeof src !== 'string') { return false; }
+    return src.startsWith('data:image/');
+}
+
+/**
+ * Converting the base64 url to blob
+ *
+ * @param {string} dataUrl - specifies the string value
+ * @returns {Blob} - returns the blob
+ * @hidden
+ */
+export function convertToBlob(dataUrl: string): Blob {
+    const arr: string[] = dataUrl.split(',');
+    const mime: string = arr[0].match(/:(.*?);/)[1];
+    const bstr: string = atob(arr[1]);
+    let n: number = bstr.length;
+    const u8arr: Uint8Array = new Uint8Array(n);
+    while (n--) {
+        u8arr[n as number] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+}

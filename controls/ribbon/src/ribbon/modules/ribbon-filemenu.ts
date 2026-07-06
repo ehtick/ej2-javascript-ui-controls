@@ -84,6 +84,13 @@ export class RibbonFileMenu {
         if (!isOpen && args.event && (args.event.target as HTMLElement).closest('.e-ribbon-menu')) {
             args.cancel = true;
         }
+        if (isOpen && this.fileMenuDDB && this.fileMenuDDB.dropDown) {
+            const target: HTMLElement = this.parent.getAppendToElement();
+            const popupEl: HTMLElement = this.fileMenuDDB.dropDown.element;
+            if (popupEl && !target.contains(popupEl)) {
+                target.appendChild(popupEl);
+            }
+        }
         const event: EmitType<FileMenuBeforeOpenCloseEventArgs> = isOpen ? this.parent.fileMenu.beforeOpen :
             this.parent.fileMenu.beforeClose;
         if (event) {
@@ -142,6 +149,13 @@ export class RibbonFileMenu {
         }, this);
     }
     private menuBeforeEvent(isOpen: boolean, args: BeforeMenuArgs): void {
+        if (isOpen) {
+            const target: HTMLElement = this.parent.getAppendToElement();
+            const popup: HTMLElement = args.element && (args.element.closest('.e-popup') as HTMLElement);
+            if (popup && !target.contains(popup)) {
+                target.appendChild(popup);
+            }
+        }
         const event: EmitType<FileMenuBeforeOpenCloseEventArgs> = isOpen ? this.parent.fileMenu.beforeOpen :
             this.parent.fileMenu.beforeClose;
         if (event) {

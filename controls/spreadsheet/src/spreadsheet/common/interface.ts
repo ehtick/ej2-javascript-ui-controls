@@ -1,9 +1,9 @@
-import { CellModel, BeforeSortEventArgs, SheetModel, ImageModel, ChartType, ConditionalFormatModel, AutoFillDirection, AutoFillType, ChartModel, MarkerSettingsModel, DataLabelSettingsModel, LegendSettingsModel, AxisModel, ColumnModel, ExtendedThreadedCommentModel } from './../../workbook/index';
+import { CellModel, BeforeSortEventArgs, SheetModel, ImageModel, ChartType, ConditionalFormatModel, AutoFillDirection, AutoFillType, ChartModel, MarkerSettingsModel, DataLabelSettingsModel, LegendSettingsModel, AxisModel, ColumnModel, ExtendedThreadedCommentModel, NumberFormatType } from './../../workbook/index';
 import { ValidationType, ValidationOperator, MergeArgs, InsertDeleteEventArgs, HyperlinkModel } from './../../workbook/index';
-import { Spreadsheet, RefreshType } from '../index';
+import { Spreadsheet, RefreshType, AssistAction, AIAssist } from '../index';
 import { MenuEventArgs } from '@syncfusion/ej2-navigations';
 import { BaseEventArgs, KeyboardEventArgs } from '@syncfusion/ej2-base';
-import { ValidationModel, CellInfoEventArgs, CFColor, ChartTheme, CellStyleModel, WorkbookOpen, NoteModel } from './../../workbook/index';
+import { ValidationModel, CellInfoEventArgs, CFColor, ChartTheme, CellStyleModel, WorkbookOpen, NoteModel, RichTextModel } from './../../workbook/index';
 import { SortCollectionModel, WorkbookParseOptions, RowModel, ThreadedCommentModel, ExtendedNoteModel } from './../../workbook/index';
 import { PredicateModel } from '@syncfusion/ej2-grids';
 
@@ -333,6 +333,7 @@ export interface CellRenderArgs {
     rowHeight?: number;
     col?: ColumnModel;
     mergeBorderRows?: number[];
+    mergeBorderCols?: number[];
     visibleNotes?: ExtendedNoteModel[];
     prevCell?: HTMLTableCellElement;
     viewportTopIdx?: number;
@@ -380,8 +381,10 @@ export interface CellSaveEventArgs {
     address: string;
     /** Defines the formula. */
     formula?: string;
-    /** Defines the display text of the cell */
+    /** Defines the display text of the cell. */
     displayText?: string;
+    /** Defines the rich text segments for the cell. */
+    richText?: RichTextModel[];
     /** Defines the type of Event. */
     originalEvent?: MouseEvent & TouchEvent | KeyboardEventArgs;
     isSpill?: boolean;
@@ -449,6 +452,7 @@ export interface HideShowEventArgs {
     isUndo?: boolean;
     isRedo?: boolean;
     refreshUI?: boolean;
+    isSuspended?: boolean;
     sheetIndex?: number;
     hiddenIndexes?: number[];
 }
@@ -568,6 +572,7 @@ export interface PreviousCellDetails {
     validation?: CellValidationEventArgs;
     isReadOnly?: boolean;
     formattedText?: string;
+    richText?: RichTextModel[];
     copyCellValue?: string | number;
     autoFillText?: string | number;
     rowHeight?: number;
@@ -652,6 +657,7 @@ export interface ScrollEventArgs {
     skipColVirualScroll?: boolean;
 }
 
+
 /**
  * Interface for AutoFillEventArgs.
  */
@@ -723,4 +729,105 @@ export interface ExtendedPredicateModel extends PredicateModel {
 export interface ExtendedSpreadsheet extends Spreadsheet {
     renderTemplates?: (callback: Function) => void;
     filterModule?: { filterRange: Map<number, { range: number[] }>; };
+    aIAssistModule?: AIAssist;
 }
+
+/**
+ * Defines the event arguments for Spreadsheet AI assist prompt request.
+ */
+export interface PromptRequestEventArgs {
+    /**
+     * Specifies whether the prompt request should be cancelled.
+     */
+    cancel?: boolean;
+    /**
+     * Specifies the prompt details send to the AI service.
+     */
+    response?: string;
+    /**
+     * Specifies the text of the prompt request
+     */
+    prompt?: string;
+    /**
+     * Defines the request data.
+     */
+    requestData?: object;
+}
+
+/**
+ * Defines the event arguments for Spreadsheet AI assist prompt response.
+ */
+export interface PromptResponseEventArgs extends PromptRequestEventArgs {
+    /**
+     * Specifies the response text returned by the AI service.
+     */
+    response?: string;
+}
+
+export interface AnalyticalReport {
+    sections: { heading: string; content: string; }[];
+    kpis?: { name: string; value: string; formula?: string; }[];
+    topRows?: { row: number; values: { [key: string]: string | number | boolean }; }[];
+    visualSuggestions?: { chartType: string; range: string; reason?: string; }[];
+    formattingCommands?: AssistCommand[];
+    chartCommands?: AssistCommand[];
+    summary?: string;
+}
+
+export interface AssistCommand {
+    action: AssistAction;
+    message?: string;
+    args?: {
+        range?: string;
+        address?: string;
+        value?: string;
+        findValue?: string;
+        replaceValue?: string;
+        caseSensitive?: boolean;
+        exactMatch?: boolean;
+        formatting?: { [key: string]: string };
+        direction?: string;
+        type?: string;
+        cFColor?: string;
+        color?: string;
+        background?: string;
+        criteria?: string;
+        format?: NumberFormatType;
+        wrap?: boolean;
+        chartType?: string;
+        theme?: string;
+        title?: string;
+        isSeriesInRows?: boolean;
+        height?: number;
+        width?: number;
+        dvType?: string;
+        dvOperator?: string;
+        dvValue1?: string;
+        dvValue2?: string;
+        dvIgnoreBlank?: boolean;
+        dvInCellDropDown?: boolean;
+        isHighlighted?: boolean;
+        filterColumn?: string;
+        filterOperator?: string;
+        filterValue?: string;
+        clearFilter?: boolean;
+        sortColumn?: string;
+        sortOrder?: string;
+        sortContainsHeader?: boolean;
+        modelType?: string;
+        startIndex?: number;
+        endIndex?: number;
+        count?: number;
+        message?: string;
+        dataRange?: string;
+        fillRange?: string;
+        fillType?: string;
+        freezeType?: string;
+        row?: number;
+        column?: number;
+        reportStructure?: AnalyticalReport;
+        displayText?: string;
+        saveType?: string;
+    };
+}
+

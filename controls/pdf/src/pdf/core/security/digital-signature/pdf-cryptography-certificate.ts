@@ -16,10 +16,10 @@ import { _PdfBasicEncodingElement } from './asn1/basic-encoding-element';
 import { _isBasicEncodingElement } from './asn1/utils';
 import { _TagClassType } from './asn1/enumerator';
 import { _Sha1 } from '../encryptors/secureHash-algorithm1';
-import { _Sha256 } from '../encryptors/secureHash-algorithm256';
-import { _Sha384, _Sha512 } from '../encryptors/secureHash-algorithm512';
+//import { _Sha256 } from '../encryptors/secureHash-algorithm256';
+//import { _Sha384, _Sha512 } from '../encryptors/secureHash-algorithm512';
 import { _MD5 } from '../encryptors/messageDigest5';
-import { _RaceEvaluationMessageDigest } from '../encryptors/evaluation-digest';
+//import { _RaceEvaluationMessageDigest } from '../encryptors/evaluation-digest';
 import { _AdvancedEncryption128Cipher } from '../encryptors/advance-cipher';
 import { _CipherTwo, _NormalCipherFour } from '../encryptors/normal-cipher';
 import { _TripleDataEncryptionStandardCipher } from '../encryptors/encryption-cipher';
@@ -713,11 +713,11 @@ export class _PdfPublicKeyCryptographyCertificate {
         };
         const hashMap: any = { // eslint-disable-line
             sha1: { hash: (d: Uint8Array) => new _Sha1()._hash(d, 0, d.length), u: 20, v: 64 },
-            sha256: { hash: (d: Uint8Array) => new _Sha256()._hash(d, 0, d.length), u: 32, v: 64 },
-            sha384: { hash: (d: Uint8Array) => new _Sha384()._hash(d, 0, d.length), u: 48, v: 128 },
-            sha512: { hash: (d: Uint8Array) => new _Sha512()._hash(d, 0, d.length), u: 64, v: 128 },
-            md5: { hash: (d: Uint8Array) => new _MD5().hash(d, 0, d.length), u: 16, v: 64 },
-            ripemd160: { hash: (d: Uint8Array) => new _RaceEvaluationMessageDigest()._hash(d, 0, d.length), u: 20, v: 64 }
+            //  sha256: { hash: (d: Uint8Array) => new _Sha256()._hash(d, 0, d.length), u: 32, v: 64 },
+            //  sha384: { hash: (d: Uint8Array) => new _Sha384()._hash(d, 0, d.length), u: 48, v: 128 },
+            //  sha512: { hash: (d: Uint8Array) => new _Sha512()._hash(d, 0, d.length), u: 64, v: 128 },
+            md5: { hash: (d: Uint8Array) => new _MD5().hash(d, 0, d.length), u: 16, v: 64 }
+            // ripemd160: { hash: (d: Uint8Array) => new _RaceEvaluationMessageDigest()._hash(d, 0, d.length), u: 20, v: 64 }
         };
         if (!(oid in oidMap)) {
             throw new Error(`Unsupported oid: ${oid}`);
@@ -773,8 +773,6 @@ export class _PdfPublicKeyCryptographyCertificate {
             decrypted = decryptedDes;
             break;
         }
-        default:
-            throw new Error(`Unsupported cipher: ${algorithm.cipher}`);
         }
         return decrypted;
     }

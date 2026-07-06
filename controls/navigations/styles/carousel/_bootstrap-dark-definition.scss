@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/bootstrap-dark' as *;
-@forward 'ej2-base/styles/definition/bootstrap-dark';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $carousel-navigator-btn-bg: transparent !default;
 $carousel-navigator-btn-bg-hover: rgba($brand-primary-font, .4) !default;
 $carousel-navigator-icon-color: $brand-primary-font !default;

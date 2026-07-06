@@ -1,17 +1,92 @@
+/**
+ * Simple glyph flag: on curve point.
+ *
+ * @private
+ */
 const _onCurvePoint: number = 1 << 0;
+/**
+ * Simple glyph flag: X short vector (8 bit delta).
+ *
+ * @private
+ */
 const _xShortVector: number = 1 << 1;
+/**
+ * Simple glyph flag: Y short vector (8 bit delta).
+ *
+ * @private
+ */
 const _yShortVector: number = 1 << 2;
+/**
+ * Simple glyph flag: repeat next flag count.
+ *
+ * @private
+ */
 const _repeatFlag: number = 1 << 3;
+/**
+ * Simple glyph flag: X is same or positive .
+ *
+ * @private
+ */
 const _xOrPostiveXshortVector: number = 1 << 4;
+/**
+ * Simple glyph flag: Y is same or positive .
+ *
+ * @private
+ */
 const _yOrPostiveXshortVector: number = 1 << 5;
+/**
+ * Simple glyph flag: overlap simple (TT v1.8+).
+ *
+ * @private
+ */
 const _simpleOverlap: number = 1 << 6;
+/**
+ * Composite glyph flag: arguments are words (16 bit).
+ *
+ * @private
+ */
 const _words: number = 1 << 0;
+/**
+ * Composite glyph flag: arguments are (x,y) values.
+ *
+ * @private
+ */
 const _argsAreXYValues: number = 1 << 1;
+/**
+ * Composite glyph flag: scale (single).
+ *
+ * @private
+ */
 const _scale: number = 1 << 3;
+/**
+ * Composite glyph flag: more components follow.
+ *
+ * @private
+ */
 const _moreComponents: number = 1 << 5;
+/**
+ * Composite glyph flag: X/Y scale.
+ *
+ * @private
+ */
 const _xyScale: number = 1 << 6;
+/**
+ * Composite glyph flag: transform matrix.
+ *
+ * @private
+ */
 const _twoByTwo: number = 1 << 7;
+/**
+ * Composite glyph flag: has instructions.
+ *
+ * @private
+ */
 const _instructions: number = 1 << 8;
+/**
+ * TrueType 'glyf' table wrapper with read/write/scale helpers.
+ *
+ * @private
+ */
 export class _PdfGlyphTable {
     glyphs: _PdfGlyph[];
     constructor({
@@ -52,12 +127,24 @@ export class _PdfGlyphTable {
             prev = next;
         }
     }
+    /**
+     * Returns total padded byte size of all glyphs.
+     *
+     * @private
+     * @returns {number} returns the size of padded byte.
+     */
     _getSize(): number {
         return this.glyphs.reduce((a, g) => { //eslint-disable-line
             const size: number = g._getSize();
             return a + ((size + 3) & ~3);
         }, 0);
     }
+    /**
+     * Writes 'glyf' data and 'loca' offsets.
+     *
+     * @private
+     * @returns {void} nothing.
+     */
     _write(): {
         isLocationLong: boolean;
         loca: Uint8Array;
@@ -93,12 +180,24 @@ export class _PdfGlyphTable {
             data: new Uint8Array(glyfTable.buffer)
         };
     }
+    /**
+     * Scales each glyph by its corresponding factor.
+     *
+     * @private
+     * @param {number} factors factor .
+     * @returns {void} nothing.
+     */
     scale(factors: number[]): void {
         for (let i: number = 0, ii: number = this.glyphs.length; i < ii; i++) {
             this.glyphs[Number.parseInt(i.toString(), 10)]._scale(factors[Number.parseInt(i.toString(), 10)]);
         }
     }
 }
+/**
+ * Represents a TrueType glyph.
+ *
+ * @private
+ */
 export class _PdfGlyph {
     header: _GlyphHeader | null;
     simple: _SimpleGlyph | null;
@@ -138,6 +237,12 @@ export class _PdfGlyph {
         const simple: any = simpleGlyph.parse(pos, data, header.numberOfContours); //eslint-disable-line 
         return new _PdfGlyph({ header, simple });
     }
+    /**
+     * Returns byte size of this glyph.
+     *
+     * @private
+     * @returns {number} returns byte size as number.
+     */
     _getSize(): number {
         if (!this.header) {
             return 0;
@@ -147,6 +252,14 @@ export class _PdfGlyph {
             : this.composites!.reduce((a, c) => a + c.getSize(), 0); //eslint-disable-line 
         return this.header.getSize() + size;
     }
+    /**
+     * Writes this glyph to the provided buffer at pos.
+     *
+     * @private
+     * @param {number} pos position of the glyph.
+     * @param {any} buffer It represents the buffer at position.
+     * @returns {number} returns glyph as number.
+     */
     _write(pos: number, buffer: any): number { //eslint-disable-line
         if (!this.header) {
             return 0;
@@ -162,6 +275,13 @@ export class _PdfGlyph {
         }
         return pos - spos;
     }
+    /**
+     * Scales glyph horizontally around its center X.
+     *
+     * @private
+     * @param {number} factor for scaling the glyph.
+     * @returns {void} nothing.
+     */
     _scale(factor: number): void {
         if (!this.header) {
             return;
@@ -173,6 +293,11 @@ export class _PdfGlyph {
         }
     }
 }
+/**
+ * Glyph header: contour count and bounds.
+ *
+ * @private
+ */
 export class _GlyphHeader {
     numberOfContours: number;
     xMin: number;
@@ -225,6 +350,11 @@ export class _GlyphHeader {
         this.xMax = Math.round(x + (this.xMax - x) * factor);
     }
 }
+/**
+ * One closed contour with coordinates and point flags.
+ *
+ * @private
+ */
 export class _Contour {
     xCoordinates: number[];
     yCoordinates: number[];
@@ -235,6 +365,11 @@ export class _Contour {
         this.flags = flags;
     }
 }
+/**
+ * Simple glyph: contours + instructions.
+ *
+ * @private
+ */
 export class _SimpleGlyph {
     contours: _Contour[];
     instructions: Uint8Array;
@@ -459,6 +594,11 @@ export class _SimpleGlyph {
         }
     }
 }
+/**
+ * Composite glyph component.
+ *
+ * @private
+ */
 export  class _CompositeGlyph {
     flags: number;
     glyphIndex: number;

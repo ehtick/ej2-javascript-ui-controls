@@ -11,6 +11,7 @@ import { getUniqueRange, getSortRange, DefineName, selectionComplete, DefinedNam
 import { FormulaCalculateArgs, updateSheetFromDataSource, ExtendedRange, importModelUpdate } from '../common/index';
 import { formulaBarOperation } from '../../spreadsheet/common/event';
 import { locale } from '../../spreadsheet/common/constant';
+import { Spreadsheet } from '../../spreadsheet';
 
 /**
  * @hidden
@@ -1021,7 +1022,7 @@ export class WorkbookFormula {
         }
         const eventArgs: DefinedNameEventArgs = { name: definedName.name, scope: definedName.scope, comment: definedName.comment,
             refersTo: definedName.refersTo, cancel: false };
-        if (!isEventTrigger) {
+        if (!isEventTrigger && this.parent.paintSuspendCount === 0 ) {
             this.parent.notify('actionComplete', { eventArgs: eventArgs, action: 'addDefinedName' });
         }
         return isAdded;
@@ -1081,6 +1082,7 @@ export class WorkbookFormula {
         const deferred: Deferred = new Deferred();
         args.promise = deferred.promise;
         let dependentCells: { [key: string]: boolean };
+        const isSuspended: boolean = (this.parent as Spreadsheet).paintSuspendCount > 0;
         const initCalculate: () => void = (): void => {
             let family: CalcSheetFamilyItem; let token: string; let sheetId: string; let cellRef: string;
             const options: FormulaCalculateArgs = { isRefreshing: true, action: 'calculate' };
@@ -1121,7 +1123,13 @@ export class WorkbookFormula {
                 }
                 const sheet: SheetModel = this.parent.getActiveSheet();
                 if (sheet.conditionalFormats && sheet.conditionalFormats.length) {
-                    this.parent.notify(applyCF, { indexes: [], isAction: true, refreshAll: true, isEdit: true });
+                    if (isSuspended) {
+                        this.parent.queuePaintAction('applyCF', (): void => {
+                            this.parent.notify(applyCF, { indexes: [], isAction: true, refreshAll: true, isEdit: true });
+                        });
+                    } else {
+                        this.parent.notify(applyCF, { indexes: [], isAction: true, refreshAll: true, isEdit: true });
+                    }
                 }
             }
         };
@@ -1145,9 +1153,17 @@ export class WorkbookFormula {
         args.sheets.forEach((sheet: SheetModel): void => {
             if (sheet.ranges.some((range: ExtendedRange) => range.dataSource && (!range.info || !range.info.loadedRange ||
                 !range.info.loadedRange.length))) {
-                this.parent.notify(
-                    updateSheetFromDataSource, { sheet: sheet, autoDetectFormat: true, loadFromStartCell: true,
-                        updateDependentCellsCallback: getDependentCellsCheckFn(sheet), loadComplete: loadCompleteHandler });
+                if (isSuspended) {
+                    this.parent.queuePaintAction('updateSheetFromDataSource', (): void => {
+                        this.parent.notify(
+                            updateSheetFromDataSource, { sheet: sheet, autoDetectFormat: true, loadFromStartCell: true,
+                                updateDependentCellsCallback: getDependentCellsCheckFn(sheet), loadComplete: loadCompleteHandler });
+                    });
+                } else {
+                    this.parent.notify(
+                        updateSheetFromDataSource, { sheet: sheet, autoDetectFormat: true, loadFromStartCell: true,
+                            updateDependentCellsCallback: getDependentCellsCheckFn(sheet), loadComplete: loadCompleteHandler });
+                }
             } else {
                 loadCompleteHandler();
             }

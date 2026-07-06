@@ -36,6 +36,7 @@ export type AnnotationToolbarItem =
     'StampAnnotationTool' |
     'HandWrittenSignatureTool' |
     'InkAnnotationTool' |
+    'InkEraserTool' |
     'FreeTextAnnotationTool' |
     'FontFamilyAnnotationTool' |
     'FontSizeAnnotationTool' |

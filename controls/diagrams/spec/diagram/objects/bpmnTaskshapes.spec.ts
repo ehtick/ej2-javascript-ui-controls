@@ -196,6 +196,47 @@ describe('Diagram Control', () => {
             expect(diagram.nodes[0].visible).toBe(true);
             done();
         });
+
+        it('Service Task: compensation true->false should hide compensation marker (index 4)', (done: Function) => {
+            // node1 is a Service task (index 1), initially compensation: false
+            const shape = (diagram.nodes[1].shape as BpmnShapeModel);
+            // First enable compensation so the marker is visible
+            shape.activity.task.compensation = true;
+            diagram.dataBind();
+            const wrapper: Canvas = (diagram.nodes[1].wrapper.children[0] as Canvas).children[0] as Canvas;
+            // Service task has extra child at index 2 (_1_taskTypeService), so compensation is at index 4
+            expect(wrapper.children[4].visible).toBe(true);
+            // Now toggle compensation off — this was the failing path
+            shape.activity.task.compensation = false;
+            diagram.dataBind();
+            expect(wrapper.children[4].visible).toBe(false);
+            done();
+        });
+
+        it('Non-Service Task: compensation true->false should hide compensation marker (index 3)', (done: Function) => {
+            // node0 is a None-type task (index 0), initially compensation: false
+            const shape = (diagram.nodes[0].shape as BpmnShapeModel);
+            shape.activity.task.compensation = true;
+            diagram.dataBind();
+            const wrapper: Canvas = (diagram.nodes[0].wrapper.children[0] as Canvas).children[0] as Canvas;
+            expect(wrapper.children[3].visible).toBe(true);
+            // Toggle compensation off
+            shape.activity.task.compensation = false;
+            diagram.dataBind();
+            expect(wrapper.children[3].visible).toBe(false);
+            done();
+        });
+
+        it('Service Task: compensation false->true->false round-trip leaves marker hidden', (done: Function) => {
+            const shape = (diagram.nodes[1].shape as BpmnShapeModel);
+            shape.activity.task.compensation = true;
+            diagram.dataBind();
+            shape.activity.task.compensation = false;
+            diagram.dataBind();
+            const wrapper: Canvas = (diagram.nodes[1].wrapper.children[0] as Canvas).children[0] as Canvas;
+            expect(wrapper.children[4].visible).toBe(false);
+            done();
+        });
     });
 
 
@@ -473,5 +514,207 @@ describe('Diagram Control', () => {
         })
 
 
+    });
+
+    describe('BPMN-005: Loop & Iteration Markers - Canvas Mode Runtime Updates', () => {
+        let diagram: Diagram;
+        let ele: HTMLElement;
+
+        beforeAll((): void => {
+            const isDef = (o: any) => o !== undefined && o !== null;
+            if (!isDef(window.performance)) {
+                console.log("Unsupported environment, window.performance.memory is unavailable");
+                this.skip();
+                return;
+            }
+            ele = createElement('div', { id: 'diagramCanvasLoopTest' });
+            document.body.appendChild(ele);
+            
+            let loopTaskStandard: NodeModel = {
+                id: 'loopTaskStandard', width: 100, height: 60, offsetX: 200, offsetY: 100,
+                shape: {
+                    type: 'Bpmn', shape: 'Activity', activity: {
+                        activity: 'Task', task: {
+                            type: 'None',
+                            loop: 'Standard',
+                        }
+                    },
+                },
+            };
+
+            let loopTaskSequence: NodeModel = {
+                id: 'loopTaskSequence', width: 100, height: 60, offsetX: 400, offsetY: 100,
+                shape: {
+                    type: 'Bpmn', shape: 'Activity', activity: {
+                        activity: 'Task', task: {
+                            type: 'None',
+                            loop: 'SequenceMultiInstance',
+                        }
+                    },
+                },
+            };
+
+            let serviceTaskWithLoop: NodeModel = {
+                id: 'serviceTaskWithLoop', width: 100, height: 60, offsetX: 600, offsetY: 100,
+                shape: {
+                    type: 'Bpmn', shape: 'Activity', activity: {
+                        activity: 'Task', task: {
+                            type: 'Service',
+                            loop: 'ParallelMultiInstance',
+                        }
+                    },
+                },
+            };
+
+            diagram = new Diagram({
+                width: '100%',
+                height: 600,
+                mode: 'Canvas',
+                nodes: [loopTaskStandard, loopTaskSequence, serviceTaskWithLoop]
+            });
+            diagram.appendTo('#diagramCanvasLoopTest');
+        });
+
+        afterAll((): void => {
+            diagram.destroy();
+            ele.remove();
+        });
+
+        it('BPMN-005 Scenario 1: Standard loop - Runtime update loop property from Standard to None should not throw TypeError', (done: Function) => {
+            let node = diagram.nodes[0];
+            let shape = (node.shape as BpmnShapeModel);
+            
+            // Verify initial state
+            expect(shape.activity.task.loop).toBe('Standard');
+            
+            // This should NOT throw TypeError: Cannot read properties of null (reading 'parentNode')
+            // FAILS BEFORE FIX: because updateBPMNActivityTask calls document.getElementById() which returns null in Canvas mode
+            // PASSES AFTER FIX: because getElementById null-check prevents parentNode access error
+            expect(() => {
+                shape.activity.task.loop = 'None';
+                diagram.dataBind();
+            }).not.toThrow();
+            
+            expect(shape.activity.task.loop).toBe('None');
+            done();
+        });
+
+        it('BPMN-005 Scenario 2: SequenceMultiInstance loop - Runtime update loop property from SequenceMultiInstance to Standard should not throw TypeError', (done: Function) => {
+            let node = diagram.nodes[1];
+            let shape = (node.shape as BpmnShapeModel);
+            
+            expect(shape.activity.task.loop).toBe('SequenceMultiInstance');
+            
+            // FAILS BEFORE FIX: TypeError in updateBPMNActivityTaskLoop
+            // PASSES AFTER FIX: null-check prevents error
+            expect(() => {
+                shape.activity.task.loop = 'Standard';
+                diagram.dataBind();
+            }).not.toThrow();
+            
+            expect(shape.activity.task.loop).toBe('Standard');
+            done();
+        });
+
+        it('BPMN-005 Canvas Mode: Runtime task type change from Service to Send with loop should not throw TypeError', (done: Function) => {
+            let node = diagram.nodes[2];
+            let shape = (node.shape as BpmnShapeModel);
+            
+            expect(shape.activity.task.type).toBe('Service');
+            expect(shape.activity.task.loop).toBe('ParallelMultiInstance');
+            
+            // FAILS BEFORE FIX: TypeError in updateBPMNActivityTask at _1_taskTypeService removal
+            // PASSES AFTER FIX: null-checks on all three DOM removal operations prevent error
+            expect(() => {
+                shape.activity.task.type = 'Send';
+                diagram.dataBind();
+            }).not.toThrow();
+            
+            expect(shape.activity.task.type).toBe('Send');
+            done();
+        });
+    });
+
+    describe('BPMN Task Loop Marker Opacity Inheritance', () => {
+        let diagram: Diagram;
+        let ele: HTMLElement;
+
+        beforeAll((): void => {
+            const isDef = (o: any) => o !== undefined && o !== null;
+            if (!isDef(window.performance)) {
+                console.log("Unsupported environment, window.performance.memory is unavailable");
+                this.skip();
+                return;
+            }
+            ele = createElement('div', { id: 'diagramLoopOpacity' });
+            document.body.appendChild(ele);
+
+            let nodeStandardLoop: NodeModel = {
+                id: 'nodeStandardLoop', width: 100, height: 100, offsetX: 100, offsetY: 100,
+                style: { opacity: 0.5 },
+                shape: {
+                    type: 'Bpmn', shape: 'Activity', activity: {
+                        activity: 'Task', task: {
+                            type: 'None', loop: 'Standard',
+                        }
+                    },
+                },
+            };
+
+            let nodeSequenceMultiInstanceLoop: NodeModel = {
+                id: 'nodeSequenceLoop', width: 100, height: 100, offsetX: 300, offsetY: 100,
+                style: { opacity: 0.3 },
+                shape: {
+                    type: 'Bpmn', shape: 'Activity', activity: {
+                        activity: 'Task', task: {
+                            type: 'Service', loop: 'SequenceMultiInstance',
+                        }
+                    },
+                },
+            };
+
+            let nodeParallelMultiInstanceLoop: NodeModel = {
+                id: 'nodeParallelLoop', width: 100, height: 100, offsetX: 500, offsetY: 100,
+                style: { opacity: 0.7 },
+                shape: {
+                    type: 'Bpmn', shape: 'Activity', activity: {
+                        activity: 'Task', task: {
+                            type: 'Manual', loop: 'ParallelMultiInstance',
+                        }
+                    },
+                },
+            };
+
+            diagram = new Diagram({
+                width: 1500, height: 500, nodes: [nodeStandardLoop, nodeSequenceMultiInstanceLoop, nodeParallelMultiInstanceLoop]
+            });
+            diagram.appendTo('#diagramLoopOpacity');
+        });
+
+        afterAll((): void => {
+            diagram.destroy();
+            ele.remove();
+        });
+
+        it('Standard loop marker inherits parent node opacity 0.5', (done: Function) => {
+            let wrapper: Canvas = ((diagram.nodes[0] as NodeModel).wrapper.children[0] as Canvas).children[0] as Canvas;
+            let loopMarker = wrapper.children[2];
+            expect(loopMarker.style.opacity === 0.5 && loopMarker.visible === true).toBe(true);
+            done();
+        });
+
+        it('SequenceMultiInstance loop marker inherits parent node opacity 0.3', (done: Function) => {
+            let wrapper: Canvas = ((diagram.nodes[1] as NodeModel).wrapper.children[0] as Canvas).children[0] as Canvas;
+            let loopMarker = wrapper.children[2];
+            expect(loopMarker.style.opacity === 0.3 && loopMarker.visible === true).toBe(true);
+            done();
+        });
+
+        it('ParallelMultiInstance loop marker inherits parent node opacity 0.7', (done: Function) => {
+            let wrapper: Canvas = ((diagram.nodes[2] as NodeModel).wrapper.children[0] as Canvas).children[0] as Canvas;
+            let loopMarker = wrapper.children[2];
+            expect(loopMarker.style.opacity === 0.7 && loopMarker.visible === true).toBe(true);
+            done();
+        });
     });
 });

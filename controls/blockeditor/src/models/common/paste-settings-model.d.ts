@@ -10,6 +10,7 @@ export interface PasteCleanupSettingsModel {
      * This property holds an array of styles that can be applied to pasted content.
      *
      * @default ['font-weight', 'font-style', 'text-decoration', 'text-transform']
+     * @deprecated This property is deprecated
      */
     allowedStyles?: string[];
 

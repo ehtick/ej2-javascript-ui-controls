@@ -1,6 +1,6 @@
-@use 'ej2-base/styles/definition/fabric' as *;
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 @use '../document-editor/fabric-definition' as *;
-@forward 'ej2-base/styles/definition/fabric';
+
 @forward '../document-editor/fabric-definition';
 $de-title-bar-bg-clr: $theme-primary !default;
 $de-title-bar-font-clr: $neutral-white !default;
@@ -156,8 +156,8 @@ $de-ribbon-classic-editor-height-big: calc(100% - 205px) !default;
 $de-ctnr-layout-margin-bottom: 2px;
 $de-ctnr-picture-margin-bottom: 2px;
 
-$de-ribbon-simplified-ctnr-collapsed-editor-height: calc(100% - 50px) !default;
-$de-ribbon-classic-collapsed-editor-height: calc(100% - 52px) !default;
+$de-ribbon-simplified-ctnr-collapsed-editor-height: calc(100% - 83px) !default;
+$de-ribbon-classic-collapsed-editor-height: calc(100% - 77px) !default;
 
 // layout.scss
 $de-toolbar-line-height: 0;

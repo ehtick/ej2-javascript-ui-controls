@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/fabric' as *;
-@forward 'ej2-base/styles/definition/fabric';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $appbar-bg-color-primary: $theme-primary !default;
 $appbar-color-primary: $theme-primary-font !default;
 $appbar-border-color-primary: $theme-primary !default;

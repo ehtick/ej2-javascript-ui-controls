@@ -56,7 +56,16 @@ export class RibbonColorPicker {
                     colorPickerSettings.beforeClose.call(this);
                 }
             },
-            beforeOpen: colorPickerSettings.beforeOpen,
+            beforeOpen: (e: BeforeOpenCloseMenuEventArgs) => {
+                const target: HTMLElement = this.parent.getAppendToElement();
+                const splitBtn: SplitButton = colorPicker['splitBtn'] as SplitButton;
+                if (splitBtn && splitBtn.dropDown && !target.contains(splitBtn.dropDown.element)) {
+                    target.appendChild(splitBtn.dropDown.element);
+                }
+                if (colorPickerSettings.beforeOpen) {
+                    colorPickerSettings.beforeOpen.call(this, e);
+                }
+            },
             beforeTileRender: colorPickerSettings.beforeTileRender,
             created: colorPickerSettings.created,
             change: (e: ChangeEventArgs) => {
@@ -123,6 +132,16 @@ export class RibbonColorPicker {
             colorPickerObj.element.parentElement.classList.remove(RIBBON_POPUP_OPEN);
             if (item.colorPickerSettings.beforeClose) {
                 item.colorPickerSettings.beforeClose.call(this);
+            }
+        };
+        colorPickerObj.beforeOpen = (e: BeforeOpenCloseMenuEventArgs) => {
+            const target: HTMLElement = this.parent.getAppendToElement();
+            const splitBtn: SplitButton = colorPickerObj['splitBtn'] as SplitButton;
+            if (splitBtn && splitBtn.dropDown && !target.contains(splitBtn.dropDown.element)) {
+                target.appendChild(splitBtn.dropDown.element);
+            }
+            if (item.colorPickerSettings.beforeOpen) {
+                item.colorPickerSettings.beforeOpen.call(this, e);
             }
         };
         splitBtn.close = () => {

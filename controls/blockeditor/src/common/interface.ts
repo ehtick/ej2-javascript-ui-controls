@@ -10,10 +10,12 @@ import { BlockModel, LabelItemModel, StyleModel, UserModel, ContentModel, BlockP
 import { ContentType, BlockType } from '../models/enums';
 import { DeletionType } from '../common/enums';
 import { BlockService } from '../block-manager/services/block-service';
-import { BlockActionMenuModule, ContextMenuModule, InlineContentInsertionModule, InlineToolbarModule, SlashCommandModule } from '../blockeditor/renderer/index';
 import { SelectionDirection } from './types';
 import { ITableRowInsertOptions, ITableCellsClearOperation, ITableColumnInsertOptions, ITableCellsPasteOperation, IBulkRowsDeleteOperation, IBulkColumnsDeleteOperation, ITableHeaderInputOperation } from '../block-manager/base/interface';
 import { actionType } from './constant';
+import { InlineContentInsertionModule } from '../block-manager/plugins/inline/inline-content';
+import { BlockActionMenuModule, ContextMenuModule, SlashCommandModule } from '../block-manager/plugins/menus/index';
+import { InlineToolbarModule } from '../block-manager/actions/inline-toolbar';
 
 export interface BlockManagerModel {
     observer?: Observer
@@ -137,6 +139,8 @@ export interface ITransformBlockInteraction {
     shouldPreventUpdates?: boolean;
     preventEventTrigger?: boolean;
     oldBlockModel?: BlockModel;
+    indent?: number;
+    ignoreContentUpdateFromLiveDOM?: boolean;
 }
 
 /* Renderer Interfaces */
@@ -150,6 +154,7 @@ export interface IPopupRenderOptions {
     position?: PositionDataModel;
     offsetX?: number;
     offsetY?: number;
+    actionOnScroll?: 'reposition' | 'hide'
 }
 
 export interface IDropDownRenderOptions {
@@ -419,7 +424,8 @@ export interface RangePath {
     startOffset?: number;
     endContainer?: Node;
     endOffset?: number;
-    contentElement?: HTMLElement
+    contentElement?: HTMLElement;
+    rangeString?: string
 }
 
 export interface CommentRange {
@@ -560,11 +566,15 @@ export interface BeforePasteEventProps extends BeforePasteCleanupEventArgs, ICal
 
 export interface AfterPasteEventProps extends AfterPasteCleanupEventArgs, ICallbackData {}
 
-export interface BlockDatas extends BlockData {
+export interface InternalBlockData extends BlockData {
+    fromBlockIds?: string[];
+    toBlockId?: string;
     targetId?: string
     isAfter?: boolean
     isMovingUp?: boolean
 }
+
+export type InternalBlockDataKeys = keyof InternalBlockData;
 
 export interface IColorPickerRenderOptions {
     element: HTMLElement;
@@ -572,4 +582,10 @@ export interface IColorPickerRenderOptions {
     cssClass?: string;
     onChange?: (value: string) => void;
     iconCss?: string;
+}
+
+export interface ITriggerBlockChangeOptions {
+    block: BlockModel;
+    oldBlock: BlockModel;
+    preventTracking?: boolean;
 }

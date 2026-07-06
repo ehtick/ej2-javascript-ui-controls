@@ -1,7 +1,6 @@
-@use 'ej2-base/styles/common/mixin' as *;
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 @use 'definition' as *;
-@use 'ej2-base/styles/definition/highcontrast-light' as *;
-@forward 'ej2-base/styles/definition/highcontrast-light';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 
 $hc-theme-primary: rgb(0, 120, 215);
 $hc-theme-dark-font: #fff;

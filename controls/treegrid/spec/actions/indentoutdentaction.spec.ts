@@ -962,3 +962,38 @@ describe('TreeGrid Indent/Outdent with Collapse All Tests using Toolbar', () => 
     destroy(gridObj);
   });
 });
+
+describe('TreeGrid Indent/Outdent Tests using Toolbar', () => {
+  let gridObj: TreeGrid;
+  let actionComplete: () => void;
+  beforeAll((done: Function) => {
+    gridObj = createGrid({
+      dataSource: sampleData,
+      childMapping: 'subtasks',
+      treeColumnIndex: 1,
+      allowPaging: true,
+      toolbar: ['Indent', 'Outdent'],
+      columns: [
+        { field: 'taskID', headerText: 'Task ID',  width: 90, textAlign: 'Right' },
+        { field: 'taskName', headerText: 'Task Name', width: 180, textAlign: 'Left' },
+        { field: 'startDate', headerText: 'Start Date', width: 90, type: 'date', format: 'yMd' },
+        { field: 'duration', headerText: 'Duration', width: 80, textAlign: 'Right' }
+      ]
+    }, done);
+  });
+
+  it('should indent a child row using Toolbar', (done: Function) => {
+    gridObj.selectRow(2);
+    (<any>gridObj.grid.toolbarModule).toolbarClickHandler({
+      item: { id: gridObj.grid.element.id + '_indent' },
+    });
+    setTimeout(() => {
+      expect((gridObj.getCurrentViewRecords()[2] as any).taskName == "Plan budget").toBe(true);
+      done();
+    }, 50);
+  });
+
+  afterAll(() => {
+    destroy(gridObj);
+  });
+});

@@ -74,6 +74,14 @@ export class TableSelection {
         }
         const currentTable: HTMLTableElement = this.root.querySelector('.e-cell-select').closest('table') as HTMLTableElement;
         const cellSelectNode: NodeListOf<HTMLElement> = currentTable.querySelectorAll('.e-cell-select');
+        const singleCellNode: NodeListOf<HTMLElement> = currentTable.querySelectorAll('.e-multi-cells-select');
+        if (!isNOU(singleCellNode) && singleCellNode.length === 1) {
+            // Generate text nodes
+            for (let i: number = 0; i < cellSelectNode.length; i++) {
+                this.addTextNodes(cellSelectNode[i as number], textNodes);
+            }
+            return textNodes;
+        }
         if (isNOU(cellSelectNode) || cellSelectNode.length < 2) {
             return textNodes;
         }

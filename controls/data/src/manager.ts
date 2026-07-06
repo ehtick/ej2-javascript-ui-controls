@@ -835,30 +835,31 @@ export class DataManager {
         } catch (e) {
             record = [];
         }
-
-        if (this.isEnableCache) {
-            const requests: { action: string, keyColumn: string, key: number | string, value: object } = JSON.parse((<{ data: string }>request).data);
-            if (requests.action === 'insert' || requests.action === 'remove') {
-                const obj: Object = { keys: [], results: [] };
-                window.localStorage.setItem(this.guidId, JSON.stringify(obj));
-            } else if (requests.action === 'update') {
-                const cachedItems: DataResult = JSON.parse(window.localStorage.getItem(this.guidId));
-                const data: DataResult = cachedItems ? cachedItems.results[cachedItems.keys.indexOf(this.cacheQuery)] : null;
-                if (data && data.result) {
-                    let cacheData: Object[] = <[{ [key: string]: Object[] }]>data.result;
-                    for (let i: number = 0; i < cacheData.length; i++) {
-                        if (cacheData[i][requests.keyColumn] === requests.key) {
-                            cacheData[i] = requests.value;
-                            window.localStorage.setItem(this.guidId, JSON.stringify(cachedItems));
-                            break;
+        let promise: Promise<Object> = (<Promise<Object>>this.afterReponseRequest(record));
+        promise.then((record: Object) => {
+            if (this.isEnableCache) {
+                const requests: { action: string, keyColumn: string, key: number | string, value: object } = JSON.parse((<{ data: string }>request).data);
+                if (requests.action === 'insert' || requests.action === 'remove') {
+                    const obj: Object = { keys: [], results: [] };
+                    window.localStorage.setItem(this.guidId, JSON.stringify(obj));
+                } else if (requests.action === 'update') {
+                    const cachedItems: DataResult = JSON.parse(window.localStorage.getItem(this.guidId));
+                    const data: DataResult = cachedItems ? cachedItems.results[cachedItems.keys.indexOf(this.cacheQuery)] : null;
+                    if (data && data.result) {
+                        let cacheData: Object[] = <[{ [key: string]: Object[] }]>data.result;
+                        for (let i: number = 0; i < cacheData.length; i++) {
+                            if (cacheData[i][requests.keyColumn] === requests.key) {
+                                cacheData[i] = requests.value;
+                                window.localStorage.setItem(this.guidId, JSON.stringify(cachedItems));
+                                break;
+                            }
                         }
                     }
                 }
             }
-        }
-        
-        record = this.adaptor.processResponse(DataUtil.parse.parseJson(record), this, null, request.fetchRequest, request, changes);
-        this.fetchDeffered.resolve(record);
+            record = this.adaptor.processResponse(DataUtil.parse.parseJson(record), this, null, request.fetchRequest, request, changes);
+            this.fetchDeffered.resolve(record);
+        }).catch((e: Error) => this.dataManagerFailure(e, this.fetchDeffered));
     }
 
     private failureFunc (e: string): void  {

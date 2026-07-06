@@ -1963,6 +1963,10 @@ export function updateHyperlink(changedObject: HyperlinkModel, target: DiagramEl
                 break;    
         }
     }
+    if (!textElement.content && !hyperlink.link) {
+        textElement.content = actualAnnotation.content;
+        textElement.style.color = '';
+    }
 }
 /* eslint-enable */
 
@@ -3632,6 +3636,24 @@ export function getConnectorArrowType(data: FlowChartData){
             return { targetDecorator: 'None', strokeDashArray: '2,2' };
         case 'wiggly-arrow':
             return { targetDecorator: 'None', strokeWidth: 1, opacity: 0 };
+        // Task 5: Circle and cross edge terminators
+        case 'circle-endpoint':
+            return { targetDecorator: 'Circle', strokeWidth: 1 };
+        case 'circle-endpoints':
+            // Task 6: Bidirectional circle endpoints
+            return { targetDecorator: 'Circle', strokeWidth: 1 };
+        case 'cross-endpoint':
+            // Cross decorator with SVG path data forming an X shape (octagon that looks like X when small)
+            return { targetDecorator: 'Custom', strokeWidth: 1, pathData: 'M 4 0 L 6 0 L 10 4 L 10 6 L 6 10 L 4 10 L 0 6 L 0 4 Z' };
+        case 'cross-endpoints':
+            // Task 6: Bidirectional cross endpoints
+            return { targetDecorator: 'Custom', strokeWidth: 1, pathData: 'M 4 0 L 6 0 L 10 4 L 10 6 L 6 10 L 4 10 L 0 6 L 0 4 Z' };
+        case 'bidirectional':
+            // Task 6: Bidirectional single arrow (<-->)
+            return { targetDecorator: 'Arrow', strokeWidth: 1 };
+        case 'bidirectional-double-arrow':
+            // Task 6: Bidirectional double arrow (<==>) - should have double stroke width like ==>
+            return { targetDecorator: 'Arrow', strokeWidth: 2 };
         default:
             return { targetDecorator: 'Arrow', strokeWidth: 1 };
         }

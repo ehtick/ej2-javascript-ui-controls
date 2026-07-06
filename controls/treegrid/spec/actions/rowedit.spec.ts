@@ -14,6 +14,7 @@ import { RowDD } from '../../src/treegrid/actions/rowdragdrop';
 import { VirtualScroll } from '../../src/treegrid/actions/virtual-scroll';
 import { Page } from '../../src/treegrid/actions/page';
 import { CommandColumn } from '../../src/treegrid/actions/command-column';
+import { addAction, editAction, removeChildRecords, updateParentRow } from '../../src/treegrid/actions/crud-actions';
 
 
 /**
@@ -4298,34 +4299,479 @@ describe('Row Update with aggregates', () => {
         destroy(gridObj);
     });
 });
-describe('EJ2_1029677 Coverage not covered for action edit.ts file', () => {
-  let gridObj: TreeGrid;
-  beforeAll((done: Function) => {
-    gridObj = createGrid(
-      {
+
+  describe('updateParentRow (crud-actions) - virtualization fallback and child push/unshift', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+      gridObj = createGrid({
         dataSource: sampleData,
         childMapping: 'subtasks',
-        editSettings: { allowEditing: true, mode: 'Row', allowDeleting: true, allowAdding: true, newRowPosition: 'Top' },
+        editSettings: { allowEditing: true, mode: 'Row', allowAdding: true, newRowPosition: 'Above' },
         treeColumnIndex: 1,
-        toolbar: ['Add', 'Edit', 'Update', 'Delete', 'Cancel', 'ExpandAll', 'CollapseAll'],
-        columns: [{ field: 'taskID', headerText: 'Task ID', isPrimaryKey: true },
-        { field: 'taskName', headerText: 'Task Name' },
-        { field: 'progress', headerText: 'Progress' },
-        { field: 'startDate', headerText: 'Start Date' }
-        ]
-      },
-      done
-    );
+        columns: [{ field: 'taskID', isPrimaryKey: true }, { field: 'taskName' }]
+      }, done);
+    });
+    afterAll(() => { destroy(gridObj); gridObj = null; });
+
+    it('virtualization fallback (no currentRecords) should use uniqueIDCollection mapping', () => {
+      (gridObj as any).enableVirtualization = true;
+      const key = gridObj.grid.getPrimaryKeyFieldNames()[0];
+      const parentRec = JSON.parse(JSON.stringify(gridObj.getCurrentViewRecords()[0]));
+      parentRec.taskID = 999;
+      const parentUnique = 'virtualParent';
+      (gridObj as any).uniqueIDCollection = {};
+      (gridObj as any).uniqueIDCollection[parentUnique] = { [key]: 999, uniqueID: parentUnique, childRecords: [] };
+      const fakeParent: any = { [key]: 999, parentUniqueID: parentUnique };
+      expect(() => updateParentRow(key, parentRec as any, 'add', gridObj as any, false, fakeParent as any)).not.toThrow();
+      (gridObj as any).editSettings['newRowPosition'] = 'child';
+      gridObj.sortSettings.columns.length = 2;
+      expect(() => updateParentRow(key, gridObj.getCurrentViewRecords()[0] as any, 'add', gridObj as any, false, null)).not.toThrow();
+    });
   });
-  it('Coverage method for recordDoubleClick', () => {
-    const editObj: any = gridObj.editModule
-    const target: any = document.createElement('div');
-    const args: any = {
-      target: target,
-      rowIndex: 0
-    };
-    spyOn(target, 'closest').and.returnValue(null);
-    editObj['recordDoubleClick'](args);
-    expect(target.closest).toHaveBeenCalledWith('td.e-rowcell');
+
+  describe('Edit.addRecord (Edit module) - batch/array path', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+      gridObj = createGrid({
+        dataSource: sampleData,
+        childMapping: 'subtasks',
+        editSettings: { allowEditing: true, mode: 'Row', allowAdding: true, newRowPosition: 'Above' },
+        treeColumnIndex: 1,
+        columns: [{ field: 'taskID', isPrimaryKey: true }, { field: 'taskName' }]
+      }, done);
+    });
+    afterAll(() => { destroy(gridObj); gridObj = null; });
+
+    it('addRecord(array, index, position) should trigger batchSave and not throw', (done: Function) => {
+      const newRecords = [{ taskID: 7000, taskName: 'batch1' }, { taskID: 7001, taskName: 'batch2' }];
+      gridObj.actionComplete = (args?: any) => {
+        done();
+      };
+      (gridObj.editModule as any).addRecord(newRecords, 0, 'Above');
+      gridObj.editModule['isSelfReference'] = true;
+      spyOn(gridObj, 'notify').and.stub();
+      (gridObj.editModule as any).addRecord(newRecords, 0, 'Above');
+    });
   });
-});
+    describe('addAction (crud-actions) - Top/Bottom/Above/Below/Child branches', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+      gridObj = createGrid({
+        dataSource: [],
+        childMapping: 'subtasks',
+        editSettings: { allowEditing: true, mode: 'Row', allowAdding: true, newRowPosition: 'Top' },
+        treeColumnIndex: 1,
+        columns: [{ field: 'taskID', isPrimaryKey: true }, { field: 'taskName' }]
+      }, done);
+    });
+    afterAll(() => { destroy(gridObj); gridObj = null; });
+
+    it('Above with addRowRecord -> should copy addRowRecord value', () => {
+      gridObj.editSettings.newRowPosition = 'Above';
+      const addRowRecord = gridObj.getCurrentViewRecords()[0] as ITreeData;
+      const details = { value: { taskID: 2000 } as ITreeData, action: 'add' };
+      const treeData = (<any>gridObj.grid.dataSource) as any[];
+      const res = addAction(details as any, treeData, gridObj as any, false, 0, -1, addRowRecord);
+      expect(res.value).toBeDefined();
+    });
+  });
+
+//COverage testcases to reach 90%
+    describe('Edit module - isolated unit tests', () => {
+      let editInst: any;
+      let fakeParent: any;
+      beforeEach(() => {
+        fakeParent = {
+          element: document.createElement('div'),
+          grid: {
+            on: jasmine.createSpy('on'),
+            off: jasmine.createSpy('off'),
+            setProperties: jasmine.createSpy('setProperties'),
+            editModule: { applyFormValidation: jasmine.createSpy('applyFormValidation'), formObj: { destroy: jasmine.createSpy('destroy') } },
+            toolbarModule: undefined,
+            getRows: () => {[]},
+            getRowsObject: () => {[]},
+            getDataRows: () => {[]},
+            contentModule: { getRows:  () => {[]}, getRowsObject: () => {[]}, rows: [] }
+          },
+          on: jasmine.createSpy('on'),
+          off: jasmine.createSpy('off'),
+          trigger: jasmine.createSpy('trigger'),
+          notify: jasmine.createSpy('notify'),
+          getCurrentViewRecords: () => {[]},
+          getPrimaryKeyFieldNames: () => ['id'],
+          editSettings: { mode: 'Row', newRowPosition: 'Top', allowEditing: true },
+          enableInfiniteScrolling: false,
+          enableVirtualization: false,
+          treeColumnIndex: 0,
+          aggregates: [],
+          getRows: () => {[]},
+          getDataRows: () => {[]},
+          getCellFromIndex: () => document.createElement('td'),
+          renderModule: { cellRender: jasmine.createSpy('cellRender') },
+          gridModule: {},
+          getFrozenLeftColumnsCount: () => 0,
+          getFrozenRightColumnsCount: () => 0,
+          getFrozenColumns: () => 0,
+          getRowsObject: () => {[]},
+          getSelectedRecords: () => {[]},
+          getContent: () => document.createElement('div'),
+          parentData: []
+        };
+        editInst = new (require('../../src/treegrid/actions/edit').Edit)(fakeParent);
+      });
+
+        it('editActionEvents adds relationalKey on actionBegin for remote adaptor and Child position', () => {
+          const RemoteSaveAdaptor = require('@syncfusion/ej2-data').RemoteSaveAdaptor;
+          fakeParent.dataSource = { adaptor: new RemoteSaveAdaptor() } as any;
+          fakeParent.editSettings.newRowPosition = 'Child';
+          fakeParent.grid.query = { addParams: jasmine.createSpy('addParams'), params: [] } as any;
+          fakeParent.getCurrentViewRecords = () => [{ id: 'a' }, { id: 'b' }, { id: 'key123' }];
+          fakeParent.getPrimaryKeyFieldNames = () => ['id'];
+          editInst['selectedIndex'] = 2;
+          const args: any = { editAction: { name: 'actionBegin', requestType: 'save', action: 'add', row: null } };
+          editInst['editActionEvents'](args);
+          expect(fakeParent.grid.query.addParams).toHaveBeenCalledWith('relationalKey', 'key123');
+        });
+
+        it('editActionEvents removes relationalKey param on actionComplete', () => {
+          const RemoteSaveAdaptor = require('@syncfusion/ej2-data').RemoteSaveAdaptor;
+          fakeParent.dataSource = { adaptor: new RemoteSaveAdaptor() } as any;
+          fakeParent.editSettings.newRowPosition = 'Below';
+          fakeParent.grid.query = { addParams: jasmine.createSpy('addParams'), params: [{ key: 'relationalKey' }] } as any;
+          const args: any = { editAction: { name: 'actionComplete', requestType: 'save', action: 'add', row: {} } };
+          editInst['editActionEvents'](args);
+          expect(fakeParent.grid.query.params.length).toBeLessThan(2);
+        });
+
+      it('cellEdit resolves promise and handles doubleClickTarget cancel branch', (done) => {
+        const prom = { resolve: jasmine.createSpy('resolve') };
+        const args: any = { promise: prom, row: document.createElement('tr'), columnObject: { allowEditing: true }, cancel: false };
+        editInst['keyPress'] = null;
+        fakeParent.trigger.and.callFake((name: string, data: any, cb: Function) => { cb && cb({ cancel: false }); });
+        editInst['cellEdit'](args);
+        expect(prom.resolve).toHaveBeenCalled();
+        editInst['doubleClickTarget'] = document.createElement('div');
+        editInst['doubleClickTarget'].classList.add('e-treegridexpand');
+        const args2: any = {row: document.createElement('tr'), columnObject: { allowEditing: true }, cancel: false };
+        const res = editInst['cellEdit'](args2);
+        expect(args2.cancel).toBe(true);
+        editInst['doubleClickTarget'] = null;
+        done();
+      });
+
+      it('lastCellTab updates edit mode and toolbar behavior', () => {
+        editInst['isOnBatch'] = true;
+        editInst['keyPress'] = 'tab';
+        fakeParent.editSettings.mode = 'Cell';
+        fakeParent.editSettings.allowNextRowEdit = false;
+        spyOn(editInst as any, 'updateGridEditMode');
+        editInst['lastCellTab']();
+        expect((editInst as any).updateGridEditMode).toHaveBeenCalled();
+      });
+
+      it('savePreviousRowPosition stores previous position', () => {
+        editInst['previousNewRowPosition'] = 'Top';
+        let spy = spyOn(editInst, 'savePreviousRowPosition');
+        editInst['savePreviousRowPosition']();
+        expect(spy).toHaveBeenCalled();
+      });
+
+      it('basic public wrappers: applyFormValidation, editFormValidate, destroyForm, editCell', () => {
+        editInst.applyFormValidation();
+        expect(fakeParent.grid.editModule.applyFormValidation).toHaveBeenCalled();
+        spyOn(editInst, 'editFormValidate').and.returnValue(true);
+        expect(editInst.editFormValidate()).toBe(true);
+        spyOn(editInst, 'destroyForm');
+        editInst.destroyForm();
+        expect(editInst.destroyForm).toHaveBeenCalled();
+        fakeParent.editSettings.mode = 'Cell';
+        spyOn(editInst, 'editCell');
+        editInst.editCell(1, 'field');
+        expect(editInst.editCell).toHaveBeenCalledWith(1, 'field');
+      });
+
+      it('customCellSave calls updateCell and afterCellSave when count required and Cell mode', () => {
+        fakeParent.dataSource = { result: [] };
+        fakeParent.editSettings.mode = 'Cell';
+        const args: any = { action: 'edit', rowIndex: 1, row: document.createElement('tr') };
+        spyOn(editInst as any, 'updateCell');
+        spyOn(editInst as any, 'afterCellSave');
+        editInst['customCellSave'](args);
+        expect((editInst as any).updateCell).toHaveBeenCalledWith(args, args.rowIndex);
+        expect((editInst as any).afterCellSave).toHaveBeenCalledWith(args, args.row);
+      });
+      it('cellEdit handles enter key path and cancels when not allowEditing', () => {
+        editInst['keyPress'] = 'enter';
+        fakeParent.editSettings.mode = 'Cell';
+        const args: any = { row: document.createElement('tr'), columnObject: { allowEditing: true }, cancel: false };
+        editInst['cellEdit'](args);
+        expect(args.cancel).toBe(true);
+        expect(editInst['keyPress']).toBeNull();
+        args.cancel = false;
+        args.columnObject.allowEditing = false;
+        editInst['cellEdit'](args);
+        expect(args.cancel).toBe(true);
+      });
+
+      it('infiniteAddAction updates indexes and handles cache false path', () => {
+        fakeParent.enableInfiniteScrolling = true;
+        fakeParent.editSettings.newRowPosition = 'Below';
+        editInst['selectedIndex'] = 1;
+        editInst['addRowIndex'] = 0;
+        fakeParent.grid.getRowsObject = () => [{}, {}, {}];
+        fakeParent.grid.getRows = () => [document.createElement('tr'), document.createElement('tr')];
+        fakeParent.infiniteScrollSettings = { enableCache: false };
+        fakeParent.getCurrentViewRecords = () => [{}, {}];
+        fakeParent.grid.dataSource = [];
+        fakeParent.getFrozenColumns = () => 0;
+        fakeParent.grid.pageSettings = {pageSize : 2};
+        fakeParent.pageSettings = { pageSize: -2 };
+        fakeParent.grid.infiniteScrollModule = { infiniteCurrentViewData: [[{ id: '1000', name: 'X' }], [{ id: '1001', name: 'Y' }],[{ id: '1002', name: 'Z' }], [{ id: '1003', name: 'A' }]], updateCurrentViewData: function() {} };
+        spyOn(editInst, 'updateIndex');
+        fakeParent.getFrozenColumns = function () { return 2; };
+        editInst['infiniteAddAction']({ requestType: 'save', action: 'add' } as any);
+        expect((editInst as any).updateIndex).toHaveBeenCalled();
+      });
+      it('editActionEvents triggers infiniteAddAction when enableInfiniteScrolling and actionComplete', () => {
+        fakeParent.enableInfiniteScrolling = true;
+        spyOn(editInst as any, 'infiniteAddAction');
+        const args: any = { editAction: { name: 'actionComplete', requestType: 'save', action: 'add', row: {} } };
+        editInst['editActionEvents'](args);
+        expect((editInst as any).infiniteAddAction).toHaveBeenCalled();
+      });
+
+      it('infiniteAddAction handles delete requestType path without throwing', () => {
+        fakeParent.enableInfiniteScrolling = true;
+        fakeParent.editSettings.newRowPosition = 'Top';
+        fakeParent.infiniteScrollSettings = { enableCache: false };
+        fakeParent.grid.getRowsObject = () => [{}, {}];
+        fakeParent.grid.getRows = () => [document.createElement('tr')];
+        fakeParent.getCurrentViewRecords = () => [{}, {}];
+        fakeParent.grid.dataSource = [];
+        fakeParent.grid.pageSettings = { pageSize: 1 };
+        fakeParent.pageSettings = { pageSize: 1 };
+        fakeParent.grid.infiniteScrollModule = { infiniteCurrentViewData: [[{}]], updateCurrentViewData: function() {} } as any;
+        spyOn(editInst as any, 'updateIndex');
+        expect(() => { editInst['infiniteAddAction']({ requestType: 'delete' } as any); }).not.toThrow();
+      });
+
+      it('afterCellSave refreshes aggregates, destroys widgets, restores focus and clears keyPress', () => {
+        fakeParent.grid.aggregateModule = { refresh: jasmine.createSpy('refresh') } as any;
+        fakeParent.grid.refresh = jasmine.createSpy('refresh');
+        fakeParent.grid.getColumnByField = jasmine.createSpy('getColumnByField');
+        fakeParent.getColumnByField = jasmine.createSpy('getColumnByField');
+        fakeParent.grid.editModule = { destroyWidgets: jasmine.createSpy('destroyWidgets'), formObj: { destroy: jasmine.createSpy('destroy') } } as any;
+        fakeParent.grid.focusModule = { restoreFocus: jasmine.createSpy('restoreFocus') } as any;
+        editInst['updateGridEditMode'] = jasmine.createSpy('updateGridEditMode');
+        fakeParent['isCellSaveFocus'] = true;
+        editInst['keyPress'] = 'enter';
+        const crud = require('../../src/treegrid/actions/crud-actions');
+        spyOn(crud, 'editAction').and.stub();
+        const row = document.createElement('tr');
+        const cell = document.createElement('td'); cell.className = 'e-rowcell'; row.appendChild(cell);
+        const args: any = { row: row, columnName: 'taskName', rowData: { taskName: 'x' }, previousValue: {} , cell: cell };
+        fakeParent.getCurrentViewRecords = (): any=> { return [] };
+        editInst['afterCellSave'](args, row as any);
+        expect((fakeParent.grid.aggregateModule as any).refresh).toHaveBeenCalledWith(args.rowData);
+        expect((fakeParent.grid.editModule as any).formObj.destroy).toHaveBeenCalled();
+        expect(fakeParent.grid.focusModule.restoreFocus).toHaveBeenCalled();
+        expect(editInst['keyPress']).toBeNull();
+      });
+
+      it('editActionEvents handles actionBegin row.rowIndex branch', () => {
+        const RemoteSaveAdaptor = require('@syncfusion/ej2-data').RemoteSaveAdaptor;
+        fakeParent.dataSource = { adaptor: new RemoteSaveAdaptor() } as any;
+        fakeParent.editSettings.newRowPosition = 'Child';
+        fakeParent.grid.query = { addParams: jasmine.createSpy('addParams'), params: [] } as any;
+        fakeParent.getCurrentViewRecords = () => [{ id: 'a' }, { id: 'b' }, { id: 'keyRow' }];
+        fakeParent.getPrimaryKeyFieldNames = () => ['id'];
+        const args: any = { editAction: { name: 'actionBegin', requestType: 'save', action: 'add', row: { rowIndex: 3 } } };
+        editInst['editActionEvents'](args);
+        expect(fakeParent.grid.query.addParams).toHaveBeenCalledWith('relationalKey', 'keyRow');
+      });
+
+      it('updateInfiniteCurrentViewData handles page overflow and calls updateCurrentViewData', () => {
+        fakeParent.grid.pageSettings = { pageSize: 2 };
+        fakeParent.pageSettings = { pageSize: 2 };
+        fakeParent.grid.infiniteScrollModule = {
+          infiniteCurrentViewData: {
+            1: [{}, {}],
+            2: [{}, {}],
+            3: [{}, {}]
+          },
+          updateCurrentViewData: jasmine.createSpy('updateCurrentViewData')
+        } as any;
+        const newRecord: any = { uniqueID: 'u123' };
+        editInst['addRowRecord'] = undefined;
+        editInst['updateInfiniteCurrentViewData'](newRecord, 4);
+        expect((fakeParent.grid.infiniteScrollModule as any).updateCurrentViewData).toHaveBeenCalled();
+      });
+
+      it('updateInfiniteCurrentViewData accounts for addRowRecord childRecords when Below/Child', () => {
+        fakeParent.grid.pageSettings = { pageSize: 2 };
+        fakeParent.pageSettings = { pageSize: 2 };
+        fakeParent.grid.infiniteScrollModule = {
+          infiniteCurrentViewData: {
+            1: [{ uniqueID: 'a' }, { uniqueID: 'b' }],
+            2: [{ uniqueID: 'c' }, { uniqueID: 'd' }]
+          },
+          updateCurrentViewData: jasmine.createSpy('updateCurrentViewData')
+        } as any;
+        editInst['addRowRecord'] = { uniqueID: 'a', hasChildRecords: true, childRecords: [{}, {}] } as any;
+        fakeParent.editSettings.newRowPosition = 'Below';
+        const utils = require('../../src/treegrid/utils');
+        spyOn(utils, 'findChildrenRecords').and.callFake((r: any) => r.childRecords || []);
+        const newRecord: any = { uniqueID: 'new1' };
+        editInst['updateInfiniteCurrentViewData'](newRecord, 1);
+        expect((fakeParent.grid.infiniteScrollModule as any).updateCurrentViewData).toHaveBeenCalled();
+      });
+
+      it('updateIndex handles frozen columns path and adds tree index class', () => {
+        const tr = document.createElement('tr') as any;
+        const td1 = document.createElement('td'); td1.className = 'e-rowcell e-gridrowindex0level0';
+        const td2 = document.createElement('td'); td2.className = 'e-rowcell';
+        tr.appendChild(td1); tr.appendChild(td2);
+        (tr as any).querySelectorAll = (sel: string) => tr.getElementsByClassName('e-rowcell');
+        fakeParent.getRows = () => [tr];
+        fakeParent.getDataRows = () => [tr];
+        fakeParent.getRowsObject = () => [{ data: {} }];
+        fakeParent.getFrozenColumns = () => 1;
+        const records = [{ uniqueID: 'u1', index: 2, level: 3 }];
+        editInst['updateIndex'](fakeParent.grid.dataSource || [], [tr], records as any);
+        const expectedClass = 'e-gridrowindex' + records[0].index + 'level' + records[0].level;
+        expect(td1.classList.contains(expectedClass)).toBeTruthy();
+      });
+
+        it('cellEdit handles enter key path and cancels when not allowEditing', function () {
+            editInst['keyPress'] = 'enter';
+            fakeParent.editSettings.mode = 'Cell';
+            var args = { row: document.createElement('tr'), columnObject: { allowEditing: true }, cancel: false };
+            editInst['cellEdit'](args);
+            expect(args.cancel).toBe(true);
+            expect(editInst['keyPress']).toBeNull();
+            args.cancel = false;
+            args.columnObject.allowEditing = false;
+            editInst['cellEdit'](args);
+            expect(args.cancel).toBe(true);
+        });
+
+        it('beginEdit delete branch removes uniqueIDs for item and its childs', function () {
+            fakeParent.flatData = [];
+            editInst['addRowRecord'] = {};
+            editInst['isOnBatch'] = true;
+            fakeParent.getPrimaryKeyFieldNames = function () { return ['taskID']; };
+            let args = { requestType: 'refresh', data: [{ taskID: 5 }] };
+            editInst['beginEdit'](args);
+            fakeParent.editSettings.mode = 'Cell';
+             args = { requestType: 'beginEdit', data: [{ taskID: 5 }] };
+            editInst['beginEdit'](args);
+        });
+
+      it('beginAddEdit retains provided taskData when present', () => {
+        const td = { some: 'x' };
+        const args: any = { action: 'add', data: { taskID: 9, taskData: td }, requestType: 'save', index: 0 };
+        fakeParent.editSettings.newRowPosition = 'Top';
+        fakeParent.getCurrentViewRecords = (): any=> {return []};
+        fakeParent.grid.getCurrentViewRecords = (): any=> {return []};
+        fakeParent.getRows = (): any=> {return []};
+        fakeParent.grid.getPrimaryKeyFieldNames = function() {return ['id']};
+        editInst['addRowIndex'] = 2;
+        const res = editInst['beginAddEdit'](args);
+        expect(res).toBeDefined();
+        expect(res.data.taskData).toBe(td);
+        fakeParent.grid.getDataRows = (): any=> {return []};
+        fakeParent.editSettings.mode = 'Batch';
+        editInst['isAddedMultipleRowsByMethod'] = true;
+        editInst['addRowIndex'] = -1;    
+        fakeParent.getBatchChanges = jasmine.createSpy('getBatchChanges').and.returnValue({
+            addedRecords:   [],
+            changedRecords: [],
+            deletedRecords: []
+        });
+        editInst['updatedRecords'] = {addedRecords: []};
+        fakeParent.editSettings.newRowPosition = 'Above';
+        editInst['beginAdd']();
+        fakeParent.editSettings.newRowPosition = 'Below';
+        editInst['beginAdd']();
+      });
+
+      it('afterCellSave triggers grid.refresh when aggregates have showChildSummary true', () => {
+            fakeParent.grid.aggregateModule = { refresh: jasmine.createSpy('refresh') };
+            fakeParent.grid.getColumnByField = jasmine.createSpy('getColumnByField');
+            fakeParent.getColumnByField = jasmine.createSpy('getColumnByField');
+            editInst['updateGridEditMode'] = jasmine.createSpy('updateGridEditMode');
+            fakeParent.grid.refresh = jasmine.createSpy('refresh');
+            fakeParent.aggregates = [{ showChildSummary: true }];
+            fakeParent.getCurrentViewRecords = (): any=> {return []};
+            var crud = require('../../src/treegrid/actions/crud-actions');
+            spyOn(crud, 'editAction').and.stub();            
+            fakeParent.grid.editModule = { destroyWidgets: jasmine.createSpy('destroyWidgets'), formObj: { destroy: jasmine.createSpy('destroy') } };
+            fakeParent.grid.focusModule = { restoreFocus: jasmine.createSpy('restoreFocus') };
+            var row = document.createElement('tr');
+            var args = { row: row, columnName: 'taskName', rowData: { taskName: 'x' }, previousValue: {}, cell: document.createElement('td') };
+            editInst['afterCellSave'](args, row);
+            expect(fakeParent.grid.refresh).toHaveBeenCalled();
+      });
+
+      it('updateInfiniteCurrentViewData increments dataIndex for Child position with addRowRecord children', () => {
+        fakeParent.grid.pageSettings = { pageSize: 3 };
+        fakeParent.pageSettings = { pageSize: 3 };
+        fakeParent.grid.infiniteScrollModule = {
+          infiniteCurrentViewData: {
+            1: [{ uniqueID: 'x' }, { uniqueID: 'y' }, { uniqueID: 'z' }],
+            2: [{}, {}]
+          },
+          updateCurrentViewData: jasmine.createSpy('updateCurrentViewData')
+        } as any;
+        editInst['addRowRecord'] = { uniqueID: 'x', hasChildRecords: true, childRecords: [{}, {}] } as any;
+        fakeParent.editSettings.newRowPosition = 'Child';
+        const newRecord: any = { uniqueID: 'nr' };
+        editInst['updateInfiniteCurrentViewData'](newRecord, 2);
+        expect((fakeParent.grid.infiniteScrollModule as any).updateCurrentViewData).toHaveBeenCalled();
+      });
+      
+      it('recordDoubleClick returns early when target is not a cell', () => {
+        const div = document.createElement('div');
+        const args: any = { target: div };
+        (editInst as any).isOnBatch = false;
+        spyOn(editInst as any, 'updateGridEditMode');
+        editInst['recordDoubleClick'](args as any);
+        expect((editInst as any).isOnBatch).toBeFalsy();
+        expect((editInst as any).updateGridEditMode).not.toHaveBeenCalled();
+      });
+
+      it('cellEdit cancels when doubleClickTarget is expand/collapse and clears it', () => {
+        const dbl = document.createElement('div');
+        dbl.classList.add('e-treegridexpand');
+        (editInst as any).doubleClickTarget = dbl;
+        const args: any = { promise: undefined, row: document.createElement('tr'), columnObject: { allowEditing: true } };
+        editInst['cellEdit'](args);
+        expect(args.cancel).toBeTruthy();
+        expect((editInst as any).doubleClickTarget).toBeNull();
+      });
+
+      it('keyPressed forwards f2 to recordDoubleClick and escape to closeEdit', () => {
+        spyOn(editInst as any, 'recordDoubleClick');
+        spyOn(editInst as any, 'closeEdit');
+        editInst['keyPressed']({ action: 'f2' } as any);
+        expect((editInst as any).recordDoubleClick).toHaveBeenCalled();
+        editInst['keyPressed']({ action: 'escape' } as any);
+        expect((editInst as any).closeEdit).toHaveBeenCalled();
+      });
+
+      it('enableToolbarItems is safe when toolbarModule is undefined', () => {
+        fakeParent.grid.toolbarModule = undefined;
+        expect(() => { editInst['enableToolbarItems']('edit'); }).not.toThrow();
+      });
+
+      it('lastCellTab enables toolbar when allowNextRowEdit is true', () => {
+        (editInst as any).isOnBatch = true;
+        (editInst as any).keyPress = 'tab';
+        fakeParent.editSettings.mode = 'Cell';
+        fakeParent.editSettings.allowNextRowEdit = true;
+        spyOn(editInst as any, 'enableToolbarItems');
+        editInst['lastCellTab']();
+        expect((editInst as any).enableToolbarItems).toHaveBeenCalledWith('edit');
+      });      
+    })

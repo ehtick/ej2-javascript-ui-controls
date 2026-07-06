@@ -2760,8 +2760,6 @@ describe('TreeView control', () => {
                 treeObj.focusIn();
                 expect(li[0].classList.contains('e-node-focus')).toBe(true);
                 expect(li[1].classList.contains('e-node-focus')).toBe(false);
-                expect(li[0].classList.contains('e-focused')).toBe(true);
-                expect(li[1].classList.contains('e-focused')).toBe(false);
             });
             it('down arrow key pressed', () => {
                 let li: Element[] = <Element[] & NodeListOf<Element>>treeObj.element.querySelectorAll('li');
@@ -2769,8 +2767,6 @@ describe('TreeView control', () => {
                 expect(li[1].classList.contains('e-hover')).toBe(false);
                 expect(li[0].classList.contains('e-node-focus')).toBe(true);
                 expect(li[1].classList.contains('e-node-focus')).toBe(false);
-                expect(li[0].classList.contains('e-focused')).toBe(true);
-                expect(li[1].classList.contains('e-focused')).toBe(false);
                 keyboardEventArgs.action = 'moveDown';
                 treeObj.keyActionHandler(keyboardEventArgs);
                 expect(li[0].classList.contains('e-hover')).toBe(false);

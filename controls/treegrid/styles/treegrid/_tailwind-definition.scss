@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/tailwind' as *;
-@forward 'ej2-base/styles/definition/tailwind';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $treegrid-right-arrow-icon-color: $icon-color !default;
 $treegrid-right-arrow-hover-color: $icon-color-hover !default;
 $childborder-color: $primary !default;
@@ -24,3 +24,5 @@ $treegrid-rowdd-boxshadow: $primary !default;
 $treegrid-rowdd-childborder-width: 2px 0 0 !default;
 $treegrid-lastrowdd-childborder-width: 2px 0 !default;
 $treegrid-rtl-rowdd-childborder-width: 2px 0 2px 0 !default;
+$treegrid-cbox-height: 16px !default;
+$treegrid-cbox-width: 16px !default;

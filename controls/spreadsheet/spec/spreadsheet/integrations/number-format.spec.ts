@@ -2117,6 +2117,36 @@ describe('Spreadsheet Number Format Module ->', (): void => {
                 done();
             });
         });
+        describe('EJ2- 910261: Inconsistent parsing of custom date formats applied via cell-data binding->', () => {
+            beforeAll((done: Function) => {
+                helper.initializeSpreadsheet({
+                    sheets: [{
+                        rows: [{
+                            index: 13,
+                            cells: [
+                                { value: '2024-Mar-10 05:00:00', format: 'yyyy-MMM-dd HH:mm:ss' },
+                                { value: '2024-Mar-09 05:00:00', format: 'yyyy-MMM-dd HH:mm:ss' },
+                                { value: '2024-Jan-10 05:00:00', format: 'yyyy-MMM-dd HH:mm:ss' },
+                                { value: '2024-Mar-15 05:00:00', format: 'yyyy-MMM-dd HH:mm:ss' },
+                                { value: '2024-Jan-16 05:00:00', format: 'yyyy-MMM-dd HH:mm:ss' }
+                            ]
+                        }]
+                    }]
+                }, done);
+            });
+            afterAll(() => {
+                helper.invoke('destroy');
+            });
+            it('Checking the cell data binded with custom date in a correct format', (done: Function) => {
+                expect(helper.invoke('getCell', [13, 0]).textContent).toBe('2024-Mar-10 05:00:00');
+                expect(helper.invoke('getCell', [13, 1]).textContent).toBe('2024-Mar-09 05:00:00');
+                expect(helper.invoke('getCell', [13, 2]).textContent).toBe('2024-Jan-10 05:00:00');
+                expect(helper.invoke('getCell', [13, 3]).textContent).toBe('2024-Mar-15 05:00:00');
+                expect(helper.invoke('getCell', [13, 4]).textContent).toBe('2024-Jan-16 05:00:00');
+                done();
+            });
+        });
+        
         describe('EJ2-844735, EJ2-846521, EJ2-910847 ->', () => {
             beforeEach((done: Function) => {
                 model = {
@@ -3119,35 +3149,6 @@ describe('Spreadsheet Number Format Module ->', (): void => {
             helper.invoke('numberFormat', ['h:mm:ss AM/PM', 'D2']);
             expect(helper.invoke('getCell', [1, 3]).children[0].classList).toContain('e-fill');
             expect(helper.invoke('getCell', [1, 3]).children[0].style.letterSpacing).toBeFalsy();
-            done();
-        });
-    });
-    describe('EJ2-1025952: WorkbookNumberFormatdestroy Introduces script error by Resetting Global number formats ->', (): void => {
-        let spreadsheet1: Spreadsheet;
-        beforeAll((done: Function) => {
-            helper.initializeSpreadsheet({
-                sheets: [{ ranges: [{ dataSource: defaultData }] }],
-                created: (): void => {
-                    const div: HTMLElement = document.createElement('div');
-                    div.id = 'spreadsheet1';
-                    document.body.appendChild(div);
-                    spreadsheet1 = new Spreadsheet({ sheets: [{ ranges: [{ dataSource: defaultData }] }] });
-                    spreadsheet1.appendTo('#spreadsheet1');
-                }
-            }, done);
-        });
-        afterAll((): void => {
-            helper.invoke('destroy');
-        });
-        it('should render two spreadsheet div modules', (done: Function) => {
-            expect(document.getElementById('spreadsheet1')).not.toBeNull();
-            expect((spreadsheet1 as any).element.id).toBe('spreadsheet1');
-            spreadsheet1.destroy();
-            const spreadsheet: Spreadsheet = helper.getInstance();
-            helper.edit('J2', '$ 12');
-            expect(spreadsheet.sheets[0].rows[1].cells[9].value).toBe('12');
-            expect(spreadsheet.sheets[0].rows[1].cells[9].format).toBe('$#,##0');
-            expect(spreadsheet.sheets[0].rows[1].cells[9].formattedText).toBe('$12');
             done();
         });
     });

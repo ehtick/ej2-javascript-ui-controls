@@ -219,11 +219,11 @@ export class Layout {
             }
         }
         if (nextOrPrevSibling instanceof ParagraphWidget && currentParagraph.paragraphFormat.baseStyle === nextOrPrevSibling.paragraphFormat.baseStyle && (currentParagraph.isInsideTable ? !this.documentHelper.allowSpaceOfSameStyleInTable : true)) {
-            if(currentParagraph.paragraphFormat.listFormat.listId >= 0 && nextOrPrevSibling.paragraphFormat.listFormat.listId >= 0){
-                if(!currentParagraph.paragraphFormat.contextualSpacing){
-                    if(isAfterSpacing && currentParagraph.paragraphFormat.spaceAfterAuto){
+            if (currentParagraph.paragraphFormat.listFormat.listId >= 0 && nextOrPrevSibling.paragraphFormat.listFormat.listId >= 0) {
+                if (!currentParagraph.paragraphFormat.contextualSpacing) {
+                    if (isAfterSpacing && currentParagraph.paragraphFormat.spaceAfterAuto) {
                         return true;
-                    } else if(!isAfterSpacing && currentParagraph.paragraphFormat.spaceBeforeAuto){
+                    } else if (!isAfterSpacing && currentParagraph.paragraphFormat.spaceBeforeAuto) {
                         return true;
                     }
                 }
@@ -8042,13 +8042,14 @@ export class Layout {
                 } else {
                     effectiveWidth = totalSpaceWidth / 4;
                 }
+
                 if (availableLineWidth + effectiveWidth >= nextWordWidth) {
                     if (!isCombinedForJustication) {
                         this.viewer.clientActiveArea.x -= effectiveWidth;
                         this.viewer.clientActiveArea.width += effectiveWidth;
                         this.is2013Justification = true;
                     }
-                    this.effectiveJustifyWidth = isCombinedForJustication ? effectiveWidth : 0;  
+                    this.effectiveJustifyWidth = isCombinedForJustication ? effectiveWidth : 0;
                     return true;
                 }
             }
@@ -12111,7 +12112,7 @@ export class Layout {
                 if (block instanceof TableWidget) {
                     nextWidget = blocks[0] as TableWidget;
                 }
-            }     
+            }
             //checking the section break countinue occur
             let sectionBreakSkip: boolean = false;
             if (nextWidget instanceof ParagraphWidget && nextWidget.isEmpty() && !nextWidget.isInsideTable
@@ -12120,7 +12121,7 @@ export class Layout {
                 && nextWidget.bodyWidget.index !== nextWidget.nextRenderedWidget.bodyWidget.index
                 && nextWidget.nextRenderedWidget.bodyWidget.page === nextWidget.bodyWidget.page) {
                 sectionBreakSkip = true
-            }
+            }   
             if (!this.documentHelper.owner.editorModule.isFootnoteElementRemoved && currentWidget.containerWidget === nextWidget.containerWidget
                 && (HelperMethods.round(nextWidget.y, 2) === HelperMethods.round(this.viewer.clientActiveArea.y, 2)) &&
                 isNullOrUndefined(nextWidget.nextWidget) && !sectionBreakSkip) {

@@ -1,7 +1,7 @@
 import { isNullOrUndefined as isNOU, detach } from '@syncfusion/ej2-base';
 import { BaseChildrenProp, BlockModel, BlockProperties, ContentModel } from '../../../models/index';
 import { IAddBlockInteraction, IAddBulkBlocksInteraction, IDeleteBlockInteraction, IToBlockData, IFromBlockData, IIndentOperation, IMoveBlocksInteraction, ISplitContentData, ITransformBlockInteraction, RangePath } from '../../../common/interface';
-import { generateUniqueId, decoupleReference, setCursorPosition, getSelectedRange, getAbsoluteOffset, captureSelectionState, convertInlineElementsToContentModels } from '../../../common/utils/index';
+import { generateUniqueId, decoupleReference, setCursorPosition, getSelectedRange, getAbsoluteOffset, captureSelectionState, convertInlineElementsToContentModels, isMacOS } from '../../../common/utils/index';
 import { getBlockModelById, getBlockIndexById, getBlockContentElement, isListTypeBlock, cleanCheckmarkElement, isNonMergableBlock, getAdjacentBlock, getContainerInfo } from '../../../common/utils/block';
 import * as constants from '../../../common/constant';
 import { actionType, events } from '../../../common/constant';
@@ -227,6 +227,14 @@ export class BlockCommand {
             // Update the source model
             const newContents: ContentModel[] = convertInlineElementsToContentModels(sourceContent, true);
             this.parent.blockService.updateContent(sourceBlockModel.id, newContents);
+            // Include this content change for event tracking
+            this.parent.eventService.addChange({
+                action: 'Update',
+                data: {
+                    block: sourceBlockModel,
+                    prevBlock: blocksBeforeDelete[1]
+                }
+            });
 
             this.parent.setFocusAndUIForNewBlock(sourceBlock);
             return;
@@ -435,6 +443,8 @@ export class BlockCommand {
         this.parent.observer.notify('modelChanged', {
             type: 'MoveBlock',
             state: {
+                fromBlockIds,
+                toBlockId,
                 movedBlocks,
                 destination,
                 fromElements,
@@ -606,6 +616,12 @@ export class BlockCommand {
      * @hidden
      */
     public transformBlocksForSelection(newBlockType: string, props?: BlockProperties): void {
+        const backupRange: RangePath = this.parent.nodeSelection.getStoredBackupRange();
+        // Due to selection loss in mac environment, restore the selection using stored range
+        if (isMacOS() && backupRange) {
+            const { startContainer, endContainer, startOffset, endOffset } = backupRange;
+            this.parent.nodeSelection.createRangeWithOffsets(startContainer, endContainer, startOffset, endOffset);
+        }
         const range: Range = getSelectedRange();
         const currentRangeLength: number = range.toString().length;
         const blocksToTransform: BlockModel[] = this.resolveBlocksToTransform();
@@ -693,7 +709,7 @@ export class BlockCommand {
     }
 
     public handleBlockTransformation(args: ITransformBlockInteraction): void {
-        const { block, blockElement, newBlockType, isUndoRedoAction } = args;
+        const { block, blockElement, newBlockType, isUndoRedoAction, shouldPreventUpdates } = args;
         const rangePath: RangePath = this.parent.nodeSelection.getStoredBackupRange();
         this.parent.mentionAction.cleanMentionArtifacts(blockElement, true);
         this.parent.mentionAction.removeMentionQueryKeysFromModel('/', args.isUndoRedoAction);
@@ -733,7 +749,8 @@ export class BlockCommand {
                 isUndoRedoAction: isUndoRedoAction,
                 props: args.props,
                 preventEventTrigger: true,
-                oldBlockModel: args.oldBlockModel
+                oldBlockModel: args.oldBlockModel,
+                indent: args.indent
             });
         }
 
@@ -748,6 +765,18 @@ export class BlockCommand {
             });
             nextSiblingOfTransformedEle = this.parent.getBlockElementById(addedBlock.id);
         }
+
+        if (!shouldPreventUpdates) {
+            this.postBlockTransformUpdates(newBlockType, rangePath, transformedElement, nextSiblingOfTransformedEle);
+        }
+    }
+
+    private postBlockTransformUpdates(
+        newBlockType: string,
+        rangePath: RangePath,
+        transformedElement: HTMLElement,
+        nextSiblingOfTransformedEle?: HTMLElement
+    ): void {
         const contentElement: HTMLElement = getBlockContentElement(transformedElement);
 
         this.parent.togglePlaceholder(transformedElement, true);
@@ -786,10 +815,11 @@ export class BlockCommand {
      * @hidden
      */
     public transformBlock(args: ITransformBlockInteraction): HTMLElement {
-        this.parent.previousSelection = captureSelectionState();
-        const { newBlockType, isUndoRedoAction, props, shouldPreventUpdates, preventEventTrigger } = args;
+        const { newBlockType, isUndoRedoAction, props, shouldPreventUpdates, preventEventTrigger, ignoreContentUpdateFromLiveDOM } = args;
         let { block } = args;
         const oldBlockClone: BlockModel = decoupleReference(block);
+        const blockElement: HTMLElement = this.parent.getBlockElementById(block.id);
+        const contentElement: HTMLElement = getBlockContentElement(blockElement);
 
         let blockModel: BlockModel = oldBlockClone;
         if (isUndoRedoAction) {
@@ -798,13 +828,20 @@ export class BlockCommand {
         }
         block.blockType = newBlockType;
         block.properties = props || {};
-
+        let content : ContentModel[] = ignoreContentUpdateFromLiveDOM
+            ? blockModel.content
+            : convertInlineElementsToContentModels(contentElement, true);
+        if (!content || content.length === 0) {
+            content = [ BlockFactory.createTextContent() ];
+        }
         block = this.parent.blockService.updateBlock(
             block.id,
             BlockFactory.createBlockFromPartial({
                 ...blockModel,
                 blockType: newBlockType,
-                properties: props || {}
+                properties: props || {},
+                content: isUndoRedoAction ? blockModel.content : content,
+                ...(!isNOU(args.indent) ? { indent: args.indent } : {})
             })
         );
         this.parent.stateManager.updateManagerBlocks();
@@ -838,7 +875,8 @@ export class BlockCommand {
         this.parent.floatingIconAction.showFloatingIcons(this.transformBlock({
             block: blockModel,
             blockElement: blockElement,
-            newBlockType: BlockType.Paragraph
+            newBlockType: BlockType.Paragraph,
+            ignoreContentUpdateFromLiveDOM: true
         }));
     }
 

@@ -279,10 +279,7 @@ export class ToolbarStatus {
     }
 
     private static isFontColor(docElement: Document, node: Node): string {
-        let color: string = (node as HTMLElement).style && (node as HTMLElement).style.color;
-        if ((color === null || color === undefined || color === '') && node.nodeType !== 3) {
-            color = this.getComputedStyle(docElement, (node as HTMLElement), 'color');
-        }
+        const color: string = (node as HTMLElement).style && (node as HTMLElement).style.color;
         if (color !== null && color !== '' && color !== undefined) {
             return color;
         } else {

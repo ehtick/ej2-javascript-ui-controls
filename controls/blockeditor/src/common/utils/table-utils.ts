@@ -213,3 +213,12 @@ export function hasActiveTableSelection(tableBlockElement: HTMLElement): boolean
     if (tableBlockElement.querySelector('td.e-col-selected, th.e-col-selected')) { return true; }
     return false;
 }
+
+export function rangeIsWithinTableHeader(range: Range, tableElement: HTMLElement): boolean {
+    const tableHeader: HTMLElement = tableElement.querySelector('thead');
+    if (!tableHeader) { return false; }
+    const headerRange: Range = document.createRange();
+    headerRange.selectNodeContents(tableHeader);
+    return range.compareBoundaryPoints(Range.START_TO_START, headerRange) >= 0 &&
+        range.compareBoundaryPoints(Range.END_TO_END, headerRange) <= 0;
+}

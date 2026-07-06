@@ -1,4 +1,6 @@
-@use 'ej2-base/styles/common/mixin' as *;
+@use 'variables' as *;
+@use '@syncfusion/ej2-buttons/styles/button/variables' as btn;
+
 @mixin btn-icon-layout {
   @if $skin-name == 'bootstrap5' or $skin-name == 'bootstrap5.3' {
     background-color: $cpicker-tile-active-border-color;
@@ -68,14 +70,14 @@
         & .e-selected-color {
           background: $cpicker-transparent-bg-pattern;
           background-size: 8px;
-          border-radius: $btn-border-radius;
+          border-radius: btn.$btn-border-radius;
           height: $cpicker-split-btn-icon-height;
           margin-top: $color-zero-padding-margin;
           position: relative;
           width: $cpicker-split-btn-icon-height;
 
           & .e-split-preview {
-            border-radius: $btn-border-radius;
+            border-radius: btn.$btn-border-radius;
           }
         }
 

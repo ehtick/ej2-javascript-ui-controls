@@ -1,3 +1,4 @@
-@use 'ej2-icons/styles/bootstrap4' as *;
-@forward 'bootstrap4-definition';
-@use 'all.bootstrap4' as *;
+@use '@syncfusion/ej2-icons/styles/bootstrap4.scss' as *;
+@use 'bootstrap4-definition' as *;
+@use './common/all' as *;
+@use './animation/all' as *;

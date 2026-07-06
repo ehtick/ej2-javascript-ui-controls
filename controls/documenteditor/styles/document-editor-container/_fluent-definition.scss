@@ -1,7 +1,7 @@
 @use 'sass:color';
-@use 'ej2-base/styles/definition/fluent' as *;
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 @use '../document-editor/fluent-definition' as *;
-@forward 'ej2-base/styles/definition/fluent';
+
 @forward '../document-editor/fluent-definition';
 
 $de-ctnr-height: calc(100%) !default;
@@ -179,8 +179,8 @@ $de-ribbon-classic-editor-height-big: calc(100% - 214px) !default;
 $de-ctnr-layout-margin-bottom: 2px;
 $de-ctnr-picture-margin-bottom: 2px;
 
-$de-ribbon-simplified-ctnr-collapsed-editor-height: calc(100% - 55px) !default;
-$de-ribbon-classic-collapsed-editor-height: calc(100% - 52px) !default;
+$de-ribbon-simplified-ctnr-collapsed-editor-height: calc(100% - 88px) !default;
+$de-ribbon-classic-collapsed-editor-height: calc(100% - 78px) !default;
 
 // layout.scss
 $de-toolbar-line-height: 0;

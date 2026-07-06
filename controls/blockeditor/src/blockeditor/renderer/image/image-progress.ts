@@ -95,19 +95,17 @@ export class ImageProgressRenderer {
     }
 
     public hide(callback?: () => void): void {
-        if (this.progressContainer) {
-            // Add a small delay to show 100% completion before hiding
-            setTimeout(() => {
-                if (this.progressContainer) {
-                    this.progressContainer.classList.add('e-hidden');
-                    this.reset();
-                }
-                // Execute callback after hiding if provided
-                if (callback) {
-                    callback();
-                }
-            }, 100);
-        }
+        // Add a small delay to show 100% completion before hiding
+        setTimeout(() => {
+            if (this.progressContainer) {
+                this.progressContainer.classList.add('e-hidden');
+                this.reset();
+            }
+            // Execute callback after hiding if provided
+            if (callback) {
+                callback();
+            }
+        }, 100);
     }
 
     /**

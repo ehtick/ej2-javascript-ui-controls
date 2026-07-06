@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/fluent2' as *;
-@forward 'ej2-base/styles/definition/fluent2';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $cmenu-back-icon: '\e977' !default;
 $cmenu-back-icon-margin: 8px !default;
 $cmenu-bigger-caret-font-size: 18px !default;

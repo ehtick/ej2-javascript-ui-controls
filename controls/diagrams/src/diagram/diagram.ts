@@ -24,7 +24,7 @@ import { PageSettings, ScrollSettings } from './diagram/page-settings';
 import { PageSettingsModel, ScrollSettingsModel } from './diagram/page-settings-model';
 import { DiagramElement } from './core/elements/diagram-element';
 import { ServiceLocator } from './objects/service';
-import { IElement, IDataLoadedEventArgs, ISelectionChangeEventArgs, IElementDrawEventArgs, IMouseWheelEventArgs, ISegmentChangeEventArgs, ILoadEventArgs, ILoadedEventArgs, ILayoutUpdatedEventArgs, IExportingEventArgs, IImportingEventArgs } from './objects/interface/IElement';
+import { IElement, IDataLoadedEventArgs, ISelectionChangeEventArgs, IElementDrawEventArgs, IMouseWheelEventArgs, ISegmentChangeEventArgs, ILoadEventArgs, ILoadedEventArgs, ILayoutUpdatedEventArgs, IExportingEventArgs, IImportingEventArgs, IErEntityChangedEventArgs } from './objects/interface/IElement';
 import { IClickEventArgs, ScrollValues, FixedUserHandleClickEventArgs } from './objects/interface/IElement';
 import { ChangedObject, IBlazorTextEditEventArgs, DiagramEventObject, DiagramEventAnnotation } from './objects/interface/IElement';
 import { IBlazorDragLeaveEventArgs } from './objects/interface/IElement';
@@ -44,7 +44,7 @@ import { StackEntryObject, IExpandStateChangeEventArgs } from './objects/interfa
 import { ZoomOptions, IPrintOptions, IExportOptions, IFitOptions, ActiveLabel, IEditSegmentOptions, HierarchyData, NodeData, SpaceLevel, IGraph, ConnectorStyle, MermaidStyle, OverviewObject } from './objects/interface/interfaces';
 import { View, IDataSource, IFields } from './objects/interface/interfaces';
 import { GroupableView } from './core/containers/container';
-import { Node, BpmnShape, BpmnAnnotation, SwimLane, Path, DiagramShape, UmlActivityShape, FlowShape, BasicShape, UmlClassMethod, MethodArguments, UmlEnumerationMember, UmlClassAttribute, Lane, Shape, Container, Html, Native } from './objects/node';
+import { Node, BpmnShape, BpmnAnnotation, SwimLane, Path, DiagramShape, UmlActivityShape, FlowShape, BasicShape, UmlClassMethod, MethodArguments, UmlEnumerationMember, UmlClassAttribute, Lane, Shape, Container, Html, Native, ErShape } from './objects/node';
 import { cloneBlazorObject, cloneSelectedObjects, findObjectIndex, getConnectorArrowType, selectionHasConnector, isLabelFlipped, rotateAfterFlip, getSwimLaneChildren, removeUnnecessaryNodes } from './utility/diagram-util';
 import { checkBrowserInfo } from './utility/diagram-util';
 import { updateDefaultValues, getCollectionChangeEventArguements, getPoint } from './utility/diagram-util';
@@ -178,6 +178,15 @@ import { ImportAndExportVisio, VisioImportOptions, ImportResult, VisioExportOpti
 import { ShapeAddInfo } from './load-utility/visio-import-export/visio-types';
 import { VisioMemoryStream } from './load-utility/visio-import-export/visio-memory-stream';
 import { DiagramCollaboration } from './objects/collaboration';
+import { convertMermaidToFlowChart, saveFlowDiagramInMermaidFormat } from './serialization/flowchart-mermaid';
+import { convertMermaidToMindmap, saveMindmapDiagramInMermaidFormat } from './serialization/mindmap-mermaid';
+import { isSequenceDiagram, loadSequenceDiagramFromMermaid, saveSequenceDiagramAsMermaid } from './serialization/sequence-diagram-mermaid';
+import { ErDiagrams } from './entity-relationship/er-module';
+import { ErShapeModel } from './objects/node-model';
+import { ErConnectorShapeModel } from './objects/connector-model';
+import { ErFieldModel, ErHeaderModel } from './objects/er-objects-model';
+import { ErField } from './objects/er-objects';
+import { addErField, removeErField } from './entity-relationship/er-util';
 
 /**
  * Represents the Diagram control
@@ -253,6 +262,14 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
      * @private
      */
     public bpmnModule: BpmnDiagrams;
+
+    /**
+     * `erDiagramsModule` is used to add built-in ER (Entity-Relationship) Shapes to diagrams
+     * Set by EJ2 framework when ERDiagrams is injected
+     *
+     * @private
+     */
+    public erDiagramsModule: ErDiagrams;
 
     /**
      * `importAndExportVisioModule` is used to add built-in BPMN Shapes to diagrams
@@ -1635,6 +1652,14 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
      */
     @Event()
     public diagramExporting: EmitType<IExportingEventArgs>;
+    ///**
+    // * Triggers when an ER entity model changes (name, fields, constraints).
+    // * Provides old and new entity state for change tracking without duplicate firing.
+    // *
+    // * @event
+    // */
+    @Event()
+    public erEntityChanged: EmitType<IErEntityChangedEventArgs>;
 
     //private variables
     /** @private */
@@ -1779,6 +1804,10 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
     public pathDataStorage: Map<string, PointModel[]> = new Map();
     // To check current action is undo or redo
     private isUndo: boolean = false;
+    // Tracks whether the diagram has unsaved changes
+    private _isModified: boolean = false;
+    // Tracks the undo stack depth at the time markAsClean() was last called
+    private _cleanHistoryIndex: number = 0;
     /**@private */
     public groupBounds: Rect;
     // Groups that either have connectors with flip applied or a non-zero rotation
@@ -1798,6 +1827,8 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
     public activeLayerObjectsSet: Set<string> = new Set();
     /** @private */
     public restrictedDeltaValue: PointModel;
+    /** @private */
+    public expandCollapseAction: boolean = false;
 
     /**@private */
     public isScrollOffsetInverted: boolean = true;
@@ -2027,8 +2058,11 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
                                 };
                                 // Removed isBlazor code
                                 this.triggerEvent(DiagramEvent.propertyChange, args);
-                                if (actualObject && actualObject.parentId && this.nameTable[actualObject.parentId].shape.type === 'UmlClassifier') {
-                                    this.updateConnectorEdges(this.nameTable[actualObject.parentId] || actualObject);
+                                if (actualObject && actualObject.parentId) {
+                                    const parent: Node | Connector = this.nameTable[actualObject.parentId];
+                                    if (parent.shape.type === 'UmlClassifier' || parent.shape.type === 'Er') {
+                                        this.updateConnectorEdges(parent || actualObject);
+                                    }
                                 }
                                 if (isPropertyChanged) {
                                     isPropertyChanged = false;
@@ -2290,13 +2324,15 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
         } else {
             (this as any).rotateUsingButton = false;
         }
+        // Mark diagram as dirty for persisted, user-visible property changes (fallback for changes without history entries)
+        this.markDirtyForPropertyChanges(newProp, oldProp);
     }
     /**
      * updateScroller - Updates the scroll left and scroll top of diagram content.
      * @private
      * @returns {void}
      */
-    public updateScroller(): void {
+    private updateScroller(): void {
         const pageBounds: Rect = this.scroller.getPageBounds(undefined, undefined, true);
         pageBounds.x *= this.scroller.currentZoom;
         pageBounds.y *= this.scroller.currentZoom;
@@ -2315,7 +2351,6 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
 
     /*    // This private method has been specially provided to update only the node old gradient value in oldProperty.
     // This issue belong to core team but we fixed in our end.
-    // https://syncfusion.atlassian.net/browse/EJ2-49232
     @private
     */
     public updateGradient(newProp: NodeModel, oldProp: NodeModel, nodeObj: Node): void {
@@ -2766,6 +2801,7 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
     public getClassName(): string {
         return 'Diagram';
     }
+
     /* tslint:disable */
     /**
      * To provide the array of modules needed for control rendering
@@ -2777,6 +2813,10 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
         const modules: ModuleDeclaration[] = [];
         modules.push({
             member: 'Bpmn',
+            args: []
+        });
+        modules.push({
+            member: 'ErDiagrams',
             args: []
         });
         modules.push({
@@ -3880,7 +3920,7 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
         if ((obj as NodeModel | ConnectorModel).id) {
             obj = this.nameTable[(obj as NodeModel | ConnectorModel).id] || obj;
         }
-        if (obj) {
+        if (obj && (pivot || obj.wrapper)) {
             pivot = pivot || { x: obj.wrapper.offsetX, y: obj.wrapper.offsetY };
             if (obj instanceof Selector) {
                 this.callBlazorModel = false;
@@ -3907,8 +3947,10 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
             this.commandHandler.getBlazorOldValues();
         }
         if (!rotateUsingHandle && !(this as any).fromUndo) {
-            // To add history entry for group node rotation.
-            if (undoObject.nodes && undoObject.nodes.length > 0 && undoObject.nodes[0].children) {
+            // To add history entry for group node rotation or connector rotation.
+            const hasNodeChildren: boolean = undoObject.nodes && undoObject.nodes.length > 0 && undoObject.nodes[0].children;
+            const hasConnectors: boolean = undoObject.connectors && undoObject.connectors.length > 0;
+            if (hasNodeChildren || hasConnectors) {
                 const entry: HistoryEntry = {
                     type: 'RotationChanged', redoObject: cloneObject(obj), undoObject: cloneObject(undoObject), category: 'Internal',
                     childTable: childTable
@@ -4110,6 +4152,13 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
      * @param {string[]} sourceId - An optional array of source IDs associated with the change.
      */
     public addHistoryEntry(entry: HistoryEntry, sourceId?: string[]): void {
+        // Mark diagram as modified when history entry is added
+        // if ((entry.category === 'Internal' && entry.type !== 'StartGroup')) {
+        if ((entry.category === 'Internal' && entry.type !== 'StartGroup') &&
+            (entry.category === 'Internal' && entry.type !== 'EndGroup') &&
+            (entry.undoObject && (entry.undoObject as Node).id !== 'helper')) {
+            this.updateDirtyState(true);
+        }
         if (this.undoRedoModule &&
             (this.constraints & DiagramConstraints.UndoRedo) &&
             !(this.realActions & RealAction.PreventHistoryEntryForCollaboration) &&
@@ -5167,6 +5216,9 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
                         this.updateDiagramObject(parent);
                     }
                 }
+                if (canVitualize(this)) {
+                    this.scroller.oldCollectionObjects.push(newObj.id);
+                }
                 args = {
                     element: newObj, cause: this.diagramActions, diagramAction: this.itemType, state: 'Changed', type: 'Addition', cancel: false
                 };
@@ -5589,9 +5641,10 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
                     }
                     if ((obj as Node | Connector).parentId) {
                         this.deleteChild(obj, undefined, true);
-                        if (this.nameTable[(obj as Node | Connector).parentId] && this.nameTable[(obj as Node | Connector).parentId].shape.type === 'UmlClassifier') {
-                            this.updateDiagramObject(this.nameTable[(obj as Node | Connector).parentId]);
-                            this.updateConnectorEdges(this.nameTable[(obj as Node | Connector).parentId]);
+                        const parentObj: Node | Connector = this.nameTable[(obj as Node | Connector).parentId];
+                        if (parentObj && (parentObj.shape.type === 'UmlClassifier' || parentObj.shape.type === 'Er')) {
+                            this.updateDiagramObject(parentObj);
+                            this.updateConnectorEdges(parentObj);
                         }
                     }
                     let index: number;
@@ -5711,6 +5764,13 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
                                 }
                             }
                         }
+                    } else if (parent && parent.shape instanceof ErShape) {
+                        let erField: ErFieldModel;
+                        const selectedChildIndex: number = parent.children.indexOf(node.id);
+                        if (selectedChildIndex > 0 && selectedChildIndex <= parent.shape.fields.length) {
+                            erField = parent.shape.fields[selectedChildIndex - 1];
+                        }
+                        removeErField(parent, this, erField);
                     } else {
                         this.remove(selectedItems[parseInt(i.toString(), 10)]);
                     }
@@ -5771,8 +5831,7 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
         let isstack: boolean;
         const parent: Node = this.nameTable[obj.parentId];
         if (obj && obj.parentId && parent.container &&
-            (parent.container.type === 'Stack' &&
-                this.nameTable[(obj as Node).parentId].shape.type !== 'UmlClassifier')) {
+            (parent.container.type === 'Stack' && parent.shape.type !== 'UmlClassifier' && parent.shape.type !== 'Er')) {
             isstack = true;
             const redoElement: StackEntryObject = {
                 sourceIndex: parent.wrapper.children.indexOf(obj.wrapper), source: obj,
@@ -5991,6 +6050,10 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
     public clear(): void {
         this.clearObjects();
         this.clearLayers();
+        setTimeout(() => {
+            // Mark as clean after diagram is cleared
+            this.markAsClean();
+        }, 10);
     }
     //Bug 872106: Layer object in diagram doesnot removed in clear method
     private clearLayers(): void {
@@ -6069,7 +6132,9 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
                 //Removed isBlazor code
                 //893031: Exception throws while double click on UML Classifier connector
                 //Added the condition that the node is not an instance of a connector
-                if (node.shape && node.shape.type === 'UmlClassifier' && !(node instanceof Connector)) { node = this.nameTable[(node as Node).children[0]]; }
+                if (node.shape && (node.shape.type === 'UmlClassifier' || node.shape.type === 'Er') && !(node instanceof Connector)) {
+                    node = this.nameTable[(node as Node).children[0]];
+                }
                 let bpmnAnnotation: boolean = false;
                 if (!textWrapper) {
                     if (node.shape.type !== 'Text' && node.annotations.length === 0) {
@@ -6123,7 +6188,7 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
                                 (textWrapper.style as TextStyleModel).fontSize);
                         }
                     }
-                    if ((node as Node).parentId && this.nameTable[(node as Node).parentId].shape.type === 'UmlClassifier') {
+                    if ((node as Node).parentId && (this.nameTable[(node as Node).parentId].shape.type === 'UmlClassifier')) {
                         bounds.width = node.wrapper.bounds.width - 20;
                         x = ((((node.wrapper.bounds.center.x + transform.tx) * transform.scale) - (bounds.width / 2) * scale) - 2.5);
                         y = ((((node.wrapper.bounds.center.y + transform.ty) * transform.scale) - (bounds.height / 2) * scale) - 3);
@@ -6339,7 +6404,10 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
                     this.preventNodesUpdate = false;
                     node.wrapper.measure(new Size(node.wrapper.width, node.wrapper.height));
                     node.wrapper.arrange(node.wrapper.desiredSize);
-                    this.updateDiagramObject(node, true);
+                    if (!canVitualize(this) || ((this.diagramActions & DiagramAction.Render) && canVitualize(this) &&
+                        this.scroller.oldCollectionObjects.indexOf(node.id) > -1)) {
+                        this.updateDiagramObject(node, true);
+                    }
                     if (node.inEdges.length > 0) {
                         for (let j: number = 0; j < node.inEdges.length; j++) {
                             const connector: Connector = this.nameTable[node.inEdges[parseInt(j.toString(), 10)]];
@@ -6372,7 +6440,11 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
                     this.updateConnectorAnnotation(connector);
                     this.updateConnectorfixedUserHandles(connector);
                     this.updateQuad(connector);
-                    this.updateDiagramObject(connector, true);
+                    // Skip updating connectors that are outside the visible viewport during virtualization.
+                    if (!canVitualize(this) || ((this.diagramActions & DiagramAction.Render) && canVitualize(this) &&
+                        this.scroller.oldCollectionObjects.indexOf(connector.id) > -1)) {
+                        this.updateDiagramObject(connector, true);
+                    }
                 }
                 if (canEnableRouting || (this.layout as Layout).connectionPointOrigin === 'DifferentPoint' && this.lineDistributionModule && canDoOverlap) {
                     //Bug 977447: Connectors Overlapping Issue in Complex Hierarchical Tree Layout.
@@ -6490,7 +6562,10 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
                 this.swimlaneZIndexTable[node.id] = node.zIndex;
             }
         }
-        return serialize(this);
+        const result: string = serialize(this);
+        // Mark as clean after diagram is saved
+        this.markAsClean();
+        return result;
     }
     /**
      * Converts the given string into a Diagram Control.
@@ -6507,7 +6582,12 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
         } else if (isEJ1Data) {
             console.warn('[WARNING] :: Module "Ej1Serialization" is not available in Diagram component! You either misspelled the module name or forgot to load it.');
         }
-        return deserialize(data, this);
+        const result: Object = deserialize(data, this);
+        setTimeout(() => {
+            // Mark as clean after diagram is loaded
+            this.markAsClean();
+        }, 10);
+        return result;
     }
 
     /**
@@ -6518,225 +6598,15 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
     public saveDiagramAsMermaid(): string {
         let mermaidData: string = '';
         if (this.layout && this.layout.type === 'Flowchart') {
-            mermaidData = this.saveFlowDiagramInMermaidFormat();
+            mermaidData = saveFlowDiagramInMermaidFormat(this);
         }
         else if (this.layout && this.layout.type === 'MindMap') {
-            mermaidData = this.saveMindmapDiagramInMermaidFormat();
+            mermaidData = saveMindmapDiagramInMermaidFormat(this);
         }
         else {
-            mermaidData = this.saveSequenceDiagramAsMermaid();
+            mermaidData = saveSequenceDiagramAsMermaid(this);
         }
         return mermaidData;
-    }
-
-
-    /**
-     * Converts the diagram to Mermaid format and saves it.
-     * If the diagram has a 'MindMap' layout, it will generate a Mermaid mind map.
-     * @returns {string} - The Mermaid formatted string representing the diagram.
-     */
-    private saveMindmapDiagramInMermaidFormat(): string {
-        let mermaidData: string = '';
-        let dataSourceCollection: string[] = [];
-
-        if (this.layout && this.layout.type === 'MindMap') {
-            dataSourceCollection.push('mindmap');
-
-            if (this.nodes.length > 0) {
-                const rootNode: NodeModel = this.nodes.filter((node: NodeModel) => (node as Node).inEdges.length === 0)[0];
-                const content: string = this.convertMindmapToMermaid(rootNode, 0);
-                dataSourceCollection.push(content);
-
-                const outConnectors: string[] = (rootNode as Node).outEdges;
-                this.updateTextDataSource(dataSourceCollection, outConnectors, 1);
-                dataSourceCollection = dataSourceCollection.filter((data: string) => data.trim() !== '');
-                mermaidData = dataSourceCollection.join('\n');
-            }
-        }
-        return mermaidData;
-    }
-
-
-    /**
-     * Creates a text data source for sub-level children in a Mermaid diagram.
-     * @param {string[]} dataSource - The data source to be updated.
-     * @param {string[]} outEdges - The out edges of the current node.
-     * @param {number} level - The level of the current node.
-     * @returns {void} - Creates a text data source for sub-level children in a Mermaid diagram.
-     */
-    private updateTextDataSource(dataSource: string[], outEdges: string[], level: number): void {
-        let count: number = 0;
-        while (count < outEdges.length) {
-            const connector: ConnectorModel = this.getObject(outEdges[parseInt(count.toString(), 10)]) as Connector;
-            const targetNode: NodeModel = this.getObject(connector.targetID);
-            const content: string = this.convertMindmapToMermaid(targetNode, level);
-            dataSource.push(content);
-
-            const childOutConnectors: string[] = (targetNode as Node).outEdges;
-            if (childOutConnectors.length > 0) {
-                this.updateTextDataSource(dataSource, childOutConnectors, level + 1);
-            }
-            count++;
-        }
-    }
-
-    /**
-     * Returns the text data source for the specified node in Mermaid format.
-     * @param {NodeModel} node - The node for which the Mermaid data is to be generated.
-     * @param {number} level - The level of the node in the diagram.
-     * @returns {string} - The text data source for the specified node in Mermaid format.
-     */
-    private convertMindmapToMermaid(node: NodeModel, level: number): string {
-        const nodeId: string = node.id;
-        const spaceCount: number = (level + 1) * 2;
-        const spaces: string = ' '.repeat(spaceCount);
-        const annotationContent: string = node.annotations.length > 0
-            ? node.annotations[0].content.replace(/\n/g, ' ')
-            : '';
-        let content: string = spaces + annotationContent;
-        const spaceWithNodeId: string = spaces + nodeId;
-
-        if (node.shape && node.shape.type === 'Basic') {
-            const basicShape: BasicShapeModel = node.shape as BasicShape;
-            if (basicShape.shape === 'Rectangle') {
-                content = spaceWithNodeId + '[' + annotationContent + ']';
-            } else if (basicShape.shape === 'Ellipse') {
-                content = spaceWithNodeId + '((' + annotationContent + '))';
-            } else if (basicShape.shape === 'Hexagon') {
-                content = spaceWithNodeId + '{{' + annotationContent + '}}';
-            }
-        } else if (node.shape && node.shape.type === 'Flow') {
-            const flowShape: FlowShapeModel = node.shape as FlowShape;
-            if (flowShape.shape === 'Terminator') {
-                content = spaceWithNodeId + '(' + annotationContent + ')';
-            }
-        } else if (node.shape && node.shape.type === 'Path') {
-            const pathShape: PathModel = node.shape as PathModel;
-            if (pathShape.data === this.bangShape) {
-                content = spaceWithNodeId + '))' + annotationContent + '((';
-            } else if (pathShape.data === this.cloudShape) {
-                content = spaceWithNodeId + ')' + annotationContent + '(';
-            }
-        }
-
-        return content;
-    }
-    /**
-     * Converts the flowchart diagram to Mermaid format.
-     * @returns {string} - The exported flowchart diagram as Mermaid data.
-     */
-    private saveFlowDiagramInMermaidFormat(): string {
-        const existingIds: string[] = [];
-        let mermaidCode: string = 'graph TD\n';
-        const graph: IGraph = { nodes: this.nodes, edges: this.connectors };
-
-        // Create a map of node labels for easy access
-        // accumulator - The object that stores the node ID and label pairs.
-        const nodeLabels: { [key: string]: string } = graph.nodes.reduce((accumulator: { [key: string]: string }, node: NodeModel) => {
-            accumulator[node.id] = node.annotations.length ? node.annotations[0].content : '';
-            return accumulator;
-        }, {} as { [key: string]: string });
-
-        // Iterate through edges to create connections and node definitions
-        graph.edges.forEach((edge: ConnectorModel) => {
-            const fromNodeId: string = edge.sourceID;
-            const toNodeId: string = edge.targetID;
-            const fromNodeLabel: string = nodeLabels[`${fromNodeId}`];
-            const toNodeLabel: string = nodeLabels[`${toNodeId}`];
-            const fromNode: NodeModel = this.nameTable[`${fromNodeId}`];
-            const toNode: NodeModel = this.nameTable[`${toNodeId}`];
-            let fromNodeShape: string = this.getNodeShape(fromNode);
-            let toNodeShape: string = this.getNodeShape(toNode);
-            const condition: string = (edge.annotations[0] && edge.annotations[0].content !== '') ? '|' + edge.annotations[0].content + '|' : '';
-
-            if (existingIds.indexOf(fromNodeId) === -1) {
-                existingIds.push(fromNodeId);
-            } else {
-                fromNodeShape = '';
-            }
-            if (existingIds.indexOf(toNodeId) === -1) {
-                existingIds.push(toNodeId);
-            } else {
-                toNodeShape = '';
-            }
-            const arrow: string = this.arrowType(edge);
-            mermaidCode += `    ${fromNodeId}${fromNodeShape} ${arrow}${condition} ${toNodeId}${toNodeShape}\n`;
-        });
-
-        // Add styles for each node
-        graph.nodes.forEach((node: NodeModel) => {
-            const nodeId: string = node.id;
-            const fill: string = node.style.fill;
-            const stroke: string = node.style.strokeColor;
-            const strokeWidth: string = `${node.style.strokeWidth}px`;
-            mermaidCode += `    style ${nodeId} fill:${fill},stroke:${stroke},stroke-width:${strokeWidth};\n`;
-        });
-
-        return mermaidCode;
-    }
-
-    // Method to get the arrow type from connector
-    private arrowType(edge: ConnectorModel): string {
-        const decoratorShape: DecoratorShapes = edge.targetDecorator.shape;
-        const strokeDash: string = edge.style.strokeDashArray;
-        const strokeWidth: number = edge.style.strokeWidth;
-        const opacity: number = edge.style.opacity;
-        let arrow: string = '';
-        if (opacity < 1) {
-            arrow = '~~~';
-        }
-        else if (strokeDash !== '') {
-            arrow = '-.->';
-        } else if (decoratorShape === 'Arrow') {
-            arrow = strokeWidth > 1 ? '==>' : '-->';
-        } else if (decoratorShape === 'None') {
-            arrow = '---';
-        } else {
-            arrow = '-->';
-        }
-
-        return arrow;
-    }
-
-    // Method to get the node shape
-    private getNodeShape(node: NodeModel): string {
-        const label: string = node.annotations.length > 0 ? node.annotations[0].content : '';
-        const shape: string = (node.shape as FlowShape | BasicShape).shape;
-        if (shape) {
-            switch (shape) {
-            case 'Terminator':
-                return '([' + label + '])';
-            case 'Process':
-                return '[' + label + ']';
-            case 'Decision':
-                return '{' + label + '}';
-            case 'Parallelogram':
-                return '[/' + label + '/]';
-            case 'Ellipse':
-                return '((' + label + '))';
-            case 'PreDefinedProcess':
-                return '[[' + label + ']]';
-            default:
-                return '[' + label + ']';
-            }
-        } else {
-            const data: string = (node.shape as PathModel).data;
-            if (data === 'M 0 0 A 1 1 0 0 0 7 0 A 1 1 0 0 0 0 0 M -1 0 A 1 1 0 0 0 8 0 A 1 1 0 0 0 -1 0') {
-                return '(((' + label + ')))';
-            } else if (data === 'M 0 0 L 1 -1 L 5 -1 L 6 0 L 0 0') {
-                return '[/' + label + '\\]';
-            } else if (data === 'M 0 1 L 0 6 C 2 7 4 7 6 6 L 6 1 C 5 0 1 0 0 1 C 1 2 5 2 6 1') {
-                return '[(' + label + ')]';
-            } else if (data === 'M 0 0 L 12 0 L 14 2 L 2 2 L 0 0') {
-                return '[\\' + label + '\\]';
-            } else if (data === 'M 0 0 L 5 0 L 4 1 L 1 1 L 0 0') {
-                return '[\\' + label + '/]';
-            } else if (data === 'M 0 0 L 2 -2 L 11 -2 L 13 0 L 11 2 L 2 2 L 0 0') {
-                return '{{' + label + '}}';
-            } else {
-                return '>' + label + ']';
-            }
-        }
     }
 
     /** Loads a diagram from a string containing Mermaid syntax.
@@ -6749,699 +6619,19 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
     public loadDiagramFromMermaid(data: string): void {
         if (this.layout && this.layout.type === 'Flowchart' && this.flowchartLayoutModule) {
             //Task 896394: To load the mermaid data as flowchart
-            this.convertMermaidToFlowChart(data);
+            convertMermaidToFlowChart(data, this);
         } else if (this.layout && this.layout.type === 'MindMap' && this.mindMapChartModule) {
             //Task 900266: To load the mermaid data as mindmap
-            this.convertMermaidToMindmap(data);
+            convertMermaidToMindmap(data, this);
         }
-        else if (this.isSequenceDiagram(data)) {
-            this.loadSequenceDiagramFromMermaid(data);
+        else if (isSequenceDiagram(data)) {
+            loadSequenceDiagramFromMermaid(data, this);
         }
         else {
             console.warn('[WARNING] :: Module "FlowchartLayout" or "MindMap" is not available in Diagram component! You either misspelled the module name or forgot to load it.');
         }
-    }
-    /**
-     * Counts the number of leading spaces in the specified string.
-     * @param {string} word The string to check for leading spaces.
-     * @returns { number } The number of leading spaces.
-     */
-    private countLeadingSpaces(word: string): number {
-        let i: number = 0;
-        const length: number = word.length;
-
-        // Loop through the string to count leading spaces
-        while (i < length && word.charAt(i) === ' ') {
-            i++;
-        }
-
-        // Return the number of leading spaces
-        return i;
-    }
-
-    private mermaidNodeBaseCollection: NodeModel[] | ConnectorModel[] = [];
-    private convertMermaidToMindmap(data: string): void {
-        if (data && this.layout && this.layout.type === 'MindMap' && this.mindMapChartModule) {
-            const dataSource: string[] = data.split(/\r?\n/).filter((s: string) => s.trim().length > 0);
-            this.clear();
-            this.mermaidNodeBaseCollection = [];
-
-            const dataStack: HierarchyData[] = [];
-            let root: HierarchyData = null;
-            let previousItem: HierarchyData = { text: '', children: [], currentLevel: 0, branch: 'Left' };
-            const spaceAndItsLevels: SpaceLevel[] = [];
-            const startLevel: number = 1;
-            let haveBackticks: boolean = false;
-            let isEndBackticks: boolean = false;
-            let canCreateMindMap: boolean = false;
-            if (dataSource.length > 0) {
-                for (let index: number = 0; index < dataSource.length; index++) {
-                    const word: string = dataSource[parseInt(index.toString(), 10)];
-                    let level: number = 0;
-                    let text: string = '';
-                    let levelChar: string = ' ';
-                    const leadingWhiteSpace: number = this.countLeadingSpaces(word);
-                    const isStartBackticks: boolean = word.includes('"`');
-                    isEndBackticks = word.includes('`"');
-                    haveBackticks = isStartBackticks ? true : haveBackticks;
-                    canCreateMindMap = (!haveBackticks && !canCreateMindMap) ? leadingWhiteSpace === 0 && index > 0 : canCreateMindMap;
-
-                    if (haveBackticks && isEndBackticks && !isStartBackticks) {
-                        previousItem.text += '\n' + word;
-                        haveBackticks = false;
-                        continue;
-                    }
-
-                    if (!isStartBackticks && haveBackticks) {
-                        previousItem.text += '\n' + word;
-                        continue;
-                    }
-
-                    haveBackticks = isEndBackticks ? false : haveBackticks;
-                    if (word.length > 0 && ((/\s/.test(word[0]) && index > 0) || (leadingWhiteSpace === 0))) {
-                        const spaceIndex: number = spaceAndItsLevels.findIndex((space: SpaceLevel) =>
-                            space.space === leadingWhiteSpace.toString());
-
-                        if (spaceIndex !== -1) {
-                            for (let i: number = spaceAndItsLevels.length - 1; i >= 0; i--) {
-                                const currentSpace: SpaceLevel = spaceAndItsLevels[parseInt(i.toString(), 10)];
-                                const currentKey: number = parseFloat(currentSpace.space);
-
-                                if (currentKey > leadingWhiteSpace) {
-                                    spaceAndItsLevels.splice(i, 1); // Remove the element at index i
-                                } else if (currentKey < leadingWhiteSpace) {
-                                    spaceAndItsLevels.push({ space: leadingWhiteSpace.toString(), level: currentSpace.level + 1 });
-                                    level = currentSpace.level + 1;
-                                    break;
-                                } else if (currentKey === leadingWhiteSpace) {
-                                    level = currentSpace.level;
-                                    break;
-                                }
-                            }
-                        }
-                        else {
-                            if (spaceAndItsLevels.length === 0) {
-                                spaceAndItsLevels.push({ space: leadingWhiteSpace.toString(), level: startLevel });
-                                level = startLevel;
-                            } else {
-                                for (let i: number = spaceAndItsLevels.length - 1; i >= 0; i--) {
-                                    const currentElement: SpaceLevel = spaceAndItsLevels[parseInt(i.toString(), 10)];
-                                    const currentKey: number = parseFloat(currentElement.space);
-
-                                    if (currentKey > leadingWhiteSpace) {
-                                        spaceAndItsLevels.splice(i, 1); // Remove the element at index i
-                                    } else {
-                                        const lastElement: SpaceLevel = spaceAndItsLevels[spaceAndItsLevels.length - 1];
-                                        spaceAndItsLevels.push({ space: leadingWhiteSpace.toString(), level: lastElement.level + 1 });
-                                        break;
-                                    }
-                                }
-                                level = spaceAndItsLevels[spaceAndItsLevels.length - 1].level;
-                            }
-                        }
-
-                        text = word.trim().replace(/^[+-]/, '');
-                        levelChar = ' ';
-                    }
-                    const currentItem: HierarchyData = {
-                        text: text,
-                        branch: undefined,
-                        children: [],
-                        currentLevel: index === 0 ? 0 : level - 1
-                    };
-
-                    if (dataStack.length > 0) {
-                        while (dataStack.length >= level) {
-                            if (dataStack.length === 0) { break; }
-                            dataStack.pop();
-                        }
-
-                        if (dataStack.length > 0) {
-                            dataStack[dataStack.length - 1].children.push(currentItem);
-                        }
-                    } else {
-                        root = currentItem;
-                    }
-
-                    dataStack.push(currentItem);
-                    previousItem = currentItem;
-
-                }
-                // Create dataSource
-                const hierarchyDataSource: HierarchyData = dataStack[0];
-
-                if (hierarchyDataSource.text === 'mindmap' || canCreateMindMap) {
-                    if (canCreateMindMap) {
-                        const nodeDetails: NodeData = this.getNodeDetails(hierarchyDataSource);
-                        const nodeObj: NodeModel = {
-                            id: nodeDetails.nodeId,
-                            shape: nodeDetails.nodeShapeData,
-                            annotations: [
-                                { content: nodeDetails.annotationContent }
-                            ]
-                        };
-                        (this.mermaidNodeBaseCollection as NodeModel[]).push(nodeObj);
-                        this.createDataSource(hierarchyDataSource.children, hierarchyDataSource, nodeObj.id);
-                    } else {
-                        const hierarchyData: HierarchyData = hierarchyDataSource.children[0];
-                        const nodeData: NodeData = this.getNodeDetails(hierarchyData);
-                        const node: NodeModel = {
-                            id: nodeData.nodeId,
-                            shape: nodeData.nodeShapeData,
-                            annotations: [
-                                { content: nodeData.annotationContent }
-                            ]
-                        };
-                        (this.mermaidNodeBaseCollection as NodeModel[]).push(node);
-                        this.createDataSource(hierarchyData.children, hierarchyData, node.id);
-                    }
-                    this.addElements(this.mermaidNodeBaseCollection);
-                    this.doLayout();
-                }
-            }
-        }
-    }
-    /**
-     * provides
-     * either constructed internal model equivalent mermaid data
-     * or user provided mermaid data used for constructing sequence diagram
-     * @returns {string} sequence diagram equivalent mermaid data
-     */
-    private saveSequenceDiagramAsMermaid(): string {
-        const model: UmlSequenceDiagram = this.model as UmlSequenceDiagram;
-
-        if (!model.isLoadedFromMermaid) {
-            return model.generateMermaidFromModel();
-        }
-        else {
-            return model.mermaidData;
-        }
-    }
-    private isSequenceDiagram(input: string): boolean {
-        // Split the input string into an array of lines, removing any empty lines
-        const lines: string[] = input.split(/\r?\n/).filter((line: string) => line.trim().length > 0);
-
-        // Check if the first line equals "sequenceDiagram" (case-sensitive)
-        return lines.length > 0 && lines[0].trim() === 'sequenceDiagram';
-    }
-    /**
-     * Generates a UML sequence diagram from the provided mermaid text.
-     * @param {string} mermaidText The mermaid syntax defining the sequence diagram.
-     * @returns {void}
-     */
-    private loadSequenceDiagramFromMermaid(mermaidText: string): void {
-        this.model = {};
-
-        // parse the mermaid data
-        (this.model as UmlSequenceDiagram).parse(mermaidText, this);
-        // initialize the parsed nodes & connectors of sequence diagram
-        this.initLayerObjects();
-        // protect property change in between rendering nodes and connectors
-        const propChange: boolean = this.isProtectedOnChange;
-        this.protectPropertyChange(true);
-        // position the nodes & connect connectors to draw sequence diagram.
-        (this.model as UmlSequenceDiagram).loadDiagramFromMermaid(mermaidText, this);
-        // refresh diagram layer to render the sequence diagram.
-        this.refreshDiagramLayer();
-        // disable protect property change
-        if (!propChange) {
-            this.protectPropertyChange(propChange);
-        }
-        // fit to page to focus the sequence diagram content
-        this.fitToPage({
-            mode: 'Page', region: 'Content', margin: { left: 10, top: 10, right: 10, bottom: 10 },
-            canZoomIn: true, canZoomOut: true
-        });
-    }
-    /**
-     * Creates a data source for the Mermaid diagram based on the provided hierarchy data.
-     * @param { HierarchyData[] } data The list of hierarchy data to process.
-     * @param { HierarchyData } parent The parent hierarchy data.
-     * @param { string } parentId The ID of the parent node.
-     * @returns { void }
-     */
-    private createDataSource(data: HierarchyData[], parent: HierarchyData, parentId: string): void {
-        let index: number = 0;
-
-        while (index < data.length) {
-            const child: HierarchyData = data[parseInt(index.toString(), 10)];
-            const nodeData: NodeData = this.getNodeDetails(child);
-
-            const node: NodeModel = {
-                id: nodeData.nodeId,
-                shape: nodeData.nodeShapeData,
-                annotations: [
-                    { content: nodeData.annotationContent }
-                ]
-            };
-
-            const connector: ConnectorModel = {
-                sourceID: parentId,
-                targetID: node.id
-            };
-
-            (this.mermaidNodeBaseCollection as NodeModel[]).push(node);
-            (this.mermaidNodeBaseCollection as ConnectorModel[]).push(connector);
-
-            this.createDataSource(child.children, child, node.id);
-            index++;
-        }
-    }
-
-    private bangShape: string = 'M0 0 a15.470625686645507,15.470625686645507 1 0,0 25.78437614440918,-3.7200001525878905 a15.470625686645507,15.470625686645507 1 0,0 25.78437614440918,0 a15.470625686645507,15.470625686645507 1 0,0 25.78437614440918,0 a15.470625686645507,15.470625686645507 1 0,0 25.78437614440918,3.7200001525878905 a15.470625686645507,15.470625686645507 1 0,0 15.470625686645507,12.276000503540038 a12.376500549316406,12.376500549316406 1 0,0 0,12.648000518798828 a15.470625686645507,15.470625686645507 1 0,0 -15.470625686645507,12.276000503540038 a15.470625686645507,15.470625686645507 1 0,0 -25.78437614440918,5.580000228881835 a15.470625686645507,15.470625686645507 1 0,0 -25.78437614440918,0 a15.470625686645507,15.470625686645507 1 0,0 -25.78437614440918,0 a15.470625686645507,15.470625686645507 1 0,0 -25.78437614440918,-5.580000228881835 a15.470625686645507,15.470625686645507 1 0,0 -10.313750457763673,-12.276000503540038 a12.376500549316406,12.376500549316406 1 0,0 0,-12.648000518798828 a15.470625686645507,15.470625686645507 1 0,0 10.313750457763673,-12.276000503540038 H0 V0 Z';
-    private cloudShape: string = 'M0 0 a16.18875045776367,16.18875045776367 0 0,1 26.981250762939453,-10.792500305175782 a37.77375106811523,37.77375106811523 1 0,1 43.17000122070313,-10.792500305175782 a26.981250762939453,26.981250762939453 1 0,1 37.77375106811523,21.585000610351564 a16.18875045776367,16.18875045776367 1 0,1 16.18875045776367,13.020000534057615 a21.585000610351564,21.585000610351564 1 0,1 -16.18875045776367,24.180000991821288 a26.981250762939453,16.18875045776367 1 0,1 -26.981250762939453,16.18875045776367 a37.77375106811523,37.77375106811523 1 0,1 -53.962501525878906,0 a16.18875045776367,16.18875045776367 1 0,1 -26.981250762939453,-16.18875045776367 a16.18875045776367,16.18875045776367 1 0,1 -10.792500305175782,-13.020000534057615 a21.585000610351564,21.585000610351564 1 0,1 10.792500305175782,-24.180000991821288 H0 V0 Z';
-    /**
-     * Retrieves the node details based on the provided hierarchy data for a mermaid diagram.
-     * @param { HierarchyData } hierarchyData The hierarchy data.
-     * @returns { NodeData } The node details.
-     */
-    private getNodeDetails(hierarchyData: HierarchyData): NodeData {
-        const pattern: RegExp = /^(.*?)\s*([\\[\\(\\{][\s\S]*?[\]\\)\\}]|[)\\(][\s\S]*|[)\\{][\s\S]*|[)\\(][^{}()\\[\]]*$)/;
-        const annotationContent: string = hierarchyData.text;
-        const match: RegExpMatchArray = annotationContent.match(pattern);
-        let nodeId: string = randomId();
-        let annotationText: string = hierarchyData.text;
-        let shape: BasicShapeModel | FlowShapeModel | PathModel = { type: 'Basic', shape: 'Rectangle' };
-
-        if (match) {
-            nodeId = match[1] ? match[1] : nodeId;
-            const content: string = match[2].trim().replace(/["`]/g, '');
-            const firstCharacter: string = content.charAt(0);
-
-            if (firstCharacter === '[') {
-                annotationText = content.slice(1, -1);
-            } else if (firstCharacter === '(') {
-                if (content.startsWith('((')) {
-                    annotationText = content.slice(2, -1);
-                } else {
-                    annotationText = content.slice(1, -1);
-                }
-                shape = content.startsWith('((') ?
-                    { type: 'Basic', shape: 'Ellipse' } :
-                    { type: 'Flow', shape: 'Terminator' };
-            }
-            else if (firstCharacter === ')') {
-                if (content.startsWith('))')) {
-                    annotationText = content.slice(2, -2);
-                } else {
-                    annotationText = content.slice(1, -1);
-                }
-                shape = content.startsWith('))') ?
-                    { type: 'Path', data: this.bangShape } :
-                    { type: 'Path', data: this.cloudShape };
-            } else if (firstCharacter === '{') {
-                annotationText = content.slice(2, -1);
-                shape = { type: 'Basic', shape: 'Hexagon' };
-            }
-        }
-
-        return {
-            nodeId: nodeId,
-            annotationContent: annotationText,
-            nodeShapeData: shape
-        };
-    }
-    /**
-     * To convert the Mermaid data to flowchart diagram
-     * @param {string} data - The Mermaid data to be converted to a flowchart diagram.
-     * @returns {void}
-     */
-    private convertMermaidToFlowChart(data: string): void {
-        let dataCollection: FlowChartData[] = [];
-        this.clear();
-        //95490: Error while loading Mermaid diagram
-        //Ensure every statement ends with a semicolon and newline, unless it’s already followed by a newline.
-        data = data.replace(/;(?!\s*[\n\r])/g, ';\n');
-        const lines: string[] = data.trim().split('\n');
-        for (let i: number = 1; i < lines.length; i++) {
-            let line: string = lines[parseInt(i.toString(), 10)];
-            line = line.trim();
-            //Remove trailing semicolon if the line does not start with "style" to avoid showing it as a node annotation.
-            if (line.endsWith(';') && !line.startsWith('style')) {
-                line = line.slice(0, -1).trim();
-            }
-            // Skip lines that start with specific prefixes
-            // "%" - comment line, "end/End" - end of a subgraph/graph
-            // "subgraph", "graph", "flowchart" - Not supported by diagram
-            const skipPrefixes: string[] = ['%', 'subgraph', 'graph', 'flowchart', 'end', 'End'];
-            if (line !== '' && !skipPrefixes.some((prefix: string) => line.startsWith(prefix))) {
-                if (line.startsWith('style')) {
-                    this.parseStyle(line, dataCollection);
-                } else {
-                    const lineSplit: string[] = this.getLineSplitting(line);
-                    const parts: string[] = [lineSplit[0], lineSplit[1]];
-                    const data: FlowChartData[] = this.getNodeData(parts, dataCollection, lineSplit[2]);
-                    if (data && data.length > 0) {
-                        const lastItem: FlowChartData = data[data.length - 1];
-                        lastItem.arrowType = lineSplit[2];
-                        if (lineSplit[3] !== '') {
-                            if (lastItem.label && (lastItem.label as string[]).some((str: string) => str.trim().length > 0)) {
-                                (lastItem.label as string[]).push(lineSplit[3]);
-                            } else {
-                                lastItem.label = [];
-                                lastItem.label[lastItem.parentId.length - 1] = lineSplit[3];
-                            }
-                        }
-                        data.filter((flowData: FlowChartData) =>
-                            flowData.parentId && flowData.parentId.length === 0).forEach(function (node: FlowChartData): void {
-                            node.parentId = null;
-                        });
-                        dataCollection = dataCollection.concat(data);
-                    }
-                }
-            }
-        }
-        this.createFlowChart(dataCollection);
-        this.doLayout();
-        this.clearHistory();
-    }
-    /**
-     * To convert the dataCollection into flowchart nodes and connectors
-     * @param { FlowChartData[] } dataCollection - The data collection to be converted to flowchart nodes and connectors.
-     * @returns {void}
-     */
-    private createFlowChart(dataCollection: FlowChartData[]): void {
-        const flowchartNodesAndConnectors: NodeModel[] | ConnectorModel[] = [];
-        for (let n: number = 0; n < dataCollection.length; n++) {
-            const data: FlowChartData = dataCollection[parseInt(n.toString(), 10)];
-            const node: NodeModel = {
-                id: data.id,
-                shape: data.shape as BasicShapeModel | FlowShapeModel | BpmnShapeModel,
-                annotations: [{ content: data.name }],
-                style: { fill: data.color, strokeColor: data.stroke, strokeWidth: data.strokeWidth }
-            };
-            (flowchartNodesAndConnectors as NodeModel[]).push(node);
-        }
-        for (let c: number = 0; c < dataCollection.length; c++) {
-            const data: FlowChartData = dataCollection[parseInt(c.toString(), 10)];
-            const connectorStyle: ConnectorStyle = getConnectorArrowType(data) as ConnectorStyle;
-            if (data.parentId && data.parentId.length > 1) {
-                for (let i: number = 0; i < data.parentId.length; i++) {
-                    const connector: ConnectorModel = {
-                        id: randomId(),
-                        sourceID: data.parentId[parseInt(i.toString(), 10)] as string,
-                        targetID: data.id,
-                        annotations: [{ content: data.label ? data.label[parseInt(i.toString(), 10)] : '' }],
-                        style: {
-                            strokeWidth: connectorStyle.strokeWidth ? connectorStyle.strokeWidth : 1,
-                            strokeDashArray: connectorStyle.strokeDashArray ? connectorStyle.strokeDashArray : '',
-                            opacity: connectorStyle.opacity !== undefined ? connectorStyle.opacity : 1
-                        },
-                        targetDecorator: { shape: connectorStyle.targetDecorator as DecoratorShapes }
-                    };
-                    (flowchartNodesAndConnectors as ConnectorModel[]).push(connector);
-                }
-            } else if (data.parentId && data.parentId.length === 1) {
-                const connector: ConnectorModel = {
-                    id: randomId(),
-                    sourceID: data.parentId[0] as string,
-                    targetID: data.id,
-                    annotations: [{ content: data.label ? data.label[0] : '' }],
-                    style: {
-                        strokeWidth: connectorStyle.strokeWidth ? connectorStyle.strokeWidth : 1,
-                        strokeDashArray: connectorStyle.strokeDashArray ? connectorStyle.strokeDashArray : '',
-                        opacity: connectorStyle.opacity !== undefined ? connectorStyle.opacity : 1
-                    },
-                    targetDecorator: { shape: connectorStyle.targetDecorator as DecoratorShapes }
-                };
-                (flowchartNodesAndConnectors as ConnectorModel[]).push(connector);
-            }
-        }
-        this.addElements(flowchartNodesAndConnectors);
-    }
-    /**
-     * Splits the line based on arrow
-     * @param { string } line - line to split
-     * @returns { string[] } - Splitted line
-     */
-    private getLineSplitting(line: string): string[] {
-        let leftPart: string;
-        let rightPart: string;
-        let arrowName: string;
-        let arrowText: string = '';
-        // RegEx to split the line based on arrow
-        const regex: RegExp = /^(.*?)\s*(-->|---|--\s*.*?\s*-->|~~~|==>|===|==\s*.*?\s*==>|\s*-\.\s*->|\s*-\.\s*-|\s*-\.\s*.*?\s*\.\s*->|\s*-\..*?\.\s*->)(.*)$/;
-        const match: RegExpMatchArray = line.match(regex);
-        if (match) {
-            leftPart = match[1].trim();
-            const arrow: string = match[2].trim();
-            rightPart = match[3].trim();
-
-            // Detect and extract arrow text
-            const arrowRegex: RegExp = /(-\.|\\-\\-|==|--|~~)(.*?)(\1>|\.->|==>|\\->|~~>)/;
-            const arrowTextMatch: RegExpMatchArray = arrow.match(arrowRegex);
-            let arrowDetails: any;
-            let arrowType: string = '';
-            if (arrowTextMatch) {
-                const text: string = arrowTextMatch[2].trim() || null;
-                const arrowType: string = arrowTextMatch[1] + arrowTextMatch[3];
-                arrowDetails = {
-                    text: text,
-                    arrowType: arrowType
-                };
-            } else {
-                arrowDetails = {
-                    text: null,
-                    arrowType: arrow
-                };
-            }
-            arrowText = arrowDetails.text !== null ? arrowDetails.text : '';
-            arrowType = arrowDetails.arrowType;
-
-            // Identify arrow type
-            if (arrowType.includes('-->')) {
-                arrowName = 'single-line-arrow';
-            } else if (arrowType.includes('---')) {
-                arrowName = 'single-line';
-            } else if (arrowType.includes('==>')) {
-                arrowName = 'double-line-arrow';
-            } else if (arrowType.includes('==')) {
-                arrowName = 'double-line';
-            }
-            else if (arrowType.includes('~~~')) {
-                arrowName = 'wiggly-arrow';
-            } else if (arrowType.includes('-.->') || arrowType.includes('.->')) {
-                arrowName = 'dotted-arrow';
-            } else if (arrowType.includes('-.-') || arrowType.includes('.-')) {
-                arrowName = 'dotted';
-            }
-            else {
-                arrowName = 'single-line-arrow';
-            }
-        } else {
-            //consider single node Data
-            leftPart = line.trim();
-            rightPart = null;
-        }
-        return [leftPart, rightPart, arrowName, arrowText];
-    }
-    /**
-     * To parse the style of the node
-     * @param { string } line - line to parse
-     * @param { FlowChartData[] } dataCollection - data collection
-     * @returns { void }
-     */
-    private parseStyle(line: string, dataCollection: FlowChartData[]): void {
-        const styleRegex: RegExp =
-            /^style\s+(\w+)\s+fill:([^,]+),stroke:([^,]+),stroke-width:(\d+)px;/;
-        if (line.startsWith('style')) {
-            const match: RegExpMatchArray = line.match(styleRegex);
-
-            if (match) {
-                const id: string = match[1];
-                const fill: string = match[2];
-                const stroke: string = match[3];
-                const strokeWidth: number = parseInt(match[4], 10);
-                const data: MermaidStyle = {
-                    id: id,
-                    fill: fill,
-                    stroke: stroke,
-                    strokeWidth: strokeWidth
-                };
-                const matchData: FlowChartData[] = dataCollection.filter((x: FlowChartData) => x.id === data.id);
-                matchData[0].color = data.fill;
-                matchData[0].stroke = data.stroke;
-                matchData[0].strokeWidth = data.strokeWidth;
-            }
-        }
-    }
-    /**
-     * @param {string[]} lines - The lines to be processed.
-     * @param {FlowChartData[]} dataCollection - The data collection to be updated.
-     * @param {string} arrowType - The type of arrow.
-     * @returns { void }
-     */
-    private getNodeData(lines: string[], dataCollection: FlowChartData[], arrowType: string): FlowChartData[] {
-        const dataArray: FlowChartData[] = [];
-        let firstId: string = null;
-        let secondId: string = null;
-        let isExistCount: number = 0;
-        let connectorLabel: string = '';
-        for (let i: number = 0; i < lines.length; i++) {
-            const line1: string = lines[parseInt(i.toString(), 10)];
-            if (line1) {
-                const text: string[] = this.splitNested(line1);
-                if (text && text[0].includes('|')) {
-                    // Extract content outside the '|'
-                    const match: RegExpMatchArray = text[0].match(/\|([^|]*)\|/);
-                    if (match) {
-                        connectorLabel = match[1];
-                    }
-                    const parts: string[] = text[0].split('|');
-                    if (parts.length >= 3) {
-                        text[0] = parts[2].trim();
-                    }
-                }
-                //Extract and clean up the first text item by trimming and removing any semicolon at the end
-                const id: string = text[0].trim().replace(/;$/, '');
-                if (i === 0) {
-                    firstId = id;
-                } else {
-                    secondId = id;
-                }
-                const exsist: FlowChartData = dataCollection.find((data: FlowChartData) => data.id === id);
-                if (!exsist) {
-                    const labelShape: string = text.length > 1 ? text[1] : text[0];
-                    const shape: BasicShapeModel | FlowShapeModel | PathModel = this.getShape(labelShape);
-                    const label: string = labelShape.replace(/[\\[\]\\(\\)\\{\\}\\{\\}\\/>]/g, '');
-                    const data: FlowChartData = {
-                        id: id,
-                        name: label,
-                        shape: shape,
-                        color: 'white',
-                        parentId: [] as string[]
-                    } as FlowChartData;
-                    dataArray.push(data);
-                } else {
-                    isExistCount++;
-                }
-            }
-        }
-        if (dataArray.length) {
-            const lastItem: FlowChartData = dataArray[dataArray.length - 1];
-            if (lastItem.id !== firstId) {
-                (lastItem.parentId as string[]).push(firstId);
-                if (lastItem.label) {
-                    (lastItem.label as string[]).push(connectorLabel);
-                } else {
-                    lastItem.label = [connectorLabel];
-                }
-            } else {
-                const data: FlowChartData = dataCollection.find((data: FlowChartData) => data.id === secondId);
-                if (data) {
-                    if (data.parentId) {
-                        (data.parentId as string[]).push(firstId);
-                    } else {
-                        data.parentId = [firstId];
-                    }
-                    if (data.label) {
-                        (data.label as string[]).push(connectorLabel);
-                    } else {
-                        data.label = [connectorLabel];
-                    }
-                }
-            }
-        } else if (isExistCount === 2) {
-            const [filteredData]: FlowChartData[] = dataCollection.filter((flowData: FlowChartData) => flowData.id === secondId);
-            filteredData.parentId = filteredData.parentId || [];
-            (filteredData.parentId as string[]).push(firstId);
-
-            filteredData.label = filteredData.label || [];
-            (filteredData.label as string[])[filteredData.parentId.length - 1] = connectorLabel;
-        }
-        if (arrowType) {
-            const filteredData: FlowChartData = dataCollection.filter(function (flowData: FlowChartData):
-            boolean { return flowData.id === secondId; })[0];
-            if (filteredData) {
-                filteredData.arrowType = arrowType;
-            }
-        }
-        return dataArray;
-    }
-    /**
-     * To split the text based on the nested brackets
-     * @param {string} text - The text to be split based on nested brackets.
-     * @returns {string[]} An array of strings split based on the nested brackets.
-     */
-    private splitNested(text: string): string[] {
-        const result: string[] = [];
-        let current: string = '';
-        let level: number = 0;
-        let delimiter: string = '';
-
-        for (const char of text) {
-            if (char === '[' || char === '{' || char === '(' || char === '>') {
-                if (level === 0) {
-                    if (current.trim().length > 0) {
-                        result.push(current.trim());
-                    }
-                    current = char; // Include the delimiter in the current part
-                    delimiter = char;
-                    level++;
-                } else {
-                    current += char;
-                    level++;
-                }
-            } else if (char === ']' || char === '}' || char === ')') {
-                if (level === 1 && char === delimiter) {
-                    current += char; // Include the delimiter in the current part
-                    result.push(current.trim());
-                    current = '';
-                    level--;
-                } else if (level > 1) {
-                    current += char;
-                    level--;
-                } else {
-                    current += char;
-                }
-            } else {
-                current += char;
-            }
-        }
-
-        if (current.trim().length > 0) {
-            result.push(current.trim());
-        }
-
-        return result;
-    }
-    // Get shape based on the bracket
-    private getShape(text: string): BasicShapeModel | FlowShapeModel | PathModel {
-        let shape: FlowShapeModel | PathModel | BasicShapeModel = {};
-        if (text.startsWith('(((')) {
-            shape = { type: 'Path', data: 'M 0 0 A 1 1 0 0 0 7 0 A 1 1 0 0 0 0 0 M -1 0 A 1 1 0 0 0 8 0 A 1 1 0 0 0 -1 0' };
-        } else if (text.startsWith('((')) {
-            shape = { shape: 'Ellipse', type: 'Basic' };
-        } else if (text.startsWith('([')) {
-            shape = { type: 'Flow', shape: 'Terminator' };
-        } else if (text.startsWith('(')) {
-            shape = { type: 'Flow', shape: 'Process' };
-        } else if (text.startsWith('[[')) {
-            shape = { type: 'Flow', shape: 'PreDefinedProcess' };
-        } else if (text.startsWith('[/')) {
-            if (text.endsWith('/]')) {
-                shape = { type: 'Basic', shape: 'Parallelogram' };
-            } else {
-                shape = { type: 'Path', data: 'M 0 0 L 1 -1 L 5 -1 L 6 0 L 0 0' };
-            }
-        } else if (text.startsWith('[(')) {
-            shape = { type: 'Path', data: 'M 0 1 L 0 6 C 2 7 4 7 6 6 L 6 1 C 5 0 1 0 0 1 C 1 2 5 2 6 1' };
-        } else if (text.startsWith('[\\')) {
-            if (text.endsWith('\\]')) {
-                shape = { type: 'Path', data: 'M 0 0 L 12 0 L 14 2 L 2 2 L 0 0' };
-            } else {
-                shape = { type: 'Path', data: 'M 0 0 L 5 0 L 4 1 L 1 1 L 0 0' };
-            }
-        } else if (text.startsWith('[')) {
-            shape = { type: 'Basic', shape: 'Rectangle' };
-        } else if (text.startsWith('{{')) {
-            shape = { type: 'Path', data: 'M 0 0 L 2 -2 L 11 -2 L 13 0 L 11 2 L 2 2 L 0 0' };
-        } else if (text.startsWith('{')) {
-            shape = { type: 'Flow', shape: 'Decision' };
-        } else if (text.startsWith('>')) {
-            shape = { type: 'Path', data: 'M 0 0 L 8 0 L 8 2 L 0 2 L 2 1 L 0 0' };
-        }
-        return shape;
+        // Mark as clean after diagram is loaded
+        this.markAsClean();
     }
 
     /**
@@ -7512,6 +6702,136 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
     public clearHistory(): void {
         if (this.undoRedoModule) {
             this.undoRedoModule.clearHistory(this);
+        }
+    }
+
+    /**
+     * Gets a value indicating whether the diagram has unsaved changes.
+     * Returns `true` if the diagram has in-memory changes that have not been committed to a persistent store via `markAsClean()`.
+     *
+     * **Semantics:**
+     * - Tracks whether the diagram state differs from the last persisted baseline (recorded by `markAsClean()`).
+     * - Automatically set to `true` when user-visible mutations occur (node/connector/property changes, undo/redo).
+     * - Transient operations (zoom, pan, selection, hover) do NOT affect this flag.
+     * - Read-only; cannot be assigned directly.
+     * - Calling `undo()` back to the clean baseline automatically clears this flag.
+     *
+     * **Usage:**
+     * - Query at decision points: navigation, dispose, refresh warnings.
+     * - Display save indicators in your application's UI.
+     * - Gate "discard" actions to prevent accidental data loss.
+     *
+     * @example
+     * ```typescript
+     * if (diagram.isModified) {
+     *   const confirmed = confirm('You have unsaved changes. Discard them?');
+     *   if (!confirmed) return;
+     * }
+     * navigateTo('/home');
+     * ```
+     * @returns { boolean } `true` if the diagram has unsaved changes; `false` otherwise.
+     */
+    public get isModified(): boolean {
+        return this._isModified;
+    }
+
+    /**
+     * Resets the unsaved changes flag after the diagram has been persisted.
+     * Should be called by the host application after successfully saving the diagram.
+     * Also called automatically when a new diagram is loaded via loadDiagram().
+     *
+     * **Semantics:**
+     * - Sets `isModified` to `false` and records the current undo stack depth as the clean baseline.
+     * - Does not mutate the diagram model or history stacks.
+     * - Can be called when already clean; it is idempotent.
+     * - After calling `markAsClean()`, undoing all changes back to this baseline will automatically clear the dirty flag.
+     *
+     * @example
+     * ```typescript
+     * // Save the diagram
+     * const diagramData = diagram.saveDiagram();
+     * saveToServer(diagramData);
+     * // Signal that diagram is now clean
+     * diagram.markAsClean();
+     * ```
+     * @returns { void }
+     *
+     * @private
+     */
+    private markAsClean(): void {
+        this.updateDirtyState(false);
+        this._cleanHistoryIndex = this.historyManager ? this.historyManager.undoStack.length : 0;
+    }
+
+    /**
+     * Internal helper method to update the dirty state flag.
+     * Only marks as dirty on clean → dirty transitions (idempotent).
+     * @private
+     * @param {boolean} isModified - The new dirty state value
+     * @returns { void }
+     */
+    public updateDirtyState(isModified: boolean): void {
+        if (this._isModified !== isModified) {
+            this._isModified = isModified;
+        }
+    }
+
+    /**
+     * Public helper for undo-redo module to get the clean history baseline index.
+     *
+     * @returns { number } The undo stack depth at the time markAsClean() was last called
+     *
+     * @private
+     */
+    public getCleanHistoryIndex(): number {
+        return this._cleanHistoryIndex;
+    }
+
+    /**
+     * Public helper for undo-redo module to set the clean history baseline index.
+     *
+     * @param {number} index - The undo stack depth to record as clean baseline
+     * @returns { void }
+     *
+     * @private
+     */
+    public setCleanHistoryIndex(index: number): void {
+        this._cleanHistoryIndex = index;
+    }
+
+    /**
+     * Helper method to mark diagram as dirty for property changes that are persisted and user-visible.
+     * This is a fallback for mutations that don't create history entries.
+     * Filters out transient properties like selection, hover, and preview states.
+     *
+     * @param {DiagramModel} newProp - A object that lists the new values of the changed properties.
+     * @param {DiagramModel} oldProp - A object that lists the new values of the changed properties.
+     * @returns { void }
+     *
+     * @private
+     */
+    private markDirtyForPropertyChanges(newProp: DiagramModel, oldProp: DiagramModel): void {
+
+        // List of properties that should NOT mark the diagram as dirty (transient UI state)
+        const transientProperties: Set<string> = new Set(['selectedItems', 'isSelected', 'tool']);
+
+        if (newProp) {
+            // Check each property that changed
+            for (const prop of Object.keys(newProp)) {
+                if (!transientProperties.has(prop)) {
+                    // Check if this property represents a persisted change that wasn't caught by history entry
+                    // Common cases: constraints, visibility, locking, metadata, settings
+                    if (prop === 'nodes' || prop === 'connectors' || prop === 'selectedItems') {
+                        // These are handled explicitly in the onPropertyChanged method and may generate history entries
+                        continue;
+                    }
+                    // Mark dirty for non-transient property changes
+                    if (newProp[`${prop}`] !== oldProp[`${prop}`]) {
+                        this.updateDirtyState(true);
+                        break;
+                    }
+                }
+            }
         }
     }
 
@@ -7820,6 +7140,66 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
         //The clearSelection methods is invoked to update the newly added child type dynamically at runtime
         this.clearSelection();
         this.updateSelector();
+    }
+
+    /**
+     * Adds a field to an ER entity node at runtime.
+     *
+     * The field is inserted at the specified zero-based index. If the index is
+     * omitted or outside the valid range, the field is appended to the end of
+     * the field collection.
+     *
+     * The method returns `false` when the target node cannot be resolved, the
+     * target node is not an ER entity, or the field cannot be added.
+     *
+     * @param {NodeModel} node - The target ER entity node or node identifier.
+     * @param {ErFieldModel} field - The field configuration to add.
+     * @param {number} [index] - Optional zero-based insertion index.
+     * @returns {boolean} `true` if the field was added; otherwise, `false`.
+     */
+    public addErField(node: NodeModel, field: ErFieldModel, index?: number): boolean {
+        node = this.nameTable[node.id];
+        if (!node) {
+            return false;
+        }
+        let result: boolean = false;
+        const ershape: ErShapeModel = node.shape as ErShapeModel;
+        if (ershape.type === 'Er' && ershape.fields.length > 0) {
+            if (addErField(node, this, field, index)) {
+                result = true;
+                this.diagramActions = this.diagramActions | DiagramAction.PublicMethod;
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Removes a field from an ER entity node at runtime.
+     *
+     * The method returns `false` when the target node cannot be resolved, the
+     * target node is not an ER entity, or no field with the specified identifier
+     * exists in the target entity.
+     *
+     * @param {NodeModel} node - The target ER entity node or node identifier.
+     * @param {ErFieldModel} field - The field configuration to remove.
+     * @returns {boolean} `true` if the field was removed; otherwise, `false`.
+     */
+    public removeErField(node: NodeModel, field: ErFieldModel): boolean {
+        node = this.nameTable[node.id];
+        if (!node) {
+            return false;
+        }
+        let result: boolean = false;
+        const ershape: ErShapeModel = node.shape as ErShapeModel;
+        if (ershape.type === 'Er' && ershape.fields.length > 1) {
+            if (removeErField(node, this, field)) {
+                result = true;
+                this.diagramActions = this.diagramActions | DiagramAction.PublicMethod;
+            }
+        }
+
+        return result;
     }
 
 
@@ -8413,6 +7793,9 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
     }
 
     private initObjects(isLoad?: boolean): void {
+        if (this.nodes.length + this.connectors.length && !this.isLoading) {
+            this._isModified = true;
+        }
         this.updateBazorShape();
         if (!this.isLoading) {
             this.initData();
@@ -9145,7 +8528,8 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
             if (obj instanceof Node) {
                 if (independentObj) {
                     // 939249: Duplicate Ports Added to Group After Grouping and Undoing.
-                    if (obj.id !== 'helper' && !(this.diagramActions & DiagramAction.UndoRedo)) {
+                    // Bug 941776: Skip node defaults for temporary freehand drawing nodes
+                    if (obj.id !== 'helper' && !(this.diagramActions & DiagramAction.UndoRedo) && !(obj as any).isFreehandDrawing) {
                         const getDefaults: Function = getFunction(this.getNodeDefaults);
                         if (getDefaults) {
                             const defaults: NodeModel = getDefaults(obj, this);
@@ -9157,6 +8541,10 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
                             }
                             if (defaults && defaults !== obj) { extendObject(defaults, obj); }
                         }
+                    }
+                    // Ensure AllowDrop is preserved for lane nodes to enable child adoption
+                    if (obj.isLane && !obj.isLaneHeader) {
+                        obj.constraints = obj.constraints | NodeConstraints.AllowDrop;
                     }
                     this.initNode(obj, this.element.id);
                 }
@@ -9481,10 +8869,13 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
         }
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let wrapperContent: any; wrapperContent = getFunction(this.getDescription);
-        if (wrapperContent) {
-            (obj.children ? canvas : content).description = wrapperContent;
-        } else {
-            (obj.children ? canvas : content).description = obj.annotations.length ? obj.annotations[0].content : obj.id;
+        const descriptionTarget: GroupableView | DiagramElement = obj.children ? canvas : content;
+        if (descriptionTarget) {
+            if (wrapperContent) {
+                descriptionTarget.description = wrapperContent;
+            } else {
+                descriptionTarget.description = obj.annotations.length ? obj.annotations[0].content : obj.id;
+            }
         }
         const container: GroupableView = obj.children ? portContainer : canvas;
         obj.initAnnotations(this.getDescription, container, this.element.id, canVitualize(this) ? true : false, this.annotationTemplate);
@@ -10617,7 +10008,6 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
             let changed: boolean = false;
             const annotations: ShapeAnnotationModel[] | PathAnnotationModel[] = obj.annotations;
             let isAnnotationTemplate: boolean = false;
-
             for (let i: number = 0; i < ports.length; i++) {
                 portElement = this.getWrapper(obj.wrapper, ports[parseInt(i.toString(), 10)].id);
                 if ((portVisibility & PortVisibility.Hover || portVisibility & PortVisibility.Connect)) {
@@ -10636,8 +10026,7 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
                     }
                 }
             }
-            if (changed) {
-                //1028870: Annotation template position shifts unexpectedly during drag interaction.
+            if (changed) {//1028870: Annotation template position shifts unexpectedly during drag interaction.
                 if (isAnnotationTemplate) {
                     obj.wrapper.measure(new Size(obj.wrapper.actualSize.width, obj.wrapper.actualSize.height));
                     obj.wrapper.arrange(obj.wrapper.desiredSize);
@@ -10747,16 +10136,24 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
         const diagramElementsLayer: HTMLCanvasElement = document.getElementById(this.element.id + '_diagramLayer') as HTMLCanvasElement;
         const htmlLayer: HTMLElement = getHTMLLayer(this.element.id);
         if (this.mode === 'SVG') {
+            // Bug 1019674: Prevented group child nodes from being hidden under group fill during virtualization by avoiding duplicate renders and ensuring top‑level (parent) elements are rendered only once, preserving correct z‑order.
+            let renderedSet: { [key: string]: boolean } = {};
             for (let i: number = 0; i < collection.length; i++) {
                 const index: number = this.scroller.removeCollection.indexOf(collection[parseInt(i.toString(), 10)]);
                 if (index >= 0) {
                     this.scroller.removeCollection.splice(index, 1);
                 }
-                const object: NodeModel | ConnectorModel = this.nameTable[collection[parseInt(i.toString(), 10)]];
+                let object: NodeModel | ConnectorModel = this.nameTable[collection[parseInt(i.toString(), 10)]];
+                while ((object as Node | Connector).parentId && this.nameTable[(object as Node | Connector).parentId]) {
+                    object = this.nameTable[(object as Node | Connector).parentId];
+                }
+                if (renderedSet[object.id]) { continue; }
                 this.updateTextElementValue(object);
                 this.diagramRenderer.renderElement(
                     object.wrapper, diagramElementsLayer, htmlLayer, undefined, undefined, undefined, undefined, object.zIndex);
+                renderedSet[object.id] = true;
             }
+            renderedSet = {};
             for (let k: number = 0; k < tCollection.length; k++) {
                 this.scroller.removeCollection.push(tCollection[parseInt(k.toString(), 10)]);
             }
@@ -10920,9 +10317,14 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
                     const data: string = pathSegment.data;
                     if (connector.isBezierEditing && this.selectedItems.connectors[0].id === connector.id || connector.type !== 'Bezier') {
                         this.updateQuad(connector);
+                        // 1030489: MindMap connector segments incorrect when ConnectorBridging module is injected
+                        // skip orientation pass during initial render before doLayout sets corners.
+                        const hasValidCorners: boolean = !(this.layout.type === 'MindMap') ||
+                            !!(connector.sourceWrapper && connector.sourceWrapper.corners &&
+                               connector.targetWrapper && connector.targetWrapper.corners);
                         connector.getSegmentElement(
                             connector, pathSegment,
-                            this.layout.type === 'ComplexHierarchicalTree' || this.layout.type === 'HierarchicalTree' ?
+                            (this.layout.type === 'ComplexHierarchicalTree' || this.layout.type === 'HierarchicalTree' || this.layout.type === 'MindMap') && hasValidCorners ?
                                 this.layout.orientation : undefined, undefined, false);
                     }
                     if (pathSegment.data !== data) {
@@ -11383,9 +10785,9 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
                 if (selectorModel.nodes[0] instanceof Node) {
                     const node: Node = selectorModel.nodes[0] as Node;
                     if (checkParentAsContainer(this, node)) {
-                        if (!isSwimLane && (node.shape.type !== 'UmlClassifier' && !((node as Node).parentId &&
-                            this.nameTable[(node as Node).parentId]
-                            && this.nameTable[(node as Node).parentId].shape.type === 'UmlClassifier'))) {
+                        const parentNode: Node = (node as Node).parentId ? this.nameTable[(node as Node).parentId] as Node : undefined;
+                        if (!isSwimLane && (node.shape.type !== 'UmlClassifier' && node.shape.type !== 'Er' &&
+                            !(parentNode && (parentNode.shape.type === 'UmlClassifier' || parentNode.shape.type === 'Er')))) {
                             selectorModel.thumbsConstraints &= ~ThumbsConstraints.Rotate;
                         }
                     }
@@ -11527,9 +10929,11 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
                     } else if (selector.nodes[0] instanceof Node) {
                         const stackPanel: NodeModel = selector.nodes[0];
                         if (checkParentAsContainer(this, selector.nodes[0])) {
-                            if (stackPanel.shape.type !== 'UmlClassifier' && !((stackPanel as Node).parentId &&
-                                this.nameTable[(stackPanel as Node).parentId]
-                                && this.nameTable[(stackPanel as Node).parentId].shape.type === 'UmlClassifier')) {
+                            const parentNode: Node = (stackPanel as Node).parentId
+                                ? this.nameTable[(stackPanel as Node).parentId] as Node
+                                : undefined;
+                            if (stackPanel.shape.type !== 'UmlClassifier' && stackPanel.shape.type !== 'Er' && !((stackPanel as Node).parentId &&
+                                parentNode && (parentNode.shape.type === 'UmlClassifier' || parentNode.shape.type === 'Er'))) {
                                 selector.thumbsConstraints &= ~ThumbsConstraints.Rotate;
                             }
                         }
@@ -12468,9 +11872,16 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
                 this.updateSelector();
                 update = true;
             }
+            // Ensure AllowDrop is preserved when lane constraints are updated at runtime
+            if (actualObject.isLane && !actualObject.isLaneHeader) {
+                actualObject.constraints = actualObject.constraints | NodeConstraints.AllowDrop;
+            }
         }
         this.updateTextAnnotationInSwimlane(actualObject, node);
         this.swimLaneNodePropertyChange(actualObject, oldObject, node, update);
+        if (actualObject.shape.type === 'Er') {
+            this.headerPropertyChange(actualObject, oldObject, node, update);
+        }
         return update;
     }
     //To update text annotation node inside swimlane while dragging the text annotation parent.
@@ -12707,6 +12118,75 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
         return update;
     }
 
+    private headerPropertyChange(actualObject: Node, oldObject: Node, newObject: Node, update: boolean): boolean {
+        if (actualObject.shape.type === 'Er' && !this.currentSymbol) {
+            if (oldObject.shape && actualObject.wrapper && actualObject.wrapper.children && actualObject.wrapper.children.length > 0) {
+                const actualShape: ErShapeModel = actualObject.shape as ErShapeModel;
+                const oldShape: ErShapeModel = oldObject.shape as ErShapeModel;
+                const newShape: ErShapeModel = newObject.shape as ErShapeModel;
+                const grid: GridPanel = actualObject.wrapper.children[0] as GridPanel;
+                if (actualShape.header && newShape.header) {
+                    const id = (grid.children[1].id).split('_')[0];
+                    const oldHeader: ErHeaderModel = oldShape.header as ErHeaderModel;
+                    const newHeader: ErHeaderModel = newShape.header as ErHeaderModel;
+                    const headerNode: Node = this.nameTable[`${id}`] as Node;
+                    if (newHeader.annotation && newHeader.annotation.offset) {
+                        headerNode.annotations[0].offset = newHeader.annotation.offset;
+                    }
+                    this.nodePropertyChange(headerNode, oldHeader as Node, newHeader as Node);
+                }
+                if (actualShape.fieldDefaults && newShape.fieldDefaults) {
+                    const fields: ErFieldModel[] = actualShape.fields || [];
+                    if (newShape.fieldDefaults.alternateRowColors && newShape.fieldDefaults.alternateRowColors.length >= 2) {
+                        if (fields.length > 0) {
+                            fields.forEach((field: ErFieldModel, index: number) => {
+                                const fieldNode: Node = this.nameTable[`${field.id}`] as Node;
+                                const erFieldStyle: any = field.style as any;
+                                const hasValidFill = erFieldStyle && erFieldStyle.fill !== undefined && erFieldStyle.fill != null &&
+                                    erFieldStyle.fill !== '' && erFieldStyle.fill !== 'none';
+                                if (!hasValidFill) {
+                                    const oldFieldNode = { style: { fill: erFieldStyle.fill } };
+                                    erFieldStyle.fill = newShape.fieldDefaults.alternateRowColors[index % 2];
+                                    const newFieldNode = { style: { fill: erFieldStyle.fill } };
+                                    this.nodePropertyChange(fieldNode, oldFieldNode as Node, newFieldNode as Node);
+                                }
+                            });
+                        }
+                    }
+                    if (newShape.fieldDefaults.height) {
+                        if (fields.length > 0) {
+                            fields.forEach((field: ErFieldModel, index: number) => {
+                                const fieldNode: Node = this.nameTable[`${field.id}`] as Node;
+                                const oldFieldNode = { height: fieldNode.height };
+                                fieldNode.height = newShape.fieldDefaults.height;
+                                const newFieldNode = { height: fieldNode.height };
+                                this.nodePropertyChange(fieldNode, oldFieldNode as Node, newFieldNode as Node);
+                            });
+                        }
+                    }
+                }
+                if (actualShape.fields && newShape.fields && Object.keys(newShape.fields).length > 0) {
+                    const reset: boolean = newShape.fields[0] instanceof ErField;
+                    if (!reset) {
+                        const fieldKeys: string[] = Object.keys(newShape.fields);
+                        const fields: ErFieldModel[] = newShape.fields;
+                        fieldKeys.forEach((key: string, index: number) => {
+                            const field: ErFieldModel = fields[parseInt(key, 10)];
+                            const erField: NodeModel = this.nameTable[`${actualShape.fields[parseInt(key, 10)].id}`] as NodeModel;
+                            const oldField: ErFieldModel = (oldObject.shape as ErShapeModel).fields[parseInt(key, 10)];
+                            this.nodePropertyChange(erField as Node, oldField as any, field as any);
+                        });
+                    }
+                    else {
+                        // Remove ER Field and Create new ER Field
+                    }
+                }
+            }
+            update = true;
+        }
+        return update;
+    }
+
     /** @private */
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     public insertValue(oldNodeObject: any, isNode: boolean): void {
@@ -12780,7 +12260,6 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
                             grid.updateRowHeight(lastRowIndex, adjustedHeight, true, padding, true);
                         }
                     }
-
                 }
             } else if (!actualObject.container) {
                 this.scaleObject(actualObject, node.height, false);
@@ -12947,7 +12426,20 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
         }
         if (node.margin) {
             update = true;
+            const marginLeft: number = node.margin.left - actualObject.margin.left;
+            const marginTop: number = node.margin.top - actualObject.margin.top;
             this.updateMargin(actualObject, node);
+            if (this.bpmnModule !== undefined && actualObject.shape.type === 'Bpmn' &&
+                actualObject.outEdges && actualObject.outEdges.length) {
+                for (let i = 0; i < actualObject.outEdges.length; i++) {
+                    const connector: Connector = this.nameTable[actualObject.outEdges[parseInt(i.toString(), 10)]];
+                    if (connector && (connector as any).isBpmnAnnotationConnector) {
+                        const textAnnotationNode: Node = this.nameTable[connector.targetID];
+                        textAnnotationNode.margin.left += marginLeft;
+                        textAnnotationNode.margin.top += marginTop;
+                    }
+                }
+            }
             if (actualObject.parentId && this.nameTable[actualObject.parentId].shape.type === 'Container') {
                 updateChildWrapper(actualObject, this);
             }
@@ -12975,8 +12467,9 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
             updateConnector = true;
             this.updateUMLActivity(node, oldObject, actualObject, this);
         }
-        if ((actualObject.shape && actualObject.shape.type === 'UmlClassifier') || (actualObject.parentId &&
-            this.nameTable[actualObject.parentId] && this.nameTable[actualObject.parentId].shape.type === 'UmlClassifier')) {
+        const actualParent: Node = actualObject.parentId ? this.nameTable[actualObject.parentId] : undefined;
+        if ((actualObject.shape && (actualObject.shape.type === 'UmlClassifier' || actualObject.shape.type === 'Er')) ||
+            (actualParent && (actualParent.shape.type === 'UmlClassifier' || actualParent.shape.type === 'Er'))) {
             update = true;
             updateConnector = true;
         }
@@ -13062,6 +12555,32 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
             this.canExpand = false;
         }
         if (node.fixedUserHandles !== undefined) {
+            // 1017190: Fixed User Handles Not Removed When Collection Updated
+            if (oldObject && oldObject.fixedUserHandles && oldObject.fixedUserHandles.length === 0 &&
+                actualObject.wrapper && actualObject.wrapper.children) {
+
+                // Build a Set of new handle IDs for O(1) lookup
+                const newHandleIds: Set<string> = new Set(node.fixedUserHandles.map((handle: NodeFixedUserHandleModel) => handle.id));
+
+                // Iterate through wrapper children in reverse to safely remove obsolete handles
+                for (let i: number = actualObject.wrapper.children.length - 1; i >= 0; i--) {
+                    const child: DiagramElement = actualObject.wrapper.children[parseInt(i.toString(), 10)];
+                    if (child instanceof Canvas) {
+                        const idPrefix: string = actualObject.id + '_';
+                        if (child.id.startsWith(idPrefix)) {
+                            const handleId: string = child.id.substring(idPrefix.length);
+                            // If handle ID is not in the new collection, remove it
+                            if (!newHandleIds.has(handleId)) {
+                                for (const elementId of this.views) {
+                                    removeElement(child.id + '_groupElement', elementId);
+                                }
+                                actualObject.wrapper.children.splice(i, 1);
+                            }
+                        }
+                    }
+                }
+            }
+
             let index: number;
             let changedObject: NodeFixedUserHandleModel;
             let actualfixedUserHandle: NodeFixedUserHandleModel;
@@ -13677,6 +13196,23 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
                 actualObject.segments = [];
             }
         }
+        // Handle ER Connector shape updates (relationship type and cardinality)
+        if (newProp.shape !== undefined && actualObject.shape !== undefined && actualObject.shape.type === 'Er' &&
+            (actualObject.shape as ErConnectorShapeModel).relationship && this.erDiagramsModule) {
+            const erShape: ErConnectorShapeModel = actualObject.shape as ErConnectorShapeModel;
+            const oldErShape: ErConnectorShapeModel = oldProp.shape as ErConnectorShapeModel;
+
+            const erRelationship: ErConnectorShapeModel = erShape || {};
+            const oldRelationship: ErConnectorShapeModel = oldErShape ? oldErShape : {};
+
+            // Update cardinality and styling using the dedicated method
+            const cardinalityUpdated: boolean = this.erDiagramsModule.updateErConnector(
+                actualObject, erRelationship, oldRelationship, this);
+
+            if (cardinalityUpdated) {
+                updateSelector = true;
+            }
+        }
         if ((newProp.shape !== undefined) && actualObject.shape !== undefined &&
             actualObject.shape as BpmnFlowModel && actualObject.shape.type === 'Bpmn' && this.bpmnModule) {
             this.bpmnModule.updateBPMNConnector(actualObject, oldProp, newProp, this);
@@ -13852,7 +13388,10 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
                 if (this.diagramActions & DiagramAction.PreventZIndexOnDragging) {
                     this.updateDiagramObject(actualObject, true);
                 } else {
-                    this.updateDiagramObject(actualObject);
+                    // 1022255 - Performance issue in large diagram with complex layout due to unnecessary updateDiagramObject call
+                    if (!this.expandCollapseAction || (this.layout && this.layout.type === 'ComplexHierarchicalTree')) {
+                        this.updateDiagramObject(actualObject);
+                    }
                 }
             }
         }
@@ -13925,7 +13464,7 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
         const lineDistributionModule: boolean = (this.lineDistributionModule && this.layout.connectionPointOrigin === 'DifferentPoint') ? true : false;
         const pts: PointModel[] = actualObject.getConnectorPoints(
             actualObject.type, points,
-            this.layout.type === 'ComplexHierarchicalTree' || this.layout.type === 'HierarchicalTree' ?
+            this.layout.type === 'ComplexHierarchicalTree' || this.layout.type === 'MindMap' || this.layout.type === 'HierarchicalTree' ?
                 this.layout.orientation : undefined,
             lineDistributionModule);
         return pts;
@@ -14092,7 +13631,8 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
             }
             if ((obj instanceof Node && !this.preventNodesUpdate) || (obj instanceof Connector && !this.preventConnectorsUpdate)) {
                 //Avoid calling updateDiagramObject method during rendering
-                if (this.diagramActions) {
+                // 1022255 - Performance issue in large diagram with complex layout due to unnecessary updateDiagramObject call
+                if (this.diagramActions && !this.expandCollapseAction) {
                     this.updateDiagramObject(this.nameTable[element.id], undefined, true);
                 }
             }
@@ -14300,7 +13840,14 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
                 }
             }
             if (changedObject.style !== undefined) {
-                updateStyle(changedObject.style, annotationWrapper);
+                // 1034254: For ER field annotation need to restrict the seperator style apply
+                if ((actualObject as Node).isErField) {
+                    if (actualAnnotation.content !== '|') {
+                        updateStyle(changedObject.style, annotationWrapper);
+                    }
+                } else {
+                    updateStyle(changedObject.style, annotationWrapper);
+                }
             }
             if (changedObject.hyperlink !== undefined) {
                 updateHyperlink(changedObject.hyperlink, annotationWrapper, actualAnnotation);
@@ -14421,7 +13968,14 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
         actualObject?: Object): void {
         //let fixedUserHandleWrapper: Canvas;
         let isMeasure: boolean = false;
-        const fixedUserHandleWrapper: Canvas = this.getWrapper(nodes, actualfixedUserHandle.id) as Canvas;
+        let fixedUserHandleWrapper: Canvas = this.getWrapper(nodes, actualfixedUserHandle.id) as Canvas;
+        //856661: when fixed user handle collection is updated at runtime, its not updating.
+        // If wrapper doesn't exist (new fixed user handle added at runtime), create it first
+        if (fixedUserHandleWrapper === undefined && actualObject instanceof Node) {
+            fixedUserHandleWrapper = (actualObject as Node).initFixedUserHandles(actualfixedUserHandle, undefined, undefined) as Canvas;
+            // Register the newly created wrapper in the node's children
+            nodes.children.push(fixedUserHandleWrapper);
+        }
         if (fixedUserHandleWrapper !== undefined) {
             if (changedObject.width !== undefined) {
                 fixedUserHandleWrapper.actualSize.width = changedObject.width;
@@ -14998,7 +14552,13 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
                                     (clonedObject as Node).offsetX = position.x + 11 + ((preview as Size).width) * (clonedObject as Node).pivot.x;
                                     // eslint-disable-next-line max-len
                                     (clonedObject as Node).offsetY = position.y + 11 + ((preview as Size).height) * (clonedObject as Node).pivot.y;
-                                } else {
+                                } else if ((obj as Node).shape.type === 'Er') {
+                                    // eslint-disable-next-line max-len
+                                    (clonedObject as Node).offsetX = position.x + 11;
+                                    // eslint-disable-next-line max-len
+                                    (clonedObject as Node).offsetY = position.y + 11 + ((preview as Size).height) * (clonedObject as Node).pivot.y;
+                                }
+                                else {
                                     // eslint-disable-next-line max-len
                                     (clonedObject as Node).offsetX = position.x + 5 + ((preview as Size).width) * (clonedObject as Node).pivot.x;
                                     // eslint-disable-next-line max-len
@@ -15116,7 +14676,7 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
                                         newNode.width = 1;
                                     }
                                 }
-                                if (newNode.shape.type === 'UmlClassifier') {
+                                if (newNode.shape.type === 'UmlClassifier' || newNode.shape.type === 'Er') {
                                     //When dragging a node from the palette to the diagram, set the children, width, and height values to undefined to avoid incorrect values.
                                     newNode.children = newNode.width = newNode.height = undefined;
                                     (clonedObject as Node).children = undefined;
@@ -15294,8 +14854,8 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
                 this.removeElements(this.currentSymbol);
                 //887625-UML class nodes cloned in diagram canvas while dragging nodes outside diagram page
                 if (((this.currentSymbol.shape as SwimLaneModel).isLane ||
-                    (this.currentSymbol.shape as SwimLaneModel).isPhase) || this.currentSymbol.shape.type === 'UmlClassifier'
-                    || this.currentSymbol.shape.type === 'Container') {
+                    (this.currentSymbol.shape as SwimLaneModel).isPhase) || this.currentSymbol.shape.type === 'UmlClassifier' ||
+                    this.currentSymbol.shape.type === 'Er' || this.currentSymbol.shape.type === 'Container') {
                     this.removeChildInNodes(this.currentSymbol as Node);
                 }
                 if (arg.cancel) { removeChildNodes(this.currentSymbol as Node, this); }
@@ -15305,7 +14865,15 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
                     ((clonedObject as Node).shape as SwimLaneModel).phases = (this.currentSymbol.shape as SwimLaneModel).phases;
                 }
                 this.removePreviewChildren(this.currentSymbol as Node);
-                delete this.nameTable[this.currentSymbol.id]; this.currentSymbol = null;
+                delete this.nameTable[this.currentSymbol.id];
+                if ((this.currentSymbol as Node).shape.type === 'Er' && (this.currentSymbol as Node).children && (this.currentSymbol as Node).children.length > 0) {
+                    for (let i: number = 0; i < (this.currentSymbol as Node).children.length; i++) {
+                        const child: NodeModel = this.nameTable[(this.currentSymbol as Node).children[parseInt(i.toString(), 10)]];
+                        this.removeElements(child);
+                        delete this.nameTable[(this.currentSymbol as Node).children[parseInt(i.toString(), 10)]];
+                    }
+                }
+                this.currentSymbol = null;
                 this.protectPropertyChange(true);
                 this.itemType = 'SymbolPalette';
                 if (!arg.cancel) {
@@ -15318,7 +14886,7 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
                         this.eventHandler.addSwimLaneObject(clonedObject);
                     }
                     //The following condition is designed to ensure that only UML nodes are added to the diagram during the drop operation
-                    if (clonedObject && (clonedObject as Node).shape.type === 'UmlClassifier' && !((clonedObject as Node).shape as RelationShipModel).relationship) {
+                    if (clonedObject && ((clonedObject as Node).shape.type === 'UmlClassifier' || (clonedObject as Node).shape.type === 'Er') && !((clonedObject as Node).shape as RelationShipModel).relationship) {
                         (clonedObject as Node).children = undefined;
                         this.clearSelectorLayer();
                         this.add(clonedObject);
@@ -15330,7 +14898,7 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
                         this.addTextAnnotation(((clonedObject as Node).shape as BpmnShape).annotation, this.nameTable[`${nodeId}`]);
                         (clonedObject as BpmnAnnotation).nodeId = '';
                     }
-                    if (!((clonedObject as Node).shape as SwimLaneModel).isLane && !isPhase && ((clonedObject as Connector).type !== undefined || (clonedObject as Node).shape.type !== 'UmlClassifier')) {
+                    if (!((clonedObject as Node).shape as SwimLaneModel).isLane && !isPhase && ((clonedObject as Connector).type !== undefined || ((clonedObject as Node).shape.type !== 'UmlClassifier' && (clonedObject as Node).shape.type !== 'Er'))) {
                         if ((clonedObject as Node).children) {
                             this.addChildNodes(clonedObject);
                         }
@@ -16132,6 +15700,8 @@ export class Diagram extends Component<HTMLElement> implements INotifyPropertyCh
     public async importFromVisio(file: File | Blob, options?: VisioImportOptions): Promise<string[]> {
         if (this.importAndExportVisioModule) {
             const result: ImportResult = await this.importAndExportVisioModule.importVSDX(file, this, options);
+            // Mark as clean after import
+            this.markAsClean();
             // clear existing diagram before loading.
             return result.warnings;
         } else {

@@ -484,7 +484,7 @@ export class FormulaBar {
                 headerContent.innerText = l10n.getConstant('InsertFunction');
                 const categoryArgs: { action: string, categoryCollection: string[] } = { action: 'getFormulaCategory', categoryCollection: [] };
                 this.parent.notify(workbookFormulaOperation, categoryArgs);
-                this.categoryCollection = categoryArgs.categoryCollection.filter((category: string): string =>
+                this.categoryCollection = categoryArgs.categoryCollection.map((category: string): string =>
                     category && (l10n.getConstant(category.split(' ').join('').replace('&', '')) || category)
                 );
                 let categoryPopupOpen: boolean;

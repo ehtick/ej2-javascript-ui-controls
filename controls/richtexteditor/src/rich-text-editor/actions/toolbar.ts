@@ -1,8 +1,9 @@
-import { addClass, Browser, EventHandler, detach, removeClass, select, selectAll, KeyboardEvents } from '@syncfusion/ej2-base';
+import { addClass, Browser, EventHandler, detach, removeClass, select, selectAll, KeyboardEvents, getComponent  } from '@syncfusion/ej2-base';
 import { isNullOrUndefined as isNOU, KeyboardEventArgs, closest, isNullOrUndefined } from '@syncfusion/ej2-base';
 import { setStyleAttribute, extend } from '@syncfusion/ej2-base';
 import { Toolbar as tool, OverflowMode, ItemModel } from '@syncfusion/ej2-navigations';
 import * as events from '../base/constant';
+import { ProgressButton } from '@syncfusion/ej2-splitbuttons';
 import * as classes from '../base/classes';
 import { RenderType } from '../base/enum';
 import { setToolbarStatus, updateUndoRedoStatus, getTBarItemsIndex, getCollection, toObjectLowerCase, getTooltipText } from '../base/util';
@@ -20,6 +21,8 @@ import { IToolbarStatus, IToolbarItemModel, IToolsItems, IColorPickerRenderArgs 
 import { RichTextEditorModel } from '../base/rich-text-editor-model';
 import { ColorPickerInput } from './color-picker';
 import { ToolbarType, ToolbarItems } from '../../common/enum';
+import { templateItems } from '../models/items';
+
 import { MenuButton } from './menu';
 /**
  * `Toolbar` module is used to handle Toolbar actions.
@@ -197,6 +200,7 @@ export class Toolbar {
             container: this.tbElement, containerType: ((this.parent.inlineMode.enable) ? 'quick' : 'toolbar'), items:
                 this.parent.toolbarSettings.items
         } as IColorPickerRenderArgs);
+        this.initExportProgressButtons();
         return true;
     }
 
@@ -270,6 +274,7 @@ export class Toolbar {
             } as IDropDownRenderArgs);
             this.renderColorPicker({ container: this.tbElement, containerType: 'toolbar', items: this.parent.toolbarSettings.items } as IColorPickerRenderArgs);
             this.menuModule.renderMenu(this.parent.toolbarSettings.items, this.tbElement, this.parent.inlineMode.enable ? 'Inline' : 'Toolbar');
+            this.initExportProgressButtons();
             this.refreshToolbarOverflow();
         }
         if (this.parent.rootContainer && this.parent.rootContainer.classList.contains('e-source-code-enabled')) {
@@ -343,6 +348,29 @@ export class Toolbar {
         }
     }
 
+    /**
+     * Initializes ProgressButton on ExportWord and ExportPdf toolbar items
+     *
+     * @returns {void}
+     * @hidden
+     */
+    private initExportProgressButtons(): void {
+        const createProgressButton: (suffix: string, iconCss: string) => void = (suffix: string, iconCss: string): void => {
+            const item: HTMLElement = this.parent.element.querySelector(`#${this.parent.getID()}_toolbar_${suffix}`) as HTMLElement;
+            if (!isNOU(item) && isNOU(getComponent(item, ProgressButton))) {
+                const progressBtn: ProgressButton = new ProgressButton({
+                    cssClass: classes.CLS_TB_BTN + ' ' + classes.CLS_ICONS,
+                    iconCss: iconCss,
+                    iconPosition: 'Left',
+                    spinSettings: { position: 'Center' },
+                    animationSettings: { effect: 'ZoomOut' }
+                });
+                progressBtn.appendTo(item);
+            }
+        };
+        createProgressButton('ExportWord', 'e-btn-icon e-rte-export-doc e-icons');
+        createProgressButton('ExportPdf', 'e-icons e-rte-export-pdf e-btn-icon');
+    }
     private updateToolbarStatus(args: IToolbarStatus): void {
         if (!this.tbElement || (this.parent.inlineMode.enable && (isIDevice() || !Browser.isDevice))) {
             return;
@@ -352,7 +380,11 @@ export class Toolbar {
             dropDownModule: this.dropDownModule,
             parent: this.parent,
             tbElements: selectAll('.' + classes.CLS_TB_ITEM, this.tbElement),
-            tbItems: this.baseToolbar.toolbarObj.items
+            tbItems: this.baseToolbar.toolbarObj.items,
+            fontColorPicker: (this.colorPickerModule && this.colorPickerModule.fontColorPicker)
+                ? this.colorPickerModule.fontColorPicker : undefined,
+            backgroundColorPicker: (this.colorPickerModule && this.colorPickerModule.backgroundColorPicker)
+                ? this.colorPickerModule.backgroundColorPicker : undefined
         };
         setToolbarStatus(options, (this.parent.inlineMode.enable ? true : false), this.parent);
     }
@@ -443,29 +475,6 @@ export class Toolbar {
         for (let i: number = 0; i < trgItems.length; i++) {
             this.baseToolbar.toolbarObj.removeItems(this.tbItems[trgItems[i as number]]);
         }
-    }
-
-    /**
-     * getExpandTBarPopHeight method
-     *
-     * @returns {void}
-     * @hidden
-     * @deprecated
-     */
-    public getExpandTBarPopHeight(): number {
-        let popHeight: number = 0;
-        if (this.parent.toolbarSettings.type === ToolbarType.Expand && this.tbElement.classList.contains('e-extended-toolbar')) {
-            const expandPopup: HTMLElement = <HTMLElement>select('.e-toolbar-extended', this.tbElement);
-            if (expandPopup && this.tbElement.classList.contains('e-expand-open')
-                || expandPopup && expandPopup.classList.contains('e-popup-open')) {
-                addClass([expandPopup], [classes.CLS_VISIBLE]);
-                popHeight = popHeight + expandPopup.offsetHeight;
-                removeClass([expandPopup], [classes.CLS_VISIBLE]);
-            } else {
-                removeClass([this.tbElement], [classes.CLS_EXPAND_OPEN]);
-            }
-        }
-        return popHeight;
     }
 
     /**
@@ -605,7 +614,6 @@ export class Toolbar {
             }
         }
     }
-
     protected wireEvents(): void {
         if (this.parent.inlineMode.enable && isIDevice()) {
             return;

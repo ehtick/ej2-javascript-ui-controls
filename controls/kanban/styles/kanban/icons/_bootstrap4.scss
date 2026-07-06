@@ -1,4 +1,4 @@
-@use 'ej2-base/styles/common/mixin' as *;
+@use '../variables' as *;
 @include export-module('kanban-bootstrap4-icons') {
   .e-kanban {
     .e-column-expand::before {

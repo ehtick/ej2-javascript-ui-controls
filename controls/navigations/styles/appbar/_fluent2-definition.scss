@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/fluent2' as *;
-@forward 'ej2-base/styles/definition/fluent2';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $appbar-bg-color-primary: $primary !default;
 $appbar-color-primary: $primary-text-color !default;
 $appbar-border-color-primary: $primary !default;

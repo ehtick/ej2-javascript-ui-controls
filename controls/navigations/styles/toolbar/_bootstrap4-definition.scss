@@ -1,6 +1,5 @@
 @use 'sass:color';
-@use 'ej2-base/styles/definition/bootstrap4' as *;
-@forward 'ej2-base/styles/definition/bootstrap4';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 
 $border-type: solid !default;
 $border-size: 1px !default;
@@ -27,6 +26,7 @@ $tbar-default-font-overlay: $gray-700 !default;
 $tbar-default-icon-overlay: $gray-700 !default;
 $tbar-select-font: $tbar-hover-font !default;
 $tbar-pressed-font: $tbar-hover-font !default;
+$tbar-active-icon-color: $white !default;
 $tbar-default-bg: $gray-100 !default;
 $tbar-hor-active-bg: $gray-600 !default;
 $tbar-pop-bg: $tbar-default-bg !default;

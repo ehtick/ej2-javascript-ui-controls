@@ -2877,8 +2877,14 @@ export class TreeGrid extends Component<HTMLElement> implements INotifyPropertyC
             const datacount: number = getValue('count', this.dataSource);
             this.grid.dataSource = { result: data, count: datacount };
         } else {
+            let cacheAdaptor: Object = null;
+            if ((this.dataSource instanceof DataManager) && this.dataSource[`${dataSource}`] &&
+                this.dataSource[`${dataSource}`].enableCaching) {
+                cacheAdaptor = this.dataSource[`${adaptor}`].cacheAdaptor;
+            }
             this.grid.dataSource = !(this.dataSource instanceof DataManager) ?
-                this.flatData : new DataManager(this.dataSource.dataSource, this.dataSource.defaultQuery, this.dataSource.adaptor,
+                this.flatData : new DataManager(this.dataSource.dataSource, this.dataSource.defaultQuery,
+                                                cacheAdaptor ? cacheAdaptor : this.dataSource.adaptor,
                                                 this.hasPreAndPostMiddleware(this.dataSource) ? this.dataSource : undefined);
         }
         if (this.dataSource instanceof DataManager && (this.dataSource.dataSource.offline || this.dataSource.ready)) {
@@ -3267,6 +3273,14 @@ export class TreeGrid extends Component<HTMLElement> implements INotifyPropertyC
                     gridColumn.textAlign = 'Right';
                 }
             }
+            else if (!isNullOrUndefined(this.columnModel[this.treeColumnIndex]) && !this.enableRtl) {
+                if (isNullOrUndefined(this.treeColumnField)) {
+                    this.treeColumnField = gridColumn.field as string;
+                }
+                if (isNullOrUndefined(this.treeColumnTextAlign) && this.treeColumnField === this.columnModel[this.treeColumnIndex].field) {
+                    this.treeColumnTextAlign = this.columnModel[this.treeColumnIndex].textAlign;
+                }
+            }
         }
         return gridColumnCollection;
     }
@@ -3290,6 +3304,7 @@ export class TreeGrid extends Component<HTMLElement> implements INotifyPropertyC
     public onPropertyChanged(newProp: TreeGridModel): void {
         const properties: string[] = Object.keys(newProp);
         let requireRefresh: boolean = false;
+        let refreshComponent: boolean = false;
         for (const prop of properties) {
             switch (prop) {
             case 'columns':
@@ -3408,6 +3423,8 @@ export class TreeGrid extends Component<HTMLElement> implements INotifyPropertyC
                 this.grid.locale = this.locale;
                 this.TreeGridLocale(); this.grid.toolbar = this.getGridToolbar();
                 this.grid.contextMenuItems = this.getContextMenu();
+                requireRefresh = true;
+                refreshComponent = true;
                 break;
             case 'selectedRowIndex':
                 this.grid.selectedRowIndex = this.selectedRowIndex; break;
@@ -3428,10 +3445,8 @@ export class TreeGrid extends Component<HTMLElement> implements INotifyPropertyC
             case 'allowPdfExport':
                 this.grid.allowPdfExport = this.allowPdfExport; break;
             case 'enableRtl':
-                if (!isNullOrUndefined(this.treeColumnField)) {
-                    this.updateTreeColumnTextAlign();
-                }
                 this.grid.enableRtl = this.enableRtl;
+                this.updateColumnModel();
                 break;
             case 'allowReordering':
                 this.grid.allowReordering = this.allowReordering; break;
@@ -3472,7 +3487,7 @@ export class TreeGrid extends Component<HTMLElement> implements INotifyPropertyC
             }
         }
         if (requireRefresh) {
-            if (this.isFrozenGrid()) {
+            if (refreshComponent || this.isFrozenGrid()) {
                 this.refreshLayout();
             } else {
                 this.grid.refresh();
@@ -4322,6 +4337,12 @@ export class TreeGrid extends Component<HTMLElement> implements INotifyPropertyC
         }
         if (!this.stackedHeader && !isNullOrUndefined(this.columns)) {
             merge(this.columns, this.columnModel);
+        }
+        if (!this.enableRtl && !isNullOrUndefined(this.columnModel[this.treeColumnIndex])
+            && !isNullOrUndefined(this.treeColumnField)) {
+            if (this.columnModel[this.treeColumnIndex].field === this.treeColumnField) {
+                this.columnModel[this.treeColumnIndex].textAlign = this.treeColumnTextAlign;
+            }
         }
         this[`${deepMerge}`] = undefined;  // Workaround for blazor updateModel
         return this.columnModel;
@@ -6271,6 +6292,16 @@ export class TreeGrid extends Component<HTMLElement> implements INotifyPropertyC
         else {
             return 0;
         }
+    }
+
+    /**
+     * Gets the row index based on the given primary key value or row data.
+     *
+     * @param {string | number | object} value - The primary key value or row data.
+     * @returns {number} Returns the row index.
+     */
+    public getRowIndexByPrimaryKey(value: string | Object | number): number {
+        return this.grid.getRowIndexByPrimaryKey(value);
     }
 
     /**

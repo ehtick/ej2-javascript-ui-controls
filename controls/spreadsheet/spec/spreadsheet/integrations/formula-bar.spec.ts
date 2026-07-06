@@ -388,6 +388,73 @@ describe('Spreadsheet formula bar module ->', () => {
         });
     });
 
+    describe('CR-1014887,EJ2-1018077: Firefox formula bar cursor misaligns when typing =SUM( or switching between sheets.', () => {
+        let spreadsheet: Spreadsheet;
+        let editModule: any;
+        let nativeGetSelection: () => Selection;
+        let prepareCursorState = (): HTMLTextAreaElement => {
+            spreadsheet = helper.getInstance();
+            editModule = helper.getInstance().editModule;
+            helper.invoke('selectRange', ['A1']);
+            if (!editModule.editCellData) {
+                editModule.editCellData = { value: '' };
+            }
+            editModule.editCellData.value = '=SUM(F2:F3)';
+            let bar: HTMLTextAreaElement = <HTMLTextAreaElement>helper.getElementFromSpreadsheet('.e-formula-bar-panel .e-formula-bar');
+            bar.value = '=SUM(F2:F3)';
+            bar.selectionStart = 5;
+            bar.selectionEnd = 12;
+            return bar;
+        };
+        beforeAll((done: Function) => {
+            nativeGetSelection = window.getSelection;
+            helper.initializeSpreadsheet({ sheets: [{ ranges: [{ dataSource: defaultData }] }] }, done);
+        });
+        afterAll(() => {
+            (window as any).getSelection = nativeGetSelection;
+            helper.invoke('destroy');
+        });
+
+        it('getCurPosition: returns offsets for focused formula bar and undefined for mismatch', () => {
+            let formulaBar: HTMLTextAreaElement = prepareCursorState();
+            (window as any).getSelection = () => ({ focusNode: formulaBar } as unknown as Selection);
+            let cursorOffset: { start?: number, end?: number } = editModule['getCurPosition']();
+            expect(cursorOffset.start).toBe(5);
+            expect(cursorOffset.end).toBe(11);
+            (window as any).getSelection = nativeGetSelection;
+            let formulaBar2: HTMLTextAreaElement = prepareCursorState();
+            formulaBar2.value = '=AVERAGE(';
+            editModule.editCellData.value = '=SUM(F2:F3)';
+            let editElement: HTMLElement = editModule.getEditElement
+                ? editModule.getEditElement(spreadsheet.getActiveSheet())
+                : editModule['getEditElement'](spreadsheet.getActiveSheet());
+            if (editElement) { editElement.textContent = '=SUM(F2:F8)'; }
+            (window as any).getSelection = () => ({ focusNode: formulaBar2 } as unknown as Selection);
+            let cursorOffset2: { start?: number, end?: number } = editModule['getCurPosition']();
+            expect(cursorOffset2.start).toBeUndefined();
+            expect(cursorOffset2.end).toBeUndefined();
+            (window as any).getSelection = nativeGetSelection;
+        });
+
+        it('initiateCurPosition: sets formula bar selection when sheet switched', () => {
+            let formulaBar: HTMLTextAreaElement = prepareCursorState();
+            editModule = helper.getInstance().editModule;
+            helper.invoke('selectRange', ['A1']);
+            let editElement: HTMLElement = editModule.getEditElement
+                ? editModule.getEditElement(spreadsheet.getActiveSheet(), true)
+                : editModule['getEditElement'](spreadsheet.getActiveSheet(), true);
+            if (editElement) { editElement.textContent = 'X'.repeat(30); }
+            editModule.editCellData = { value: '=SUM(F2:F3)', sheetIndex: helper.getInstance().activeSheetIndex + 1 } as any;
+            editModule.curEndPos = 12;
+            formulaBar.value = '=SUM(F2:F3)';
+            (window as any).getSelection = () => ({ focusNode: formulaBar } as unknown as Selection);
+            editModule['initiateCurPosition']();
+            expect(formulaBar.selectionStart).toBe(11);
+            expect(formulaBar.selectionEnd).toBe(11);
+            (window as any).getSelection = nativeGetSelection;
+        });
+    });
+
     describe('Testing name box selection with defined names ->', () => {
         beforeAll((done: Function) => {
             helper.initializeSpreadsheet({

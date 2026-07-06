@@ -1,5 +1,5 @@
 import { compile as baseTemplateComplier } from '@syncfusion/ej2-base';
-import { DrawingElement } from '@syncfusion/ej2-drawings';
+import { DrawingElement } from './../ej2-drawings/index';
 
 /**
  * HTMLElement defines the basic html elements

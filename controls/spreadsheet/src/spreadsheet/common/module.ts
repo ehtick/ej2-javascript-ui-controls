@@ -184,5 +184,7 @@ function pushBasicModules(context: Spreadsheet, modules: ModuleDeclaration[]): v
     if (context.allowChart) {
         modules.push({ member: 'spreadsheetChart', args: [context] });
     }
-
+    if (context.enableAIAssist) {
+        modules.push({ member: 'AIAssist', args: [context] });
+    }
 }

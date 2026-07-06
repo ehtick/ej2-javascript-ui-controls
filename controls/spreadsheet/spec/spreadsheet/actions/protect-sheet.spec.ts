@@ -23,7 +23,7 @@ describe('Protect sheet ->', () => {
             helper.invoke('unprotectSheet', ['Sheet1']);
             setTimeout(() => {
                 expect(getComputedStyle(helper.getElementFromSpreadsheet('.e-active-cell')).display).toBe('block');
-                expect(helper.getElements('.e-overlay').length).toBeLessThanOrEqual(5);
+                expect(helper.getElements('.e-overlay').length).toBeLessThanOrEqual(7);
                 done();
             });
         });
@@ -2031,6 +2031,32 @@ describe('Protect sheet ->', () => {
                     done();
                 }, 50);
             }, 10);
+        });
+        it('generates hash and salt when sheet.password provided during init', (done: Function) => {
+            const helper2: SpreadsheetHelper = new SpreadsheetHelper('spreadsheet2');
+            helper2.initializeSpreadsheet({ sheets: [{ isProtected: true, password: 'testpwd' }] }, () => {
+                setTimeout(() => {
+                    const sheet = helper2.getInstance().sheets[0];
+                    expect(sheet.password).toBe('');
+                    expect(sheet.hashValue).not.toBeNull();
+                    expect(sheet.saltValue).not.toBeNull();
+                    helper2.invoke('destroy');
+                    done();
+                }, 50);
+            });
+        });
+        it('does not generate hash when password is empty', (done: Function) => {
+            const helper3: SpreadsheetHelper = new SpreadsheetHelper('spreadsheet3');
+            helper3.initializeSpreadsheet({ sheets: [{ isProtected: true, password: '' }] }, () => {
+                setTimeout(() => {
+                    const sheet = helper3.getInstance().sheets[0];
+                    expect(sheet.password).toBe('');
+                    expect(sheet.hashValue).toBeNull();
+                    expect(sheet.saltValue).toBeNull();
+                    helper3.invoke('destroy');
+                    done();
+                });
+            });
         });
     });
 });

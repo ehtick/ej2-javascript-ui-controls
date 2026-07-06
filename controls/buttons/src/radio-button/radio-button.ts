@@ -16,6 +16,7 @@ const LABEL: string = 'e-label';
 const RIPPLE: string = 'e-ripple-container';
 const RTL: string = 'e-rtl';
 const WRAPPER: string = 'e-radio-wrapper';
+const DISABLED: string = 'e-disabled';
 const ATTRIBUTES: string[] = ['title', 'class', 'style', 'disabled', 'readonly', 'name', 'value', 'id'];
 
 /**
@@ -38,6 +39,7 @@ export class RadioButton extends Component<HTMLInputElement> implements INotifyP
     private angularValue: string;
     private wrapper: Element;
     private type: string = 'radio';
+    private mutationObserver: MutationObserver;
 
     /**
      * Event trigger when the RadioButton state has been changed by user interaction.
@@ -210,6 +212,9 @@ export class RadioButton extends Component<HTMLInputElement> implements INotifyP
                     });
                     setValue('ej2_instances', [this], this.element);
                 }
+            }
+            if (this.mutationObserver) {
+                this.mutationObserver.disconnect();
             }
         }
     }
@@ -396,6 +401,7 @@ export class RadioButton extends Component<HTMLInputElement> implements INotifyP
                     this.unWireEvents();
                 } else {
                     this.element.disabled = false;
+                    removeClass([wrap], [DISABLED]);
                     this.wireEvents();
                 }
                 break;
@@ -477,12 +483,31 @@ export class RadioButton extends Component<HTMLInputElement> implements INotifyP
         if (!this.disabled) {
             this.wireEvents();
         }
+        this.observeDomAttributeChanges();
         this.renderComplete();
         this.wrapper = this.getWrapper() as Element;
     }
 
+    private observeDomAttributeChanges(): void {
+        this.mutationObserver = new MutationObserver((mutations: MutationRecord[]) => {
+            const isDomDisabled: boolean = this.element.hasAttribute('disabled');
+            if (isDomDisabled !== this.disabled) {
+                this.disabled = isDomDisabled;
+            }
+        });
+        this.mutationObserver.observe(this.element, {
+            attributes: true,
+            attributeFilter: ['disabled'],
+            subtree: false
+        });
+    }
+
     private setDisabled(): void {
         this.element.disabled = true;
+        const wrap: Element = this.getWrapper() as Element;
+        if (wrap) {
+            addClass([wrap], [DISABLED]);
+        }
     }
 
     private setText(text: string): void {

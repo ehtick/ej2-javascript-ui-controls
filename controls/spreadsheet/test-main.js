@@ -111,6 +111,21 @@ require.config({
             name: '../../../demos/common/data-source',
             location: 'demos/common/',
             main: 'data-source.js'
+        },
+        {
+            name: '@syncfusion/ej2-interactive-chat',
+            location: 'node_modules/@syncfusion/ej2-interactive-chat/dist',
+            main: 'ej2-interactive-chat.umd.min.js'
+        },
+        {
+            name: '@syncfusion/ej2-markdown-converter',
+            location: 'node_modules/@syncfusion/ej2-markdown-converter/dist',
+            main: 'ej2-markdown-converter.umd.min.js'
+        },
+        {
+            name: '@syncfusion/ej2-layouts',
+            location: 'node_modules/@syncfusion/ej2-layouts/dist',
+            main: 'ej2-layouts.umd.min.js'
         }
         // Include dependent packages
     ],

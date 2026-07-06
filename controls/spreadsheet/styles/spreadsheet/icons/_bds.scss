@@ -1,5 +1,4 @@
-@use 'ej2-base/styles/common/mixin' as *;
-@use '../bds-definition' as *;
+@use '../variables' as *;
 @include export-module('spreadsheet-bds-icons') {
   .e-spreadsheet {
     & .e-findtool-dlg {
@@ -63,6 +62,18 @@
       & .e-fill-color {
         &::before {
           content: '\e783';
+        }
+      }
+
+      & .e-sub-icon {
+        &::before {
+          content: '\e80a';
+        }
+      }
+
+      & .e-super-icon {
+        &::before {
+          content: '\e7a7';
         }
       }
 

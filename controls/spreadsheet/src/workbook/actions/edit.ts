@@ -84,6 +84,7 @@ export class WorkbookEdit {
         }
         const sheet: SheetModel = getSheet(this.parent, sheetIdx);
         let cell: CellModel = getCell(range[0], range[1], sheet, true);
+        const isSuspended: boolean = this.parent.paintSuspendCount > 0;
         if (!cell) {
             cell = sheet.rows[range[0]].cells[range[1]] = {};
         }
@@ -91,7 +92,8 @@ export class WorkbookEdit {
             let isFormula: boolean = checkIsFormula(value);
             isFormula = value === '#SPILL!' ? true : isFormula;
             let skipFormula: boolean = false; // for unique formula
-            if (cell && cell.formula && value === '' && (cell.formula.indexOf('UNIQUE') > -1 || cell.formula.indexOf('SORT') > -1)) {
+            if (cell && cell.formula && value === '' &&
+                (cell.formula.indexOf('UNIQUE') > -1 || cell.formula.indexOf('SORT') > -1)) {
                 skipFormula = true;
             }
             const isNotTextFormat: boolean = getTypeFromFormat(cell.format) !== 'Text' && (!isFormula ||
@@ -114,7 +116,8 @@ export class WorkbookEdit {
                 isDelete: isDelete,
                 deletedRange: deletedRange,
                 fillType: fillType,
-                isDependentRefresh: isDependentUpdate
+                isDependentRefresh: isDependentUpdate,
+                modelUpdateOnly: isSuspended
             };
             if (isNotTextFormat && !skipFormatCheck) {
                 const dateEventArgs: DateFormatCheckArgs = {
@@ -191,6 +194,7 @@ export class WorkbookEdit {
                     }
                 }
                 if (!skipFormula && !isDelete) {
+                    eventArgs.modelUpdateOnly = isSuspended;
                     this.parent.notify(workbookFormulaOperation, eventArgs);
                     isFormulaDependent = <boolean>eventArgs.isFormulaDependent;
                 } else {
@@ -243,7 +247,15 @@ export class WorkbookEdit {
         }
         this.parent.setUsedRange(range[0], range[1], sheet);
         if (this.parent.chartColl.length && !this.parent.isEdit && !isRandomFormula) {
-            this.parent.notify(refreshChart, { cell: cell, rIdx: range[0], cIdx: range[1], sheetIdx: sheetIdx, isRefreshChart: true });
+            const backupCell: CellModel = cell;
+            if (!isSuspended) {
+                this.parent.notify(refreshChart, { cell: cell, rIdx: range[0], cIdx: range[1], sheetIdx: sheetIdx, isRefreshChart: true });
+            } else {
+                this.parent.queuePaintAction('updateCell_refreshChart', () => {
+                    this.parent.notify(refreshChart, { cell: backupCell, rIdx: range[0], cIdx: range[1], sheetIdx: sheetIdx,
+                        isRefreshChart: true });
+                });
+            }
         }
         return isFormulaDependent;
     }

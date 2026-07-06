@@ -9,13 +9,15 @@ import { _PdfStringLayouter, _PdfStringLayoutResult, _LineInfo, _LineType, _Stri
 import { PdfTextAlignment, _PdfGraphicsUnit, PdfTextDirection, PdfSubSuperScript, PdfBlendMode, PdfLineJoin, PdfLineCap, PdfDashStyle, PdfFillMode, PathPointType, PdfRotationAngle } from './../enumerator';
 import { PdfStringFormat, PdfVerticalAlignment } from './../fonts/pdf-string-format';
 import { PdfTemplate } from './pdf-template';
+import { PdfLayoutFormat } from './pdf-layouter';
 import { PdfPath } from './pdf-path';
 import { _UnicodeTrueTypeFont } from '../fonts/unicode-true-type-font';
 import { _TrueTypeReader } from './../fonts/ttf-reader';
 import { _RtlRenderer } from './../graphics/rightToLeft/text-renderer';
 import { PdfImage } from './images/pdf-image';
 import { PdfLayer } from '../layers/layer';
-import { Rectangle, Point, Size, PdfColor } from '../pdf-type';
+import { Rectangle, Point, Size, PdfColor} from '../pdf-type';
+import { PdfTextElement } from '../pdf-type';
 /**
  * Represents a graphics from a PDF page.
  * ```typescript
@@ -244,17 +246,23 @@ export class PdfGraphics {
      */
     _layer: PdfLayer;
     /**
-     * Lazily creates and returns the current graphics transformation matrix.
+     * Indicates whether the current graphics context is in layouter mode.
      *
      * @private
-     * @returns {_PdfTransformationMatrix} The current transformation matrix.
      */
+    _isLayouter: boolean = false;
     /**
      * Cached string layouter reused across drawString calls.
      *
      * @private
      */
     _stringLayouter: _PdfStringLayouter;
+    /**
+     * Lazily creates and returns the current graphics transformation matrix.
+     *
+     * @private
+     * @returns {_PdfTransformationMatrix} The current transformation matrix.
+     */
     get _matrix(): _PdfTransformationMatrix {
         if (typeof this._m === 'undefined') {
             this._m = new _PdfTransformationMatrix();
@@ -326,7 +334,12 @@ export class PdfGraphics {
      * ```
      */
     get clientSize(): Size {
-        return {width: this._clipBounds[2], height: this._clipBounds[3]};
+        if (this._page && this._crossReference && this._crossReference._document._hasTemplateContentValue) {
+            const includeMargins: boolean = this._isLayouter ? true : false;
+            const bounds: number[] = this._page._getActualBounds(this._page._pageSettings, includeMargins);
+            return { width: bounds[2], height: bounds[3]};
+        }
+        return { width: this._clipBounds[2], height: this._clipBounds[3] };
     }
     /**
      * Initializes a new instance of the `PdfGraphics` class.
@@ -1916,6 +1929,81 @@ export class PdfGraphics {
         this._endMarkContent();
     }
     /**
+     * Draws a text element on the graphics context at a given location.
+     *
+     * ```typescript
+     * // Load an existing PDF document
+     * let document: PdfDocument = new PdfDocument(data);
+     * // Access the first page of the document
+     * let page: PdfPage = document.getPage(0);
+     * // Create a text element
+     * let element: PdfTextElement = {
+     *     text: 'Hello world drawn using a point location.',
+     *     font: document.embedFont(PdfFontFamily.helvetica, 12, PdfFontStyle.regular),
+     *     brush: new PdfBrush({ r: 0, g: 0, b: 0 })
+     * };
+     * // Draw the text element using a specific point
+     * page.graphics.drawTextElement(element, { x: 50, y: 100 });
+     * // Save the PDF document
+     * document.save('output.pdf');
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     *
+     * @param {PdfTextElement} element The text element to draw.
+     * @param {Point} location The location where the text element should be drawn.
+     * @returns {void} Nothing.
+     */
+    public drawTextElement(element: PdfTextElement, location: Point): void;
+    /**
+     * Draws a text element inside a rectangle on the graphics context.
+     *
+     * ```typescript
+     * // Load an existing PDF document
+     * let document: PdfDocument = new PdfDocument(data);
+     * // Access the first page of the document
+     * let page: PdfPage = document.getPage(0);
+     * // Create a text element
+     * let element: PdfTextElement = {
+     *     text: 'Hello world drawn inside rectangle bounds.',
+     *     font: document.embedFont(PdfFontFamily.helvetica, 12, PdfFontStyle.regular),
+     *     brush: new PdfBrush({ r: 0, g: 0, b: 0 })
+     * };
+     * // Define the rectangle bounds
+     * let rect: Rectangle = { x: 10, y: 20, width: 200, height: 50 };
+     * // Draw the text element inside rectangle bounds
+     * page.graphics.drawTextElement(element, rect);
+     * // Save and destroy the document
+     * document.save('output.pdf');
+     * document.destroy();
+     * ```
+     *
+     * @param {PdfTextElement} element The text element to draw.
+     * @param {Rectangle} bounds The bounds within which the text element should be drawn.
+     * @returns {void} Nothing.
+     */
+    public drawTextElement(element: PdfTextElement, bounds: Rectangle): void;
+    public drawTextElement(element: PdfTextElement, locationOrBounds: Point | Rectangle): void {
+        if (typeof element === 'undefined' || element === null) {
+            throw new Error('PdfTextElement cannot be null or undefined');
+        }
+        if (typeof element.text !== 'string' || element.text.length === 0) {
+            throw new Error('PdfTextElement.text must be a non-empty string');
+        }
+        if (typeof element.font === 'undefined' || element.font === null) {
+            throw new Error('PdfTextElement.font is required');
+        }
+        if (typeof element.layoutFormat !== 'undefined' && element.layoutFormat !== null && !(element.layoutFormat instanceof PdfLayoutFormat)) {
+            throw new Error('PdfTextElement.layoutFormat must be an instance of PdfLayoutFormat');
+        }
+        const bounds: Rectangle = this._isRectangle(locationOrBounds) ?
+            { x: locationOrBounds.x, y: locationOrBounds.y, width: locationOrBounds.width, height: locationOrBounds.height } :
+            { x: locationOrBounds.x, y: locationOrBounds.y, width: 0, height: 0 };
+        const defaultBrush: PdfBrush = new PdfBrush({ r: 0, g: 0, b: 0 });
+        const brushToUse: PdfBrush = (typeof element.brush === 'undefined' || element.brush === null) ? defaultBrush : element.brush;
+        this.drawString(element.text, element.font, bounds, element.pen, brushToUse, element.stringFormat);
+    }
+    /**
      * Pops and restores a graphics state from the stack and emits the 'Q' operator.
      *
      * @private
@@ -3328,6 +3416,26 @@ export class PdfGraphics {
         this._clipBounds = clipBounds;
         this._sw._writeComment('Clip margins.');
         this._sw._appendRectangle(clipBounds[0], clipBounds[1], clipBounds[2], clipBounds[3]);
+        this._sw._closePath();
+        this._sw._clipPath(false);
+        this._sw._writeComment('Translate co-ordinate system.');
+        this.translateTransform({x: clipBounds[0], y: clipBounds[1]});
+    }
+    /**
+     * Applies a clipping rectangle and translates the graphics coordinate system
+     * based on the specified margin and template bounds.
+     *
+     * @private
+     * @param {number[]} clipBounds The bounds used to compute clipping and translation,
+     * specified as an array containing margin and template offsets.
+     * @returns {void} Nothing.
+     */
+    _clipTranslateMarginsWithBounds(clipBounds: number[]): void {
+        const bounds: number[] = [clipBounds[2], clipBounds[3], this._size.width - clipBounds[2] - clipBounds[4],
+            this._size.height - clipBounds[3] - clipBounds[4]];
+        this._clipBounds = bounds;
+        this._sw._writeComment('Clip margins.');
+        this._sw._appendRectangle(bounds[0], bounds[1], bounds[2], bounds[3]);
         this._sw._closePath();
         this._sw._clipPath(false);
         this._sw._writeComment('Translate co-ordinate system.');

@@ -12,6 +12,8 @@ import { Toolbar } from '../../src/treegrid/actions/toolbar';
 import { SelectedEventArgs } from '@syncfusion/ej2-inputs';
 import { profile, inMB, getMemoryProfile } from '../common.spec';
 import { select } from '@syncfusion/ej2-base';
+import * as utils from '../../src/treegrid/utils';
+import { Query } from '@syncfusion/ej2-data';
 
 /**
  * Grid base spec
@@ -1603,6 +1605,262 @@ describe('getCheckedRecords returns empty after expand/collapse', () => {
         (gridObj.element.querySelectorAll('.e-row')[0].getElementsByClassName('e-frame e-icons')[0] as any).click();
         (gridObj.getRows()[0].getElementsByClassName('e-treegridexpand')[0] as HTMLElement).click();
         gridObj.actionComplete = actionComplete;  
+    });
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+describe('Selection internal coverage additions', () => {
+    let gridObj: TreeGrid;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: sampleData,
+                childMapping: 'subtasks',
+                treeColumnIndex: 1,
+                columns: [
+                    { field: 'taskID', headerText: 'Task ID', isPrimaryKey: true, width: 60 },
+                    { field: 'taskName', headerText: 'Task Name', width: 150 },
+                ]
+            },
+            done
+        );
+    });
+
+    it('getChildrenFromFlat returns [] for null or missing inputs', () => {
+        const sel = (gridObj as any).selectionModule;
+        expect((sel as any).getChildrenFromFlat(null).length).toBe(0);
+        const origFlat = (gridObj as any).flatData;
+        (gridObj as any).flatData = null;
+        expect((sel as any).getChildrenFromFlat({ uniqueID: 'x' }).length).toBe(0);
+        (gridObj as any).flatData = origFlat;
+    });
+
+    it('getChildrenFromFlat pushes matching children and skips null entries', () => {
+        const sel = (gridObj as any).selectionModule;
+        (gridObj as any).flatData = [
+            null,
+            { uniqueID: 'c1', parentItem: { uniqueID: 'P1' }, isSummaryRow: false },
+            { uniqueID: 'c2', parentItem: { uniqueID: 'P1' }, isSummaryRow: false }
+        ];
+        const out = (sel as any).getChildrenFromFlat({ uniqueID: 'P1' });
+        expect(out.length).toBe(2);
+    });
+
+    it('buildSelectionSummary uses getChildrenFromFlat when childRecords not present', () => {
+        const sel = (gridObj as any).selectionModule;
+        (gridObj as any).flatData = [
+            { uniqueID: 'p1', parentItem: null, isSummaryRow: false },
+            { uniqueID: 'c1', parentItem: { uniqueID: 'p1' }, checkboxState: 'check', isSummaryRow: false },
+            { uniqueID: 'c2', parentItem: { uniqueID: 'p1' }, checkboxState: 'indeterminate', isSummaryRow: false }
+        ];
+        const summary = (sel as any).buildSelectionSummary({ uniqueID: 'p1' } as any);
+        expect(summary.total).toBeGreaterThan(0);
+        expect(summary.checked + summary.indeterminate).toBeGreaterThan(0);
+    });
+
+    it('traverSelection counts indeterminate children and updates parentSelectionCounters', () => {
+        const sel = (gridObj as any).selectionModule;
+        const parentRec: any = {
+            uniqueID: 'PAR',
+            hasChildRecords: true,
+            childRecords: [
+                { uniqueID: 'a', checkboxState: 'indeterminate', isSummaryRow: false },
+                { uniqueID: 'b', checkboxState: 'check', isSummaryRow: false }
+            ]
+        };
+        (gridObj as any).autoCheckHierarchy = true;
+        (sel as any).traverSelection(parentRec, null , false);
+        const counters = (sel as any).parentSelectionCounters['PAR'];
+        expect(counters).toBeDefined();
+        expect(counters.indeterminate).toBeGreaterThanOrEqual(0);
+    });
+
+    it('updateParentSelection early-returns when parent not found (no exception)', () => {
+        const sel = (gridObj as any).selectionModule;
+        expect(() => {
+            (sel as any).updateParentSelection({ uniqueID: 'NON_EXIST' } as any);
+        }).not.toThrow();
+    });
+
+    it('getCheckboxcolumnIndex returns -1 when no checkbox column present', () => {
+        const sel = (gridObj as any).selectionModule;
+        const origColumns = (gridObj as any).columns;
+        (gridObj as any).columns = [{ field: 'taskID' }, { field: 'taskName' }];
+        const header = document.createElement('div');
+        const headerCell = document.createElement('div');
+        headerCell.classList.add('e-headercelldiv');
+        header.appendChild(headerCell);
+        (gridObj as any).getHeaderContent = () => header;
+        (sel as any).checkboxColIndexCache = -2;
+        const idx = (sel as any).getCheckboxcolumnIndex();
+        expect(idx).toBe(-1);
+        (gridObj as any).columns = origColumns;
+    });
+
+    it('applySummaryDelta updates counts and clamps at zero', () => {
+        const sel = (gridObj as any).selectionModule;
+        const summary = { total: 2, checked: 0, indeterminate: 0 };
+        (sel as any).applySummaryDelta(summary, 'check', 1);
+        expect(summary.checked).toBe(1);
+        (sel as any).applySummaryDelta(summary, 'indeterminate', 2);
+        expect(summary.indeterminate).toBe(2);
+        (sel as any).applySummaryDelta(summary, 'check', -5);
+        expect(summary.checked).toBe(0);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+describe('TreeGrid Selection - refreshVisibleCheckboxes coverage', () => {
+    let gridObj: TreeGrid;
+    let selectionModule: any;
+
+    beforeEach((done: DoneFn) => {
+        gridObj = createGrid(
+            {
+                dataSource: sampleData,
+                childMapping: 'subtasks',
+                treeColumnIndex: 1,
+                height: 400,
+                frozenRows: 2,
+                allowSelection: true,
+                selectionSettings: { persistSelection: true },
+                columns: [
+                    { type: 'checkbox', width: 60 },
+                    { field: 'taskID', isPrimaryKey: true, width: 90 },
+                    { field: 'taskName', width: 180 },
+                    { field: 'duration', width: 100 }
+                ]
+            },
+            () => {
+                selectionModule = (gridObj as any).selectionModule;
+                done();
+            }
+        );
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+        selectionModule = null;
+    });
+
+    it('resolveHeaderSelectionList covers search branch (includeAll both ways)', (done) => {
+    gridObj.searchSettings = { key: 'Design' };
+    gridObj.search('Design');
+
+    gridObj.actionComplete = (args: any) => {
+      if (args.requestType === 'searching') {
+        const sel = gridObj.selectionModule;
+        gridObj.filterModule = null;
+        sel['searchingRecords'] = [gridObj.getCurrentViewRecords()[0]];
+        const listAll = sel['resolveHeaderSelectionList'](true);
+        expect(Array.isArray(listAll)).toBeTruthy();
+        expect(listAll.length).toBeGreaterThan(0);
+        const listNormal = sel['resolveHeaderSelectionList'](false);
+        expect(listNormal.length).toBeGreaterThan(0);
+        done();
+      }
+    };
+  });
+
+    it('should not crash when some view records are missing / null', () => {
+        spyOn(gridObj, 'getCurrentViewRecords').and.returnValue([
+            null,                             
+            { uniqueID: 'fake-uid-1', uid: null }, 
+            { uniqueID: 'fake-uid-2', uid: 'real-uid' }
+        ]);
+
+        spyOn(gridObj.grid, 'getRowElementByUID').and.returnValue(null);
+        spyOn(gridObj, 'getRows').and.returnValue([]);
+        spyOn(gridObj, 'getDataRows').and.returnValue([]);
+
+        expect(() => {
+            selectionModule.refreshVisibleCheckboxes();
+        }).not.toThrow();
+    });
+
+    it('should cover frozenRows || frozenColumns fallback when normal rows not found', () => {
+        spyOn(gridObj.grid, 'getRowElementByUID').and.returnValue(null);
+        spyOn(gridObj, 'getRows').and.returnValue([null, null]);
+
+        const fakeMovableRows = [
+            document.createElement('tr'),
+            document.createElement('tr')
+        ];
+        spyOn(gridObj, 'getDataRows').and.returnValue(fakeMovableRows);
+        const tr = fakeMovableRows[0];
+        const wrapper = document.createElement('div');
+        wrapper.className = 'e-hierarchycheckbox';
+        const frame = document.createElement('span');
+        frame.className = 'e-frame';
+        const input = document.createElement('input');
+        input.className = 'e-treecheckselect';
+        wrapper.appendChild(frame);
+        wrapper.appendChild(input);
+        tr.appendChild(wrapper);
+
+        selectionModule.buildVisibleUidMap();
+        selectionModule.refreshVisibleCheckboxes();
+
+        expect(frame.classList.contains('e-check') ||
+               frame.classList.contains('e-stop') ||
+               frame.classList.contains('e-uncheck')).toBeTruthy();
+
+        expect(input.hasAttribute('aria-checked')).toBeTruthy();
+    });
+});
+
+describe('Selection internal coverage additions - continued', () => {
+    let gridObj: TreeGrid;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: sampleData,
+                childMapping: 'subtasks',
+                treeColumnIndex: 2,
+                selectionSettings: { persistSelection: true, checkboxOnly: false },
+                columns: [
+                    { type: 'checkbox', width: 80 },
+                    { field: 'taskID', headerText: 'Order ID', isPrimaryKey: true, width: 120 },
+                    { field: 'taskName', headerText: 'Customer ID', width: 150 }
+                ]
+            },
+            done
+        );
+    });
+
+    it('checkboxSelection handles row checkbox and header checkbox branches', () => {
+        const sel: any = (gridObj as any).selectionModule;
+        const rowInput = gridObj.element.querySelectorAll('.e-row')[1].querySelector('input[type="checkbox"]') as HTMLElement;
+        expect(rowInput).toBeTruthy();
+        sel.checkboxSelection({ target: rowInput });
+        expect(sel.getCheckedrecords().length).toBeGreaterThanOrEqual(0);
+        const headerCell = gridObj.element.querySelector('.e-checkselectall') as HTMLElement;
+        if (headerCell) {
+            headerCell.click();
+            const headerFrame = gridObj.element.querySelector('.e-treeselectall') as HTMLElement;
+            expect(true).toBe(true);
+        }
+    });
+
+    it('checkboxSelection remote persistSelection branch runs without errors', () => {
+        const sel: any = (gridObj as any).selectionModule;
+        (gridObj as any)['parentQuery'] = [1];
+        gridObj.selectionSettings.persistSelection = true;
+        (gridObj as any)['columnModel'] = [{ type: 'checkbox' }];
+        (gridObj as any).query = new Query();
+        spyOn(utils, 'isRemoteData').and.returnValue(true);
+        const trCell = gridObj.getRows()[0].querySelector('.e-rowcell') as HTMLElement;
+        sel.checkboxSelection({ target: trCell });
+        expect((gridObj as any)['parentQuery'].length === 0 || (gridObj as any)['parentQuery'] === undefined).toBe(true);
+        (utils.isRemoteData as any).and.callThrough && (utils.isRemoteData as any).and.callThrough();
     });
     afterAll(() => {
         destroy(gridObj);

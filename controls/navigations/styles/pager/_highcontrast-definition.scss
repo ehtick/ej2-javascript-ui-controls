@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/highcontrast' as *;
-@forward 'ej2-base/styles/definition/highcontrast';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $pager-font-family: sans-serif !default;
 $pager-border-type: $border-type !default;
 $pager-mobile-icon-size: 11px !default;

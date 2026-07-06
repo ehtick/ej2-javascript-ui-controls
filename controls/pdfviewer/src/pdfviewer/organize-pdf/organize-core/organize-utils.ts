@@ -302,9 +302,9 @@ export function deleteButtonClick(event: MouseEvent): void {
         if (this.extractPagesInput) {
             this.extractPagesInput.value = '';
         }
-        const extractBtn: HTMLButtonElement = document.getElementsByClassName('e-pv-extractbtn')[0] as HTMLButtonElement;
-        if (extractBtn) {
-            extractBtn.disabled = true;
+        const extractBtn: any = document.getElementsByClassName('e-pv-extractbtn')[0] as HTMLButtonElement;
+        if (extractBtn && extractBtn.ej2_instances && extractBtn.ej2_instances.length && extractBtn.ej2_instances[0]) {
+            extractBtn.ej2_instances[0].disabled = true;
         }
     }
     updateSelectAllCheckbox.call(this);

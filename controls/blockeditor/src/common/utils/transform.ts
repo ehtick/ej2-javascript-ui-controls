@@ -1,6 +1,6 @@
 import { isNullOrUndefined } from '@syncfusion/ej2-base';
 import { ItemModel } from '@syncfusion/ej2-navigations';
-import { BlockActionItemModel, CommandItemModel, ContentModel, ContextMenuItemModel, LabelItemModel, ICollapsibleHeadingBlockSettings, IHeadingBlockSettings } from '../../models/index';
+import { BlockActionItemModel, CommandItemModel, ContentModel, ContextMenuItemModel, LabelItemModel, ICollapsibleHeadingBlockSettings, IHeadingBlockSettings, UserModel } from '../../models/index';
 import { BlockModel } from '../../models/block/block-model';
 import { isEmptyString } from './block';
 import { ToolbarCommandName } from '../../models/types';
@@ -10,10 +10,10 @@ import { IToolbarItemModel } from '../../models/interface';
  * Creates a shallow copy of the given object, excluding specified properties.
  *
  * @param {any} obj - The object to copy.
- * @param {string[]} excludeKeys - Optional array of property keys to exclude from the copy.
+ * @param {any[]} excludeKeys - Optional array of property keys to exclude from the copy.
  * @returns {any} A new object with copied properties.
  */
-export function cloneObject(obj: any, excludeKeys: string[] = []): any {
+export function cloneObject(obj: any, excludeKeys: any[] = []): any {
     const result: any = Object.create(Object.getPrototypeOf(obj));
     for (const key in obj) {
         if (Object.prototype.hasOwnProperty.call(obj, key) && excludeKeys.indexOf(key) === -1) {
@@ -98,4 +98,14 @@ export function sanitizeHeadingProps(props: Partial<ICollapsibleHeadingBlockSett
         sanitizedInnerProps.level = 1;
     }
     return sanitizedInnerProps;
+}
+
+export function sanitizeUserModel(users: UserModel[]): UserModel[] {
+    return users.map((user: UserModel) => ({
+        id: user.id,
+        user: user.user,
+        avatarBgColor: user.avatarBgColor,
+        avatarUrl: user.avatarUrl,
+        cssClass: user.cssClass
+    }));
 }

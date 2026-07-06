@@ -2,6 +2,8 @@
 // Generated on Tue Apr 26 2016 09:56:05 GMT+0530 (India Standard Time)
 
 module.exports = function (config) {
+  // For run the test cases in Headed mode use - "npx karma start --headed"
+  const isHeaded = process.argv.includes('--headed');
   config.set({
 
     // base path that will be used to resolve all patterns (eg. files, exclude)
@@ -26,6 +28,7 @@ module.exports = function (config) {
       "node_modules/@syncfusion/ej2-navigations/styles/material.css",
       "node_modules/@syncfusion/ej2-notifications/styles/material.css",
       "demos/material.css",
+      "styles/material.css",
       { pattern: "src/**/*.js", included: false },
       { pattern: "src/**/**/**/*.js", included: false },
       { pattern: "src/pdfviewer/ej2-pdfviewer-lib/**/*", included: false, served: true, watched: false },
@@ -41,7 +44,6 @@ module.exports = function (config) {
       { pattern: "node_modules/@syncfusion/ej2-navigations/**/*.js", included: false },
       { pattern: "node_modules/@syncfusion/ej2-splitbuttons/**/*.js", included: false },
       { pattern: "node_modules/@syncfusion/ej2-notifications/**/*.js", included: false },
-      { pattern: "node_modules/@syncfusion/ej2-drawings/**/*.js", included: false },
       { pattern: "node_modules/@syncfusion/ej2-inplace-editor/**/*.js", included: false },
       { pattern: "node_modules/@syncfusion/ej2-calendars/**/*.js", included: false },
       { pattern: "node_modules/@syncfusion/ej2-richtexteditor/**/*.js", included: false },
@@ -56,7 +58,6 @@ module.exports = function (config) {
       { pattern: "node_modules/@syncfusion/ej2-file-utils/**/*.js", included: false },
       { pattern: "node_modules/@syncfusion/ej2-pdf/**/*.js", included: false },
       { pattern: "node_modules/@syncfusion/ej2-pdf-data-extract/**/*.js", included: false }
-
 
       // Add dependent package's script files here              
     ],
@@ -78,7 +79,7 @@ module.exports = function (config) {
     // test results reporter to use
     // possible values: 'dots', 'progress'
     // available reporters: https://npmjs.org/browse/keyword/karma-reporter
-    reporters: ['progress', 'html', 'coverage'],
+    reporters: isHeaded ? ['progress', 'html'] : ['progress', 'html', 'coverage'],
 
     // the default html configuration 
     htmlReporter: {
@@ -101,13 +102,13 @@ module.exports = function (config) {
 
 
     // enable / disable watching file and executing tests whenever any file changes
-    autoWatch: false,
+    autoWatch: isHeaded,
 
     browserNoActivityTimeout: 180000,
 
     // start these browsers
     // available browser launchers: https://npmjs.org/browse/keyword/karma-launcher
-    browsers: ['ChromeHeadless'],
+    browsers: isHeaded ? ['Chrome'] : ['ChromeHeadless'],
     customLaunchers: {
       ChromeNoSandbox: {
         base: 'ChromeHeadless',
@@ -117,7 +118,7 @@ module.exports = function (config) {
 
     // Continuous Integration mode
     // if true, Karma captures browsers, runs the tests and exits
-    singleRun: true,
+    singleRun: !isHeaded,
 
     // Concurrency level
     // how many browser should be started simultaneous
@@ -125,11 +126,12 @@ module.exports = function (config) {
 
     // COVERAGE REPORTER
     coverageReporter: {
-      dir: 'coverage', // output folder
+      dir: 'test-report/coverage/', // output folder
       reporters: [
         { type: 'html', subdir: 'html' },
-        { type: 'lcovonly', subdir: '.', file: 'lcov.info' }, // useful for CI
-        { type: 'text-summary' } // nice summary in console
+        { type: 'lcovonly', subdir: '.', file: 'lcov.info' },
+        { type: 'text-summary' },
+        { type: 'json', subdir: '.', file: 'coverage.json' }
       ],
       check: {
         each: {
@@ -157,6 +159,12 @@ module.exports = function (config) {
               "functions": 0.98,
               "statements": 2,
               "lines": 2
+            },
+            "src/pdfviewer/annotation/comment-filter-predicates.js": {
+              "branches": 0,
+              "functions": 2.7,
+              "statements": 3.8,
+              "lines": 3.85
             },
             "src/pdfviewer/toolbar/redaction-toolbar.js": {
               "branches": 0.42,
@@ -209,8 +217,8 @@ module.exports = function (config) {
             "src/pdfviewer/print/default-print.js": {
               "branches": 0,
               "functions": 20,
-              "statements": 12.35,
-              "lines": 12.35
+              "statements": 12.2,
+              "lines": 12.2
             },
             "src/pdfviewer/base/navigation-pane.js": {
               "branches": 0,
@@ -525,7 +533,7 @@ module.exports = function (config) {
               "lines": 11.16
             },
             "src/pdfviewer/organize-pdf/organize-core/organizepages-editor.js": {
-              "branches": 1.8,
+              "branches": 1.74,
               "functions": 2.7,
               "statements": 9.26,
               "lines": 9.47

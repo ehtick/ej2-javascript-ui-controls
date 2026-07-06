@@ -1,6 +1,5 @@
 @use 'sass:color';
-@use 'ej2-base/styles/definition/material-dark' as *;
-@forward 'ej2-base/styles/definition/material-dark';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 
 $tbar-skin: 'material' !default;
 $tbar-zero-value: 0 !default;
@@ -131,6 +130,7 @@ $tbar-hover-font: $tbar-default-font !default;
 $tbar-default-font-overlay: rgba($grey-dark-font, .3) !default;
 $tbar-active-font-color: $tbar-default-font !default;
 $tbar-press-font: $tbar-default-font !default;
+$tbar-active-icon-color: $tbar-default-font !default;
 $tbar-pressed-bg: $tbar-hover-bg !default;
 $tbar-pressed-border: $tbar-hover-border-color !default;
 $tbar-pressed-font: $tbar-hover-font !default;

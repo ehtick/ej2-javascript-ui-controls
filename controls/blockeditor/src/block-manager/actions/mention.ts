@@ -4,6 +4,7 @@ import { getBlockModelById, getContentModelByNode } from '../../common/utils/blo
 import { BlockModel, ContentModel } from '../../models/index';
 import { BlockManager } from '../base/block-manager';
 import { events } from '../../common/constant';
+import { decoupleReference } from '../../common/utils/common';
 
 export class MentionAction {
     private parent: BlockManager;
@@ -67,6 +68,7 @@ export class MentionAction {
         const { startContainer, startOffset, endOffset, contentElement }: RangePath = rangePath;
         const blockEl: HTMLElement = this.parent.currentFocusedBlock as HTMLElement;
         const block: BlockModel = getBlockModelById(blockEl.id, this.parent.getEditorBlocks());
+        const oldBlock: BlockModel = decoupleReference(block);
         const targetNode: Node = document.contains(startContainer) ? startContainer : contentElement;
 
         if (!block || !block.content || block.content.length === 0) { return; }
@@ -84,6 +86,24 @@ export class MentionAction {
 
             // Remove contentchanged action triggered by typing '/'
             if (!isUndoRedoAction) {
+                /* Collaboration Start */
+                // In collaboration mode: Remove "/" from Yjs with excluded origin BEFORE syncing
+                if (this.parent.collaborationModule && this.parent.collaborationModule.syncBinding) {
+                    this.parent.collaborationModule.syncBinding.removeMentionCharFromYjs(
+                        block,
+                        affectedContent,
+                        start
+                    );
+                }
+                /* Collaboration End */
+                this.parent.eventService.addChange({
+                    action: 'Update',
+                    data: {
+                        block: block,
+                        prevBlock: oldBlock
+                    }
+                });
+                this.parent.observer.notify('triggerBlockChange', this.parent.eventService.getChanges());
                 if (this.parent.undoRedoAction.undoRedoStack.length > 0) {
                     this.parent.undoRedoAction.undoRedoStack.pop();
                     this.parent.undoRedoAction.index = this.parent.undoRedoAction.undoRedoStack.length - 1;

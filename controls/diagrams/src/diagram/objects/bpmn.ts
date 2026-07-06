@@ -374,7 +374,7 @@ export class BpmnDiagrams {
         taskLoopNode.horizontalAlignment = 'Left'; taskLoopNode.verticalAlignment = 'Bottom';
         taskLoopNode.setOffsetWithRespectToBounds(0, 1, 'Fraction'); taskLoopNode.relativeMode = 'Point';
         taskLoopNode.style.fill = 'transparent';
-        taskTypeNode.style.opacity = node.style.opacity;
+        taskLoopNode.style.opacity = node.style.opacity;
         taskShapes.children.push(taskLoopNode);
         //if task as compensation
         let taskCompNode: PathElement = new PathElement();
@@ -455,6 +455,7 @@ export class BpmnDiagrams {
         triggerNode.verticalAlignment = 'Center';
         triggerNode.relativeMode = 'Object';
         // set style opacity & strokeColor
+        triggerNode.style.fill = node.style.fill;
         triggerNode.style.strokeColor = node.style.strokeColor;
         triggerNode.style.opacity = node.style.opacity;
 
@@ -467,12 +468,12 @@ export class BpmnDiagrams {
             outerEvtNode.visible = false;
             break;
         case 'Intermediate':
-            innerEvtNode.style.fill = 'white';
+            innerEvtNode.style.fill = node.style.fill;
             outerEvtNode.style.fill = node.style.fill;
             innerEvtNode.style.gradient = null;
             break;
         case 'NonInterruptingIntermediate':
-            innerEvtNode.style.fill = 'white';
+            innerEvtNode.style.fill = node.style.fill;
             outerEvtNode.style.fill = node.style.fill;
             innerEvtNode.style.gradient = null;
             innerEvtNode.style.strokeDashArray = '2 3';
@@ -480,15 +481,16 @@ export class BpmnDiagrams {
             break;
         case 'ThrowingIntermediate':
         case 'End':
-            innerEvtNode.style.fill = event !== 'End' ? 'white' : 'black';
+            innerEvtNode.style.fill = event !== 'End' ? node.style.fill : node.style.strokeColor;
             outerEvtNode.style.fill = sub ? (node.style.fill === 'none' || node.style.fill === 'transparent') ? 'white'
                 : node.style.fill : node.style.fill;
             innerEvtNode.style.gradient = null;
-            triggerNode.style.fill = 'black';
-            triggerNode.style.strokeColor = 'white';
+            triggerNode.style.fill = node.style.strokeColor;
+            triggerNode.style.strokeColor = node.style.fill;
             break;
         }
         //append child and set style
+        innerEvtNode.style.strokeWidth = node.style.strokeWidth;
         eventshape.style.fill = 'transparent';
         eventshape.style.strokeColor = 'transparent'; eventshape.style.strokeWidth = 0;
         eventshape.children = [innerEvtNode, outerEvtNode, triggerNode];
@@ -637,6 +639,10 @@ export class BpmnDiagrams {
         //set alignment for subevents
         eventContainer.horizontalAlignment = event.horizontalAlignment;
         eventContainer.verticalAlignment = event.verticalAlignment;
+        //1020542-BPMN Collapsed SubProcess (type: Event) ignores events[].visible: false and still renders sub‑event marker
+        if (eventContainer.visible !== event.visible) {
+            this.updateDiagramContainerVisibility(eventContainer, event.visible);
+        }
         // set style for subevent
         eventContainer.style.fill = 'transparent'; eventContainer.style.strokeColor = 'transparent';
         eventContainer.style.strokeWidth = 0;
@@ -983,11 +989,12 @@ export class BpmnDiagrams {
         if (node && parentNode && parentNode.shape.type === 'Bpmn' && node.shape.type === 'Bpmn') {
             node.processId = parentId;
             //934140: Save and Load Functionality Not Working Properly in Subprocess
+            //EJ2-952444: Also ensure zIndex is correct during undo to prevent child nodes being occluded
+            if (node.zIndex < parentNode.zIndex) {
+                this.updateIndex(diagram, node);
+            }
             if (!isUndoRedo) {
                 diagram.protectPropertyChange(true);
-                if (node.zIndex < parentNode.zIndex) {
-                    this.updateIndex(diagram, node);
-                }
                 //937210: Add processes to subprocess at runtime and remove by button click, save and load not working
                 const nodeOffsetX: number = (parentNode.offsetX - parentNode.width * parentNode.pivot.x) +
                     (node.margin.left + node.width * node.pivot.x);
@@ -1367,8 +1374,8 @@ export class BpmnDiagrams {
     private setStyle(child: DiagramElement, node: Node, isEvent?: boolean): void {
         //set style
         child.style.fill = node.style.fill; child.style.strokeColor = node.style.strokeColor;
-        child.style.strokeWidth = node.style.strokeWidth;
         if (!isEvent) {
+            child.style.strokeWidth = node.style.strokeWidth;
             child.style.strokeDashArray = node.style.strokeDashArray;
         }
         child.style.opacity = node.style.opacity; child.style.gradient = node.style.gradient;
@@ -1469,6 +1476,9 @@ export class BpmnDiagrams {
             //941045: update styles for bpmn group shape
             let containerChild: DiagramElement = elementWrapper;
             let isEvent: boolean = false;
+            if ((actualObject.shape as BpmnShape).shape === 'Event') {
+                isEvent = true;
+            }
             if (elementWrapper instanceof GroupableView) {
                 if (!isBlazor() && (actualObject.shape as BpmnShape).shape === 'Activity') {
                     containerChild = (elementWrapper.children[0] as GroupableView).children[0];
@@ -1480,15 +1490,7 @@ export class BpmnDiagrams {
                     containerChild = elementWrapper;
                 }
                 else {
-                    if ((actualObject.shape as BpmnShape).shape === 'Event'
-                        && (actualObject.shape as BpmnShape).event.event !== 'NonInterruptingStart'
-                        && (actualObject.shape as BpmnShape).event.event !== 'Start'
-                    ) {
-                        containerChild = elementWrapper.children[1];
-                        isEvent = true;
-                    } else {
-                        containerChild = elementWrapper.children[0];
-                    }
+                    containerChild = elementWrapper.children[0];
                 }
             }
             if (actualShape !== 'TextAnnotation' || (actualShape === 'TextAnnotation' && !changedProp.style.fill)) {
@@ -1508,10 +1510,10 @@ export class BpmnDiagrams {
                         case 0:
                             eventType = (actualObject.shape as BpmnShape).activity.subProcess.transaction.success.event;
                             break;
-                        case 2:
+                        case 1:
                             eventType = (actualObject.shape as BpmnShape).activity.subProcess.transaction.cancel.event;
                             break;
-                        case 3:
+                        case 2:
                             eventType = (actualObject.shape as BpmnShape).activity.subProcess.transaction.failure.event;
                             break;
                         }
@@ -1525,8 +1527,31 @@ export class BpmnDiagrams {
                                 textElement.refreshTextElement();
                             }
                         }
+                        if (changedProp.style.strokeColor && eventType === 'End') {
+                            const child: DiagramElement
+                            = (transactionChild.children[parseInt(i.toString(), 10)] as GroupableView).children[0];
+                            const textElement: TextElement = child as TextElement;
+                            child.canApplyStyle = true;
+                            child.style.fill = changedProp.style.strokeColor;
+                            if (child instanceof TextElement) {
+                                textElement.refreshTextElement();
+                            }
+                        }
+                        const transactionChildren: GroupableView = transactionChild.children[parseInt(i.toString(), 10)] as GroupableView;
+                        const trigger: DiagramElement = transactionChildren.children[2];
+                        if (trigger) {
+                            if ((actualObject.shape as BpmnShape).event.event === 'End' ||
+                                (actualObject.shape as BpmnShape).event.event === 'ThrowingIntermediate') {
+                                updateStyle({ fill: changedProp.style.strokeColor, strokeColor: changedProp.style.fill },
+                                            trigger, false, true);
+                            }
+                            else {
+                                updateStyle({ fill: changedProp.style.fill, strokeColor: changedProp.style.strokeColor },
+                                            trigger, false, true);
+                            }
+                        }
                         const isTransactionChild: boolean = (eventType !== 'Start') && (eventType !== 'NonInterruptingStart');
-                        const child: DiagramElement = (transactionChild.children[parseInt(i.toString(), 10)] as GroupableView).children[1];
+                        const child: DiagramElement = (transactionChild.children[parseInt(i.toString(), 10)] as GroupableView).children[0];
                         updateStyle(changedProp.style, child, isTransactionChild, true);
                     }
                     if (changedProp.style.strokeColor){
@@ -1561,6 +1586,32 @@ export class BpmnDiagrams {
                     } else if (((!isBlazor() && (actualObject.shape as BpmnShape).shape === 'Gateway')) ||
                         ((!isBlazor() && (actualObject.shape as BpmnShape).shape === 'Event'))) {
                         this.updateBPMNStyle(elementWrapper, changedProp.style.strokeColor);
+                    }
+                }
+            }
+            if (changedProp.style && (actualObject.shape as BpmnShape).shape === 'Event') {
+                if ((elementWrapper as GroupableView).children[2]) {
+                    if ((actualObject.shape as BpmnShape).event.event === 'End' ||
+                        (actualObject.shape as BpmnShape).event.event === 'ThrowingIntermediate') {
+                        updateStyle({ fill: changedProp.style.strokeColor, strokeColor: changedProp.style.fill },
+                                    (elementWrapper as GroupableView).children[2], false, isEvent);
+                    }
+                    else {
+                        updateStyle({ fill: changedProp.style.fill, strokeColor: changedProp.style.strokeColor },
+                                    (elementWrapper as GroupableView).children[2], false, isEvent);
+                    }
+                }
+                if ((actualObject.shape as BpmnShape).event.event === 'End') {
+                    updateStyle({fill: changedProp.style.strokeColor}, (elementWrapper as GroupableView).children[0], false, isEvent);
+                }
+                if ((actualObject.shape as BpmnShape).shape === 'Event'
+                    && (actualObject.shape as BpmnShape).event.event !== 'NonInterruptingStart'
+                    && (actualObject.shape as BpmnShape).event.event !== 'Start') {
+                    containerChild = (elementWrapper as GroupableView).children[1];
+                    containerChild.canApplyStyle = true;
+                    containerChild.style.fill = changedProp.style.fill;
+                    if (containerChild instanceof TextElement) {
+                        containerChild.refreshTextElement();
                     }
                 }
             }
@@ -1896,7 +1947,9 @@ export class BpmnDiagrams {
             //EJ2-907764-Changing Loop for Activity node with task type, result in change in task type symbols
             if (elementWrapper.children[parseInt(i.toString(), 10)].id === node.id + '_2_loop') {
                 const element: HTMLElement = document.getElementById(node.id + '_2_loop');
-                element.parentNode.removeChild(element);
+                if (element && element.parentNode) {
+                    element.parentNode.removeChild(element);
+                }
             }
         }
         if (task.type !== undefined) {
@@ -1909,14 +1962,18 @@ export class BpmnDiagrams {
                     taskTypeFlip = elementWrapper.children[parseInt(i.toString(), 10)].flip;
                     elementWrapper.children.splice(i, 1);
                     const element: HTMLElement = document.getElementById(node.id + '_1_tasktType');
-                    element.parentNode.removeChild(element);
+                    if (element && element.parentNode) {
+                        element.parentNode.removeChild(element);
+                    }
                 }
                 //EJ2-907764-Changing Loop for Activity node with task type, result in change in task type symbols
                 if (elementWrapper.children[parseInt(i.toString(), 10)].id === node.id + '_1_taskTypeService') {
                     taskTypeFlip = elementWrapper.children[parseInt(i.toString(), 10)].flip;
                     elementWrapper.children.splice(i, 1);
                     const element: HTMLElement = document.getElementById(node.id + '_1_taskTypeService');
-                    element.parentNode.removeChild(element);
+                    if (element && element.parentNode) {
+                        element.parentNode.removeChild(element);
+                    }
                 }
             }
             const taskTypeNode: PathElement = new PathElement();
@@ -1966,11 +2023,12 @@ export class BpmnDiagrams {
             }
         }
         if (bpmnShape.activity.task.compensation !== undefined) {
+            // EJ2-1020583: BPMN Service Task compensation marker does not hide after runtime property toggle
+            const isServiceTask: boolean = ((node.shape as BpmnShape).activity as BpmnActivity).task.type === 'Service';
             if (bpmnShape.activity.task.compensation === true) {
-                const isServiceTask: boolean = ((node.shape as BpmnShape).activity as BpmnActivity).task.type === 'Service';
                 elementWrapper.children[isServiceTask ? 4 : 3].visible = true;
             } else {
-                elementWrapper.children[3].visible = false;
+                elementWrapper.children[isServiceTask ? 4 : 3].visible = false;
             }
         }
     }
@@ -2148,9 +2206,8 @@ export class BpmnDiagrams {
                     diagram.updatePort(newEvent.ports[0], ports, port);
                 }
             }
-
-            if (newEvent.visible !== undefined &&
-                (node.shape as BpmnShape).activity.subProcess.type !== 'Event') {
+            //1020542-BPMN Collapsed SubProcess (type: Event) ignores events[].visible: false and still renders sub‑event marker
+            if (newEvent.visible !== undefined) {
                 this.updateDiagramContainerVisibility(eventWrapper, newEvent.visible);
             }
         }
@@ -2635,7 +2692,7 @@ export class BpmnDiagrams {
             }
         }
         // 913810 : Start is as start event not rendered correctly for success, failure, cancel transaction subprocess events
-        if (element.visible && element.visible !== visible) {
+        if (element && element.visible !== visible) {
             element.visible = visible;
         }
     }

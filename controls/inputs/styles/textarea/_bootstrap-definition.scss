@@ -1,5 +1,4 @@
-@use 'ej2-base/styles/definition/bootstrap' as *;
-@forward 'ej2-base/styles/definition/bootstrap';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 
 $textarea-VH-textarea-padding: 3px 12px 3px 12px !default;
 $textarea-outline-VH-textarea-padding: 3px 12px 3px 12px !default;

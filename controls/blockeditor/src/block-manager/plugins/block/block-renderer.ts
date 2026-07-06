@@ -1,6 +1,6 @@
 import { addClass, createElement, detach } from '@syncfusion/ej2-base';
 import { BaseChildrenProp, BlockModel, IChecklistBlockSettings } from '../../../models/index';
-import { IFromBlockData, BlockDatas, IToBlockData } from '../../../common/interface';
+import { IFromBlockData, InternalBlockData, IToBlockData } from '../../../common/interface';
 import { BlockType } from '../../../models/enums';
 import { getBlockContentElement, getBlockModelById, isAlwaysOnPlaceHolderBlk, isChildrenTypeBlock, isListTypeBlock } from '../../../common/utils/block';
 import { CalloutRenderer, CommonBlocksRenderer, HeadingRenderer, ListRenderer, ParagraphRenderer,
@@ -278,15 +278,23 @@ export class BlockRenderer {
         }
         this.isEntireBlocksRendering = true;
         blocks.forEach((block: BlockModel) => {
+
             const blockElement: HTMLElement = this.createBlockElement(block);
             this.insertBlockIntoDOM(blockElement);
+
+            /* Post rendering operations for specific block types */
+
+            // Hide placeholder for blocks that are not always on placeholder type
             if (!isAlwaysOnPlaceHolderBlk(block.blockType)) {
                 this.parent.togglePlaceholder(blockElement, false);
             }
 
+            // Update list item markers for list type blocks
             if (isListTypeBlock(block.blockType)) {
                 this.parent.listPlugin.updateListItemMarkers(blockElement);
             }
+
+            // Update list item markers for children of nested type blocks
             if (isChildrenTypeBlock(block.blockType) && (block.properties as BaseChildrenProp).children.length > 0) {
                 (block.properties as BaseChildrenProp).children.forEach((childBlock: BlockModel) => {
                     if (isListTypeBlock(childBlock.blockType)) {
@@ -296,21 +304,13 @@ export class BlockRenderer {
                     }
                 });
             }
+
+            // Refresh column widths for table blocks
             if (block.blockType === BlockType.Table && this.tableRenderer) {
                 this.tableRenderer.refreshColWidths(block);
             }
         });
-
-        requestAnimationFrame(() => {
-            if (this.parent) {
-                blocks.forEach((block: BlockModel) => {
-                    if (block.blockType === BlockType.Checklist && this.listRenderer) {
-                        this.listRenderer.toggleCheckedState(block, (block.properties as IChecklistBlockSettings).isChecked, true);
-                    }
-                });
-                this.isEntireBlocksRendering = false;
-            }
-        });
+        this.isEntireBlocksRendering = false;
     }
 
     /**
@@ -402,7 +402,7 @@ export class BlockRenderer {
                     block: addedBlock,
                     targetId: targetBlockModel ? targetBlockModel.id : '',
                     isAfter
-                } as BlockDatas
+                } as InternalBlockData
             });
             if (!preventEventTrigger) {
                 this.parent.observer.notify('triggerBlockChange', this.parent.eventService.getChanges());
@@ -421,7 +421,7 @@ export class BlockRenderer {
             break;
         }
         case 'MoveBlock': {
-            const { destination, fromElements, isMovingUp, toBlockDOM, movedBlocks } = options.state as any;
+            const { destination, fromElements, isMovingUp, toBlockDOM, movedBlocks, fromBlockIds, toBlockId } = options.state as any;
             const allBlocks: HTMLElement[] = Array.from(this.parent.blockContainer.children) as HTMLElement[];
             const parentElement: HTMLElement = this.getParentElementToInsert(destination, allBlocks);
             const targetToInsert: HTMLElement = (isMovingUp ? toBlockDOM : toBlockDOM.nextSibling) as HTMLElement;
@@ -431,20 +431,21 @@ export class BlockRenderer {
 
             const reversedFromModels: IFromBlockData[] = [...movedBlocks].reverse();
             reversedFromModels.forEach((data: IFromBlockData) => {
-                const prevParent: IFromBlockData = reversedFromModels.find(
+                const prevBlock: IFromBlockData = reversedFromModels.find(
                     (fromModel: IFromBlockData) => fromModel.parent !== null
                 );
                 this.parent.eventService.addChange({
                     action: 'Moved',
                     data: {
                         block: data.model,
-                        targetId: toBlockDOM.id,
+                        fromBlockIds: options.state.fromBlockIds,
+                        toBlockId: options.state.toBlockId,
                         isMovingUp: isMovingUp,
-                        prevParent: prevParent ? prevParent.model : undefined,
+                        prevParent: prevBlock ? prevBlock.parent : undefined,
                         currentParent: options.state.destination.toParentBlockModel
                             ? options.state.destination.toParentBlockModel
                             : undefined
-                    } as BlockDatas
+                    } as InternalBlockData
                 });
             });
             this.parent.observer.notify('triggerBlockChange', this.parent.eventService.getChanges());
@@ -456,6 +457,9 @@ export class BlockRenderer {
             const newBlockElement: HTMLElement = this.createBlockElement(block);
             blockElement.replaceWith(newBlockElement);
 
+            if (isListTypeBlock(block.blockType)) {
+                this.parent.listPlugin.recalculateMarkersForListItems();
+            }
             if (!shouldPreventUpdates) {
                 this.parent.eventService.addChange({
                     action: 'Update',
@@ -480,7 +484,10 @@ export class BlockRenderer {
             const blockElement: HTMLElement = this.parent.getBlockElementById(targetBlockId);
             const newBlockElement: HTMLElement = this.createBlockElement(block);
             blockElement.replaceWith(newBlockElement);
-
+            /* Collaboration Start */
+            // During image upload when upload popup is open in receiver end close it.
+            this.imageRenderer.toggleUploadPopup(true);
+            /* Collaboration End */
             this.parent.eventService.addChange({
                 action: 'Update',
                 data: {

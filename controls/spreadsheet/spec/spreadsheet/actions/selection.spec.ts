@@ -592,11 +592,10 @@ describe('Selection ->', () => {
             });
             it('Cell selection issue while loading the spreadsheet with freeze pane and border ', (done: Function) => {
                 helper.invoke('selectRange', ['C2']);
+                helper.getInstance().freezePanes(2, 2);
                 setTimeout(() => {
-                    const spreadsheet: Spreadsheet = helper.getInstance();
-                    spreadsheet.freezePanes(2, 2);
                     helper.invoke('cellFormat', [{ border: '3px solid #000' }, 'C2']);
-                    expect(spreadsheet.sheets[0].rows[2].height).toBe(74);
+                    expect(helper.getInstance().sheets[0].rows[2].height).toBe(74);
                     done();
                 }, 10);
             });
@@ -990,7 +989,7 @@ describe('Selection ->', () => {
                     let offset: DOMRect = headerCell.getBoundingClientRect() as DOMRect;
                     expect(spreadsheet.sheets[0].selectedRange).toBe('D100:D100');
                     verticalContent = spreadsheet.getMainContent().parentElement;
-                    //expect(verticalContent.scrollTop).toBe(1763);
+                    // expect(verticalContent.scrollTop).toBe(1763);
                     helper.triggerMouseAction('mousedown', { x: offset.left + 1, y: offset.top + 1 }, null, headerCell);
                     setTimeout((): void => {
                         headerCell = helper.invoke('getColHeaderTable').rows[0].cells[2];
@@ -999,7 +998,7 @@ describe('Selection ->', () => {
                         helper.triggerMouseAction('mouseup', { x: offset.left + 10, y: offset.top + 5, offsetX: 10 }, document, colHdrPanel);
                         setTimeout((): void => {
                             //expect(spreadsheet.sheets[0].selectedRange).toBe('D1:F132');
-                            //expect(verticalContent.scrollTop).toBe(1763);
+                            // expect(verticalContent.scrollTop).toBe(1763);
                             done();
                         });
                     });

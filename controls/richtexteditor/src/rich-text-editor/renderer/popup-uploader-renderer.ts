@@ -88,11 +88,13 @@ export class PopupUploader {
      * @param {HTMLElement} [mediaElement] - Optional media element for upload
      * @param {HTMLElement} target - Target element to append uploader
      * @param {Popup} popup - Uploader popup object
+     * @param {number} [fileIndex] - Index of file to use from drag event (default: 0)
      * @returns {Uploader} - Returns the created uploader
      * @hidden
      */
     public createUploader(
-        type: MediaType, dragEvent: DragEvent, mediaElement: HTMLElement, target: HTMLElement, popup: Popup): Uploader {
+        type: MediaType, dragEvent: DragEvent, mediaElement: HTMLElement, target: HTMLElement, popup: Popup,
+        fileIndex: number = 0): Uploader {
         let isUploading: boolean = false;
         let allowedExtensions: string = '';
         let saveUrl: string;
@@ -249,7 +251,7 @@ export class PopupUploader {
             }
         });
         uploader.appendTo(target);
-        const file: File = dragEvent.dataTransfer.files[0];
+        const file: File = dragEvent.dataTransfer.files[fileIndex as number];
         const fileInfo: FileInfo[] = [{
             name: file.name,
             rawFile: file,

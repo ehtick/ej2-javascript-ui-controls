@@ -1185,6 +1185,7 @@ $table-bg-color-hover: $table-bg-color-hover !default;
 $table-bg-color-pressed: $table-bg-color-pressed !default;
 $table-bg-color-selected: $table-bg-color-selected !default;
 $table-bg-color-selected-hover: rgba(0, 0, 0, .16) !default;
+$table-bg-color-selected-hover-2: rgb(214, 214, 214) !default;
 
 // all theme common color
 $colorpicker-gradient-1: #f00 !default;
@@ -1504,6 +1505,13 @@ $primary-text-focus: $primary-text-focus !default;
 $primary-bg-color-disabled: $primary-bg-color-disabled !default;
 $primary-border-color-disabled: $primary-border-color-disabled !default;
 $primary-text-disabled: $primary-text-disabled !default;
+
+$font-size: $text-xs !default;
+$font-weight: $font-weight-normal !default;
+$error-font-color: $danger !default;
+$warning-font-color: $yellow !default;
+$success-font-color: #198754 !default;
+$information-font-color: #0dcaf0 !default;
 
 // Success-button
 $success-bg-color: rgba($success-bg-color, 1) !default;

@@ -1,6 +1,5 @@
 @use 'sass:color';
-@use 'ej2-base/styles/definition/tailwind' as *;
-@forward 'ej2-base/styles/definition/tailwind';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 
 /*! TreeView's tailwind theme wise override definitions and variables */
 /* stylelint-disable */

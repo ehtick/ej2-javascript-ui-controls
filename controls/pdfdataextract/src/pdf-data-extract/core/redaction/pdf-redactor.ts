@@ -29,12 +29,47 @@ import { PdfRedactionRegion } from './pdf-redaction-region';
  * ```
  */
 export class PdfRedactor {
+    /**
+     * The loaded PDF document being redacted.
+     *
+     * @private
+     */
     _document: PdfDocument;
+    /**
+     * Internal flag indicating hex-string context during text replacement.
+     *
+     * @private
+     */
     _isHex: boolean = false;
+    /**
+     * Accumulated redaction regions for the current page batch.
+     *
+     * @private
+     */
     _redactionRegion: PdfRedactionRegion[] = [];
+    /**
+     * Page-indexed map of pending redaction regions.
+     *
+     * @private
+     */
     _redaction: Map<number, PdfRedactionRegion[]> = new Map<number, PdfRedactionRegion[]>();
+    /**
+     * Internal content parser helper configured for redaction.
+     *
+     * @private
+     */
     _parser: _PdfContentParserHelper;
+    /**
+     * Cross-reference of the loaded document.
+     *
+     * @private
+     */
     _crossReference: _PdfCrossReference;
+    /**
+     * Internal low-level processor to update page contents / annotations.
+     *
+     * @private
+     */
     _object: _PdfRedactionProcessor = new _PdfRedactionProcessor();
     /**
      * Initializes a new instance of the `PdfRedactor` class.
@@ -288,6 +323,14 @@ export class PdfRedactor {
             this._object._updateContentStream(page, stream, option, this._document);
         }
     }
+    /**
+     * Converts any found redaction annotations into internal redaction regions,
+     * creating their appearance streams and removing the original annotations.
+     *
+     * @private
+     * @param {PdfPage} page The page whose annotations are analyzed.
+     * @returns {void} nothing.
+     */
     _applyRedaction(page: PdfPage): void {
         const redactRegions: PdfRedactionRegion[] = [];
         for (let k: number = 0; k < page.annotations.count; k++) {
@@ -320,6 +363,14 @@ export class PdfRedactor {
             this._redaction.set(page._pageIndex, existingRedactions.concat(redactRegions));
         }
     }
+    /**
+     * Computes page-space bounds for a rectangle after accounting for page rotation.
+     *
+     * @private
+     * @param {PdfPage} page The page containing the bounds.
+     * @param {Rectangle} bounds Unrotated rectangle.
+     * @returns {Rectangle} Rotated-normalized rectangle.
+     */
     _calculateRotatedBounds(page: PdfPage, bounds: Rectangle): Rectangle {
         const rotation: PdfRotationAngle = page.rotation;
         const pageWidth: number = page.size.width;
@@ -352,11 +403,28 @@ export class PdfRedactor {
             return bounds;
         }
     }
+    /**
+     * Appends the given list of redaction regions into the class-wide accumulator.
+     *
+     * @private
+     * @param {PdfRedactionRegion[]} options Redaction regions for a page.
+     * @returns {void} nothing.
+     */
     _combineBounds(options: PdfRedactionRegion[]): void {
         for (let i: number = 0; i < options.length; i++) {
             this._redactionRegion.push(options[Number.parseInt(i.toString(), 10)]);
         }
     }
+    /**
+     * Writes a record back to a content stream, optionally replacing text showing operands.
+     *
+     * @private
+     * @param {_PdfRecord[]} recordCollection The record collection for the page content.
+     * @param {number} index Current record index.
+     * @param {string} updatedText Updated text.
+     * @param {_PdfContentStream} stream The destination stream to write to.
+     * @returns {void} nothing.
+     */
     _optimizeContent(recordCollection: _PdfRecord[], index: number, updatedText: string, stream: _PdfContentStream): void {
         const record: _PdfRecord = recordCollection[Number.parseInt(index.toString(), 10)];
         if (record) {
@@ -420,6 +488,13 @@ export class PdfRedactor {
             }
         }
     }
+    /**
+     * Encodes a JavaScript string into a byte array (UTF-16 code units cast down).
+     *
+     * @private
+     * @param {string} text Input text.
+     * @returns {number[]} Byte array of char codes.
+     */
     _getBytes(text: string): number[] {
         const bytes: number[] = [];
         for (let i: number = 0; i < text.length; i++) {
@@ -428,6 +503,14 @@ export class PdfRedactor {
         }
         return bytes;
     }
+    /**
+     * Returns whether the given rectangle intersects or lies within any of the provided redaction regions.
+     *
+     * @private
+     * @param {Rectangle} values Candidate rectangle.
+     * @param {PdfRedactionRegion[]} redactionBounds Redaction regions list.
+     * @returns {boolean} `true` if found; otherwise, `false`.
+     */
     _isFoundBounds(values: Rectangle, redactionBounds: PdfRedactionRegion[]): boolean {
         for (const bounds of redactionBounds) {
             if (this._contains(bounds._bounds, [values.x, values.y]) || this._intersectsWith(bounds._bounds, values)) {
@@ -436,6 +519,15 @@ export class PdfRedactor {
         }
         return false;
     }
+    /* eslint-disable */
+    /**
+     * Checks if a point lies within an axis-aligned rectangle (inclusive edges).
+     *
+     * @private
+     * @param {{x: number, y: number, width: number, height: number}} bounds Rectangle bounds.
+     * @param {number[]} point Point as `[x, y]`.
+     * @returns {boolean} `true` if the point is inside; otherwise, `false`.
+     */
     _contains(bounds: {x: number, y: number, width: number, height: number}, point: number[]): boolean {
         return (
             point[0] >= bounds.x &&
@@ -444,11 +536,27 @@ export class PdfRedactor {
             point[1] <= bounds.y + bounds.height
         );
     }
+    /**
+     * Tests two rectangles for intersection.
+     *
+     * @private
+     * @param {{x: number, y: number, width: number, height: number}} rect1 First rectangle.
+     * @param {{x: number, y: number, width: number, height: number}} rect2 Second rectangle.
+     * @returns {boolean} `true` if they intersect; otherwise, `false`.
+     */
     _intersectsWith(rect1: {x: number, y: number, width: number, height: number}, rect2: {x: number, y: number, width: number,
         height: number}): boolean {
         return (rect2.x < rect1.x + rect1.width) && (rect1.x < (rect2.x + rect2.width)) && (rect2.y < rect1.y + rect1.height) &&
         (rect1.y < rect2.y + rect2.height);
     }
+    /* eslint-enable */
+    /**
+     * Splits a hex string literal into chunks, accounting for line-break artifacts.
+     *
+     * @private
+     * @param {string} hexString Hex string literal.
+     * @returns {string[]} Array of hex chunks without wrapper.
+     */
     _splitHexString(hexString: string): string[] {
         const hexList: string[] = [];
         hexString = hexString.slice(1, -1);
@@ -464,6 +572,16 @@ export class PdfRedactor {
         }
         return hexList;
     }
+    /**
+     * Builds replacement text for glyphs intersecting redaction regions and returns a new TJ array text.
+     *
+     * @private
+     * @param {TextGlyph[]} glyph Glyphs extracted from the operator.
+     * @param {string[]} text Decoded text units.
+     * @param {string} originalText Original operand text.
+     * @param {string[]} decodeText Decoded segments mapped from original text.
+     * @returns {string} Updated TJ array text or original if nothing replaced.
+     */
     _replacedText(glyph: TextGlyph[], text: string[], originalText: string, decodeText: string[]): string {
         let isReplacedText: boolean = false;
         let isOtherText: boolean = false;
@@ -499,6 +617,14 @@ export class PdfRedactor {
         }
         return updatedText;
     }
+    /**
+     * Maps decoded text segments to glyph slices while preserving substring boundaries.
+     *
+     * @private
+     * @param {string[]} mainTextCollection Text segments.
+     * @param {TextGlyph[]} imageGlyph Full glyph list aligned with extracted text.
+     * @returns {_TextGlyphMapper[]} Mapped text-glyph segments.
+     */
     _mapString(mainTextCollection: string[], imageGlyph: TextGlyph[]): _TextGlyphMapper[] {
         const mappedString: _TextGlyphMapper[] = [];
         const glyphList: TextGlyph[] = imageGlyph;

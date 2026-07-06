@@ -1,7 +1,5 @@
-@use 'ej2-base/styles/common/mixin' as *;
 @use 'definition' as *;
-@use 'ej2-base/styles/definition/bootstrap4' as *;
-@forward 'ej2-base/styles/definition/bootstrap4';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 
 $diagram-endpoint-handle-color: $white;
 $diagram-endpoint-handle-connected-border: $white;

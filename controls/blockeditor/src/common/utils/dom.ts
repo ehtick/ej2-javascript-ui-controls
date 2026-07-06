@@ -14,6 +14,8 @@ import * as constants from '../../common/constant';
  * @returns {HTMLElement | null} The closest matching parent element or null if not found
  */
 export function findClosestParent(element: Node | HTMLElement, selector: string): HTMLElement | null {
+    if (!element) { return null; }
+
     if (element.nodeType === Node.TEXT_NODE) {
         return ((element.parentElement as HTMLElement).closest(selector) as HTMLElement) || null;
     }
@@ -283,6 +285,34 @@ export function getDeepestNodeAndOffset(container: Node, offset: number): { node
         }
         currentOffset += len;
         textNode = walker.nextNode() as Text;
+    }
+
+    // Walk through next siblings
+    let next: Node | null = getNextNode(container);
+
+    while (next) {
+        if (next.nodeType === Node.TEXT_NODE) {
+            const text: Text = next as Text;
+
+            if (currentOffset < text.length) {
+                return { node: text, offset: currentOffset };
+            }
+
+            currentOffset -= text.length;
+        }
+
+        next = getNextNode(next);
+    }
+
+    return null;
+}
+
+function getNextNode(node: Node): Node | null {
+    if (node.firstChild) { return node.firstChild; }
+
+    while (node) {
+        if (node.nextSibling) { return node.nextSibling; }
+        node = node.parentNode as Node;
     }
 
     return null;

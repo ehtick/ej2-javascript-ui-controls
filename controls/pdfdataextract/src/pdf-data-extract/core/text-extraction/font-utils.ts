@@ -1,4 +1,14 @@
+/**
+ * Enables glyph analysis during font processing.
+ *
+ * @private
+ */
 export const _glyphAnalysisEnabled: boolean = true;
+/**
+ * PDF font flag constants from the specification.
+ *
+ * @private
+ */
 export const _fontFlags: any = { //eslint-disable-line 
     FixedPitch: 1,
     Serif: 2,
@@ -13,6 +23,7 @@ export const _fontFlags: any = { //eslint-disable-line
 /**
  * Get font base64 string.
  *
+ * @private
  * @param {string} fileName - The name of the font file.
  * @returns {string} The base64 encoded font string.
  */
@@ -64,6 +75,7 @@ export function _getFontEncodedString(fileName: string) : string {
 /**
  * Gets the Base64-encoded string of a font encoding file.
  *
+ * @private
  * @param {string} encodeName - The name of the CMAP file.
  * @returns {string} The Base64-encoded CMAP file.
  */
@@ -587,6 +599,14 @@ export function _getEncodingBase64String(encodeName: string): string {
     }
     return base64string;
 }
+/**
+ * Recovers a valid glyph name by matching its Unicode value.
+ *
+ * @private
+ * @param {any} name - Glyph name or numeric Unicode value to recover.
+ * @param {any} glyphsUnicodeMap - Mapping of Unicode code points to glyph names.
+ * @returns {string} Recovered glyph name (or the original name if not found).
+ */
 export function _recoverGlyphName(name: any, glyphsUnicodeMap: any): string { //eslint-disable-line
     if (glyphsUnicodeMap[Number.parseInt(name.toString(), 10)] !== undefined) {
         return name;
@@ -601,6 +621,14 @@ export function _recoverGlyphName(name: any, glyphsUnicodeMap: any): string { //
     }
     return name;
 }
+/**
+ * Returns the Unicode value for a glyph name, or -1 when unknown.
+ *
+ * @private
+ * @param {any} name for the unicode glyph.
+ * @param {any} glyphsUnicodeMap glyph unicode map for the text.
+ * @returns {any} returns unicode value.
+ */
 export function _getUnicodeForGlyph(name: any, glyphsUnicodeMap: any): any { //eslint-disable-line
     let unicode: any = glyphsUnicodeMap[name]; //eslint-disable-line
     if (typeof(unicode) !== 'undefined') {

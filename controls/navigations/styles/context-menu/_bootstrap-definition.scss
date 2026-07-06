@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/bootstrap' as *;
-@forward 'ej2-base/styles/definition/bootstrap';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $cmenu-back-icon: '\e94b' !default;
 $cmenu-back-icon-margin: 12px !default;
 $cmenu-bigger-caret-font-size: 12px !default;

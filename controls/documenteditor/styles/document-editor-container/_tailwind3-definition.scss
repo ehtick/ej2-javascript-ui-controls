@@ -1,6 +1,6 @@
-@use 'ej2-base/styles/definition/tailwind3' as *;
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 @use '../document-editor/tailwind3-definition' as *;
-@forward 'ej2-base/styles/definition/tailwind3';
+
 @forward '../document-editor/tailwind3-definition';
 $de-ctnr-height: calc(100%) !default;
 $de-ctnr-tlbr-height: 72px !default;
@@ -55,8 +55,8 @@ $de-ribbon-simplified-ctnr-editor-height-big: calc(100% - 117px) !default;
 $de-ribbon-classic-editor-height: calc(100% - 201px) !default;
 $de-ribbon-classic-editor-height-big: calc(100% - 205px) !default;
 
-$de-ribbon-simplified-ctnr-collapsed-editor-height: calc(100% - 53px) !default;
-$de-ribbon-classic-collapsed-editor-height: calc(100% - 63px) !default;
+$de-ribbon-simplified-ctnr-collapsed-editor-height: calc(100% - 79px) !default;
+$de-ribbon-classic-collapsed-editor-height: calc(100% - 81px) !default;
 
 $de-ctrnr-tblr-item-padding: 0 !default;
 $de-ctrnr-tblr-item-margin: 0 6.5px !default;

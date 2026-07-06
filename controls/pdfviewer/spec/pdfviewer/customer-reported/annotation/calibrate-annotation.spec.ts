@@ -72,7 +72,6 @@ describe('PDF_Viewer_Calibrate_Annotation', () => {
         mouseMoveEvent(target, ex, ey);
         mouseUpEvent(target, ex, ey);
         mouseUpEvent(target, ex, ey);
-        console.log(pdfviewer_calibrate.annotationCollection[0]);
         //export and import
         const exportedData = await exportAnnotationsHelper(pdfviewer_calibrate);
 
@@ -123,7 +122,6 @@ describe('PDF_Viewer_Calibrate_Annotation', () => {
         mouseDownEvent(target, dX, dY);
         mouseMoveEvent(target, aX, aY);
         mouseUpEvent(target, aX, aY);
-        console.log(pdfviewer_calibrate.annotationCollection[0]);
         //export and import
         const exportedData = await exportAnnotationsHelper(pdfviewer_calibrate);
 
@@ -138,8 +136,39 @@ describe('PDF_Viewer_Calibrate_Annotation', () => {
         pdfviewer_calibrate.deleteAnnotations();
         done();
     })
+})
+describe('PDF_Viewer_Calibrate_Annotation_Perimeter_Radius', () => {
+    let pdfviewer_calibrate: PdfViewer = null;
+    PdfViewer.Inject(Toolbar, Magnification, Navigation, LinkAnnotation, ThumbnailView, BookmarkView,
+        TextSelection, TextSearch, Print, Annotation, FormFields, FormDesigner, PageOrganizer);
+
+    beforeAll((done) => {
+        const element: HTMLElement = createElement('div', { id: 'pdfviewer_calibrate_perimeter_radius' });
+        document.body.appendChild(element);
+        pdfviewer_calibrate = new PdfViewer({
+            resourceUrl: window.location.origin + '/base/src/pdfviewer/ej2-pdfviewer-lib',
+            documentPath: "data:application/pdf;base64," + EMPTY_PDF_B64
+        });
+        pdfviewer_calibrate.documentLoad = () => {
+            done();
+        }
+        pdfviewer_calibrate.enableShapeLabel = true;
+        pdfviewer_calibrate.appendTo("#pdfviewer_calibrate_perimeter_radius");
+    });
+
+    afterAll(() => {
+        if (pdfviewer_calibrate) {
+            pdfviewer_calibrate.destroy();
+            const el = document.getElementById('pdfviewer_calibrate_perimeter_radius');
+            if (el && el.parentNode) { el.parentNode.removeChild(el); }
+            pdfviewer_calibrate = null;
+        }
+    });
+
+    afterEach(() => {
+    });
     it('1021100 - Perimeter annotation with label', async (done) => {
-        const target = getTarget('#pdfviewer_calibrate_textLayer_0');
+        const target = getTarget('#pdfviewer_calibrate_perimeter_radius_textLayer_0');
         pdfviewer_calibrate.annotation.setAnnotationMode('Perimeter');
         threePointCalibrate(target);
         //export and import
@@ -157,7 +186,7 @@ describe('PDF_Viewer_Calibrate_Annotation', () => {
         done();
     })
     it('1021100 - Radius annotation with label', async (done) => {
-         const target = getTarget('#pdfviewer_calibrate_textLayer_0');
+         const target = getTarget('#pdfviewer_calibrate_perimeter_radius_textLayer_0');
          const rect = target.getBoundingClientRect();
          const steps = 10;
         pdfviewer_calibrate.annotation.setAnnotationMode('Radius');

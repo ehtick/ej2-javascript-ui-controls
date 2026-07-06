@@ -39,16 +39,28 @@ describe('PDF_Viewer_StickyNotes', () => {
     afterEach(() => {
     });
 
-    it('1008687 - Sticky notes annotation with comment lock', async function (done) {
-        var target = document.querySelector('#pdfviewer_sticky_textLayer_0') || document.getElementById('pdfviewer_sticky');
-        pdfviewer_sticky.annotation.setAnnotationMode('StickyNotes');
-        var rect = target.getBoundingClientRect();
-        var x = Math.round(rect.left + 100);
-        var y = Math.round(rect.top + 100);
-        mouseDownEvent(target, x, y);
-        mouseUpEvent(target, x, y);
-        await waitFor(() => pdfviewer_sticky.annotationCollection && pdfviewer_sticky.annotationCollection.length > 0);
-        await waitFor(() => !!document.querySelector('#pdfviewer_sticky_commentdiv_1_0'));
+    it('1008687 - Sticky notes annotation with comment lock', (done) => {
+       var target = document.querySelector('#pdfviewer_sticky_textLayer_0');
+        pdfviewer_sticky.annotationAdd = function () {
+            expect(pdfviewer_sticky.annotationCollection.length).toBeGreaterThan(0);
+            btn.click();
+            const annotationBtn = document.querySelector(`#pdfviewer_sticky_annotation`) as HTMLElement;
+            annotationBtn.click();
+
+            const commentPanel = document.querySelector(`#pdfviewer_sticky_annotation_commentPanel`) as HTMLElement;
+            commentPanel.click();
+
+            var annot = document.querySelector(`#pdfviewer_sticky_commentdiv_1_0`) as HTMLElement;
+            annot.click();
+
+            const nodes = document.querySelectorAll('#pdfviewer_sticky_newcommentdiv_1_0');
+
+            const visibleNodes = Array.from(nodes).filter(el => {
+                return getComputedStyle(el).display !== 'none';
+            });
+            expect(visibleNodes.length).toEqual(1);
+            done();
+        }
         const btn = document.createElement('button');
         btn.id = 'test-view-button';
         btn.textContent = 'View';
@@ -58,23 +70,12 @@ describe('PDF_Viewer_StickyNotes', () => {
             collection.isCommentLock = true;
             pdfviewer_sticky.annotation.editAnnotation(collection);
         });
-        btn.click();
-        const annotationBtn = document.querySelector(`#pdfviewer_sticky_annotation`) as HTMLElement;
-        annotationBtn.click();
-
-        const commentPanel = document.querySelector(`#pdfviewer_sticky_annotation_commentPanel`) as HTMLElement;
-        commentPanel.click();
-
-        var annot = document.querySelector(`#pdfviewer_sticky_commentdiv_1_0`) as HTMLElement;
-        annot.click();
-
-        const nodes = document.querySelectorAll('#pdfviewer_sticky_newcommentdiv_1_0');
-
-        const visibleNodes = Array.from(nodes).filter(el => {
-            return getComputedStyle(el).display !== 'none';
-        });
-        expect(visibleNodes.length).toEqual(1);
-        done();
+        pdfviewer_sticky.annotation.setAnnotationMode('StickyNotes');
+        var rect = target.getBoundingClientRect();
+        var x = Math.round(rect.left + 100);
+        var y = Math.round(rect.top + 100);
+        mouseDownEvent(target, x, y);
+        mouseUpEvent(target, x, y);
     });
 
     it('1009022 - Imports annotations with older JSON format for sticky notes annotation', async function (done) {

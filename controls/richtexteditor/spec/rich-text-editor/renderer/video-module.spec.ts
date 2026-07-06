@@ -6,7 +6,7 @@ import { RichTextEditor, QuickToolbar, IQuickToolbar, IImageNotifyArgs } from '.
 import { NodeSelection } from './../../../src/selection/index';
 import { DialogType } from "../../../src/common/enum";
 import { renderRTE, destroy, setCursorPoint, dispatchEvent, iPhoneUA, currentBrowserUA, clickVideo, setSelection, VideoResizeGripper, clickGripper, moveGripper, leaveGripper } from "./../render.spec";
-import { BASIC_MOUSE_EVENT_INIT, DELETE_EVENT_INIT, BACKSPACE_EVENT_INIT } from '../../constant.spec';
+import { BASIC_MOUSE_EVENT_INIT, DELETE_EVENT_INIT, BACKSPACE_EVENT_INIT, ENTERKEY_EVENT_INIT } from '../../constant.spec';
 import { MACOS_USER_AGENT } from '../user-agent.spec';
 import * as classes from '../../../src/rich-text-editor/base/classes';
 import * as events from '../../../src/rich-text-editor/base/constant';
@@ -22,6 +22,7 @@ const MOUSEUP_EVENT: MouseEvent = new MouseEvent('mouseup', BASIC_MOUSE_EVENT_IN
 
 describe('Video Module ', () => {
 
+    // 🚧 TODO: Migrate this to Playwright 🎭
     xdescribe('921233: Quick toolbar fails to open and script error occurs after replacing  video in events', function () {
         let rteEle;
         let editor: RichTextEditor;
@@ -3577,6 +3578,39 @@ client side. Customer easy to edit the contents and get the HTML content for
             done();
         });
     });
+    describe('1029000: Insert video after Ctrl+A and toolbar click', () => {
+        let rteObj: RichTextEditor;
+        beforeAll(() => {
+            rteObj = renderRTE({
+                toolbarSettings: { items: ['Video'] },
+                value: `<p>Rich Text Editor allows inserting video and audio from online sources and the local computers where you want to insert a video and audio into your content.</p><p><span class="e-video-wrap" contenteditable="false">
+<video controls="" style="width: 30%;" class="e-rte-video e-video-inline"><source src="https://cdn.syncfusion.com/ej2/richtexteditor-resources/RTE-Ocean-Waves.mp4" type="video/mp4"/></video>
+</span><br/></p>`
+            });
+        });
+        afterAll(() => {
+            destroy(rteObj);
+        });
+        it('should select all with Ctrl+A, open Video dialog and insert video', (done: Function) => {
+            (rteObj.contentModule.getEditPanel() as HTMLElement).focus();
+            let node: Node = rteObj.inputElement.querySelector('p').childNodes[0];
+            let node2: Node = rteObj.inputElement.querySelectorAll('p')[1].childNodes[0];
+            let sel = new NodeSelection().setSelectionText(document, node, node2, 0, node2.textContent.length);
+            (rteObj.element.querySelectorAll('.e-toolbar-item')[0] as HTMLElement).click();
+            setTimeout(() => {
+                const dialogEle: HTMLElement | null = rteObj.element.querySelector('.e-dialog');
+                (dialogEle.querySelector('.e-video-url-wrap input#webURL') as HTMLElement).click();
+                (dialogEle.querySelector('.e-video-url') as HTMLInputElement).value = window.origin + '/base/spec/content/video/RTE-Ocean-Waves.mp4';
+                (dialogEle.querySelector('.e-video-url') as HTMLInputElement).dispatchEvent(new Event('input'));
+                (dialogEle.querySelector('.e-insertVideo.e-primary') as HTMLElement).click();
+                setTimeout(() => {
+                    const afterCount: number = rteObj.element.querySelectorAll('video').length;
+                    expect(afterCount).toBe(1);
+                    done();
+                }, 100);
+            }, 100);
+        });
+    });
     describe('836851 - Insert video', function () {
         let rteEle: HTMLElement;
         let rteObj: RichTextEditor;
@@ -5476,6 +5510,61 @@ describe('962339: Script error and improper video selection removal after alignm
             expect(rteObj.element.getElementsByTagName('video').length).toBe(2);
             expect(ele.classList.contains('e-rte-video')).toBe(true);
             expect(ele.classList.contains('e-video-inline')).toBe(true);
+        });
+    });
+
+    describe('Bug 1029980: Script Error Occurs When Inserting Audio After Video Using Keyboard Shortcuts', () => {
+        let rteObj: RichTextEditor;
+        let originalConsoleError: { (...data: any[]): void; (...data: any[]): void; };
+        let errorSpy: jasmine.Spy;
+        let isEventTriggered: boolean;
+        let innerHTML: string = `<p><span class="e-video-wrap" contenteditable="false" title="mov_bbb.mp4"><video class="e-rte-video e-video-inline" controls=""><source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4"></video></span><br></p>`;
+        beforeAll(() => {
+            rteObj = renderRTE({
+                height: 400,
+                toolbarSettings: {
+                    items: ['Video', 'Audio', 'Bold']
+                },
+                value: innerHTML,
+                afterMediaDelete: function(args: any): void {
+                    isEventTriggered = true;
+                }
+            });
+            originalConsoleError = console.error;
+            errorSpy = jasmine.createSpy('error');
+            console.error = errorSpy;
+        });
+
+        afterAll(() => {
+            console.error = originalConsoleError;
+            destroy(rteObj);
+        });
+
+        it('Select video element and insert audio element - should not throw script error', (done: Function) => {
+            rteObj.focusIn();
+            const videoElement: HTMLVideoElement = rteObj.element.querySelector('.e-video-wrap video') as HTMLVideoElement;
+            clickVideo(videoElement);
+            (rteObj.element.querySelectorAll('.e-toolbar-item')[1] as HTMLElement).click();
+            setTimeout(() => {
+                const dialogEle: Element = rteObj.element.querySelector('.e-dialog');
+                const audioUrlInput: HTMLInputElement = dialogEle.querySelector('.e-audio-url') as HTMLInputElement;
+                audioUrlInput.value = 'https://www.w3schools.com/html/horse.mp3';
+                audioUrlInput.dispatchEvent(new Event('input'));
+                const insertButton: HTMLButtonElement = dialogEle.querySelector('.e-insertAudio.e-primary') as HTMLButtonElement;
+                insertButton.focus();
+                const keyUpEvent: KeyboardEvent = new KeyboardEvent('keyup', ENTERKEY_EVENT_INIT);
+                insertButton.dispatchEvent(keyUpEvent);
+                insertButton.click();
+                setTimeout(() => {
+                    expect(errorSpy).not.toHaveBeenCalled();
+                    const audioElement: HTMLElement = rteObj.element.querySelector('.e-audio-wrap audio') as HTMLElement;
+                    expect(audioElement).not.toBe(null);
+                    const videoAfterAudioInsert: HTMLVideoElement = rteObj.element.querySelector('.e-video-wrap video') as HTMLVideoElement;
+                    expect(videoAfterAudioInsert).toBe(null);
+                    expect(isEventTriggered).not.toBe(true);
+                    done();
+                }, 100);
+            }, 100);
         });
     });
 });

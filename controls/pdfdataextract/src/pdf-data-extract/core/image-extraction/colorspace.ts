@@ -1,13 +1,39 @@
 import { _isLittleEndian, _mathClamp, _PdfBaseStream, _unreachable, FormatError } from '@syncfusion/ej2-pdf';
+/**
+ * Base palette for PDF color spaces, exposing helpers to convert to RGB buffers.
+ *
+ * @private
+ */
 export class _PdfColorPalette {
     name: string;
     numComps: number;
     base: any; // eslint-disable-line
     bytes: any; // eslint-disable-line
+    /**
+     * Initializes a new instance of the `_PdfColorPalette` class.
+     *
+     * @private
+     * @param {string} name Color space name.
+     * @param {number} numComps Number of color components.
+     * @returns {void} nothing.
+     */
     constructor(name: string, numComps: number) {
         this.name = name;
         this.numComps = numComps;
     }
+    /**
+     * Resamples (nearest-neighbor) an RGB image buffer, with optional alpha interleave control.
+     *
+     * @private
+     * @param {Uint8Array} src Source RGB bytes.
+     * @param {Uint8Array} dest Destination buffer to write into.
+     * @param {number} w1 Source width.
+     * @param {number} h1 Source height.
+     * @param {number} w2 Target width.
+     * @param {number} h2 Target height.
+     * @param {number} alpha01 0 for no alpha slot in dest, 1 to skip alpha slot per pixel.
+     * @returns {void} nothing.
+     */
     _resizeRgbImage(src: Uint8Array, dest: Uint8Array, w1: number, h1: number, w2: number, h2: number, alpha01: number): void {
         const components: number = 3;
         alpha01 = alpha01 !== 1 ? 0 : alpha01;
@@ -31,6 +57,14 @@ export class _PdfColorPalette {
             }
         }
     }
+    /**
+     * Determines whether the provided decode array represents the default decode for this space.
+     *
+     * @private
+     * @param {any} decode The decode array or value.
+     * @param {number} numComps The number of components.
+     * @returns {boolean} `true` if decode is default; otherwise, `false`.
+     */
     _isDefaultDecode(decode: any, numComps: number): boolean { // eslint-disable-line
         numComps = this.numComps;
         if (!Array.isArray(decode)) {
@@ -46,24 +80,90 @@ export class _PdfColorPalette {
         }
         return true;
     }
+    /**
+     * Gets a single RGB triplet from source data at the given offset.
+     *
+     * @private
+     * @param {Uint8Array} src Source buffer.
+     * @param {number} srcOffset Byte offset in source.
+     * @returns {Uint8ClampedArray} A 3 byte clamped array [r,g,b].
+     */
     _getRgb(src: Uint8Array, srcOffset: number): Uint8ClampedArray {
         const rgb: Uint8ClampedArray = new Uint8ClampedArray(3);
         this._getRgbItem(src, srcOffset, rgb, 0);
         return rgb;
     }
+    /**
+     * Reads one color sample and writes a single RGB triplet into destination.
+     * Must be implemented by concrete color spaces.
+     *
+     * @private
+     * @param {any} src Source buffer.
+     * @param {number} srcOffset Start offset in source.
+     * @param {any} dest Destination buffer for RGB output.
+     * @param {number} destOffset Start offset in destination.
+     * @returns {void} nothing.
+     */
     _getRgbItem(src: any, srcOffset: number, dest: any, destOffset: number): void { // eslint-disable-line
         _unreachable('Should not call _PdfColorPalette._getRgbItem');
     }
-    _getRgbBuffer(src: any, srcOffset: number, count: number, dest: any, destOffset: number, bits: number, // eslint-disable-line
-                  alpha01: number): any { // eslint-disable-line
+    /* eslint-disable */
+    /**
+     * Converts a sequence of samples into RGB and writes to destination buffer.
+     * Must be implemented by concrete color spaces.
+     *
+     * @private
+     * @param {any} src Source buffer.
+     * @param {number} srcOffset Start offset in source.
+     * @param {number} count Number of samples to process.
+     * @param {any} dest Destination buffer for RGB output.
+     * @param {number} destOffset Start offset in destination.
+     * @param {number} bits Bits per component in source samples.
+     * @param {number} alpha01 0 for no alpha slot, 1 to skip alpha slot per pixel.
+     * @returns {any} nothing.
+     */
+    _getRgbBuffer(src: any, srcOffset: number, count: number, dest: any, destOffset: number, bits: number,
+                  alpha01: number): any {
         _unreachable('Should not call _PdfColorPalette._getRgbBuffer');
     }
+    /* eslint-enable */
+    /**
+     * Computes the required output length in bytes for a given input length.
+     * Must be implemented by concrete color spaces.
+     *
+     * @private
+     * @param {number} inputLength Number of input scalar values.
+     * @param {number} alpha01 0 or 1 indicating extra alpha slot in output.
+     * @returns {void} nothing.
+     */
     _getOutputLength(inputLength: number, alpha01: number): void { // eslint-disable-line
         _unreachable('Should not call _PdfColorPalette._getOutputLength');
     }
+    /**
+     * Indicates whether the color space path can be passed through unchanged for given bpc.
+     *
+     * @private
+     * @param {any} bits Bits per component.
+     * @returns {boolean} `true` if passthrough is allowed otherwise, `false`.
+     */
     _isPass(bits: any): boolean { // eslint-disable-line
         return false;
     }
+    /**
+     * Fills an RGB destination buffer from component data, handling optional resize and alpha.
+     *
+     * @private
+     * @param {any} dest Destination buffer for RGB output.
+     * @param {number} originalWidth Source width.
+     * @param {number} originalHeight Source height.
+     * @param {number} width Target width.
+     * @param {number} height Target height.
+     * @param {number} actualHeight Actual rendered height.
+     * @param {number} bpc Bits per component.
+     * @param {Uint8Array | Uint16Array} comps Component data buffer.
+     * @param {number} alpha01 0 or 1 to control alpha slot.
+     * @returns {Promise<any>} Resolves to the destination buffer.
+     */
     async _fillRgb(dest: any, originalWidth: number, originalHeight: number, width: number, height: number, // eslint-disable-line
                    actualHeight: number, bpc: number, comps: Uint8Array | Uint16Array, alpha01: number):
                    Promise<any> { // eslint-disable-line
@@ -123,18 +223,54 @@ export class _PdfColorPalette {
         return dest;
     }
 }
+/**
+ * Alternate/tint color space mapping to a base color space.
+ *
+ * @private
+ */
 export class _PdfAlternateCS extends _PdfColorPalette {
     base: _PdfColorPalette;
     private tmpBuf: Float32Array;
+    /**
+     * Initializes a new instance of the `_PdfAlternateCS` class.
+     *
+     * @private
+     * @param {number} numComps Number of components in the tint space.
+     * @param {_PdfColorPalette} base Base color palette to map into.
+     * @returns {void} nothing.
+     */
     constructor(numComps: number, base: _PdfColorPalette) {
         super('Alternate', numComps);
         this.base = base;
         this.tmpBuf = new Float32Array(base.numComps);
     }
+    /**
+     * Converts a single tinted sample to RGB via the base color space.
+     *
+     * @private
+     * @param {Uint8Array} src Source buffer.
+     * @param {number} srcOffset Offset in source.
+     * @param {Uint8ClampedArray} dest Destination buffer for RGB output.
+     * @param {number} destOffset Destination offset.
+     * @returns {void} nothing.
+     */
     _getRgbItem(src: Uint8Array, srcOffset: number, dest: Uint8ClampedArray, destOffset: number): void {
         const tmpBuf: any = this.tmpBuf; // eslint-disable-line
         this.base._getRgbItem(tmpBuf, 0, dest, destOffset);
     }
+    /**
+     * Converts a sequence of tinted samples to RGB via the base color space.
+     *
+     * @private
+     * @param {Uint8Array} src Source buffer.
+     * @param {number} srcOffset Offset in source.
+     * @param {number} count Number of samples.
+     * @param {Uint8Array} dest Destination buffer for RGB output.
+     * @param {number} destOffset Destination offset.
+     * @param {number} bits Bits per component.
+     * @param {number} alpha01 Alpha slot flag (0 or 1).
+     * @returns {void} nothing.
+     */
     _getRgbBuffer(src: Uint8Array, srcOffset: number, count: number, dest: Uint8Array, destOffset: number,
                   bits: number, alpha01: number): void {
         const base: any = this.base; // eslint-disable-line
@@ -167,20 +303,50 @@ export class _PdfAlternateCS extends _PdfColorPalette {
         }
     }
 }
+/**
+ * Pattern color space that may refer to a base color space for uncolored tiling patterns.
+ *
+ * @private
+ */
 export class _PdfPatternCS extends _PdfColorPalette {
     base: any; // eslint-disable-line 
     constructor(baseCS: any) { // eslint-disable-line
         super('Pattern', null);
         this.base = baseCS;
     }
+    /**
+     * Pattern color space does not use decode maps calling this is invalid.
+     *
+     * @private
+     * @param {any} decodeMap Decode map.
+     * @param {any} bpc Bits per component.
+     * @throws {Error} Always thrown since not applicable to PatternCS.
+     * @returns {boolean} true if it is default decode.
+     */
+    /* eslint-enable */
     _isDefaultDecode(decodeMap: any, bpc: any): boolean { // eslint-disable-line
         throw new Error('PatternCS._isDefaultDecode should not be called.');
     }
 }
+/**
+ * Indexed color space using a lookup table to map indices to base-space colors.
+ *
+ * @private
+ */
 export class _PdfIndexedCS extends _PdfColorPalette {
     base: any; // eslint-disable-line
     private highVal: number;
     private lookup: Uint8Array;
+    /**
+     * Initializes a new instance of the `_PdfIndexedCS` class.
+     *
+     * @private
+     * @param {any} base Base color space.
+     * @param {number} highVal Highest index value.
+     * @param {any} lookup Lookup source.
+     * @returns {void} nothing.
+     * @throws {FormatError} When lookup source is not recognized.
+     */
     constructor(base: any, highVal: number, lookup: any) { // eslint-disable-line
         super('Indexed', 1);
         this.base = base;
@@ -198,11 +364,34 @@ export class _PdfIndexedCS extends _PdfColorPalette {
             throw new FormatError(`IndexedCS - unrecognized lookup table: ${lookup}`);
         }
     }
+    /**
+     * Converts a single index to RGB using the lookup table.
+     *
+     * @private
+     * @param {any} src Source buffer containing indices.
+     * @param {number} srcOffset Offset in source.
+     * @param {Uint8ClampedArray} dest Destination RGB buffer.
+     * @param {number} destOffset Destination offset.
+     * @returns {void} nothing.
+     */
     _getRgbItem(src: any, srcOffset: number, dest: Uint8ClampedArray, destOffset: number): void { // eslint-disable-line
         const { base, highVal, lookup } = this;
         const start: number = _mathClamp(Math.round(src[<number>srcOffset]), 0, highVal) * base.numComps;
         base._getRgbBuffer(lookup, start, 1, dest, destOffset, 8, 0);
     }
+    /**
+     * Converts a sequence of indices to RGB using the lookup table.
+     *
+     * @private
+     * @param {any} src Source indices.
+     * @param {number} srcOffset Source offset.
+     * @param {number} count Number of indices to process.
+     * @param {Uint8ClampedArray} dest Destination RGB buffer.
+     * @param {number} destOffset Destination offset.
+     * @param {number} bits Bits per component (ignored; indices are 8-bit after clamp).
+     * @param {number} alpha01 Alpha slot flag (0 or 1).
+     * @returns {void} nothing.
+     */
     _getRgbBuffer(src: any, srcOffset: number, count: number, dest: Uint8ClampedArray, destOffset: number, // eslint-disable-line
                   bits: number, alpha01: number): void {
         const { base, highVal, lookup } = this;
@@ -214,9 +403,25 @@ export class _PdfIndexedCS extends _PdfColorPalette {
             destOffset += outputDelta;
         }
     }
+    /**
+     * Computes output byte length for the given input length, considering the base space.
+     *
+     * @private
+     * @param {number} inputLength Number of input elements.
+     * @param {number} alpha01 Alpha slot flag.
+     * @returns {number} Bytes required in output.
+     */
     _getOutputLength(inputLength: number, alpha01: number): number {
         return this.base._getOutputLength(inputLength * this.base.numComps, alpha01);
     }
+    /**
+     * Determines if the provided decode map equals the default mapping for indexed space.
+     *
+     * @private
+     * @param {any[]} decodeMap Decode array.
+     * @param {number} bpc Bits per component.
+     * @returns {boolean} `true` if default otherwise, `false`.
+     */
     _isDefaultDecode(decodeMap: any[], bpc: number): boolean { // eslint-disable-line
         if (!Array.isArray(decodeMap)) {
             return true;
@@ -234,10 +439,33 @@ export class _PdfDeviceGrayCS extends _PdfColorPalette {
     constructor() {
         super('DeviceGray', 1);
     }
+    /**
+     * Converts one gray sample to RGB.
+     *
+     * @private
+     * @param {any} src Source buffer.
+     * @param {number} srcOffset Source offset.
+     * @param {Uint8ClampedArray} dest Destination RGB.
+     * @param {number} destOffset Destination offset.
+     * @returns {void} nothing.
+     */
     _getRgbItem(src: any, srcOffset: number, dest: Uint8ClampedArray, destOffset: number): void { // eslint-disable-line
         const c: number = src[<number>srcOffset] * 255;
         dest[<number>destOffset] = dest[destOffset + 1] = dest[destOffset + 2] = c;
     }
+    /**
+     * Converts multiple gray samples to RGB.
+     *
+     * @private
+     * @param {any} src Source samples.
+     * @param {number} srcOffset Source offset.
+     * @param {number} count Number of samples.
+     * @param {Uint8ClampedArray} dest Destination RGB.
+     * @param {number} destOffset Destination offset.
+     * @param {number} bits Bits per component.
+     * @param {number} alpha01 Alpha slot flag.
+     * @returns {void} nothing.
+     */
     _getRgbBuffer(src: any, srcOffset: number, count: number, dest: Uint8ClampedArray, destOffset: number, // eslint-disable-line
                   bits: number, alpha01: number): void {
         const scale: number = 255 / ((1 << bits) - 1);
@@ -251,19 +479,61 @@ export class _PdfDeviceGrayCS extends _PdfColorPalette {
             q += alpha01;
         }
     }
+    /**
+     * Computes the output byte length for a given input length.
+     *
+     * @private
+     * @param {number} inputLength Number of gray samples.
+     * @param {number} alpha01 Alpha slot flag (0 or 1).
+     * @returns {number} Number of bytes required in output.
+     */
     _getOutputLength(inputLength: number, alpha01: number): number {
         return inputLength * (3 + alpha01);
     }
 }
+/**
+ * DeviceRGB color space implementation.
+ *
+ * @private
+ */
 export class _PdfDeviceRgbCS extends _PdfColorPalette {
+    /**
+     * Initializes a new instance of the `_PdfDeviceRgbCS` class.
+     *
+     * @private
+     * @returns {void} nothing.
+     */
     constructor() {
         super('DeviceRGB', 3);
     }
+    /**
+     * Copies one RGB sample to destination .
+     *
+     * @private
+     * @param {any} src Source buffer.
+     * @param {number} srcOffset Source offset.
+     * @param {Uint8ClampedArray} dest Destination RGB.
+     * @param {number} destOffset Destination offset.
+     * @returns {void} nothing.
+     */
     _getRgbItem(src: any, srcOffset: number, dest: Uint8ClampedArray, destOffset: number): void { // eslint-disable-line
         dest[<number>destOffset] = src[<number>srcOffset] * 255;
         dest[destOffset + 1] = src[srcOffset + 1] * 255;
         dest[destOffset + 2] = src[srcOffset + 2] * 255;
     }
+    /**
+     * Copies many RGB samples, scaling by bits when needed.
+     *
+     * @private
+     * @param {any} src Source samples.
+     * @param {number} srcOffset Source offset.
+     * @param {number} count Number of RGB pixels.
+     * @param {Uint8ClampedArray} dest Destination RGB.
+     * @param {number} destOffset Destination offset.
+     * @param {number} bits Bits per component.
+     * @param {number} alpha01 Alpha slot flag (0 or 1).
+     * @returns {void} nothing.
+     */
     _getRgbBuffer(src: any, srcOffset: number, count: number, dest: Uint8ClampedArray, destOffset: number, // eslint-disable-line
                   bits: number, alpha01: number): void {
         if (bits === 8 && alpha01 === 0) {
@@ -280,17 +550,56 @@ export class _PdfDeviceRgbCS extends _PdfColorPalette {
             q += alpha01;
         }
     }
+    /**
+     * Computes the output byte length for the given input RGB scalar count.
+     *
+     * @private
+     * @param {number} inputLength Number of input scalars.
+     * @param {number} alpha01 Alpha slot flag.
+     * @returns {number} Number of bytes required.
+     */
     _getOutputLength(inputLength: number, alpha01: number): number {
         return ((inputLength * (3 + alpha01)) / 3) | 0;
     }
+    /**
+     * Indicates passthrough is allowed for 8-bit components.
+     *
+     * @private
+     * @param {number} bits Bits per component.
+     * @returns {boolean} `true` if 8 bits; otherwise, `false`.
+     */
     _isPass(bits: number): boolean {
         return bits === 8;
     }
 }
+/**
+ * DeviceRGBA color space implementation with resize/copy helpers.
+ *
+ * @private
+ */
 export class _PdfDeviceRgbaCS extends _PdfColorPalette {
+    /**
+     * Initializes a new instance of the `_PdfDeviceRgbaCS` class.
+     *
+     * @private
+     * @returns {void} nothing.
+     */
     constructor() {
         super('DeviceRGBA', 4);
     }
+    /**
+     * Resizes an RGBA source image into a destination, optionally stripping alpha.
+     *
+     * @private
+     * @param {Uint8Array} src Source RGBA buffer.
+     * @param {Uint8Array} dest Destination buffer.
+     * @param {number} w1 Source width.
+     * @param {number} h1 Source height.
+     * @param {number} w2 Target width.
+     * @param {number} h2 Target height.
+     * @param {number} alpha01 1 to keep alpha in layout (mask write), 0 to strip.
+     * @returns {void} nothing.
+     */
     _resizeRgbaImage(src: Uint8Array, dest: Uint8Array, w1: number, h1: number, w2: number, h2: number, alpha01: number): void {
         const xRatio: number = w1 / w2;
         const yRatio: number = h1 / h2;
@@ -326,6 +635,15 @@ export class _PdfDeviceRgbaCS extends _PdfColorPalette {
             }
         }
     }
+    /**
+     * Copies an RGBA buffer into destination, optionally stripping alpha.
+     *
+     * @private
+     * @param {Uint8Array} src Source RGBA buffer.
+     * @param {Uint8Array} dest Destination buffer.
+     * @param {number} alpha01 1 to keep alpha in layout, 0 to strip.
+     * @returns {void} nothing.
+     */
     _copyRgbaImage(src: Uint8Array, dest: Uint8Array, alpha01: number): void {
         if (alpha01 === 1) {
             const src32: Uint32Array = new Uint32Array(src.buffer);
@@ -343,12 +661,42 @@ export class _PdfDeviceRgbaCS extends _PdfColorPalette {
             }
         }
     }
+    /**
+     * Computes the output byte length for RGBA.
+     *
+     * @private
+     * @param {number} inputLength Number of input scalars.
+     * @param {number} _alpha01 Alpha slot flag.
+     * @returns {number} Number of output bytes.
+     */
     _getOutputLength(inputLength: number, _alpha01: number): number { // eslint-disable-line
         return inputLength * 4;
     }
+    /**
+     * Indicates passthrough is allowed for 8-bit components.
+     *
+     * @private
+     * @param {number} bits Bits per component.
+     * @returns {boolean} `true` if 8 bits; otherwise, `false`.
+     */
     _isPass(bits: number): boolean {
         return bits === 8;
     }
+    /**
+     * Fills RGB(A) destination buffer, resizing or copying RGBA as needed.
+     *
+     * @private
+     * @param {any} dest Destination buffer.
+     * @param {number} originalWidth Source width.
+     * @param {number} originalHeight Source height.
+     * @param {number} width Target width.
+     * @param {number} height Target height.
+     * @param {number} actualHeight Actual drawn height.
+     * @param {number} bpc Bits per component.
+     * @param {any} comps Component data (RGBA).
+     * @param {number} alpha01 1 to keep alpha in layout, 0 to strip.
+     * @returns {Promise<any>} Resolves when fill is complete.
+     */
     async _fillRgb(dest: any, originalWidth: number, originalHeight: number, width: number, height: number, // eslint-disable-line
             actualHeight: number, bpc: number, comps: any, alpha01: number): Promise<any> { // eslint-disable-line
         if (originalHeight !== height || originalWidth !== width) {
@@ -358,10 +706,26 @@ export class _PdfDeviceRgbaCS extends _PdfColorPalette {
         }
     }
 }
+/**
+ * DeviceCMYK color space implementation with polynomial conversion to sRGB.
+ *
+ * @private
+ */
 export class _PdfDeviceCmykCS extends _PdfColorPalette {
     constructor() {
         super('DeviceCMYK', 4);
     }
+    /**
+     * Converts one CMYK sample to RGB using a polynomial approximation.
+     *
+     * @private
+     * @param {any} src Source CMYK buffer.
+     * @param {number} srcOffset Source offset.
+     * @param {number} srcScale Scale factor for components.
+     * @param {any} dest Destination RGB buffer.
+     * @param {number} destOffset Destination offset.
+     * @returns {void} nothing.
+     */
     _toRgb(src: any, srcOffset: number, srcScale: number, dest: any, destOffset: number): void { // eslint-disable-line
         const c: number = src[<number>srcOffset] * srcScale;
         const m: number = src[srcOffset + 1] * srcScale;
@@ -383,9 +747,32 @@ export class _PdfDeviceCmykCS extends _PdfColorPalette {
             y * (0.03296041114873217 * y + 115.60384449646641 * k - 193.58209356861505) +
             k * (-22.33816807309886 * k - 180.12613974708367);
     }
+    /**
+     * Converts one CMYK sample to RGB.
+     *
+     * @private
+     * @param {any} src Source buffer.
+     * @param {number} srcOffset Source offset.
+     * @param {Uint8ClampedArray} dest Destination RGB buffer.
+     * @param {number} destOffset Destination offset.
+     * @returns {void} nothing.
+     */
     _getRgbItem(src: any, srcOffset: number, dest: Uint8ClampedArray, destOffset: number): void { // eslint-disable-line
         this._toRgb(src, srcOffset, 1, dest, destOffset);
     }
+    /**
+     * Converts multiple CMYK samples to RGB.
+     *
+     * @private
+     * @param {any} src Source buffer.
+     * @param {number} srcOffset Source offset.
+     * @param {number} count Number of pixels.
+     * @param {Uint8ClampedArray} dest Destination RGB buffer.
+     * @param {number} destOffset Destination offset.
+     * @param {number} bits Bits per component.
+     * @param {number} alpha01 Alpha slot flag.
+     * @returns {void} nothing.
+     */
     _getRgbBuffer(src: any, srcOffset: number, count: number, dest: Uint8ClampedArray, destOffset: number, // eslint-disable-line
                   bits: number, alpha01: number): void {
         const scale: number = 1 / ((1 << bits) - 1);
@@ -395,21 +782,94 @@ export class _PdfDeviceCmykCS extends _PdfColorPalette {
             destOffset += 3 + alpha01;
         }
     }
+    /**
+     * Computes output length for CMYK source scalars.
+     *
+     * @private
+     * @param {number} inputLength Number of input scalars.
+     * @param {number} alpha01 Alpha slot flag.
+     * @returns {number} Number of bytes required.
+     */
     _getOutputLength(inputLength: number, alpha01: number): number {
         return ((inputLength / 4) * (3 + alpha01)) | 0;
     }
 }
+/**
+ * CIE Lab color space implementation.
+ *
+ * @private
+ */
 export class _PdfLabCS extends _PdfColorPalette {
+    /**
+     * White point X.
+     *
+     * @private
+     */
     private _xw: number;
+    /**
+     * White point Y.
+     *
+     * @private
+     */
     private _yw: number;
+    /**
+     * White point Z.
+     *
+     * @private
+     */
     private _zw: number;
+    /**
+     * Black point X.
+     *
+     * @private
+     */
     private _xb: number;
+    /**
+     * Black point Y.
+     *
+     * @private
+     */
     private _yb: number;
+    /**
+     * Black point Z.
+     *
+     * @private
+     */
     private _zb: number;
+    /**
+     * 'a' minimum bound.
+     *
+     * @private
+     */
     private _amin: number;
+    /**
+     * 'a' maximum bound.
+     *
+     * @private
+     */
     private _amax: number;
+    /**
+     * 'b' minimum bound.
+     *
+     * @private
+     */
     private _bmin: number;
+    /**
+     * 'b' maximum bound.
+     *
+     * @private
+     */
     private _bmax: number;
+    /**
+     * Initializes a new instance of the `_PdfLabCS` class.
+     *
+     * @private
+     * @param {number[]} [whitePoint] Required white point [X, Y, Z].
+     * @param {number[]} [blackPoint] Optional black point [X, Y, Z].
+     * @param {number[]} [range] Optional range [aMin, aMax, bMin, bMax].
+     * @returns {void} nothing.
+     * @throws {FormatError} When whitePoint is missing or invalid.
+     */
     constructor(whitePoint?: number[], blackPoint?: number[], range?: number[]) {
         super('Lab', 3);
         if (!whitePoint) {
@@ -478,9 +938,32 @@ export class _PdfLabCS extends _PdfColorPalette {
         dest[destOffset + 1] = Math.sqrt(g) * 255;
         dest[destOffset + 2] = Math.sqrt(b) * 255;
     }
+    /**
+     * Converts a single Lab sample to RGB.
+     *
+     * @private
+     * @param {Uint8Array} src Source buffer.
+     * @param {number} srcOffset Source offset.
+     * @param {any} dest Destination buffer for RGB output.
+     * @param {number} destOffset Destination offset.
+     * @returns {void} nothing.
+     */
     _getRgbItem(src: Uint8Array, srcOffset: number, dest: any, destOffset: number): void { // eslint-disable-line
         this._toRgb(src, srcOffset, false, dest, destOffset);
     }
+    /**
+     * Converts multiple Lab samples to RGB.
+     *
+     * @private
+     * @param {Uint8Array} src Source buffer.
+     * @param {number} srcOffset Source offset.
+     * @param {number} count Number of samples.
+     * @param {any} dest Destination buffer for RGB output.
+     * @param {number} destOffset Destination offset.
+     * @param {number} bits Bits per component.
+     * @param {number} alpha01 Alpha slot flag (0 or 1).
+     * @returns {void} nothing.
+     */
     _getRgbBuffer(src: Uint8Array, srcOffset: number, count: number, dest: any, destOffset: number, // eslint-disable-line
                   bits: number, alpha01: number): void {
         const maxVal: number = (1 << bits) - 1;
@@ -490,9 +973,25 @@ export class _PdfLabCS extends _PdfColorPalette {
             destOffset += 3 + alpha01;
         }
     }
+    /**
+     * Computes the output byte length for a set of Lab samples.
+     *
+     * @private
+     * @param {number} inputLength Number of input scalars.
+     * @param {number} alpha01 Alpha slot flag (0 or 1).
+     * @returns {number} Number of bytes required.
+     */
     _getOutputLength(inputLength: number, alpha01: number): number {
         return ((inputLength * (3 + alpha01)) / 3) | 0;
     }
+    /**
+     * Indicates whether the provided decode map equals the default mapping (always `true` for Lab).
+     *
+     * @private
+     * @param {any} decodeMap Decode map.
+     * @param {number} bpc Bits per component.
+     * @returns {boolean} Always `true` for Lab.
+     */
     _isDefaultDecode(decodeMap: any, bpc: number): boolean { // eslint-disable-line
         return true;
     }
@@ -500,13 +999,53 @@ export class _PdfLabCS extends _PdfColorPalette {
         return false;
     }
 }
+/**
+ * CalGray color space implementation.
+ *
+ * @private
+ */
 export class _PdfCalGrayCS extends _PdfColorPalette {
+    /**
+     * White point X.
+     *
+     * @private
+     */
     _xw: number;
+    /**
+     * White point Y.
+     *
+     * @private
+     */
     _yw: number;
+    /**
+     * White point Z.
+     *
+     * @private
+     */
     _zw: number;
+    /**
+     * Black point X.
+     *
+     * @private
+     */
     _xb: number;
+    /**
+     * Black point Y.
+     *
+     * @private
+     */
     _yb: number;
+    /**
+     * Black point Z.
+     *
+     * @private
+     */
     _zb: number;
+    /**
+     * Gamma exponent.
+     *
+     * @private
+     */
     _g: number;
     constructor(whitePoint: number[], blackPoint?: number[], gamma?: number) {
         super('CalGray', 1);
@@ -530,6 +1069,17 @@ export class _PdfCalGrayCS extends _PdfColorPalette {
             this._g = 1;
         }
     }
+    /**
+     * Converts one CalGray sample to RGB using gamma and white point.
+     *
+     * @private
+     * @param {number[]} src Source buffer.
+     * @param {number} srcOffset Source offset.
+     * @param {number[]} dest Destination buffer.
+     * @param {number} destOffset Destination offset.
+     * @param {number} scale Scale factor for input sample.
+     * @returns {void} nothing.
+     */
     _toRgb(src: number[], srcOffset: number, dest: number[], destOffset: number, scale: number): void {
         const a: number = src[<number>srcOffset] * scale;
         const ag: number = a ** this._g;
@@ -539,9 +1089,32 @@ export class _PdfCalGrayCS extends _PdfColorPalette {
         dest[destOffset + 1] = val;
         dest[destOffset + 2] = val;
     }
+    /**
+     * Converts a single CalGray sample to RGB.
+     *
+     * @private
+     * @param {number[]} src Source buffer.
+     * @param {number} srcOffset Source offset.
+     * @param {any} dest Destination RGB buffer.
+     * @param {number} destOffset Destination offset.
+     * @returns {void} nothing.
+     */
     _getRgbItem(src: number[], srcOffset: number, dest: any, destOffset: number): void { // eslint-disable-line
         this._toRgb(src, srcOffset, dest, destOffset, 1);
     }
+    /**
+     * Converts multiple CalGray samples to RGB.
+     *
+     * @private
+     * @param {number[]} src Source buffer.
+     * @param {number} srcOffset Source offset.
+     * @param {number} count Number of samples.
+     * @param {any} dest Destination RGB buffer.
+     * @param {number} destOffset Destination offset.
+     * @param {number} bits Bits per component.
+     * @param {number} alpha01 Alpha slot flag .
+     * @returns {void} nothing.
+     */
     _getRgbBuffer(src: number[], srcOffset: number, count: number, dest: any, destOffset: number, bits: number, alpha01: number): void { // eslint-disable-line
         const scale: number = 1 / ((1 << bits) - 1);
         for (let i: number = 0; i < count; ++i) {
@@ -550,10 +1123,23 @@ export class _PdfCalGrayCS extends _PdfColorPalette {
             destOffset += 3 + alpha01;
         }
     }
+    /**
+     * Computes output byte length for CalGray input.
+     *
+     * @private
+     * @param {number} inputLength Number of input samples.
+     * @param {number} alpha01 Alpha slot flag (0 or 1).
+     * @returns {number} Output byte count.
+     */
     _getOutputLength(inputLength: number, alpha01: number): number {
         return inputLength * (3 + alpha01);
     }
 }
+/**
+ * CalRGB color space implementation with white/black point and gamma.
+ *
+ * @private
+ */
 export class _PdfColorRgbConverter extends _PdfColorPalette {
     scaleMatrix: Float32Array = new Float32Array([
         0.8951, 0.2664, -0.1614,
@@ -575,7 +1161,17 @@ export class _PdfColorRgbConverter extends _PdfColorPalette {
     tempConvertMatrix1: Float32Array = new Float32Array(3);
     tempConvertMatrix2: Float32Array = new Float32Array(3);
     decodeConstant: number = ((8 + 16) / 116) ** 3 / 8.0;
+    /**
+     * Source white point [X, Y, Z].
+     *
+     * @private
+     */
     _whitePoint: Float32Array;
+    /**
+     * Source black point [X, Y, Z].
+     *
+     * @private
+     */
     _blackPoint: Float32Array;
     gr: number;
     gg: number;
@@ -612,16 +1208,43 @@ export class _PdfColorRgbConverter extends _PdfColorPalette {
             this.gr = this.gg = this.gb = 1;
         }
     }
+    /**
+     * Multiplies a 3x3 matrix by a 3x1 vector.
+     *
+     * @private
+     * @param {Float32Array} a 3x3 matrix.
+     * @param {Float32Array} b 3x1 vector.
+     * @param {Float32Array} result 3x1 output vector.
+     * @returns {void} nothing.
+     */
     _matrixProduct(a: Float32Array, b: Float32Array, result: Float32Array): void {
         result[0] = a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
         result[1] = a[3] * b[0] + a[4] * b[1] + a[5] * b[2];
         result[2] = a[6] * b[0] + a[7] * b[1] + a[8] * b[2];
     }
+    /**
+     * Normalizes LMS values to a flat white point.
+     *
+     * @private
+     * @param {Float32Array} sourceWhitePoint Source white point [L,M,S].
+     * @param {Float32Array} lms Input LMS vector.
+     * @param {Float32Array} result Output normalized LMS.
+     * @returns {void} nothing.
+     */
     _toFlat(sourceWhitePoint: Float32Array, lms: Float32Array, result: Float32Array): void {
         result[0] = (lms[0] * 1) / sourceWhitePoint[0];
         result[1] = (lms[1] * 1) / sourceWhitePoint[1];
         result[2] = (lms[2] * 1) / sourceWhitePoint[2];
     }
+    /**
+     * Normalizes LMS values to D65 white point.
+     *
+     * @private
+     * @param {Float32Array} sourceWhitePoint Source white point [L,M,S].
+     * @param {Float32Array} lms Input LMS vector.
+     * @param {Float32Array} result Output normalized LMS for D65.
+     * @returns {void} nothing.
+     */
     _toD65(sourceWhitePoint: Float32Array, lms: Float32Array, result: Float32Array): void {
         const d65X: number = 0.95047;
         const d65Y: number = 1;
@@ -630,6 +1253,13 @@ export class _PdfColorRgbConverter extends _PdfColorPalette {
         result[1] = (lms[1] * d65Y) / sourceWhitePoint[1];
         result[2] = (lms[2] * d65Z) / sourceWhitePoint[2];
     }
+    /**
+     * sRGB transfer function.
+     *
+     * @private
+     * @param {number} color Linear color channel value.
+     * @returns {number} Gamma-corrected channel .
+     */
     _srgbTransferFunction(color: number): number {
         if (color <= 0.0031308) {
             return _mathClamp(12.92 * color, 0, 1);
@@ -639,6 +1269,13 @@ export class _PdfColorRgbConverter extends _PdfColorPalette {
         }
         return _mathClamp((1 + 0.055) * color ** (1 / 2.4) - 0.055, 0, 1);
     }
+    /**
+     * Decodes L* value to linear lightness.
+     *
+     * @private
+     * @param {number} L L* value.
+     * @returns {number} Linear value.
+     */
     _decodeL(L: number): number {
         if (L < 0) {
             return -this._decodeL(-L);
@@ -648,6 +1285,15 @@ export class _PdfColorRgbConverter extends _PdfColorPalette {
         }
         return L * this.decodeConstant;
     }
+    /**
+     * Applies black point compensation.
+     *
+     * @private
+     * @param {Float32Array} sourceBlackPoint Source black point XYZ.
+     * @param {Float32Array} xyzFlat Flat-normalized XYZ.
+     * @param {Float32Array} result Output compensated XYZ.
+     * @returns {void} nothing.
+     */
     _compensateBlackPoint(sourceBlackPoint: Float32Array, xyzFlat: Float32Array, result: Float32Array): void {
         if (sourceBlackPoint[0] === 0 && sourceBlackPoint[1] === 0 && sourceBlackPoint[2] === 0) {
             result[0] = xyzFlat[0];
@@ -672,6 +1318,15 @@ export class _PdfColorRgbConverter extends _PdfColorPalette {
         result[1] = xyzFlat[1] * yScale + yOffset;
         result[2] = xyzFlat[2] * zScale + zOffset;
     }
+    /**
+     * Normalizes XYZ to a flat white point from source white point.
+     *
+     * @private
+     * @param {Float32Array} sourceWhitePoint Source white point (XYZ).
+     * @param {Float32Array} xyzIn Input XYZ.
+     * @param {Float32Array} result Output XYZ (flat).
+     * @returns {void} nothing.
+     */
     _normalizeWhitePointToFlat(sourceWhitePoint: Float32Array, xyzIn: Float32Array, result: Float32Array): void {
         if (sourceWhitePoint[0] === 1 && sourceWhitePoint[2] === 1) {
             result[0] = xyzIn[0];
@@ -685,6 +1340,15 @@ export class _PdfColorRgbConverter extends _PdfColorPalette {
         this._toFlat(sourceWhitePoint, lms, lmsFlat);
         this._matrixProduct(this.inverseMatrix, lmsFlat, result);
     }
+    /**
+     * Normalizes XYZ to D65 from source white point.
+     *
+     * @private
+     * @param {Float32Array} sourceWhitePoint Source white point.
+     * @param {Float32Array} xyzIn Input XYZ.
+     * @param {Float32Array} result Output XYZ.
+     * @returns {void} nothing.
+     */
     _normalizeWhitePointToD65(sourceWhitePoint: Float32Array, xyzIn: Float32Array, result: Float32Array): void {
         const lms: any = result; // eslint-disable-line
         this._matrixProduct(this.scaleMatrix, xyzIn, lms);
@@ -692,6 +1356,17 @@ export class _PdfColorRgbConverter extends _PdfColorPalette {
         this._toD65(sourceWhitePoint, lms, lmsD65);
         this._matrixProduct(this.inverseMatrix, lmsD65, result);
     }
+    /**
+     * Converts one CalRGB sample to sRGB.
+     *
+     * @private
+     * @param {number[]} src Source components.
+     * @param {number} srcOffset Source offset.
+     * @param {Uint8ClampedArray} dest Destination buffer.
+     * @param {number} destOffset Destination offset.
+     * @param {number} scale Scale factor for input sample.
+     * @returns {void} nothing.
+     */
     _toRgb(src: number[], srcOffset: number, dest: Uint8ClampedArray, destOffset: number, scale: number): void {
         const a: number = _mathClamp(src[<number>srcOffset] * scale, 0, 1);
         const b: number = _mathClamp(src[srcOffset + 1] * scale, 0, 1);
@@ -718,9 +1393,32 @@ export class _PdfColorRgbConverter extends _PdfColorPalette {
         dest[destOffset + 1] = this._srgbTransferFunction(srgb[1]) * 255;
         dest[destOffset + 2] = this._srgbTransferFunction(srgb[2]) * 255;
     }
+    /**
+     * Converts one CalRGB sample to sRGB.
+     *
+     * @private
+     * @param {number[]} src Source buffer.
+     * @param {number} srcOffset Source offset.
+     * @param {Uint8ClampedArray} dest Destination buffer.
+     * @param {number} destOffset Destination offset.
+     * @returns {void} nothing.
+     */
     _getRgbItem(src: number[], srcOffset: number, dest: Uint8ClampedArray, destOffset: number): void {
         this._toRgb(src, srcOffset, dest, destOffset, 1);
     }
+    /**
+     * Converts multiple CalRGB samples to sRGB.
+     *
+     * @private
+     * @param {number[]} src Source buffer.
+     * @param {number} srcOffset Source offset.
+     * @param {number} count Number of samples.
+     * @param {Uint8ClampedArray} dest Destination buffer.
+     * @param {number} destOffset Destination offset.
+     * @param {number} bits Bits per component.
+     * @param {number} alpha01 Alpha slot flag .
+     * @returns {void} nothing.
+     */
     _getRgbBuffer(src: number[], srcOffset: number, count: number, dest: Uint8ClampedArray, destOffset: number, bits: number,
                   alpha01: number): void {
         const scale: number = 1 / ((1 << bits) - 1);
@@ -730,6 +1428,14 @@ export class _PdfColorRgbConverter extends _PdfColorPalette {
             destOffset += 3 + alpha01;
         }
     }
+    /**
+     * Computes output byte length for CalRGB source samples.
+     *
+     * @private
+     * @param {number} inputLength Number of input scalars.
+     * @param {number} alpha01 Alpha slot flag.
+     * @returns {number} Output byte count.
+     */
     _getOutputLength(inputLength: number, alpha01: number): number {
         return ((inputLength * (3 + alpha01)) / 3) | 0;
     }

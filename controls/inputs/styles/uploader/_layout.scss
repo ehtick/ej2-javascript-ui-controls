@@ -1,4 +1,4 @@
-@use 'ej2-base/styles/common/mixin' as *;
+@use 'variables' as *;
 
 // uploader layout styles
 @include export-module('uploader-layout') {
@@ -10,7 +10,7 @@
   .e-upload {
     width: $upload-full-width;
 
-    #{if(&, '&', '*')}.e-control-wrapper {
+    &.e-control-wrapper {
       font-family: $upload-root-font-family;
     }
 
@@ -38,40 +38,40 @@
         opacity: $upload-element-opacity;
       }
 
-      #{if(&, '&', '*')} .e-file-drop {
+      & .e-file-drop {
         font-family: $upload-font-family;
         font-size: $drop-area-font-size-smaller;
         margin-left: $drop-area-padding-left-smaller;
       }
     }
 
-    #{if(&, '&', '*')}.e-form-upload .e-upload-files {
-      #{if(&, '&', '*')} .e-upload-file-list {
+    &.e-form-upload .e-upload-files {
+      & .e-upload-file-list {
         min-height: $form-upload-file-list-height;
         padding-bottom: $form-upload-file-list-padding-bottom;
         padding-top: $form-upload-file-list-padding-top;
 
-        #{if(&, '&', '*')} .e-file-container {
+        & .e-file-container {
           top: $upload-zer-padding-margin;
 
-          #{if(&, '&', '*')} .e-hidden-input {
+          & .e-hidden-input {
             display: none;
           }
 
-          #{if(&, '&', '*')} .e-file-name,
-          #{if(&, '&', '*')} .e-file-type {
+          & .e-file-name,
+          & .e-file-type {
             line-height: $form-upload-file-name-line-height;
             padding-top: $form-upload-file-name-padding;
           }
 
-          #{if(&, '&', '*')} .e-file-name.e-error,
-          #{if(&, '&', '*')} .e-file-type.e-error,
-          #{if(&, '&', '*')} .e-file-status.e-error {
+          & .e-file-name.e-error,
+          & .e-file-type.e-error,
+          & .e-file-status.e-error {
             color: $upload-failure-color;
           }
 
-          #{if(&, '&', '*')} .e-file-status,
-          #{if(&, '&', '*')} .e-file-information {
+          & .e-file-status,
+          & .e-file-information {
             color: $file-size-color;
             display: block;
             font-size: $form-upload-file-status-font-size;
@@ -82,29 +82,29 @@
           }
         }
 
-        #{if(&, '&', '*')}.e-file-invalid {
+        &.e-file-invalid {
           color: $upload-failure-color;
 
-          #{if(&, '&', '*')} .e-file-name,
-          #{if(&, '&', '*')} .e-file-type,
-          #{if(&, '&', '*')} .e-file-status {
+          & .e-file-name,
+          & .e-file-type,
+          & .e-file-status {
             color: $upload-failure-color;
           }
         }
       }
 
-      #{if(&, '&', '*')} .e-file-remove-btn.e-icons,
-      #{if(&, '&', '*')} .e-file-delete-btn.e-icons,
-      #{if(&, '&', '*')} .e-file-abort-btn.e-icons,
-      #{if(&, '&', '*')} .e-file-reload-btn.e-icons,
-      #{if(&, '&', '*')} .e-file-play-btn.e-icons,
-      #{if(&, '&', '*')} .e-file-pause-btn.e-icons {
+      & .e-file-remove-btn.e-icons,
+      & .e-file-delete-btn.e-icons,
+      & .e-file-abort-btn.e-icons,
+      & .e-file-reload-btn.e-icons,
+      & .e-file-play-btn.e-icons,
+      & .e-file-pause-btn.e-icons {
         box-sizing: border-box;
         top: $form-upload-remove-icon-top;
       }
 
-      #{if(&, '&', '*')} .e-file-remove-btn.e-icons.e-disabled,
-      #{if(&, '&', '*')} .e-file-delete-btn.e-icons.e-disabled {
+      & .e-file-remove-btn.e-icons.e-disabled,
+      & .e-file-delete-btn.e-icons.e-disabled {
         color: $disabled-state;
         cursor: not-allowed;
         opacity: .4;
@@ -112,7 +112,7 @@
       }
     }
 
-    #{if(&, '&', '*')} .e-upload-files {
+    & .e-upload-files {
       list-style-type: none;
       margin: $select-file-margin;
       padding: $select-file-padding;
@@ -161,18 +161,18 @@
             float: right;
           }
 
-          #{if(&, '&', '*')} .e-file-type {
+          & .e-file-type {
             display: block;
             font-family: $file-name-font-family;
             font-size: $file-name-font-size-smaller;
             padding-top: $file-name-padding-top-smaller;
           }
 
-          #{if(&, '&', '*')} .e-file-type.e-hidden {
+          & .e-file-type.e-hidden {
             visibility: hidden;
           }
 
-          #{if(&, '&', '*')} .e-file-size {
+          & .e-file-size {
             display: block;
             font-size: $list-item-status-font-size-smaller;
             padding: $file-size-padding-smaller;
@@ -182,19 +182,19 @@
             }
           }
 
-          #{if(&, '&', '*')} .e-file-status,
-          #{if(&, '&', '*')} .e-file-information {
+          & .e-file-status,
+          & .e-file-information {
             display: block;
             font-family: $upload-font-family;
             font-size: $list-item-status-font-size-smaller;
             padding-bottom: $file-name-padding-top-smaller;
 
-            #{if(&, '&', '*')}.e-upload-progress {
+            &.e-upload-progress {
               display: none;
             }
           }
 
-          #{if(&, '&', '*')} .e-upload-progress-wrap {
+          & .e-upload-progress-wrap {
             display: block;
             height: $progress-bar-wrapper-height-smaller;
             padding-bottom: $progress-bar-bottom-paddding;
@@ -202,20 +202,20 @@
             position: absolute;
             width: $progress-bar-wrapper-width;
 
-            #{if(&, '&', '*')} .e-progress-inner-wrap {
+            & .e-progress-inner-wrap {
               border-radius: $inner-wrap-radius;
               display: block;
               height: $progress-inner-wrap-height-smaller;
               width: $upload-full-width;
 
-              #{if(&, '&', '*')} .e-upload-progress-bar {
+              & .e-upload-progress-bar {
                 border-radius: $progress-bar-radius;
                 display: inherit;
                 height: $progress-bar-height-smaller;
               }
             }
 
-            #{if(&, '&', '*')} .e-progress-bar-text {
+            & .e-progress-bar-text {
               float: right;
               font-family: $upload-font-family;
               font-size: $list-item-status-font-size-smaller;
@@ -227,12 +227,12 @@
         }
       }
 
-      #{if(&, '&', '*')} .e-file-remove-btn.e-icons,
-      #{if(&, '&', '*')} .e-file-delete-btn.e-icons,
-      #{if(&, '&', '*')} .e-file-abort-btn.e-icons,
-      #{if(&, '&', '*')} .e-file-pause-btn.e-icons,
-      #{if(&, '&', '*')} .e-file-play-btn.e-icons,
-      #{if(&, '&', '*')} .e-file-reload-btn.e-icons {
+      & .e-file-remove-btn.e-icons,
+      & .e-file-delete-btn.e-icons,
+      & .e-file-abort-btn.e-icons,
+      & .e-file-pause-btn.e-icons,
+      & .e-file-play-btn.e-icons,
+      & .e-file-reload-btn.e-icons {
         align-items: center;
         box-sizing: border-box;
         cursor: pointer;
@@ -249,41 +249,41 @@
         vertical-align: middle;
         width: $remove-icon-width;
 
-        #{if(&, '&', '*')}.e-upload-progress {
+        &.e-upload-progress {
           cursor: default;
         }
       }
 
-      #{if(&, '&', '*')} .e-file-remove-btn.e-icons.e-disabled,
-      #{if(&, '&', '*')} .e-file-delete-btn.e-icons.e-disabled {
+      & .e-file-remove-btn.e-icons.e-disabled,
+      & .e-file-delete-btn.e-icons.e-disabled {
         color: $disabled-state;
         cursor: not-allowed;
         opacity: .4;
         pointer-events: none;
       }
 
-      #{if(&, '&', '*')} .e-file-remove-btn.e-msie.e-icons,
-      #{if(&, '&', '*')} .e-file-delete-btn.e-msie.e-icons,
-      #{if(&, '&', '*')} .e-file-abort-btn.e-msie.e-icons,
-      #{if(&, '&', '*')} .e-file-pause-btn.e-msie.e-icons,
-      #{if(&, '&', '*')} .e-file-play-btn.e-msie.e-icons,
-      #{if(&, '&', '*')} .e-file-reload-btn.e-msie.e-icons {
+      & .e-file-remove-btn.e-msie.e-icons,
+      & .e-file-delete-btn.e-msie.e-icons,
+      & .e-file-abort-btn.e-msie.e-icons,
+      & .e-file-pause-btn.e-msie.e-icons,
+      & .e-file-play-btn.e-msie.e-icons,
+      & .e-file-reload-btn.e-msie.e-icons {
         padding: $icons-small-ie-padding;
       }
 
-      #{if(&, '&', '*')} .e-file-pause-btn.e-icons,
-      #{if(&, '&', '*')} .e-file-play-btn.e-icons,
-      #{if(&, '&', '*')} .e-file-reload-btn.e-icons {
+      & .e-file-pause-btn.e-icons,
+      & .e-file-play-btn.e-icons,
+      & .e-file-reload-btn.e-icons {
         right: $pause-play-button-right-value;
       }
 
-      #{if(&, '&', '*')} .e-file-remove-btn.e-icons:not(.e-upload-progress):hover,
-      #{if(&, '&', '*')} .e-file-delete-btn.e-icons:not(.e-upload-progress):hover,
-      #{if(&, '&', '*')} .e-file-pause-btn.e-icons:not(.e-upload-progress):hover,
-      #{if(&, '&', '*')} .e-file-play-btn.e-icons:not(.e-upload-progress):hover,
-      #{if(&, '&', '*')} .e-file-reload-btn.e-icons:hover,
-      #{if(&, '&', '*')} .e-file-abort-btn.e-icons:not(.e-disabled):hover,
-      #{if(&, '&', '*')} .e-clear-icon-focus {
+      & .e-file-remove-btn.e-icons:not(.e-upload-progress):hover,
+      & .e-file-delete-btn.e-icons:not(.e-upload-progress):hover,
+      & .e-file-pause-btn.e-icons:not(.e-upload-progress):hover,
+      & .e-file-play-btn.e-icons:not(.e-upload-progress):hover,
+      & .e-file-reload-btn.e-icons:hover,
+      & .e-file-abort-btn.e-icons:not(.e-disabled):hover,
+      & .e-clear-icon-focus {
         @if $skin-name == 'Material3' {
           background: $clear-icon-focus-color;
         }
@@ -298,36 +298,36 @@
         box-shadow: 0 0 0 transparent;
       }
 
-      #{if(&, '&', '*')} .e-file-remove-btn.e-icons:not(.e-upload-progress):focus,
-      #{if(&, '&', '*')} .e-file-delete-btn.e-icons:not(.e-upload-progress):focus,
-      #{if(&, '&', '*')} .e-file-pause-btn.e-icons:not(.e-upload-progress):focus,
-      #{if(&, '&', '*')} .e-file-play-btn.e-icons:not(.e-upload-progress):focus,
-      #{if(&, '&', '*')} .e-file-reload-btn.e-icons:focus,
-      #{if(&, '&', '*')} .e-file-abort-btn.e-icons:not(.e-disabled):focus,
-      #{if(&, '&', '*')} .e-clear-icon-focus {
+      & .e-file-remove-btn.e-icons:not(.e-upload-progress):focus,
+      & .e-file-delete-btn.e-icons:not(.e-upload-progress):focus,
+      & .e-file-pause-btn.e-icons:not(.e-upload-progress):focus,
+      & .e-file-play-btn.e-icons:not(.e-upload-progress):focus,
+      & .e-file-reload-btn.e-icons:focus,
+      & .e-file-abort-btn.e-icons:not(.e-disabled):focus,
+      & .e-clear-icon-focus {
         border-radius: $uploader-icons-hover-radius;
       }
 
-      #{if(&, '&', '*')} .e-file-delete-btn.e-icons {
+      & .e-file-delete-btn.e-icons {
         font-size: $delete-icon-font-size-smaller;
         opacity: $delete-icon-opacity;
       }
 
-      #{if(&, '&', '*')} .e-file-abort-btn.e-icons {
+      & .e-file-abort-btn.e-icons {
         font-size: $abort-icon-font-size-smaller;
         opacity: $delete-icon-opacity;
       }
     }
 
-    #{if(&, '&', '*')} .e-file-select-wrap .e-btn,
-    #{if(&, '&', '*')} .e-upload-actions .e-btn {
+    & .e-file-select-wrap .e-btn,
+    & .e-upload-actions .e-btn {
       font-family: $upload-font-family;
       @if $skin-name == 'tailwind3' {
         font-weight: 600;
       }
     }
 
-    #{if(&, '&', '*')} .e-upload-actions {
+    & .e-upload-actions {
       position: relative;
       text-align: right;
 
@@ -350,24 +350,24 @@
       }
     }
 
-    #{if(&, '&', '*')}.e-rtl {
-      #{if(&, '&', '*')} .e-file-select-wrap {
+    &.e-rtl {
+      & .e-file-select-wrap {
         padding: $header-padding-rtl-smaller;
 
-        #{if(&, '&', '*')} .e-control {
-          #{if(&, '&', '*')}.e-btn {
+        & .e-control {
+          &.e-btn {
             margin-right: $margin-rtl-header-smaller;
           }
         }
 
-        #{if(&, '&', '*')} .e-file-drop {
+        & .e-file-drop {
           margin-left: $file-container-left;
           margin-right: $drop-area-padding-left-smaller;
           position: relative;
         }
       }
 
-      #{if(&, '&', '*')} .e-upload-actions {
+      & .e-upload-actions {
         text-align: $float-left;
 
         .e-file-upload-btn {
@@ -383,29 +383,29 @@
         }
       }
 
-      #{if(&, '&', '*')} .e-upload-files {
-        #{if(&, '&', '*')} .e-upload-file-list {
-          #{if(&, '&', '*')} .e-file-container {
+      & .e-upload-files {
+        & .e-upload-file-list {
+          & .e-file-container {
             height: $file-container-height;
             margin-left: $file-container-left;
             margin-right: $margin-rtl-smaller;
             position: relative;
 
-            #{if(&, '&', '*')} .e-rtl-container {
+            & .e-rtl-container {
               direction: ltr;
               float: $float-right;
               width: $file-container-height;
             }
 
-            #{if(&, '&', '*')} .e-file-type {
+            & .e-file-type {
               float: $float-right;
             }
 
-            #{if(&, '&', '*')} .e-file-name {
+            & .e-file-name {
               float: $float-right;
             }
 
-            #{if(&, '&', '*')} .e-file-size {
+            & .e-file-size {
               direction: ltr;
               float: $float-right;
               position: relative;
@@ -413,13 +413,13 @@
               width: $file-container-height;
             }
 
-            #{if(&, '&', '*')} .e-upload-progress-wrap {
+            & .e-upload-progress-wrap {
               float: $float-right;
               position: initial;
               top: $progress-bar-wrap-top-smaller;
               width: $progress-bar-width-rtl;
 
-              #{if(&, '&', '*')} .e-progress-bar-text {
+              & .e-progress-bar-text {
                 float: $float-left;
                 right: $progress-text-rtl-smaller;
                 top: $rtl-progress-top;
@@ -427,13 +427,13 @@
             }
           }
 
-          #{if(&, '&', '*')} .e-file-remove-btn,
-          #{if(&, '&', '*')} .e-file-delete-btn,
-          #{if(&, '&', '*')} .e-file-abort-btn,
-          #{if(&, '&', '*')} .e-file-reload-btn,
-          #{if(&, '&', '*')} .e-file-pause-btn,
-          #{if(&, '&', '*')} .e-file-play-btn {
-            #{if(&, '&', '*')}.e-icons {
+          & .e-file-remove-btn,
+          & .e-file-delete-btn,
+          & .e-file-abort-btn,
+          & .e-file-reload-btn,
+          & .e-file-pause-btn,
+          & .e-file-play-btn {
+            &.e-icons {
               left: $left;
               margin-left: $margin-rtl-smaller;
               margin-right: $margin-rtl-smaller;
@@ -446,17 +446,17 @@
             }
           }
 
-          #{if(&, '&', '*')} .e-file-reload-btn {
-            #{if(&, '&', '*')}.e-icons {
+          & .e-file-reload-btn {
+            &.e-icons {
               left: $reload-btn-right;
               right: auto;
             }
           }
 
-          #{if(&, '&', '*')} .e-file-play-btn,
-          #{if(&, '&', '*')} .e-file-reload-btn,
-          #{if(&, '&', '*')} .e-file-pause-btn {
-            #{if(&, '&', '*')}.e-icons {
+          & .e-file-play-btn,
+          & .e-file-reload-btn,
+          & .e-file-pause-btn {
+            &.e-icons {
               left: $pause-play-button-right-value;
             }
           }
@@ -464,18 +464,18 @@
       }
     }
 
-    #{if(&, '&', '*')}.e-disabled {
-      #{if(&, '&', '*')} .e-file-drop {
+    &.e-disabled {
+      & .e-file-drop {
         color: $disabled-state;
       }
 
-      #{if(&, '&', '*')} .e-upload-files {
+      & .e-upload-files {
         .e-upload-file-list {
-          #{if(&, '&', '*')} .e-file-container .e-file-name,
-          #{if(&, '&', '*')} .e-file-container .e-file-type,
-          #{if(&, '&', '*')} .e-file-container .e-file-size,
-          #{if(&, '&', '*')} .e-file-container .e-file-status,
-          #{if(&, '&', '*')} .e-file-container .e-file-information {
+          & .e-file-container .e-file-name,
+          & .e-file-container .e-file-type,
+          & .e-file-container .e-file-size,
+          & .e-file-container .e-file-status,
+          & .e-file-container .e-file-information {
             color: $disabled-state;
           }
         }
@@ -493,13 +493,13 @@
       .e-file-select-wrap {
         padding: $header-padding-small;
 
-        #{if(&, '&', '*')} .e-file-drop {
+        & .e-file-drop {
           font-size: $drop-area-small-font-size;
           margin-left: $drop-small-area-padding-left;
         }
       }
 
-      #{if(&, '&', '*')} .e-upload-files {
+      & .e-upload-files {
         .e-upload-file-list {
           min-height: $li-min-height-small;
 
@@ -535,12 +535,12 @@
           }
         }
 
-        #{if(&, '&', '*')} .e-file-remove-btn.e-icons,
-        #{if(&, '&', '*')} .e-file-delete-btn.e-icons,
-        #{if(&, '&', '*')} .e-file-abort-btn.e-icons,
-        #{if(&, '&', '*')} .e-file-reload-btn.e-icons,
-        #{if(&, '&', '*')} .e-file-play-btn.e-icons,
-        #{if(&, '&', '*')} .e-file-pause-btn.e-icons {
+        & .e-file-remove-btn.e-icons,
+        & .e-file-delete-btn.e-icons,
+        & .e-file-abort-btn.e-icons,
+        & .e-file-reload-btn.e-icons,
+        & .e-file-play-btn.e-icons,
+        & .e-file-pause-btn.e-icons {
           font-size: $remove-small-icon-font-size;
           height: $remove-small-icon-height;
           padding: $delete-small-icon-padding;
@@ -550,8 +550,8 @@
           }
         }
 
-        #{if(&, '&', '*')} .e-file-remove-btn.e-icons.e-disabled,
-        #{if(&, '&', '*')} .e-file-delete-btn.e-icons.e-disabled {
+        & .e-file-remove-btn.e-icons.e-disabled,
+        & .e-file-delete-btn.e-icons.e-disabled {
           color: $disabled-state;
           cursor: not-allowed;
           opacity: .4;
@@ -559,7 +559,7 @@
         }
       }
 
-      #{if(&, '&', '*')} .e-upload-actions {
+      & .e-upload-actions {
         .e-file-upload-btn {
           @if $skin-name == 'FluentUI' {
             margin: $footer-upload-buttons-margin-small;
@@ -573,12 +573,12 @@
         }
       }
 
-      #{if(&, '&', '*')}.e-rtl {
-        #{if(&, '&', '*')} .e-file-select-wrap {
+      &.e-rtl {
+        & .e-file-select-wrap {
           padding: $header-padding-rtl-small;
         }
 
-        #{if(&, '&', '*')} .e-upload-actions {
+        & .e-upload-actions {
           .e-file-upload-btn {
             @if $skin-name == 'FluentUI' {
               margin: $footer-upload-buttons-margin-rtl-small;
@@ -592,14 +592,14 @@
           }
         }
 
-        #{if(&, '&', '*')} .e-upload-files {
-          #{if(&, '&', '*')} .e-upload-file-list {
-            #{if(&, '&', '*')} .e-file-remove-btn.e-icons,
-            #{if(&, '&', '*')} .e-file-delete-btn.e-icons,
-            #{if(&, '&', '*')} .e-file-abort-btn.e-icons,
-            #{if(&, '&', '*')} .e-file-reload-btn.e-icons,
-            #{if(&, '&', '*')} .e-file-play-btn.e-icons,
-            #{if(&, '&', '*')} .e-file-pause-btn.e-icons {
+        & .e-upload-files {
+          & .e-upload-file-list {
+            & .e-file-remove-btn.e-icons,
+            & .e-file-delete-btn.e-icons,
+            & .e-file-abort-btn.e-icons,
+            & .e-file-reload-btn.e-icons,
+            & .e-file-play-btn.e-icons,
+            & .e-file-pause-btn.e-icons {
               @if $skin-name == 'FluentUI' {
                 margin-left: $margin-icon-rtl-small;
                 margin-right: $margin-icon-rtl-small;
@@ -609,33 +609,33 @@
         }
       }
 
-      #{if(&, '&', '*')}.e-form-upload .e-upload-files {
-        #{if(&, '&', '*')} .e-upload-file-list {
+      &.e-form-upload .e-upload-files {
+        & .e-upload-file-list {
           min-height: $form-upload-small-file-list-height;
           padding-bottom: $form-upload-small-file-list-padding-bottom;
           padding-top: $form-upload-small-file-list-padding-top;
 
-          #{if(&, '&', '*')} .e-file-container {
+          & .e-file-container {
             top: 0;
 
-            #{if(&, '&', '*')} .e-hidden-input {
+            & .e-hidden-input {
               display: none;
             }
 
-            #{if(&, '&', '*')} .e-file-name,
-            #{if(&, '&', '*')} .e-file-type {
+            & .e-file-name,
+            & .e-file-type {
               line-height: $form-upload-small-file-name-line-height;
               padding-top: $form-upload-small-file-name-padding;
             }
 
-            #{if(&, '&', '*')} .e-file-name.e-error,
-            #{if(&, '&', '*')} .e-file-type.e-error,
-            #{if(&, '&', '*')} .e-file-status.e-error {
+            & .e-file-name.e-error,
+            & .e-file-type.e-error,
+            & .e-file-status.e-error {
               color: $upload-failure-color;
             }
 
-            #{if(&, '&', '*')} .e-file-status,
-            #{if(&, '&', '*')} .e-file-information {
+            & .e-file-status,
+            & .e-file-information {
               color: $file-size-color;
               display: block;
               font-size: $form-upload-small-file-status-font-size;
@@ -646,29 +646,29 @@
             }
           }
 
-          #{if(&, '&', '*')}.e-file-invalid {
+          &.e-file-invalid {
             color: $upload-failure-color;
 
-            #{if(&, '&', '*')} .e-file-name,
-            #{if(&, '&', '*')} .e-file-type,
-            #{if(&, '&', '*')} .e-file-status {
+            & .e-file-name,
+            & .e-file-type,
+            & .e-file-status {
               color: $upload-failure-color;
             }
           }
         }
 
-        #{if(&, '&', '*')} .e-file-remove-btn.e-icons,
-        #{if(&, '&', '*')} .e-file-delete-btn.e-icons,
-        #{if(&, '&', '*')} .e-file-abort-btn.e-icons,
-        #{if(&, '&', '*')} .e-file-reload-btn.e-icons,
-        #{if(&, '&', '*')} .e-file-play-btn.e-icons,
-        #{if(&, '&', '*')} .e-file-pause-btn.e-icons {
+        & .e-file-remove-btn.e-icons,
+        & .e-file-delete-btn.e-icons,
+        & .e-file-abort-btn.e-icons,
+        & .e-file-reload-btn.e-icons,
+        & .e-file-play-btn.e-icons,
+        & .e-file-pause-btn.e-icons {
           box-sizing: border-box;
           top: $form-upload-small-remove-icon-top;
         }
 
-        #{if(&, '&', '*')} .e-file-remove-btn.e-icons.e-disabled,
-        #{if(&, '&', '*')} .e-file-delete-btn.e-icons.e-disabled {
+        & .e-file-remove-btn.e-icons.e-disabled,
+        & .e-file-delete-btn.e-icons.e-disabled {
           color: $disabled-state;
           cursor: not-allowed;
           opacity: .4;

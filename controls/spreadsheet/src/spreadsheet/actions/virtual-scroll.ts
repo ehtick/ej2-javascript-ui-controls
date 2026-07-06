@@ -566,9 +566,10 @@ export class VirtualScroll {
     private updateRowColCount(args: { index: number, update: string, start?: number, end?: number, isDelete?: boolean }): void {
         if (!this.scroll.length) { return; }
         const sheet: SheetModel = this.parent.getActiveSheet();
+        const isSuspended: boolean = this.parent.paintSuspendCount > 0;
         if (args.update === 'row') {
             if (args.index !== this.scroll[this.parent.activeSheetIndex].rowCount - 1) {
-                const height: number = this.getVTrackHeight('height'); let newHeight: number = height;
+                const height: number = this.getVTrackSize(); let newHeight: number = height;
                 if (args.index >= this.scroll[this.parent.activeSheetIndex].rowCount) {
                     if (args.start === undefined) {
                         newHeight += getRowsHeight(sheet, this.scroll[this.parent.activeSheetIndex].rowCount, args.index, true);
@@ -584,14 +585,23 @@ export class VirtualScroll {
                 }
                 if (!args.isDelete && newHeight < height) { return; }
                 this.scroll[this.parent.activeSheetIndex].rowCount = args.index + 1;
-                this.updateVTrack(this.rowHeader, newHeight, 'height');
                 if (this.scroll[this.parent.activeSheetIndex].rowCount > sheet.rowCount) {
                     this.parent.setSheetPropertyOnMute(sheet, 'rowCount', this.scroll[this.parent.activeSheetIndex].rowCount);
+                }
+                const updateUI: () => void = () => {
+                    if (!this.parent || this.parent.isDestroyed) { return; }
+                    this.updateVTrack(this.rowHeader, newHeight, 'height');
+                };
+                if (isSuspended) {
+                    this.parent.pendingPaintRefresh = 'fullSheet';
+                    this.parent.queuePaintAction(`updateRowCount_${args.index}`, updateUI);
+                } else {
+                    updateUI();
                 }
             }
         } else {
             if (args.index !== this.scroll[this.parent.activeSheetIndex].colCount - 1) {
-                const width: number = this.getVTrackHeight('width'); let newWidth: number = width;
+                const width: number = this.getVTrackSize(true); let newWidth: number = width;
                 if (args.index >= this.scroll[this.parent.activeSheetIndex].colCount) {
                     if (args.start === undefined) {
                         newWidth += getColumnsWidth(sheet, this.scroll[this.parent.activeSheetIndex].colCount, args.index, true);
@@ -607,22 +617,32 @@ export class VirtualScroll {
                 }
                 if (!args.isDelete && newWidth < width) { return; }
                 this.scroll[this.parent.activeSheetIndex].colCount = args.index + 1;
-                this.updateVTrack(this.colHeader, newWidth, 'width');
                 if (this.scroll[this.parent.activeSheetIndex].colCount > sheet.colCount) {
                     this.parent.setSheetPropertyOnMute(sheet, 'colCount', this.scroll[this.parent.activeSheetIndex].colCount);
+                }
+                const updateUI: () => void = () => {
+                    if (!this.parent || this.parent.isDestroyed) { return; }
+                    this.updateVTrack(this.colHeader, newWidth, 'width');
+                };
+                if (isSuspended) {
+                    this.parent.pendingPaintRefresh = 'fullSheet';
+                    this.parent.queuePaintAction(`updateColCount_${args.index}`, updateUI);
+                } else {
+                    updateUI();
                 }
             }
         }
     }
 
-    private getVTrackHeight(str: string): number {
-        let height: string = (this.content.nextElementSibling as HTMLElement).style[`${str}`];
-        if (height.includes('e+')) {
-            height = height.split('px')[0];
-            const heightArr: string[] = height.split('e+');
-            return Number(heightArr[0]) * Math.pow(10, Number(heightArr[1]));
+    private getVTrackSize(isWidth?: boolean): number {
+        let size: string = isWidth ? (this.parent.getScrollElement().firstElementChild as HTMLElement).style.width :
+            (this.content.nextElementSibling as HTMLElement).style.height;
+        if (size.includes('e+')) {
+            size = size.split('px')[0];
+            const sizeArr: string[] = size.split('e+');
+            return Number(sizeArr[0]) * Math.pow(10, Number(sizeArr[1]));
         } else {
-            return parseFloat(height);
+            return parseFloat(size);
         }
     }
 
@@ -632,7 +652,7 @@ export class VirtualScroll {
         }
         const frozenRow: number = this.parent.frozenRowCount(this.parent.getActiveSheet());
         if (args.rowIdx < this.scroll[this.parent.activeSheetIndex].rowCount) {
-            this.updateVTrack(this.rowHeader, this.getVTrackHeight('height') + args.threshold, 'height');
+            this.updateVTrack(this.rowHeader, this.getVTrackSize() + args.threshold, 'height');
         }
         if (args.rowIdx >= frozenRow && args.rowIdx < this.parent.scrollModule.offset.top.idx + frozenRow) {
             const mainPanel: Element = this.parent.element.getElementsByClassName('e-main-panel')[0];

@@ -65,7 +65,6 @@ export class TextElement extends DiagramElement {
 
     /** @private */
     public parentType: ParentType;
-
     /**
      *   gets the content for the text element \
      *

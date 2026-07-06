@@ -1,7 +1,7 @@
 import { AnnotationConstraints, Direction, FlipDirection, NodeConstraints } from '../../enum/enum';
 import { PointModel } from '../../primitives/point-model';
 import { VisioMarginModel, VisioTextAlignmentModel, VisioTextDecorationModel } from './visio-annotations';
-import { ParsingContext } from './visio-import-export';
+import { ParsingContext, VisioStyle } from './visio-import-export';
 import { VisioNodeShadow } from './visio-models';
 import { SrgbColor } from './visio-theme';
 
@@ -355,6 +355,32 @@ export interface VisioShapeNode {
     };
     /** Shape attributes (XML element attributes) */
     readonly ForeignData?: any;
+    /** Raw XML data of the shape */
+    xmlShapeData?: Element;
+    /** The parent style references (FillStyle, LineStyle, TextStyle) that this shape inherits. */
+    visioParentStyles?: VisioStyle;
+    /** The quick style values applied to this shape. */
+    quickStyleValues?: QuickStyleValues;
+}
+
+
+/** Numeric quick style properties container.
+ *
+ * @interface QuickStyleValues
+ *
+ * @private
+ */
+export interface QuickStyleValues {
+    quickStyleEffectsMatrix: number;
+    quickStyleFillColor: number;
+    quickStyleFillMatrix: number;
+    quickStyleFontColor: number;
+    quickStyleFontMatrix: number;
+    quickStyleLineColor: number;
+    quickStyleLineMatrix: number;
+    quickStyleShadowColor: number;
+    quickStyleType: number;
+    quickStyleVariation: number;
 }
 
 /**
@@ -586,7 +612,7 @@ export interface VisioPageContent {
         /** Background page reference */
         readonly BackPage?: string;
         /** Background page flag */
-        readonly Background?: string;
+        Background?: string;
     };
     /** Page properties (PageSheet) */
     readonly PageSheet: VisioPageSheet;
@@ -806,10 +832,15 @@ export interface VisioRootDocument {
     };
 
     /**
-     * The document’s stylesheet collection (<StyleSheets>), containing one or more
+     * The document stylesheet collection (<StyleSheets>), containing one or more
      * <StyleSheet> elements that define default/implicit styling (Fill/Line/Text).
      */
-    readonly StyleSheets: VisioStyleSheetsContainer;
+    readonly StyleSheets?: VisioStyleSheetsContainer;
+
+    /**
+     * Raw XML stylesheets data of the document.
+     */
+    readonly xmlStyleSheet?: Element
 }
 
 /**
@@ -1008,9 +1039,12 @@ export interface SolidFill {
  * @private
  */
 export interface StrokeItem {
-    $?: StrokeAttributes;
-    'a:prstDash'?: PresetDash;
-    'a:solidFill'?: SolidFill;
+    name?: string;
+    value?: {
+        $?: StrokeAttributes;
+        'a:prstDash'?: PresetDash;
+        'a:solidFill'?: SolidFill;
+    }
 }
 
 /**
@@ -1047,6 +1081,20 @@ export interface SchemeClr {
     readonly 'a:shade'?: {
         readonly $: {
             /** Shade value */
+            readonly val: string;
+        };
+    };
+    /** Optional lum modifier */
+    readonly 'a:lumMod'?: {
+        readonly $: {
+            /** Luminance value */
+            readonly val: string;
+        };
+    };
+    /** Optional saturation modifier */
+    readonly 'a:satMod'?: {
+        readonly $: {
+            /** Saturarion value */
             readonly val: string;
         };
     };
@@ -1513,6 +1561,24 @@ export interface ThemeExtension {
     readonly 'vt:lineStyles'?: LineStyles;
     /** Extended font styles (connector fonts) */
     readonly 'vt:fontStyles'?: FontStylesExt;
+    /** Background color extension */
+    readonly 'vt:bkgnd'?: BackgroundExtension;
+}
+
+/**
+ * Background color extension container exposed under 'vt:bkgnd'.
+ * Carries either direct sRGB or a scheme color reference.
+ * Used by parseVisioTheme() to compute `theme.bkgndColor`.
+ *
+ * @interface BackgroundExtension
+ *
+ * @private
+ */
+export interface BackgroundExtension {
+    /** Direct RGB color definition (e.g., { $: { val: "FFFFFF" } }) */
+    'a:srgbClr'?: SrgbClr;
+    /** Scheme color definition (e.g., { $: { val: "accent1" } }) */
+    'a:schemeClr'?: SchemeClr;
 }
 
 /**
@@ -1675,7 +1741,7 @@ export interface ProcessedColor {
         /** Blue channel (0-255) */
         blue: number;
         /** Gradient color reference (null for solid colors) */
-        gradientClr?: null | unknown;
+        gradientClr?: string | RgbColor | null;
     };
     /** Normalized uppercase hex value */
     hexVal: string;
@@ -1773,8 +1839,6 @@ export interface RgbColor {
     green: number;
     /** Blue channel (0–255) */
     blue: number;
-    /** Gradient color reference (null for solid colors) */
-    gradientClr?: string | null;
 }
 
 /**
@@ -1807,7 +1871,7 @@ export interface TransformedColorRef {
      */
     color?: ColorRef | ProcessedColor;
     name?: string;
-    value?: RawColorValue;
+    value?: RawColorValue | Record<string, ColorRef>;
 }
 
 /**
@@ -1834,9 +1898,34 @@ export interface RawColorValue {
         };
     };
 
-    /** Gradient stop list (can be expanded into GradientStop[]) */
-    'a:gsLst'?: unknown;
+    /** Gradient stop list (can be expanded into GradientStopRef[]) */
+    'a:gsLst'?: GradientStopList;
 
+}
+
+/**
+ * Single gradient stop inside a:gsLst
+ * Example shape: { "a:schemeClr": { $: { val: "accent1" } } }
+ *
+ * @interface GradientStopRef
+ *
+ * @private
+ */
+export interface GradientStopRef {
+    'a:schemeClr'?: SchemeClr;
+    'a:srgbClr'?: SrgbClr;
+    $?: { [key: string]: string };
+}
+
+/**
+ * Gradient stop list from OOXML: <a:gsLst><a:gs>...</a:gs></a:gsLst>
+ *
+ * @interface GradientStopList
+ *
+ * @private
+ */
+export interface GradientStopList {
+    'a:gs': GradientStopRef[];
 }
 
 /**
@@ -2575,6 +2664,19 @@ export interface VisioAnnotationInput {
     /** Lock selection flag */
     readonly lockSelect?: boolean;
 }
+
+/**
+ * Alignment and offset configuration for annotation rendering.
+ *
+ * @interface AnnotationAlignmentConfig
+ *
+ * @private
+ */
+export type AnnotationAlignmentConfig = {
+    verticalAlign: string;
+    horizontalAlign: string;
+    annotationOffset: Point;
+};
 
 /**
  * Complete Visio node input with all properties and styling.
@@ -4563,6 +4665,9 @@ export interface MasterDefaultValues {
     QuickStyleFontMatrix?: number;
     FillPattern?: string;
     FillForegndTrans?: number;
+    FillStyle?: string;
+    LineStyle?: string;
+    TextStyle?: string;
 }
 
 /**

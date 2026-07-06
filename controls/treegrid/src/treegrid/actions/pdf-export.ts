@@ -179,7 +179,9 @@ export class PdfExport {
         }
         prop = isNullOrUndefined(prop) ? {} : prop;
         prop.dataSource = new DataManager({json: <Object[]>dtSrc});
-        prop.query = args['query'];
+        if (this.parent.aggregates.length > 0) {
+            prop.query = args['query'];
+        }
         return prop;
     }
     /**

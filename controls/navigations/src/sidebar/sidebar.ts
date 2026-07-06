@@ -772,6 +772,13 @@ export class Sidebar extends Component<HTMLElement> implements INotifyPropertyCh
                 else {
                     addClass([this.element], DOCKER);
                 }
+                if (!this.isOpen && sibling) {
+                    if (!this.enableDock) {
+                        this.element.style.transform = sibling.style.transform = '';
+                    }
+                    sibling.style[this.position === 'Left' ? 'marginLeft' : 'marginRight'] =
+                        this.enableDock ? this.setDimension(this.dockSize) : '0px';
+                }
                 break;
             case 'zIndex':
                 this.setZindex();
@@ -849,7 +856,10 @@ export class Sidebar extends Component<HTMLElement> implements INotifyPropertyCh
     public destroy(): void {
         super.destroy();
         if (this.target) {
-            removeClass([<HTMLElement>this.target], CONTEXT);
+            const targetElement: HTMLElement = <HTMLElement>this.target;
+            if (targetElement.querySelectorAll('.' + ROOT + '.' + SIDEBARABSOLUTE).length === 0) {
+                removeClass([targetElement], CONTEXT);
+            }
         }
         this.destroyBackDrop();
         if (this.element) {
@@ -867,8 +877,15 @@ export class Sidebar extends Component<HTMLElement> implements INotifyPropertyCh
         this.windowWidth = null;
         const sibling: HTMLElement = <HTMLElement>document.querySelector('.e-main-content') || this.targetEle;
         if (!isNullOrUndefined(sibling)) {
-            sibling.style.margin = '';
-            sibling.style.transform = '';
+            let anyOtherSidebarOpen: boolean = false;
+            if (this.target) {
+                const openSidebarElements: NodeListOf<Element> = (<HTMLElement>this.target).querySelectorAll('.' + ROOT + '.' + OPEN);
+                anyOtherSidebarOpen = openSidebarElements.length > 0;
+            }
+            if (!anyOtherSidebarOpen) {
+                sibling.style.margin = '';
+                sibling.style.transform = '';
+            }
         }
         this.unWireEvents();
     }

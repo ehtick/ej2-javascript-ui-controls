@@ -260,6 +260,10 @@ export class Filter {
             isInternal?: boolean, useFilterRange?: boolean, isOpen?: boolean, allowHeaderFilter?: boolean }): void {
         const predicates: PredicateModel[] = args ? args.predicates : null;
         let sheetIdx: number = args.sIdx;
+        const isSuspended: boolean = this.parent.paintSuspendCount > 0;
+        if (isSuspended) {
+            this.parent.pendingPaintRefresh = 'fullSheet';
+        }
         if (!sheetIdx && sheetIdx !== 0) {
             sheetIdx = args.isOpen ? 0 : this.parent.activeSheetIndex;
         }
@@ -299,7 +303,9 @@ export class Filter {
             }
             eventArgs.useFilterRange = false;
             actionArgs = { action: 'filter', eventArgs: eventArgs };
-            this.parent.notify(beginAction, actionArgs);
+            if (!isSuspended) {
+                this.parent.notify(beginAction, actionArgs);
+            }
             if (eventArgs.cancel) {
                 resolveFn();
                 return;
@@ -357,7 +363,7 @@ export class Filter {
             this.processRange(sheet, sheetIdx, selectedRange, false, args.useFilterRange, args.allowHeaderFilter);
             resolveFn();
         }
-        if (!isInternal) {
+        if (!isInternal && !isSuspended) {
             this.parent.notify(completeAction, actionArgs);
             focus(this.parent.element);
         }
@@ -390,7 +396,8 @@ export class Filter {
         }
         this.filterRange.set(sheetIdx, filterOption);
         this.filterCollection.set(sheetIdx, []);
-        if (!preventRefresh) {
+        const isSuspended: boolean = this.parent.paintSuspendCount > 0;
+        if (!preventRefresh && !isSuspended) {
             this.refreshFilterRange(range, false, sheetIdx);
         }
     }
@@ -432,7 +439,9 @@ export class Filter {
         }
         this.filterRange.delete(sheetIdx);
         this.filterCollection.delete(sheetIdx);
-        this.refreshFilterRange(range, true, sheetIdx, allowHeaderFilter);
+        if (this.parent.paintSuspendCount === 0) {
+            this.refreshFilterRange(range, true, sheetIdx, allowHeaderFilter);
+        }
         if (!isCut) {
             this.parent.notify(completeAction, args);
         }
@@ -506,6 +515,9 @@ export class Filter {
     private renderFilterCellHandler(
         args: { td: HTMLElement, rowIndex: number, colIndex: number, sIdx?: number, isAction?: boolean }): void {
         const sheetIdx: number = !isNullOrUndefined(args.sIdx) ? args.sIdx : this.parent.activeSheetIndex;
+        if (this.parent.paintSuspendCount > 0) {
+            return;
+        }
         if (sheetIdx === this.parent.activeSheetIndex) {
             const option: { range?: number[], allowHeaderFilter?: boolean } = this.filterRange.get(sheetIdx) &&
                 this.filterRange.get(sheetIdx);
@@ -2005,8 +2017,11 @@ export class Filter {
         const eventArgs: { range: string, predicates: PredicateModel[], previousPredicates: PredicateModel[], sheetIndex: number,
             cancel: boolean } = { range: range, predicates: [].slice.call(this.filterCollection.get(sheetIdx)),
             previousPredicates: prevPredicates, sheetIndex: sheetIdx, cancel: false };
+        const isSuspended: boolean = this.parent.paintSuspendCount > 0;
         if (!isInternal && !isFilterByValue) {
-            this.parent.notify(beginAction, { action: 'filter', eventArgs: eventArgs });
+            if (!isSuspended) {
+                this.parent.notify(beginAction, { action: 'filter', eventArgs: eventArgs });
+            }
             if (eventArgs.cancel) {
                 return;
             }
@@ -2027,7 +2042,9 @@ export class Filter {
             this.parent.hideSpinner();
             if (!isInternal) {
                 delete eventArgs.cancel;
-                this.parent.notify(completeAction, { action: 'filter', eventArgs: eventArgs });
+                if (!isSuspended) {
+                    this.parent.notify(completeAction, { action: 'filter', eventArgs: eventArgs });
+                }
                 if (document.activeElement.id !== `${this.parent.element.id}_SearchBox`) {
                     focus(this.parent.element);
                 }
@@ -2162,6 +2179,7 @@ export class Filter {
      */
     private clearFilterHandler(args?: { field?: string, isAction?: boolean, preventRefresh?: boolean, sheetIndex?: number }): void {
         const sheetIndex: number = args && !isNullOrUndefined(args.sheetIndex) ? args.sheetIndex : this.parent.activeSheetIndex;
+        const isSuspended: boolean = this.parent.paintSuspendCount > 0;
         if (args && args.field) {
             const predicates: PredicateModel[] = [].slice.call(this.filterCollection.get(sheetIndex));
             if (predicates && predicates.length) {
@@ -2200,7 +2218,8 @@ export class Filter {
                 } else {
                     this.refreshFilterRange(null, null, sheetIndex);
                     const evtArgs: { [key: string]: number | boolean } = { startIndex: range[0], hide: false, isFiltering: true, refreshUI:
-                        false, endIndex: filterRange.useFilterRange ? range[2] : sheet.usedRange.rowIndex, sheetIndex: sheetIndex };
+                        false, endIndex: filterRange.useFilterRange ? range[2] : sheet.usedRange.rowIndex, sheetIndex: sheetIndex,
+                    isSuspended: isSuspended };
                     this.parent.notify(hideShow, evtArgs);
                     if (evtArgs.refreshUI && (!args || !args.preventRefresh)) {
                         this.parent.renderModule.refreshSheet(false, false, true);

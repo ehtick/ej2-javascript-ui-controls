@@ -1,4 +1,6 @@
-@use 'ej2-base/styles/common/mixin' as *;
+@use 'variables' as *;
+@use 'mixin' as *;
+
 @include export-module('spreadsheet-ribbon-layout') {
   .e-spreadsheet .e-ribbon {
     border: $spreadsheet-ribbon-border;
@@ -109,6 +111,41 @@
       }
     }
 
+    & .e-ribbon-action {
+      height: $spreadsheet-ribbon-action-height;
+      position: absolute;
+      right: 0;
+      top: 0;
+      width: $spreadsheet-ribbon-action-width;
+
+      & .e-spreadsheet-ai-btn {
+        @if $skin-name == 'bootstrap5' or $skin-name == 'bootstrap5.3' {
+          line-height: 18px;
+        }
+        border-radius: $spreadsheet-ai-btn-border-radius;
+        border-width: 1px;
+        height: $spreadsheet-ai-btn-height;
+        position: absolute;
+        right: $spreadsheet-ai-btn-right;
+        top: $spreadsheet-ai-btn-top;
+        width: $spreadsheet-ai-btn-width;
+      }
+
+      & .e-drop-icon {
+        position: absolute;
+        right: 0;
+        top: 0;
+      }
+    }
+
+    &.e-ribbon-ai-assist .e-tab .e-tab-header {
+      width: calc(100% - $spreadsheet-ribbon-action-width) !important; /* stylelint-disable-line declaration-no-important */
+
+      & .e-hscroll {
+        width: 100%;
+      }
+    }
+
     @include default-props;
 
     &:not(.sf-spreadsheet .e-ribbon) .e-drop-icon {
@@ -186,6 +223,10 @@
       &.e-overlay .e-toolbar-items .e-toolbar-item.e-overlay {
         opacity: 1;
       }
+
+      & .e-toolbar-items .e-toolbar-item.e-overlay {
+        opacity: .5;
+      }
     }
 
     & .e-menu-wrapper {
@@ -255,6 +296,18 @@
       &:not(.sf-spreadsheet .e-ribbon) .e-drop-icon {
         right: auto;
         left: 0;
+      }
+
+      & .e-ribbon-action {
+        right: auto;
+        left: 0;
+
+        & .e-spreadsheet-ai-btn {
+          right: auto;
+          left: $spreadsheet-ai-btn-left;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
       }
     }
   }

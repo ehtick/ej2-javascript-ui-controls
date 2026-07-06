@@ -1492,6 +1492,105 @@ describe('Diagram Control', () => {
                 }
             })();
         });
+        it('Import vsdx competitors file-69', (done: DoneFn) => {
+            (async () => {
+                try {
+                    const res = await fetch('/base/spec/diagram/visio/Vsdx/Competitors.vsdx');
+                    const blob = await res.blob();
+                    const file = new File([blob], 'Competitors.vsdx', {
+                        type: 'application/vnd.ms-visio.drawing',
+                    });
+
+                    const warnings = await onFileChange({ target: { files: [file] } } as any, 12);
+                    expect(diagram.nodes.length).toBeGreaterThan(0);
+                    (diagram as Diagram).exportToVisio();
+
+                    done();
+                } catch (err) {
+                    done.fail(err as Error);
+                }
+            })();
+        });
+
+        it('Import vsdx file-70', (done: DoneFn) => {
+            (async () => {
+                try {
+                    const res = await fetch('/base/spec/diagram/visio/Vsdx/FunnelShape.vsdx');
+                    const blob = await res.blob();
+                    const file = new File([blob], 'FunnelShape.vsdx', {
+                        type: 'application/vnd.ms-visio.drawing',
+                    });
+
+                    const warnings = await onFileChange({ target: { files: [file] } } as any, 12);
+                    expect(diagram.nodes.length).toBeGreaterThan(0);
+                    (diagram as Diagram).exportToVisio();
+
+                    done();
+                } catch (err) {
+                    done.fail(err as Error);
+                }
+            })();
+        });
+
+        it('Import vsdx file-71', (done: DoneFn) => {
+            (async () => {
+                try {
+                    const res = await fetch('/base/spec/diagram/visio/Vsdx/GroupStyles.vsdx');
+                    const blob = await res.blob();
+                    const file = new File([blob], 'GroupStyles.vsdx', {
+                        type: 'application/vnd.ms-visio.drawing',
+                    });
+                    const warnings = await onFileChange({ target: { files: [file] } } as any, 20);
+                    expect(diagram.nodes.length).toBeGreaterThan(0);
+
+                    done();
+                } catch (err) {
+                    done.fail(err as Error);
+                }
+            })();
+        });
+
+        it('Import vsdx file with background color', (done: DoneFn) => {
+            (async () => {
+                try {
+                    const res = await fetch('/base/spec/diagram/visio/Vsdx/background.vsdx');
+                    const blob = await res.blob();
+                    const file = new File([blob], 'background.vsdx', {
+                        type: 'application/vnd.ms-visio.drawing',
+                    });
+
+                    const warnings = await onFileChange({ target: { files: [file] } } as any);
+                    
+                    // Verify diagram was imported successfully
+                    expect(diagram).toBeDefined();
+                    
+                    // Verify background color is applied (not transparent)
+                    expect(diagram.backgroundColor).toBeDefined();
+                    expect(diagram.backgroundColor).not.toEqual('transparent');
+                    
+                    // Verify page settings background color is also applied
+                    expect(diagram.pageSettings.background.color).toBeDefined();
+                    expect(diagram.pageSettings.background.color).toEqual(diagram.backgroundColor);
+                    
+                    // Verify no explicit errors in warnings
+                    expect(warnings).toBeDefined();
+                    
+                    // Verify save and load cycle works with background color
+                    const savedData: string = diagram.saveDiagram();
+                    const savedBackgroundColor = diagram.backgroundColor;
+                    
+                    diagram.loadDiagram(savedData);
+                    
+                    // Verify background color persists after save/load
+                    expect(diagram.backgroundColor).toEqual(savedBackgroundColor);
+                    
+                    (diagram as Diagram).exportToVisio();
+                    done();
+                } catch (err) {
+                    done.fail(err as Error);
+                }
+            })();
+        });
     })
     describe('IMPORT VSDX - EVENT', () => {
         let diagram: Diagram;
@@ -1552,6 +1651,7 @@ describe('Diagram Control', () => {
             })();
         });
     });
+    
     describe('Export VSDX - 1', () => {
 
         let diagram: Diagram;

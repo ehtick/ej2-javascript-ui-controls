@@ -124,8 +124,16 @@ export class RibbonSplitButton {
             }
         };
         let target: HTMLElement;
-        splitbutton.beforeOpen = (e: BeforeOpenCloseMenuEventArgs) => {
-            if (item.splitButtonSettings.beforeOpen) { item.splitButtonSettings.beforeOpen.call(this, e); }
+        splitbutton.beforeOpen = () => {
+            const splitBtn: SplitButton = getComponent(splitButtonEle, SplitButton) as SplitButton;
+            const popupEl: HTMLElement = splitBtn && splitBtn.dropDown ? splitBtn.dropDown.element : null;
+            const target: HTMLElement = this.parent.getAppendToElement();
+            if (popupEl && !target.contains(popupEl)) {
+                target.appendChild(popupEl);
+            }
+            if (item.splitButtonSettings.beforeOpen) {
+                item.splitButtonSettings.beforeOpen.call(this);
+            }
         };
         splitbutton.beforeClose = (e: BeforeOpenCloseMenuEventArgs) => {
             if (item.splitButtonSettings.beforeClose) { item.splitButtonSettings.beforeClose.call(this, e); }

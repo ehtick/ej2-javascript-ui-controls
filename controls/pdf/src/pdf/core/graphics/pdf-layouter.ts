@@ -51,6 +51,18 @@ export class PdfLayoutFormat {
      */
     _break: PdfLayoutBreakType;
     /**
+     * Number of columns to use when paginating content. Default is 1 (single column).
+     *
+     * @private
+     */
+    _columns: number;
+    /**
+     * Gutter (gap) between columns in user units. Default is 0.
+     *
+     * @private
+     */
+    _columnGutter: number;
+    /**
      * Initializes a new instance of the `PdfLayoutFormat` class.
      *
      * @param {PdfLayoutFormat}  format Format for pagination.
@@ -286,6 +298,144 @@ export class PdfLayoutFormat {
     get usePaginateBounds(): boolean {
         return this._boundSet;
     }
+    /**
+     * Gets the number of columns used for pagination.
+     *
+     * ```typescript
+     * // Load an existing PDF document
+     * let document: PdfDocument = new PdfDocument(data);
+     * // Access the first page of the document
+     * let page: PdfPage = document.getPage(0);
+     * // Create a layout format with multi-column support
+     * let layout: PdfLayoutFormat = new PdfLayoutFormat();
+     * layout.layout = PdfLayoutType.paginate;
+     * layout.break = PdfLayoutBreakType.fitPage;
+     * layout.columns = 2;
+     * // Get the number of columns
+     * let columns: number = layout.columns;
+     * // Create a text element
+     * let element: PdfTextElement = {
+     *     text: 'Hello world drawn using layout format with multiple columns support in PDF.',
+     *     font: document.embedFont(PdfFontFamily.helvetica, 12, PdfFontStyle.regular),
+     *     brush: new PdfBrush({ r: 0, g: 0, b: 0 }),
+     *     layoutFormat: layout
+     * };
+     * // Draw the text element using a specific point
+     * const result = page.drawTextElement(element, { x: 50, y: 100 });
+     * // Save the PDF document
+     * document.save('output.pdf');
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     *
+     * @returns {number} The number of columns.
+     */
+    get columns(): number {
+        return this._columns;
+    }
+    /**
+     * Sets the number of columns used for pagination.
+     *
+     * ```typescript
+     * // Load an existing PDF document
+     * let document: PdfDocument = new PdfDocument(data);
+     * // Access the first page of the document
+     * let page: PdfPage = document.getPage(0);
+     * // Create a layout format with multi-column support
+     * let layout: PdfLayoutFormat = new PdfLayoutFormat();
+     * layout.layout = PdfLayoutType.paginate;
+     * layout.break = PdfLayoutBreakType.fitPage;
+     * layout.columns = 2;
+     * // Create a text element
+     * let element: PdfTextElement = {
+     *     text: 'Hello world drawn using layout format with multiple columns support in PDF.',
+     *     font: document.embedFont(PdfFontFamily.helvetica, 12, PdfFontStyle.regular),
+     *     brush: new PdfBrush({ r: 0, g: 0, b: 0 }),
+     *     layoutFormat: layout
+     * };
+     * // Draw the text element using a specific point
+     * const result = page.drawTextElement(element, { x: 50, y: 100 });
+     * // Save the PDF document
+     * document.save('output.pdf');
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     *
+     * @param {number} value The number of columns to set.
+     */
+    set columns(value: number) {
+        this._columns = value;
+    }
+    /**
+     * Gets the gutter (spacing) between columns.
+     *
+     * ```typescript
+     * // Load an existing PDF document
+     * let document: PdfDocument = new PdfDocument(data);
+     * // Access the first page of the document
+     * let page: PdfPage = document.getPage(0);
+     * // Create a layout format with multi-column support
+     * let layout: PdfLayoutFormat = new PdfLayoutFormat();
+     * layout.layout = PdfLayoutType.paginate;
+     * layout.break = PdfLayoutBreakType.fitPage;
+     * layout.columns = 2;
+     * layout.columnGutter = 15;
+     * // Get the column gutter
+     * let gutter: number = layout.columnGutter;
+     * // Create a text element
+     * let element: PdfTextElement = {
+     *     text: 'Hello world drawn using layout format with multiple columns support in PDF.',
+     *     font: document.embedFont(PdfFontFamily.helvetica, 12, PdfFontStyle.regular),
+     *     brush: new PdfBrush({ r: 0, g: 0, b: 0 }),
+     *     layoutFormat: layout
+     * };
+     * // Draw the text element using a specific point
+     * const result = page.drawTextElement(element, { x: 50, y: 100 });
+     * // Save the PDF document
+     * document.save('output.pdf');
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     *
+     * @returns {number} The gutter (spacing) between columns.
+     */
+    get columnGutter(): number {
+        return this._columnGutter;
+    }
+    /**
+     * Sets the gutter (spacing) between columns.
+     *
+     * ```typescript
+     * // Load an existing PDF document
+     * let document: PdfDocument = new PdfDocument(data);
+     * // Access the first page of the document
+     * let page: PdfPage = document.getPage(0);
+     * // Create a layout format with multi-column support
+     * let layout: PdfLayoutFormat = new PdfLayoutFormat();
+     * layout.layout = PdfLayoutType.paginate;
+     * layout.break = PdfLayoutBreakType.fitPage;
+     * layout.columns = 2;
+     * layout.columnGutter = 15;
+     * // Create a text element
+     * let element: PdfTextElement = {
+     *     text: 'Hello world drawn using layout format with multiple columns support in PDF.',
+     *     font: document.embedFont(PdfFontFamily.helvetica, 12, PdfFontStyle.regular),
+     *     brush: new PdfBrush({ r: 0, g: 0, b: 0 }),
+     *     layoutFormat: layout
+     * };
+     * // Draw the text element using a specific point
+     * const result = page.drawTextElement(element, { x: 50, y: 100 });
+     * // Save the PDF document
+     * document.save('output.pdf');
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     *
+     * @param {number} value The gutter (spacing) between columns.
+     */
+    set columnGutter(value: number) {
+        this._columnGutter = value;
+    }
 }
 /**
  * Represents a class for layout result in PDF generation.
@@ -313,24 +463,30 @@ export class PdfLayoutFormat {
 export class PdfLayoutResult {
     _page: PdfPage;
     _bounds: Rectangle;
+    _lastLineBounds: Rectangle;
+    _remainingText: string;
+    _hasRenderedContent: boolean = false;
     /**
      * Initializes a new instance of the `PdfLayoutResult` class.
      * Remarks: Internal constructor used to create a new instance of a PDF layout result.
      *
      * @private
-     * @param {PdfPage} page The page where the circle annotation is to be placed.
-     * @param {Rectangle} bounds The bounds within which the list has been drawn.
+     * @param {PdfPage} page The page where the content finished drawing.
+     * @param {Rectangle} bounds The bounds within which the content has been drawn.
+     * @param {Rectangle} [lastLineBounds] Optional bounds describing the final line rendered.
+     * @param {string} [remainingText] Optional remaining text that was not laid out.
+     *
      * ```typescript
      * // Load an existing document
-     * let document: PdfDocument = new PdfDocument(data);
+     * const document: PdfDocument = new PdfDocument(data);
      * // Access the first page
-     * let page: PdfPage = document.getPage(0);
-     * // Add the items to list item collection by passing the array of products
-     * let items: PdfListItemCollection = new PdfListItemCollection(['Excel', 'Power', 'Point', 'Word', 'PDF']);
-     * // Create a new ordered list
-     * let list: PdfOrderedList = new PdfOrderedList(items);
-     * // Draw the list and access the layout result
-     * let result: PdfLayoutResult = list.draw(page, {x: 20, y: 20, width: 500, height: 300});
+     * const page: PdfPage = document.getPage(0);
+     * // Represents the text that could not be rendered within the specified layout bounds and can be continued in a subsequent layout or page.
+     * const bounds: Rectangle = { x: 20, y: 20, width: 500, height: 300 };
+     * const lastLine: Rectangle = { x: 20, y: 300, width: 500, height: 14 };
+     * const remaining = 'text that did not fit on the provided bounds';
+     * // Create a PdfLayoutResult with optional last line bounds and remaining text
+     * const result: PdfLayoutResult = new PdfLayoutResult(page, bounds, lastLine, remaining);
      * // Create a new unordered list
      * let list: PdfUnorderedList = new PdfUnorderedList(items);
      * // Draw the list and access the layout result
@@ -341,9 +497,13 @@ export class PdfLayoutResult {
      * document.destroy();
      * ```
      */
-    public constructor(page: PdfPage, bounds: Rectangle) {
+    public constructor(page: PdfPage, bounds: Rectangle, lastLineBounds?: Rectangle, remainingText?: string) {
         this._page = page;
         this._bounds = bounds;
+        this._lastLineBounds = lastLineBounds ? lastLineBounds : bounds;
+        if (remainingText !== 'undefined' && remainingText !== null) {
+            this._remainingText = remainingText;
+        }
     }
     /**
      * Gets the page associated with the layout result.
@@ -401,6 +561,36 @@ export class PdfLayoutResult {
     get bounds(): Rectangle {
         return this._bounds;
     }
+    /**
+     * Gets the remaining text that was not rendered during the layout process.
+     *
+     * @returns {string} The unrendered text content remaining after layout.
+     * ```typescript
+     * // Load an existing document
+     * let document: PdfDocument = new PdfDocument(data);
+     * // Access the first page
+     * let page: PdfPage = document.getPage(0);
+     * // Create a layout format to control how text flows across pages
+     * let format: PdfLayoutFormat = new PdfLayoutFormat();
+     * // Set layout break behavior to fit the content within the current page
+     * format.break = PdfLayoutBreakType.fitPage;
+     * // Restrict the layout to render within a single page only
+     * format.layout = PdfLayoutType.onePage
+     * // Create a text element with specified content, font, and layout format
+     * let textElement: PdfTextElement = { text: textContent, font: new PdfStandardFont(PdfFontFamily.helvetica, 12), layoutFormat : format};
+     * // Draw the text element on the page within the given bounds
+     * let result: PdfLayoutResult = page.drawTextElement(textElement, {x: 10,y: 10,width: 200,height: 50});
+     * // Gets the remaining text that was not rendered.
+     * const text: string = result.remainingText;
+     * // Save the document
+     * document.save('output.pdf');
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     */
+    get remainingText(): string {
+        return this._remainingText;
+    }
 }
 /**
  * Represents the result of a paginated layout operation, including the page on
@@ -450,3 +640,4 @@ export class _PdfLayoutParameters {
      */
     _graphics: PdfGraphics;
 }
+

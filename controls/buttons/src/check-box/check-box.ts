@@ -1,4 +1,4 @@
-import { Component, INotifyPropertyChanged, NotifyPropertyChanges, Property, setValue, deleteObject } from '@syncfusion/ej2-base';
+import { Component, deleteObject, INotifyPropertyChanged, NotifyPropertyChanges, Property, setValue } from '@syncfusion/ej2-base';
 import { EmitType, Event, EventHandler, isNullOrUndefined, SanitizeHtmlHelper } from '@syncfusion/ej2-base';
 import { addClass, detach, getUniqueID, isRippleEnabled, removeClass, rippleEffect, closest } from '@syncfusion/ej2-base';
 import { CheckBoxModel } from './check-box-model';
@@ -13,7 +13,7 @@ import { wrapperInitialize, rippleMouseHandler, ChangeEventArgs, setHiddenInput 
 export type LabelPosition = 'After' | 'Before';
 
 const CHECK: string  = 'e-check';
-const DISABLED: string = 'e-checkbox-disabled';
+const DISABLED: string = 'e-checkbox-disabled e-disabled';
 const FRAME: string = 'e-frame';
 const INDETERMINATE: string = 'e-stop';
 const LABEL: string = 'e-label';
@@ -471,7 +471,7 @@ export class CheckBox extends Component<HTMLInputElement> implements INotifyProp
                     this.unWireEvents();
                 } else {
                     this.element.disabled = false;
-                    wrapper.classList.remove(DISABLED);
+                    wrapper.classList.remove(...DISABLED.split(' '));
                     wrapper.setAttribute('aria-disabled', 'false');
                     this.wireEvents();
                 }
@@ -563,7 +563,7 @@ export class CheckBox extends Component<HTMLInputElement> implements INotifyProp
     private setDisabled(): void {
         const wrapper: Element = this.getWrapper() as Element;
         this.element.disabled = true;
-        wrapper.classList.add(DISABLED);
+        wrapper.classList.add(...DISABLED.split(' '));
         wrapper.setAttribute('aria-disabled', 'true');
     }
 

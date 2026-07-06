@@ -87,10 +87,27 @@ export class NodeCutter {
                     }
                 }
             }
-            return node;
+            return this.removeEmptyFirstChild(node);
         } else {
             return null;
         }
+    }
+    private removeEmptyFirstChild(element: HTMLElement): HTMLElement {
+        if (element && element.childNodes.length > 1) {
+            if (element.firstChild.nodeType === 3 && element.firstChild.textContent === '') {
+                element.removeChild(element.firstChild);
+            } else {
+                let firstChildElement: HTMLElement = element.firstChild as HTMLElement;
+                while (firstChildElement && firstChildElement.childNodes.length === 1) {
+                    if (firstChildElement.firstChild.nodeType === 3 && firstChildElement.firstChild.textContent === '') {
+                        element.removeChild(element.firstChild);
+                        break;
+                    }
+                    firstChildElement = firstChildElement.firstChild as HTMLElement;
+                }
+            }
+        }
+        return element;
     }
     private isRteElm(fragment: DocumentFragment): boolean {
         let result: boolean = true;

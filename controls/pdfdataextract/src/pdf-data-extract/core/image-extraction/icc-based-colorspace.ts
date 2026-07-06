@@ -1,5 +1,10 @@
 import { _PdfQcmsRunner } from '../import/qcms-runner';
 import { _PdfColorPalette } from './colorspace';
+/**
+ * Internal pixel data format identifiers used for color-conversion pipelines.
+ *
+ * @private
+ */
 enum _PdfDataType {
     rgb8 = 0,
     rgba8 = 1,
@@ -8,15 +13,33 @@ enum _PdfDataType {
     graya8 = 4,
     cmyk = 5
 }
+/**
+ * Internal rendering intents used for color management conversions.
+ *
+ * @private
+ */
 enum _PdfIntent {
     perceptual = 0,
     relativeColorimetric = 1,
     saturation = 2,
     absoluteColorimetric = 3
 }
+/**
+ * Base class for PDF color spaces carrying common name and component count.
+ *
+ * @private
+ */
 export class _PdfBaseColorSpace {
     name: string;
     numComps: number;
+    /**
+     * Initializes a new instance of the `_PdfBaseColorSpace` class.
+     *
+     * @private
+     * @param {string} name Color space name.
+     * @param {number} numComps Number of components.
+     * @returns {void} nothing.
+     */
     constructor(name: string, numComps: number) {
         this.name = name;
         this.numComps = numComps;
@@ -35,13 +58,38 @@ function onceMessage<T = any>(worker: Worker, predicate: (d: any) => boolean): P
         worker.addEventListener('message', handler);
     });
 }
+/**
+ * ICC-based color space implementation using a web worker powered transformer.
+ *
+ * @private
+ */
 export class _PdfIccColorSpace extends _PdfColorPalette {
     private transformerId: number = 0;
     private inType: _PdfDataType;
+    /**
+     * Dedicated Web Worker instance used for ICC conversions.
+     *
+     * @private
+     */
     _worker!: Worker;
     numComps: number;
     bytes: any; // eslint-disable-line
+    /**
+     * Indicates whether the ICC worker and transformer are ready to be used.
+     *
+     * @private
+     */
     _isUsable: boolean = false;
+    /**
+     * Initializes a new instance of the `_PdfIccColorSpace` class.
+     *
+     * @private
+     * @param {string} name The color space name.
+     * @param {number} numComps Number of components in the ICC space.
+     * @param {any} bytes ICC profile data bytes.
+     * @returns {void} nothing.
+     * @throws {Error} When `numComps` is not supported.
+     */
     constructor(name: string, numComps: number, bytes: any) { // eslint-disable-line
         super(name, numComps);
         this.numComps = numComps;
@@ -87,6 +135,13 @@ export class _PdfIccColorSpace extends _PdfColorPalette {
         }
         return baseUrl;
     }
+    /**
+     * Initializes the ICC worker and loads the qcms runtime scripts.
+     *
+     * @private
+     * @param {string} platform Platform identifier used for asset resolution.
+     * @returns {Promise<any>} Resolves when the worker reports loaded (sets `_isUsable` to `true`).
+     */
     async _initialize(platform: string): Promise<any> { // eslint-disable-line
         if (this._worker) {
             return;
@@ -115,6 +170,13 @@ export class _PdfIccColorSpace extends _PdfColorPalette {
             worker.postMessage({ message: 'initialLoading', url: baseUrl });
         });
     }
+    /**
+     * Creates a transformer handle inside the worker bound to this ICC profile and returns a bound instance.
+     *
+     * @private
+     * @returns {Promise<_PdfIccColorSpace>} A new ICC color space instance bound to the created transformer.
+     * @throws {Error} If the worker failed to create the transformer.
+     */
     async _create(): Promise<_PdfIccColorSpace> {
         const obj: _PdfIccColorSpace = Object.create(_PdfIccColorSpace.prototype) as _PdfIccColorSpace;
         _PdfBaseColorSpace.call(obj, this.name, this.numComps);
@@ -151,6 +213,18 @@ export class _PdfIccColorSpace extends _PdfColorPalette {
             this.transformerId = 0;
         }
     }
+    /**
+     * Converts a single pixel at `srcOffset` to RGB and writes it to `dest` at `destOffset`.
+     *
+     * @private
+     * @param {any} src Source components buffer.
+     * @param {number} srcOffset Source offset.
+     * @param {Uint8Array | Uint8ClampedArray} dest Destination RGB buffer.
+     * @param {number} destOffset Destination offset.
+     * @param {boolean} [css=false] If `true`, returns values suitable for CSS color.
+     * @returns {Promise<void>} Resolves when conversion completes.
+     * @throws {Error} If transformer is not initialized or worker reports an error.
+     */
     async _getRgbItem(src: any, srcOffset: number, dest: Uint8Array | Uint8ClampedArray, // eslint-disable-line        
                       destOffset: number, css: boolean = false): Promise<void> {
         if (!this.transformerId) {
@@ -215,6 +289,20 @@ export class _PdfIccColorSpace extends _PdfColorPalette {
         dest[destOffset + 1] = out[1];
         dest[destOffset + 2] = out[2];
     }
+    /**
+     * Converts a sequence of pixels to RGB using the worker transformer.
+     *
+     * @private
+     * @param {any} src Source buffer containing consecutive component values.
+     * @param {number} srcOffset Source offset.
+     * @param {number} count Number of pixels to convert.
+     * @param {any} dest Destination buffer for RGB output.
+     * @param {number} destOffset Destination offset.
+     * @param {number} bits Bits per component for the source.
+     * @param {number} alpha01 Alpha slot flag .
+     * @returns {Promise<void>} Resolves when conversion is completed.
+     * @throws {Error} If transformer is not initialized or worker reports an error.
+     */
     async _getRgbBuffer(src: any, srcOffset: number, count: number, dest: any, // eslint-disable-line 
                         destOffset: number, bits: number, alpha01: number): Promise<void> {
         if (!this.transformerId) {
@@ -249,11 +337,28 @@ export class _PdfIccColorSpace extends _PdfColorPalette {
         const result: Uint8Array = resp.data;
         (dest as Uint8ClampedArray).set(result);
     }
+    /**
+     * Converts a single pixel to a 24-bit RGB hex value.
+     *
+     * @private
+     * @param {any} src Source buffer.
+     * @param {number} srcOffset Source offset.
+     * @param {boolean} [css=false] If `true`, returns values suitable for CSS color.
+     * @returns {Promise<number>} Resolves to the packed hex value `0xRRGGBB`.
+     */
     async _getRgbHex(src: any, srcOffset: number, css: boolean = false): Promise<number> { // eslint-disable-line
         const tmp: Uint8Array = new Uint8Array(3);
         await this._getRgbItem(src, srcOffset, tmp, 0, css);
         return ((tmp[0] << 16) | (tmp[1] << 8) | tmp[2]) >>> 0;
     }
+    /**
+     * Computes output length  for given input length considering alpha layout.
+     *
+     * @private
+     * @param {number} inputLength Number of input scalars.
+     * @param {number} alpha01 Alpha slot flag (0 or 1).
+     * @returns {number} Output byte length for RGB(A) layout.
+     */
     _getOutputLength(inputLength: number, alpha01: number): number {
         return ((inputLength / this.numComps) * (3 + alpha01)) | 0;
     }

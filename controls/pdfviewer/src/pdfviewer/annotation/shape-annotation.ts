@@ -1,10 +1,11 @@
 import {
     PdfViewer, PdfViewerBase, IRectangle, IPageAnnotations, IPoint, ICommentsCollection, IReviewCollection,
     AnnotationType as AnnotType, LineHeadStyle, ShapeLabelSettingsModel, AllowedInteraction, AnnotationType,
-    IAnnotation
+    IAnnotation,
+    AnnotationStatus
 } from '../../index';
 import { isNullOrUndefined } from '@syncfusion/ej2-base';
-import { PointModel } from '@syncfusion/ej2-drawings';
+import { PointModel } from './../ej2-drawings/index';
 import { PdfAnnotationBase } from '../drawing/pdf-annotation';
 import { PdfAnnotationBaseModel } from '../drawing/pdf-annotation-model';
 import { PdfAnnotationType } from '../drawing/enum';
@@ -42,7 +43,8 @@ export interface IShapeAnnotation extends IAnnotation {
     customData: object
     allowedInteractions?: AllowedInteraction[]
     isPrint: boolean
-    isAnnotationRotated: boolean
+    isAnnotationRotated: boolean,
+    shapeLabelName?: string;
 }
 
 /**
@@ -277,12 +279,16 @@ export class ShapeAnnotation {
                             }
                             annotation.allowedInteractions = annotation.AllowedInteractions ? annotation.AllowedInteractions :
                                 this.pdfViewer.annotationModule.updateAnnotationAllowedInteractions(annotation);
-                            const left: number = annotation.Bounds.X ? annotation.Bounds.X : annotation.Bounds.x;
-                            const top: number = annotation.Bounds.Y ? annotation.Bounds.Y : annotation.Bounds.y;
+                            const left: number = !isNullOrUndefined(annotation.Bounds.X) ? annotation.Bounds.X : annotation.Bounds.x;
+                            const top: number = !isNullOrUndefined(annotation.Bounds.Y) ? annotation.Bounds.Y : annotation.Bounds.y;
                             const width: number = annotation.Bounds.Width ? annotation.Bounds.Width : annotation.Bounds.width;
                             const height: number = annotation.Bounds.Height ? annotation.Bounds.Height : annotation.Bounds.height;
+                            let status: AnnotationStatus;
+                            if (isImportAcion) {
+                                status = AnnotationStatus.NewlyAdded;
+                            }
                             annotationObject = {
-                                id: 'shape' + this.shapeCount, shapeAnnotationType: annotation.ShapeAnnotationType, author: annotation.Author, allowedInteractions: annotation.allowedInteractions, modifiedDate: annotation.ModifiedDate, subject: annotation.Subject, pageNumber: pageNumber,
+                                id: 'shape' + this.shapeCount, annotationIndex: annotation.AnnotationIndex, shapeAnnotationType: annotation.ShapeAnnotationType, author: annotation.Author, allowedInteractions: annotation.allowedInteractions, modifiedDate: annotation.ModifiedDate, subject: annotation.Subject, pageNumber: pageNumber,
                                 note: annotation.Note, strokeColor: this.pdfViewer.annotation.rgbaToHex(annotation.StrokeColor),
                                 fillColor: this.pdfViewer.annotation.rgbaToHex(annotation.FillColor),
                                 opacity: annotation.Opacity, thickness: annotation.Thickness, rectangleDifference:
@@ -297,6 +303,7 @@ export class ShapeAnnotation {
                                 annotName: annotation.AnnotName, bounds: { left: left, top: top, width: width,
                                     height: height, right: annotation.Bounds.Right, bottom: annotation.Bounds.Bottom },
                                 labelContent: annotation.LabelContent, enableShapeLabel: annotation.EnableShapeLabel,
+                                shapeLabelName: annotation.ShapeLabelName,
                                 labelFillColor: annotation.LabelFillColor, fontColor: annotation.FontColor,
                                 labelBorderColor: annotation.LabelBorderColor, fontSize:
                                 annotation.FontSize, fontFamily: annotation.FontFamily,
@@ -304,7 +311,9 @@ export class ShapeAnnotation {
                                 labelSettings: annotation.LabelSettings, annotationSettings: annotation.AnnotationSettings,
                                 customData: this.pdfViewer.annotation.getCustomData(annotation), isPrint: annotation.IsPrint,
                                 isCommentLock: annotation.IsCommentLock, isAnnotationRotated: isAnnotationRotated,
-                                originalName: annotation.OriginalName ? annotation.OriginalName : null
+                                originalName: annotation.OriginalName ? annotation.OriginalName : null,
+                                status: !isNullOrUndefined(annotation.Status) ? annotation.Status : status
+
                             };
                             let vPoints: PointModel[] = annotationObject.vertexPoints;
                             if (vertexPoints == null) {
@@ -312,7 +321,7 @@ export class ShapeAnnotation {
                             }
                             annotation.AnnotationSelectorSettings = annotation.AnnotationSelectorSettings ? typeof(annotation.AnnotationSelectorSettings) === 'string' ? JSON.parse(annotation.AnnotationSelectorSettings) : annotation.AnnotationSelectorSettings : this.pdfViewer.annotationSelectorSettings;
                             const annot: PdfAnnotationBaseModel = {
-                                id: 'shape' + this.shapeCount, shapeAnnotationType: this.getShapeType(annotationObject), author: annotationObject.author, allowedInteractions: annotationObject.allowedInteractions, modifiedDate: annotationObject.modifiedDate, annotName: annotationObject.annotName,
+                                id: 'shape' + this.shapeCount, annotationIndex: annotation.AnnotationIndex, shapeAnnotationType: this.getShapeType(annotationObject), author: annotationObject.author, allowedInteractions: annotationObject.allowedInteractions, modifiedDate: annotationObject.modifiedDate, annotName: annotationObject.annotName,
                                 subject: annotationObject.subject, notes: annotationObject.note, fillColor: annotationObject.fillColor,
                                 strokeColor: annotationObject.strokeColor, opacity: annotationObject.opacity,
                                 thickness: annotationObject.thickness, borderStyle: annotationObject.borderStyle, borderDashArray: annotationObject.borderDashArray ? annotationObject.borderDashArray.toString() : '0', rotateAngle: parseFloat(annotationObject.rotateAngle.split('Angle')[1]), comments: annotationObject.comments, review: annotationObject.review,                            isCloudShape: annotationObject.isCloudShape, cloudIntensity: annotationObject.cloudIntensity, taregetDecoraterShapes: this.pdfViewer.annotation.getArrowType(annotationObject.lineHeadEnd),
@@ -321,13 +330,15 @@ export class ShapeAnnotation {
                                     width: annotationObject.bounds.width, height: annotationObject.bounds.height },
                                 pageIndex: annotationObject.pageNumber,
                                 labelContent: annotation.LabelContent, enableShapeLabel: annotation.EnableShapeLabel,
+                                shapeLabelName: annotation.ShapeLabelName,
                                 labelFillColor: annotation.LabelFillColor,
                                 fontColor: annotation.FontColor, labelBorderColor: annotation.LabelBorderColor,
                                 fontSize: annotation.FontSize, fontFamily: annotation.FontFamily,
                                 labelBounds: annotation.LabelBounds, annotationSelectorSettings: annotation.AnnotationSelectorSettings,
                                 annotationSettings: annotationObject.annotationSettings, annotationAddMode: annotation.annotationAddMode,
                                 isPrint: annotation.IsPrint, isCommentLock: annotationObject.isCommentLock,
-                                customData: annotationObject.customData
+                                customData: annotationObject.customData,
+                                status: !isNullOrUndefined(annotation.Status) ? annotation.Status : status
                             };
                             const addedAnnot: PdfAnnotationBaseModel = this.pdfViewer.add(annot as PdfAnnotationBase);
                             this.pdfViewer.annotationModule.storeAnnotations(pageNumber, annotationObject, '_annotations_shape');
@@ -701,7 +712,6 @@ export class ShapeAnnotation {
                     } else if (property === 'labelContent') {
                         pageAnnotations[parseInt(i.toString(), 10)].note = annotationBase.labelContent;
                         pageAnnotations[parseInt(i.toString(), 10)].labelContent = annotationBase.labelContent;
-                        break;
                     } else if (property === 'fontColor') {
                         pageAnnotations[parseInt(i.toString(), 10)].fontColor = annotationBase.fontColor;
                     } else if (property === 'fontSize') {
@@ -710,6 +720,9 @@ export class ShapeAnnotation {
                     if (this.pdfViewerBase.isBounds) {
                         pageAnnotations[parseInt(i.toString(), 10)].modifiedDate =
                             this.pdfViewer.annotation.stickyNotesAnnotationModule.getDateAndTime();
+                    }
+                    if (pageAnnotations[parseInt(i.toString(), 10)].status !== 'NewlyAdded') {
+                        pageAnnotations[parseInt(i.toString(), 10)].status = AnnotationStatus.ExistingModified;
                     }
                     this.pdfViewer.annotationModule.storeAnnotationCollections(pageAnnotations[parseInt(i.toString(), 10)], pageNumber);
                 }
@@ -874,10 +887,10 @@ export class ShapeAnnotation {
         const annotationSettings: any = this.pdfViewer.annotationModule.findAnnotationSettings(annotationModel, true);
         annotationModel.isPrint = annotationSettings.isPrint;
         const setting: any = this.pdfViewer.shapeLabelSettings;
-        const labelSettings: any = { borderColor: annotationModel.strokeColor, fillColor: annotationModel.fillColor,
-            fontColor: annotationModel.fontColor, fontSize: annotationModel.fontSize,
+        const labelSettings: any = { borderColor: annotationModel.labelBorderColor, fillColor: annotationModel.labelFillColor,
+            fontColor: setting.fontColor, fontSize: setting.fontSize,
             labelContent: annotationModel.labelContent, labelHeight: setting.labelHeight,
-            labelWidth: setting.labelMaxWidth, opacity: annotationModel.opacity
+            labelWidth: setting.labelMaxWidth, opacity: setting.labelOpacity
         };
         return {
             id: annotationModel.id, shapeAnnotationType: this.getShapeAnnotType(annotationModel.shapeAnnotationType),
@@ -902,7 +915,8 @@ export class ShapeAnnotation {
                                                                                   annotationModel.subject ), labelSettings: labelSettings,
             annotationSettings: annotationSettings,
             customData: this.pdfViewer.annotation.getShapeData(annotationModel.shapeAnnotationType, annotationModel.subject),
-            isPrint: annotationModel.isPrint, isCommentLock: annotationModel.isCommentLock, isAnnotationRotated: false
+            isPrint: annotationModel.isPrint, isCommentLock: annotationModel.isCommentLock, isAnnotationRotated: false,
+            status: AnnotationStatus.NewlyAdded
         };
     }
 
@@ -1018,20 +1032,23 @@ export class ShapeAnnotation {
             opacity: annotation.Opacity, thickness: annotation.Thickness, rectangleDifference: annotation.RectangleDifference,
             borderStyle: annotation.BorderStyle, borderDashArray: annotation.BorderDashArray,
             rotateAngle: annotation.RotateAngle, isCloudShape: annotation.IsCloudShape,
-            cloudIntensity: annotation.CloudIntensity, vertexPoints: vertexPoints, lineHeadStart: annotation.LineHeadStart,
+            cloudIntensity: annotation.CloudIntensity, vertexPoints: vertexPoints,
+            lineHeadStart: annotation.LineHeadStart,
             lineHeadEnd: annotation.LineHeadEnd, isLocked: annotation.IsLocked,
             comments: this.pdfViewer.annotationModule.getAnnotationComments(annotation.Comments, annotation, annotation.Author),
             review: { state: annotation.State, stateModel: annotation.StateModel, modifiedDate: annotation.ModifiedDate,
                 author: annotation.Author }, annotName: annotation.AnnotName,
             bounds: { left: annotation.Bounds.X, top: annotation.Bounds.Y, width: annotation.Bounds.Width,
                 height: annotation.Bounds.Height, right: annotation.Bounds.Right, bottom: annotation.Bounds.Bottom },
-            labelContent: annotation.LabelContent, enableShapeLabel: annotation.EnableShapeLabel, labelFillColor: annotation.LabelFillColor,
+            labelContent: annotation.LabelContent, enableShapeLabel: annotation.EnableShapeLabel,
+            shapeLabelName: annotation.ShapeLabelName, labelFillColor: annotation.LabelFillColor,
             labelBorderColor: annotation.LabelBorderColor, fontColor: annotation.FontColor,
             fontSize: annotation.FontSize, fontFamily: annotation.FontFamily,
             labelBounds: annotation.LabelBounds, annotationSelectorSettings: this.getSettings(annotation),
             labelSettings: annotation.LabelSettings, annotationSettings: annotation.AnnotationSettings,
             customData: this.pdfViewer.annotation.getCustomData(annotation), isPrint: annotation.IsPrint,
-            isCommentLock: annotation.IsCommentLock, isAnnotationRotated: false
+            isCommentLock: annotation.IsCommentLock, isAnnotationRotated: false, status: annotation.status,
+            annotationIndex: annotation.AnnotationIndex
         };
         this.pdfViewer.annotationModule.storeAnnotations(pageNumber, annotationObject, '_annotations_shape');
     }
@@ -1078,7 +1095,9 @@ export class ShapeAnnotation {
         annotation.allowedInteractions = annotation.AllowedInteractions ? annotation.AllowedInteractions :
             this.pdfViewer.annotationModule.updateAnnotationAllowedInteractions(annotation);
         annotationObject = {
-            id: 'shape', shapeAnnotationType: annotation.ShapeAnnotationType, author: annotation.Author, allowedInteractions: annotation.allowedInteractions, modifiedDate: annotation.ModifiedDate, subject: annotation.Subject,
+            id: 'shape', shapeAnnotationType: annotation.ShapeAnnotationType, annotationIndex: annotation.AnnotationIndex,
+            author: annotation.Author, allowedInteractions: annotation.allowedInteractions,
+            modifiedDate: annotation.ModifiedDate, subject: annotation.Subject,
             note: annotation.Note, strokeColor: annotation.StrokeColor, fillColor: annotation.FillColor, opacity: annotation.Opacity,
             thickness: annotation.Thickness, rectangleDifference: annotation.RectangleDifference,
             borderStyle: annotation.BorderStyle, borderDashArray: annotation.BorderDashArray, rotateAngle: annotation.RotateAngle,
@@ -1329,6 +1348,7 @@ export class ShapeAnnotation {
             ShapeAnnotationType: shapeAnnotationType,
             State: '',
             StateModel: '',
+            Status: AnnotationStatus.NewlyAdded,
             StrokeColor: annotationObject.strokeColor ? annotationObject.strokeColor : '#ff0000',
             Subject: annotationObject.subject ? annotationObject.subject : annotationType.toString(),
             Thickness: annotationObject.thickness ? annotationObject.thickness : 1,

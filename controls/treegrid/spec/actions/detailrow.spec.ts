@@ -11,7 +11,7 @@ import { CellSaveEventArgs, actionComplete, RowCollapsedEventArgs } from '../../
 import { VirtualScroll } from '../../src/treegrid/actions/virtual-scroll';
 import { CellEditArgs, dataBound } from '@syncfusion/ej2-grids';
 import { Freeze } from '../../src/treegrid/actions/freeze-column';
-
+import * as util from '../../src/treegrid/utils';
 
 TreeGrid.Inject(Page, DetailRow, Toolbar, Sort, Filter, VirtualScroll, Freeze);
 let template : string = `<table id = "table1">
@@ -864,6 +864,46 @@ describe('EJ2-966612 - last row border of detail template is not visible when co
             }, 100);
         };
         gridObj.collapseAll();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+describe('DetailRow - uncovered branches', () => {
+    let gridObj: TreeGrid;
+    let detailRow: DetailRow;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: employeeData3,
+                childMapping: 'Children',
+                treeColumnIndex: 0,
+                columns: [{ field: 'EmployeeID', headerText: 'EmployeeID', width: 140 }],
+                height: 300
+            },
+            done
+        );
+    });
+
+    it('removeEventListener - unregisters events when parent NOT destroyed', () => {
+        debugger;
+        spyOn(gridObj, 'off').and.callThrough();
+        spyOn(gridObj.grid, 'off').and.callThrough();
+        detailRow = new DetailRow(gridObj);
+        detailRow.removeEventListener();
+        expect((gridObj as any).off).toHaveBeenCalled();
+        expect((gridObj.grid as any).off).toHaveBeenCalled();
+    });
+
+    it('rowExpandCollapse - returns early when remote data (isRemoteData true)', () => {
+        spyOn(util, 'isRemoteData').and.returnValue(true);
+        spyOn((gridObj as any), 'toggleRowVisibility').and.callThrough();
+        const tr = document.createElement('tr');
+        detailRow['rowExpandCollapse']({ detailrows: [tr], action: 'collapse' });
+        expect((gridObj as any).toggleRowVisibility).not.toHaveBeenCalled();
+        (util.isRemoteData as jasmine.Spy).and.callThrough();
     });
 
     afterAll(() => {

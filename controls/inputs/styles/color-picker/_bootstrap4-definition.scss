@@ -1,7 +1,5 @@
-@use 'ej2-base/styles/definition/bootstrap4' as *;
-@use 'ej2-buttons/styles/button/bootstrap4-definition' as *;
-@forward 'ej2-base/styles/definition/bootstrap4';
-@forward 'ej2-buttons/styles/button/bootstrap4-definition';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $cpicker-split-btn-padding: 8px 9px 7px 9px !default;
 $cpicker-bigger-split-btn-padding: 10px !default;
 $cpicker-split-line-height: 17px !default;

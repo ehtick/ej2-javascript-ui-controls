@@ -3,6 +3,7 @@ import { _PdfDictionary, _PdfReference, _PdfName } from './pdf-primitives';
 import { PdfDocument, PdfPageSettings } from './pdf-document';
 import { PdfPage } from './pdf-page';
 import { _updatePageSettings, _updatePageCount } from './utils';
+import { PdfDocumentTemplate } from './pdf-type';
 /**
  * Represents a PDF section, a set of pages with similar page settings.
  * ```typescript
@@ -55,6 +56,12 @@ export class PdfSection {
      * @private
      */
     _pageSettings: PdfPageSettings;
+    /**
+     * Stores the template configuration for section-level headers and footers.
+     *
+     * @private
+     */
+    private _template: PdfDocumentTemplate;
     /**
      * Initializes a new instance of the `PdfSection` class.
      *
@@ -109,6 +116,45 @@ export class PdfSection {
                 }
             }
         }
+    }
+    /**
+     * Gets the template configuration for section-level headers and footers.
+     *
+     * ```typescript
+     * // Create a new document
+     * const document: PdfDocument = new PdfDocument();
+     * // Initialize a standard font for drawing
+     * const font: PdfStandardFont = new PdfStandardFont(PdfFontFamily.helvetica, 12);
+     * // Initialize a brush for text drawing
+     * const brush: PdfBrush = new PdfBrush({ r: 0, g: 0, b: 0 });
+     * // Create a new section in the document
+     * const section: PdfSection = document.addSection();
+     * // Add a page to the created section
+     * section.addPage();
+     * // Access the section template
+     * const template: PdfDocumentTemplate = section.template;
+     * // Create a section-specific page template
+     * const sectionTemplate: PdfPageTemplateElement = new PdfPageTemplateElement({ width: 500, height: 50 });
+     * // Draw header text into the section template
+     * template.graphics.drawString('Section Header', font, { x: 10, y: 10, width: 150, height: 30 }, brush);
+     * // Assign the section template to the section's top slot
+     * template.top = { template: sectionTemplate, alignment: PdfTemplateHorizontalAlignment.center };
+     * // Save document
+     * document.save('Output.pdf');
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     *
+     * @returns {PdfDocumentTemplate} The document template associated with section.
+     */
+    get template(): PdfDocumentTemplate {
+        if (this._document._isLoaded) {
+            return this._template;
+        }
+        if (!this._template) {
+            this._template = {};
+        }
+        return this._template;
     }
     /**
      * Creates a new page and adds it to the collection.

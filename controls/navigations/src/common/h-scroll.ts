@@ -268,11 +268,10 @@ export class HScroll extends Component<HTMLElement> implements INotifyPropertyCh
             el.addEventListener('touchend', this.repeatScroll.bind(this));
             el.addEventListener('contextmenu', (e: Event) => {
                 e.preventDefault();
-            });
+            });           
             EventHandler.add(el, 'click', this.clickEventHandler, this);
         });
     }
-    
     private repeatScroll(): void {
         clearInterval (this.timeout);
     }

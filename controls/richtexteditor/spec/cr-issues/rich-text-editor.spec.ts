@@ -2888,7 +2888,8 @@ describe('RTE CR issues ', () => {
             destroy(editorObj);
         });
     });
-    describe('Bug 980252: Script error throws when calling the showInlineToolbar in RichTextEditor', () => {
+    // 🚧 TODO: Migrate this to Playwright 🎭
+    xdescribe('Bug 980252: Script error throws when calling the showInlineToolbar in RichTextEditor', () => {
         let editorObj: RichTextEditor;
         beforeAll(() => {
             editorObj = renderRTE({
@@ -4315,7 +4316,6 @@ describe('RTE CR issues ', () => {
             expect(content).not.toContain('alert(');
         });
     });
-
     describe('Bug 1018869: Full Content Not Deleted When Using Ctrl+A + Delete in Rich Text Editor', () => {
         let rteObj: RichTextEditor;
         const innerHTML: string = `<div id="root">

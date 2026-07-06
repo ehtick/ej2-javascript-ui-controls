@@ -333,6 +333,7 @@ export class ToolbarRenderer implements IRenderer {
             animationSettings: isTesting ? { effect: 'None', duration: 0  } : { effect : 'None', duration: 400, easing: 'ease'},
             beforeOpen: (args: BeforeOpenCloseMenuEventArgs): void => {
                 this.closeTooltips();
+                args.preventScroll = true;
                 if (proxy.parent.readonly || !proxy.parent.enabled) {
                     args.cancel = true;
                     return;
@@ -375,12 +376,12 @@ export class ToolbarRenderer implements IRenderer {
                     }
                     //Alignments preselect
                     let alignEle: Node = proxy.parent.getRange().startContainer;
-                    const selectedCell: Element = trow && trow.querySelector('.e-cell-select');
+                    const selectedCell: Element =  trow && trow.querySelector('.e-cell-select');
                     const isTbalePopUpdropdown: boolean = proxy.parent.contentModule.getDocument() &&
-                        proxy.parent.quickToolbarModule && proxy.parent.quickToolbarModule.tableQTBar
-                        && proxy.parent.quickToolbarModule.tableQTBar.element &&
-                        (proxy.parent.contentModule.getDocument()
-                            .contains(proxy.parent.quickToolbarModule.tableQTBar.element));
+                            proxy.parent.quickToolbarModule && proxy.parent.quickToolbarModule.tableQTBar
+                            && proxy.parent.quickToolbarModule.tableQTBar.element &&
+                            (proxy.parent.contentModule.getDocument()
+                                .contains(proxy.parent.quickToolbarModule.tableQTBar.element));
                     if (isTbalePopUpdropdown && !isNOU(tableEle) && !isNOU(selectedCell)) {
                         alignEle = selectedCell;
                     }
@@ -465,6 +466,22 @@ export class ToolbarRenderer implements IRenderer {
                                 index = 1;
                             } else if (videoEle.classList.contains('e-video-right')) {
                                 index = 2;
+                            }
+                            if (!isNOU(args.element.childNodes[index as number] as HTMLElement)) {
+                                addClass([args.element.childNodes[index as number] as Element], 'e-active');
+                            }
+                        }
+                    }
+                    // Audio preselect
+                    const audioClosestNode: HTMLElement = startNode.closest('.e-audio-wrap') as HTMLElement | null;
+                    const audioEle: HTMLElement = audioClosestNode ? audioClosestNode.querySelector('audio') : (targetEle ? targetEle.querySelector('audio') : startNode.querySelector('audio') as HTMLElement | null);
+                    if (!isNOU(args.items[0 as number]) && (args.items[0 as number] as IDropDownItemModel).command === 'Audios') {
+                        if (!isNOU(audioEle)) {
+                            let index: number;
+                            if (audioEle.classList.contains('e-audio-inline')) {
+                                index = 0;
+                            } else if (audioEle.classList.contains('e-audio-break')) {
+                                index = 1;
                             }
                             if (!isNOU(args.element.childNodes[index as number] as HTMLElement)) {
                                 addClass([args.element.childNodes[index as number] as Element], 'e-active');
@@ -754,6 +771,7 @@ export class ToolbarRenderer implements IRenderer {
             },
             beforeOpen: (args: BeforeOpenCloseMenuEventArgs): void => {
                 this.closeTooltips();
+                args.preventScroll = true;
                 if (this.parent.readonly || !this.parent.enabled) {
                     args.cancel = true;
                     return;
@@ -962,23 +980,31 @@ export class ToolbarRenderer implements IRenderer {
     }
 
     private menuBeforeOpen(args: BeforeOpenCloseMenuEventArgs): void {
-        this.parent.notify(events.selectionSave, args);
+        if (!(args.element.classList.contains('e-menu-parent') && args.element.parentElement.id.indexOf(this.parent.getID() + '_QueryPopupCommandsMenu-popup') !== -1)) {
+            this.parent.notify(events.selectionSave, args);
+        }
         this.parent.notify(events.menuBeforeOpen, args);
     }
 
     private menuBeforeClose(args: BeforeOpenCloseMenuEventArgs): void {
-        this.parent.notify(events.selectionRestore, args);
+        if (!(args.element.classList.contains('e-menu-parent') && args.element.parentElement.id.indexOf(this.parent.getID() + '_QueryPopupCommandsMenu-popup') !== -1)) {
+            this.parent.notify(events.selectionRestore, args);
+        }
         this.parent.notify(events.menuBeforeClose, args);
     }
 
     private menueDropDownBeforeOpen(args: BeforeOpenCloseMenuEventArgs): void {
         this.closeTooltips();
-        this.parent.notify(events.selectionSave, args);
+        if (!(args.element.classList.contains('e-rte-aicommands-menu') && args.element.parentElement.id  === this.parent.getID() + '_QueryPopupCommandsDropDown-popup')) {
+            this.parent.notify(events.selectionSave, args);
+        }
         this.parent.notify(events.menuBeforeOpen, args);
     }
 
     private menueDropDownBeforeClose(args: BeforeOpenCloseMenuEventArgs): void {
-        this.parent.notify(events.selectionRestore, args);
+        if (!(args.element.classList.contains('e-rte-aicommands-menu') && args.element.parentElement.id  === this.parent.getID() + '_QueryPopupCommandsDropDown-popup')) {
+            this.parent.notify(events.selectionRestore, args);
+        }
         this.parent.notify(events.menuBeforeClose, args);
     }
 

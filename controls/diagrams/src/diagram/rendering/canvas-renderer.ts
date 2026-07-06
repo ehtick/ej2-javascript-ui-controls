@@ -203,7 +203,13 @@ export class CanvasRenderer implements IRenderer {
             font += 'bold ';
         }
         font += (text.fontSize) + 'px ';
-        font += text.fontFamily;
+        // Quote font family if it contains spaces and is not already quoted
+        let family: string = text.fontFamily;
+        if ((family.indexOf(' ') >= 0 || family.indexOf(',') >= 0) &&
+            !(family.startsWith('"') || family.startsWith('\''))) {
+            family = '"' + family + '"';
+        }
+        font += family;
         ctx.font = font;
     }
 
@@ -561,10 +567,17 @@ export class CanvasRenderer implements IRenderer {
             ctx.fillStyle = options.color;
             if (wrapBounds) {
                 const position: PointModel = this.labelAlign(options, wrapBounds, childNodes);
+                ctx.textBaseline = 'alphabetic';
                 for (i = 0; i < childNodes.length; i++) {
                     const child: SubTextElement = childNodes[parseInt(i.toString(), 10)];
                     child.x = setChildPosition(child, childNodes, i, options);
-                    const offsetX: number = position.x + (scaleValue ? child.x * scaleValue : child.x) - wrapBounds.x;
+                    // Match SVG behavior: for left and justify, offsetX calculation differs
+                    let offsetX: number;
+                    if (options.textAlign === 'justify' || options.textAlign === 'left') {
+                        offsetX = position.x;
+                    } else {
+                        offsetX = position.x + (scaleValue ? child.x * scaleValue : child.x) - wrapBounds.x;
+                    }
                     const offsetY: number = position.y + (scaleValue ? child.dy * scaleValue : child.dy) * i + ((options.fontSize) * 0.8);
                     if (wrapBounds.width > options.width && options.textOverflow !== 'Wrap' && options.textWrapping === 'NoWrap') {
                         child.text = overFlow(child.text, options);
@@ -579,17 +592,33 @@ export class CanvasRenderer implements IRenderer {
                                     child.text = child.text.concat('...');
                                 }
                             }
-                            ctx.fillText(child.text, offsetX, offsetY);
+                            if (options.textAlign === 'justify' && i < childNodes.length - 1) {
+                                // Don't justify the last line
+                                this.drawJustifiedText(ctx, child.text, offsetX, offsetY, options.width);
+                            } else {
+                                ctx.fillText(child.text, offsetX, offsetY);
+                            }
                         }
                     } else {
-                        ctx.fillText(child.text, offsetX, offsetY);
+                        // Justify text: distribute spacing between words, but not for the last line
+                        if (options.textAlign === 'justify' && i < childNodes.length - 1) {
+                            this.drawJustifiedText(ctx, child.text, offsetX, offsetY, options.width);
+                        } else {
+                            ctx.fillText(child.text, offsetX, offsetY);
+                        }
                     }
                     if (options.textDecoration === 'Underline'
                         || options.textDecoration === 'Overline'
                         || options.textDecoration === 'LineThrough') {
                         const startPointX: number = offsetX;
                         let startPointY: number;
-                        const textlength: number = ctx.measureText(child.text).width;
+                        let textlength: number;
+                        // For justified text, use full width
+                        if (options.textAlign === 'justify' && i < childNodes.length - 1) {
+                            textlength = options.width;
+                        } else {
+                            textlength = ctx.measureText(child.text).width;
+                        }
                         const endPointX: number = offsetX + textlength;
                         let endPointY: number;
                         switch (options.textDecoration) {
@@ -616,6 +645,39 @@ export class CanvasRenderer implements IRenderer {
                 }
             }
             ctx.restore();
+        }
+    }
+    /**
+     * Draw justified text by distributing spacing between words\
+     *
+     * @returns {void} Draw justified text .
+     * @param {CanvasRenderingContext2D} ctx - Canvas context .
+     * @param {string} text - Text to draw .
+     * @param {number} x - X position .
+     * @param {number} y - Y position .
+     * @param {number} maxWidth - Maximum width to justify to .
+     * @private
+     */
+     private drawJustifiedText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number): void {
+        const trimmedText: string = text.trim();
+
+        // Measure total width of all characters (without spacing)
+        let charsWidth: number = 0;
+        for (let i: number = 0; i < trimmedText.length; i++) {
+            charsWidth += ctx.measureText(trimmedText.charAt(i)).width;
+        }
+
+        // Calculate spacing between characters to fill maxWidth
+        // We have (n-1) gaps between n characters
+        const totalSpacing: number = maxWidth - charsWidth;
+        const spaceBetweenChars: number = totalSpacing / (trimmedText.length - 1);
+
+        // Draw each character with calculated spacing
+        let currentX: number = x;
+        for (let i: number = 0; i < trimmedText.length; i++) {
+            const char: string = trimmedText.charAt(i);
+            ctx.fillText(char, currentX, y);
+            currentX += ctx.measureText(char).width + spaceBetweenChars;
         }
     }
 
@@ -885,7 +947,8 @@ export class CanvasRenderer implements IRenderer {
         const offsety: number = text.height * 0.5;
         let pointx: number = offsetx;
         const pointy: number = offsety;
-        if (text.textAlign === 'left') {
+        // Match SVG behavior: left and justify both use pointx = 0
+        if (text.textAlign === 'left' || text.textAlign === 'justify') {
             pointx = 0;
         } else if (text.textAlign === 'center') {
             if (wrapBounds.width > text.width && (text.textOverflow === 'Ellipsis' || text.textOverflow === 'Clip')) {

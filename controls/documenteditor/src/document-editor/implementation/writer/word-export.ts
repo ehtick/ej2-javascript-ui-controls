@@ -8481,7 +8481,6 @@ export class WordExport {
         default:
             return value as ExportAutoShapeType;
         }
-
     }
     public getAutoShapeTypeEnumValue(autoShapeType: AutoShapeType | any): number {
         switch (autoShapeType) {

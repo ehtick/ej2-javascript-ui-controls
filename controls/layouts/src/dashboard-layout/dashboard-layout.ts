@@ -691,18 +691,64 @@ export class DashboardLayout extends Component<HTMLElement> implements INotifyPr
     private templateParser(template: string | Function): Function {
         if (template) {
             try {
-                if (typeof template !== 'function' && document.querySelectorAll(template).length) {
-                    return compile(document.querySelector(template).innerHTML.trim());
+                if (typeof template === 'string' && (template.charAt(0) === '.' || template.charAt(0) === '#')) {
+                    try {
+                        const elements: HTMLElement[] = <HTMLElement[]><unknown>document.querySelectorAll(template);
+                        if (elements.length > 0) {
+                            return compile(elements[0].innerHTML.trim());
+                        }
+                    } catch (selectorError) {
+                        // Not a valid CSS selector, treat as HTML string below
+                    }
                 }
-                else {
+                if (typeof template === 'function') {
                     return compile(template);
                 }
+                if (typeof template === 'string') {
+                    if (!this.hasTemplateExpressions(template)) {
+                        const sanitizedValue: string = SanitizeHtmlHelper.sanitize(template as string);
+                        return compile((this.enableHtmlSanitizer && typeof (template) === 'string') ? sanitizedValue : template);
+                    }
+                    return compile(template);
+                }
+                return compile(template);
             } catch (error) {
-                const sanitizedValue: string = SanitizeHtmlHelper.sanitize(template as string);
-                return compile((this.enableHtmlSanitizer && typeof (template) === 'string') ? sanitizedValue : template);
+                if (this.isCSPError(error) && typeof template === 'string') {
+                    return this.createCspSafeTemplate(template);
+                }
+                else{
+                    const sanitizedValue: string = SanitizeHtmlHelper.sanitize(template as string);
+                    return compile((this.enableHtmlSanitizer && typeof (template) === 'string') ? sanitizedValue : template);
+                }
             }
         }
         return undefined;
+    }
+
+    private hasTemplateExpressions(template: string): boolean {
+        return /\{\{[\s\S]*?\}\}/.test(template) || /\{\d+\}/.test(template);
+    }
+
+    private createCspSafeTemplate(template: string): Function {
+        const sanitized: string = this.enableHtmlSanitizer ? SanitizeHtmlHelper.sanitize(template) : template;
+        return (dataContext: {[key: string]: any}): HTMLElement[] => {
+            const result: string = sanitized.replace(/\{\{:(\w+)\}\}/g, (match: string, prop: string): string => {
+                return dataContext[prop as string] !== undefined ? String(dataContext[prop as string]) : match;
+            });
+            const wrapper: HTMLElement = this.createElement('div');
+            wrapper.innerHTML = result;
+            return Array.from(wrapper.children) as HTMLElement[];
+        };
+    }
+
+    private isCSPError(error: Error): boolean {
+        if (error instanceof EvalError) {
+            return true;
+        }
+        const msg: string = error.message || '';
+        return msg.includes('Content Security Policy') ||
+               msg.includes('unsafe-eval') ||
+               msg.includes('refused to evaluate');
     }
 
     protected renderTemplate(content: string, appendElement: HTMLElement, type: string, isStringTemplate: boolean, prop: string): void {

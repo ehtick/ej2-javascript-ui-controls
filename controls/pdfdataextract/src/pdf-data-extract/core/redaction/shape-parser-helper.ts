@@ -5,12 +5,29 @@ import { _PdfBezierSegment, _PdfLineSegment, _PdfPathFigure } from './pdf-path-s
 import { PdfRedactor } from './pdf-redactor';
 import { PdfRedactionRegion } from './pdf-redaction-region';
 
+/**
+ * Parses path drawing operators and rewrites shapes that intersect redaction regions.
+ *
+ * @private
+ */
 export class _PdfShapeParser {
     private _currentLocation: number[];
     private _pathAccumulator: _PdfPathCommand[] = [];
     private _clearPathAccumulator(): void {
         this._pathAccumulator = [];
     }
+    /**
+     * Finds and emits path records for a redacted shape starting from index `i`.
+     *
+     * @private
+     * @param {_PdfRecord[]} recordCollection The full record collection of the content stream.
+     * @param {number} i The starting record index to scan from.
+     * @param {PdfPage} page The page hosting the content.
+     * @param {PdfRedactor} redaction The redactor owning state and helpers.
+     * @param {_TextProcessingMode} mode Active processing mode.
+     * @param {_PdfContentStream} stream Destination stream to receive rewritten commands.
+     * @returns {number} The last processed record index or `-1` if nothing was emitted.
+     */
     _findRedactPath(
         recordCollection: _PdfRecord[],
         i: number,
@@ -121,6 +138,13 @@ export class _PdfShapeParser {
         }
         return -1;
     }
+    /**
+     * Flattens curve segments to line segments when needed.
+     *
+     * @private
+     * @param {_PdfPathCommand[]} shapePaths Path commands to inspect.
+     * @returns {_PdfPathCommand[]} Flattened path commands if curves were present; otherwise unchanged.
+     */
     private _flattenIfNeeded(shapePaths: _PdfPathCommand[]): _PdfPathCommand[] {
         for (let p: number = 0; p < shapePaths.length; p++) {
             if (shapePaths[<number>p].operator.indexOf('c') !== -1) {
@@ -130,6 +154,17 @@ export class _PdfShapeParser {
         }
         return shapePaths;
     }
+    /* eslint-disable */
+    /**
+     * Clips the given shape point rings against all non-text redaction regions on the page.
+     *
+     * @private
+     * @param {Point[][]} shapePoints Input shape rings.
+     * @param {PdfRedactionRegion[]} redactions Redaction regions for the page.
+     * @param {PdfPage} page Page providing size/transform hints.
+     * @returns {{updatedShapePoints: Point[][], intersectionsPoints: Point[], isInSide: boolean, isOutSide: boolean, inSideRects: _PdfPathCommand[][], totalRedactionPoints: Point[][]}}
+     * Clipped shape rings and classification context.
+     */
     private _clipAgainstRedactions(shapePoints: Point[][], redactions: PdfRedactionRegion[], page: PdfPage): {
         updatedShapePoints: Point[][],
         intersectionsPoints: Point[],
@@ -173,6 +208,16 @@ export class _PdfShapeParser {
         }
         return { updatedShapePoints: shapePoints, intersectionsPoints, isInSide, isOutSide, inSideRects, totalRedactionPoints };
     }
+    /* eslint-enable */
+    /**
+     * Adjusts redaction bounds to the shape coordinate space.
+     *
+     * @private
+     * @param {Rectangle} bounds Redaction bounds (page space).
+     * @param {number} y Sample Y from current shape ring.
+     * @param {PdfPage} page The page used for Y inversion.
+     * @returns {Rectangle} Adjusted rectangle.
+     */
     private _adjustRedactionBounds(bounds: Rectangle, y: number, page: PdfPage): Rectangle {
         const adjusted: Rectangle = { ...bounds };
         if (y < 0) {
@@ -183,12 +228,34 @@ export class _PdfShapeParser {
         }
         return adjusted;
     }
+    /**
+     * Determines whether rendering should be skipped for a shape that remains unchanged and not inside a redaction.
+     *
+     * @private
+     * @param {Point} shapePoints The possibly modified shape points.
+     * @param {_PdfPathCommand} originalPoints The original path commands.
+     * @param {boolean} isInSide Whether shape is fully inside a redaction region.
+     * @returns {boolean} `true` to skip rendering; otherwise, `false`.
+     */
     private _shouldSkipRendering(shapePoints: Point[][], originalPoints: _PdfPathCommand[], isInSide: boolean): boolean {
         return shapePoints.length === 0 ||
             shapePoints.length === 1 &&
             this._pointsArraysEqual(this._extractPoints(originalPoints), shapePoints[0]) &&
             !isInSide;
     }
+    /**
+     * Builds drawing records `_PdfRecord[]` from clipped shape rings for the operator.
+     *
+     * @private
+     * @param {string} value The drawing operator (`S`, `s`, `f`, `f*`, `B`, etc).
+     * @param {Point} shapePoints The shape rings to emit.
+     * @param {Point} intersectionsPoints Intersections collected during clip.
+     * @param {boolean} isInSide If shape was fully inside a redaction.
+     * @param {boolean} isOutSide If shape was fully outside a redaction.
+     * @param {_PdfPathCommand | undefined} inSideRects Paths for inside rectangles (when applicable).
+     * @param {Point} totalRedactionPoints Accumulated redaction polygon points.
+     * @returns {_PdfRecord} Records to write to the content stream.
+     */
     private _buildRenderingRecords(
         value: string,
         shapePoints: Point[][],
@@ -239,6 +306,13 @@ export class _PdfShapeParser {
         }
         return records;
     }
+    /**
+     * Converts a parsed `_PdfPathFigure` into the flat path command list.
+     *
+     * @private
+     * @param {_PdfPathFigure} figure The path figure with segments.
+     * @returns {_PdfPathCommand[]} Accumulated path commands.
+     */
     private _getGeometry(figure: _PdfPathFigure): _PdfPathCommand[] {
         this._pathAccumulator = [];
         const point: Point = { x: figure._startPoint.x, y: figure._startPoint.y };
@@ -263,6 +337,14 @@ export class _PdfShapeParser {
         }
         return this._pathAccumulator;
     }
+    /**
+     * Validates that a rect operator is followed by drawable operators (not `n`).
+     *
+     * @private
+     * @param {_PdfRecord[]} recordCollection Record list.
+     * @param {number} i Index of the `re` equivalent sequence.
+     * @returns {boolean} `true` if the rectangle is valid to emit; otherwise, `false`.
+     */
     private _isValidRectangle(recordCollection: _PdfRecord[], i: number): boolean {
         for (const offset of [1, 2, 3]) {
             const item: _PdfRecord = recordCollection[i + offset];
@@ -272,12 +354,30 @@ export class _PdfShapeParser {
         }
         return true;
     }
+    /**
+     * Emits path commands for a rectangle sequence, if valid.
+     *
+     * @private
+     * @param {_PdfRecord[]} recordCollection Record list.
+     * @param {number} i Index of the rectangle start.
+     * @param {string[]} element Rectangle operands `[x, y, w, h]` as strings.
+     * @returns {_PdfRecord[]} The generated path records; empty if not valid.
+     */
     _processRectangle(recordCollection: _PdfRecord[], i: number, element: string[]): _PdfRecord[] {
         if (this._isValidRectangle(recordCollection, i)) {
             return this._generateRectanglePath(recordCollection, i, element);
         }
         return [];
     }
+    /**
+     * Converts rectangle operands into a sequence of move/line/close commands.
+     *
+     * @private
+     * @param {_PdfRecord[]} recordCollection Record list (for lookahead).
+     * @param {number} i Index at which the rect started.
+     * @param {string[]} element Rectangle operands `[x, y, w, h]` as strings.
+     * @returns {_PdfRecord[]} The path commands representing the rectangle.
+     */
     private _generateRectanglePath(recordCollection: _PdfRecord[], i: number, element: string[]): _PdfRecord[] {
         const records: _PdfRecord[] = [];
         const rect: Rectangle = {
@@ -299,6 +399,13 @@ export class _PdfShapeParser {
         }
         return records;
     }
+    /**
+     * Builds a rectangular path as a list of path commands.
+     *
+     * @private
+     * @param {Rectangle} rect The rectangle specification.
+     * @returns {_PdfPathCommand[]} Path commands for the rectangle.
+     */
     private _rectToPathCommands(rect: Rectangle): _PdfPathCommand[] {
         return [
             {
@@ -323,6 +430,13 @@ export class _PdfShapeParser {
             }
         ];
     }
+    /**
+     * Extracts a flat list of points from a sequence of path commands.
+     *
+     * @private
+     * @param {_PdfPathCommand[]} commands Command list.
+     * @returns {Point[]} Flattened points.
+     */
     private _extractPoints(commands: _PdfPathCommand[]): Point[] {
         const points: Point[] = [];
         for (const cmd of commands) {
@@ -330,6 +444,14 @@ export class _PdfShapeParser {
         }
         return points;
     }
+    /**
+     * Returns whether a point matches any intersection point, exactly.
+     *
+     * @private
+     * @param {Point} pt The point to check.
+     * @param {Point[]} [polygonIntersections] Known intersection list.
+     * @returns {boolean} `true` if the point is an intersection; otherwise, `false`.
+     */
     private _isIntersecting(pt: Point, polygonIntersections?: Point[]): boolean {
         if (!polygonIntersections) {
             return false;
@@ -341,6 +463,14 @@ export class _PdfShapeParser {
         }
         return false;
     }
+    /**
+     * Converts a set of point-rings to move/line path commands, optionally splitting at intersections.
+     *
+     * @private
+     * @param {Point} input Rings to convert.
+     * @param {Point} [polygonIntersections] Intersection points along the rings.
+     * @returns {_PdfPathCommand[]} Path commands representing the rings.
+     */
     private _convertPointsToPath(input: Point[][], polygonIntersections?: Point[]): _PdfPathCommand[] {
         const commands: _PdfPathCommand[] = [];
         const hasIntersections: boolean = polygonIntersections && polygonIntersections.length > 0;
@@ -367,6 +497,17 @@ export class _PdfShapeParser {
         }
         return commands;
     }
+    /**
+     * Flattens a cubic Bézier curve to a list of `segments` line points.
+     *
+     * @private
+     * @param {Point} p0 Start point.
+     * @param {Point} p1 First control point.
+     * @param {Point} p2 Second control point.
+     * @param {Point} p3 End point.
+     * @param {number} [segments=8] Number of line segments to generate.
+     * @returns {Point[]} The interpolated points on the curve.
+     */
     private _flattenBezierCurve(p0: Point, p1: Point, p2: Point, p3: Point, segments: number = 8): Point[] {
         const points: Point[] = [];
         for (let i: number = 1; i <= segments; i++) {
@@ -384,6 +525,14 @@ export class _PdfShapeParser {
         }
         return points;
     }
+    /**
+     * Flattens all cubic curve  commands in a path into straight line segments.
+     *
+     * @private
+     * @param {_PdfPathCommand[]} commands Path commands (with `m/l/c/h`).
+     * @param {number} [segmentsPerCurve=8] Line segments per curve.
+     * @returns {_PdfPathCommand[]} The flattened command list.
+     */
     private _flattenPdfPathCommands(commands: _PdfPathCommand[], segmentsPerCurve: number = 8): _PdfPathCommand[] {
         const flattened: _PdfPathCommand[] = [];
         let currentPoint: Point;
@@ -413,6 +562,14 @@ export class _PdfShapeParser {
         }
         return flattened;
     }
+    /**
+     * Deep-equality test for two point arrays.
+     *
+     * @private
+     * @param {Point[]} a Left array.
+     * @param {Point[]} b Right array.
+     * @returns {boolean} `true` if the arrays are same length and equal point-wise.
+     */
     private _pointsArraysEqual(a: Point[], b: Point[]): boolean {
         if (a.length !== b.length) {
             return false;
@@ -420,6 +577,13 @@ export class _PdfShapeParser {
         return a.every((point: Point, i: any) => point.x === b[<number>i].x && //eslint-disable-line
             point.y === b[<number>i].y);
     }
+    /**
+     * Removes duplicate points within each ring while preserving the first occurrence.
+     *
+     * @private
+     * @param {Point} pointsArrays Rings to process.
+     * @returns {Point} Rings without duplicates.
+     */
     private _removeDuplicatePoints(pointsArrays: Point[][]): Point[][] {
         return pointsArrays.map((points: Point[]) => {
             const uniquePoints: Set<string> = new Set<string>();
@@ -434,6 +598,14 @@ export class _PdfShapeParser {
             });
         });
     }
+    /**
+     * Removes points that belong to redaction rectangles to avoid retracing them.
+     *
+     * @private
+     * @param {Point} nonRedactedPointsArray Rings to filter.
+     * @param {Point} redactionPointsArray Redaction polygon rings.
+     * @returns {Point} Filtered rings without redaction points.
+     */
     private _removeRedactionPoints(
         nonRedactedPointsArray: Point[][],
         redactionPointsArray: Point[][]
@@ -449,6 +621,13 @@ export class _PdfShapeParser {
         );
         return filteredPointsArray;
     }
+    /**
+     * Builds `_PdfRecord[]` from a list of path commands.
+     *
+     * @private
+     * @param {_PdfPathCommand[]} commands Path commands to convert.
+     * @returns {_PdfRecord[]} Content stream records.
+     */
     private _buildRecords(commands: _PdfPathCommand[]): _PdfRecord[] {
         const result: _PdfRecord[] = [];
         for (let a: number = 0; a < commands.length; a++) {
@@ -461,10 +640,20 @@ export class _PdfShapeParser {
         return result;
     }
 }
+/**
+ * A lightweight path command representation used by `_PdfShapeParser`.
+ *
+ * @private
+ */
 export type _PdfPathCommand = {
     operator: string;
     points: Point[];
 };
+/**
+ * Internal PDF drawing operators used for path construction and rendering.
+ *
+ * @private
+ */
 enum _PdfPathCommands {
     drawStroke = 'S',
     drawCloseStroke = 's',

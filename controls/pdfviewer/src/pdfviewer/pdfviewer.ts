@@ -35,7 +35,7 @@ import { PdfAnnotationBaseModel, PdfFormFieldBaseModel } from './drawing/pdf-ann
 import { Drawing, ClipBoardObject } from './drawing/drawing';
 import { Selector } from './drawing/selector';
 import { SelectorModel } from './drawing/selector-model';
-import { PointModel, IElement, Rect, Point, Size, processPathData, splitArrayCollection, getPathString } from '@syncfusion/ej2-drawings';
+import { PointModel, IElement, Rect, Point, Size, processPathData, splitArrayCollection, getPathString } from './ej2-drawings/index';
 import { renderAdornerLayer } from './drawing/dom-util';
 import { ThumbnailClickEventArgs } from './index';
 
@@ -121,18 +121,21 @@ import { PdfDocument, PdfPageImportOptions } from '@syncfusion/ej2-pdf';
 export class ToolbarSettings extends ChildProperty<ToolbarSettings> {
     /**
      * Enable or disables the tooltip of the toolbars.
+     * @default true
      */
     @Property(true)
     public showTooltip: boolean;
 
     /**
      * shows only the defined options in the PdfViewer.
+     * @default []
      */
     @Property()
     public toolbarItems: (CustomToolbarItemModel | ToolbarItem)[];
 
     /**
      * Provide option to customize the annotation toolbar of the PDF Viewer.
+     * @default []
      */
     @Property()
     public annotationToolbarItems: AnnotationToolbarItem[];
@@ -140,12 +143,14 @@ export class ToolbarSettings extends ChildProperty<ToolbarSettings> {
     /**
      * Provide option to customize the redaction toolbar of the PDF Viewer.
      * This redaction customization feature shall be available only when the PDF Viewer is operating in Standalone Mode.
+     * @default []
      */
     @Property()
     public redactionToolbarItems: RedactionToolbarItem[];
 
     /**
      * Customize the tools to be exposed in the form designer toolbar.
+     * @default []
      */
     @Property()
     public formDesignerToolbarItems: FormDesignerToolbarItem[];
@@ -159,48 +164,56 @@ export class CustomToolbarItem extends ChildProperty<CustomToolbarItem> {
     /**
      * Defines single/multiple classes separated by space used to specify an icon for the button.
      * The icon will be positioned before the text content if text is available, otherwise the icon alone will be rendered.
+     * @default ''
      */
     @Property('')
     public prefixIcon: string;
 
     /**
      * Specifies the text to be displayed on the Toolbar button.
+     * @default ''
      */
     @Property('')
     public tooltipText: string;
 
     /**
      * Specifies the unique ID to be used with button or input element of Toolbar items.
+     * @default ''
      */
     @Property('')
     public id: string;
 
     /**
      * Specifies the text to be displayed on the Toolbar button.
+     * @default ''
      */
     @Property('')
     public text: string;
 
     /**
      * Defines single/multiple classes (separated by space) to be used for customization of commands.
+     * @default ''
      */
     @Property('')
     public cssClass: string;
 
     /**
      * Define which side(right/left) to use for customizing the icon.
+     * @default 'left'
      */
     @Property('left')
     public align: string;
 
     /**
      * Specifies the HTML element/element ID as a string that can be added as a Toolbar command.
+     * @default ''
      */
     @Property('')
     public template: string | object | Function;
 
     /**
      * Specify the type or category of the Toolbar item.
+     * @default 'Button'
      */
     @Property('Button')
     public type: string;
@@ -232,12 +245,14 @@ export class AjaxRequestSettings extends ChildProperty<AjaxRequestSettings> {
 
     /**
      * set the ajax Header values in the PdfViewer.
+     * @default []
      */
     @Property()
     public ajaxHeaders: IAjaxHeaders[];
 
     /**
      * set the ajax credentials for the pdfviewer.
+     * @default false
      */
     @Property(false)
     public withCredentials: boolean;
@@ -277,12 +292,14 @@ export interface IAjaxHeaders {
 export class CustomStamp extends ChildProperty<CustomStamp> {
     /**
      * Defines the custom stamp name to be added in stamp menu of the PDF Viewer toolbar.
+     * @default ''
      */
     @Property('')
     public customStampName: string;
 
     /**
      * Defines the custom stamp images source to be added in stamp menu of the PDF Viewer toolbar.
+     * @default ''
      */
     @Property('')
     public customStampImageSource: string;
@@ -330,12 +347,14 @@ export class CustomStamp extends ChildProperty<CustomStamp> {
 export class AnnotationToolbarSettings extends ChildProperty<AnnotationToolbarSettings> {
     /**
      * Enable or disables the tooltip of the toolbar.
+     * @default true
      */
     @Property(true)
     public showTooltip: boolean;
 
     /**
      * shows only the defined options in the PdfViewer.
+     * @default []
      */
     @Property()
     public annotationToolbarItem: AnnotationToolbarItem[];
@@ -370,12 +389,14 @@ export class AnnotationToolbarSettings extends ChildProperty<AnnotationToolbarSe
 export class FormDesignerToolbarSettings extends ChildProperty<FormDesignerToolbarSettings> {
     /**
      * Enable or disables the tooltip of the toolbar.
+     * @default true
      */
     @Property(true)
     public showTooltip: boolean;
 
     /**
      * shows only the defined options in the PdfViewer.
+     * @default []
      */
     @Property()
     public formDesignerToolbarItem: FormDesignerToolbarItem[];
@@ -410,12 +431,14 @@ export class FormDesignerToolbarSettings extends ChildProperty<FormDesignerToolb
 export class RedactionToolbarSettings extends ChildProperty<RedactionToolbarSettings> {
     /**
      * Enable or disables the tooltip of the toolbar.
+     * @default true
      */
     @Property(true)
     public showTooltip: boolean;
 
     /**
      * Gets or sets the toolbar items available in the redaction toolbar of the PDF Viewer.
+     * @default []
      */
     @Property()
     public redactionToolbarItem: RedactionToolbarItem[];
@@ -464,54 +487,63 @@ export class SignatureFieldSettings extends ChildProperty<SignatureFieldSettings
 
     /**
      * Get or set the form field bounds.
+     * @default { x: 0, y: 0, width: 0, height: 0 }
      */
     @Property({ x: 0, y: 0, width: 0, height: 0 })
     public bounds: IFormFieldBound;
 
     /**
      * Get or set the name of the form field element.
+     * @default ''
      */
     @Property('')
     public name: string;
 
     /**
      * Specifies whether the signature field is in read-only or read-write mode. FALSE by default.
+     * @default false
      */
     @Property(false)
     public isReadOnly: boolean;
 
     /**
      * Gets or set the visibility of the form field.
+     * @default 'visible'
      */
     @Property('visible')
     public visibility: Visibility;
 
     /**
      * If it is set as true, consider as mandatory field in the PDF document. By default it is false.
+     * @default false
      */
     @Property(false)
     public isRequired: boolean;
 
     /**
      * Get or set the boolean value to print the signature field. TRUE by default.
+     * @default false
      */
     @Property(false)
     public isPrint: boolean;
 
     /**
      * Get or set the text to be displayed as tooltip. By default it is empty.
+     * @default ''
      */
     @Property('')
     public tooltip: string;
 
     /**
      * Get or set the thickness of the Signature field. Default value is 1. To hide the borders, set the value to 0 (zero).
+     * @default 1
      */
     @Property(1)
     public thickness: number;
 
     /**
      * specifies the page number of the form field.
+     * @default 0
      */
     @Property(0)
     public pageNumber: number;
@@ -530,6 +562,7 @@ export class SignatureFieldSettings extends ChildProperty<SignatureFieldSettings
 
     /**
      * specifies the custom data of the form fields.
+     * @default null
      */
     @Property(null)
     public customData: object;
@@ -585,60 +618,70 @@ export class InitialFieldSettings extends ChildProperty<InitialFieldSettings> {
 
     /**
      * Get or set the form field bounds.
+     * @default { x: 0, y: 0, width: 0, height: 0 }
      */
     @Property({ x: 0, y: 0, width: 0, height: 0 })
     public bounds: IFormFieldBound;
 
     /**
      * Get or set the name of the form field element.
+     * @default ''
      */
     @Property('')
     public name: string;
 
     /**
      * Specifies whether the initial field is in read-only or read-write mode. FALSE by default.
+     * @default false
      */
     @Property(false)
     public isReadOnly: boolean;
 
     /**
      * Gets or set the visibility of the form field.
+     * @default 'visible'
      */
     @Property('visible')
     public visibility: Visibility;
 
     /**
      * If it is set as true, consider as mandatory field in the PDF document. By default it is false.
+     * @default false
      */
     @Property(false)
     public isRequired: boolean;
 
     /**
      * Get or set the boolean value to print the initial field. TRUE by default.
+     * @default false
      */
     @Property(false)
     public isPrint: boolean;
 
     /**
      * Get or set the text to be displayed as tooltip. By default it is empty.
+     * @default ''
      */
     @Property('')
     public tooltip: string;
 
     /**
      * Get or set the thickness of the Initial field. Default value is 1. To hide the borders, set the value to 0 (zero).
+     * @default 1
      */
     @Property(1)
     public thickness: number;
 
     /**
      * specifies the page number of the form field.
+     * @default 0
      */
     @Property(0)
     public pageNumber: number;
 
     /**
      * Gets or sets the initial field type of the signature field.
+     * @default false
      */
     @Property(false)
     public isInitialField: boolean;
@@ -657,6 +700,7 @@ export class InitialFieldSettings extends ChildProperty<InitialFieldSettings> {
 
     /**
      * specifies the custom data of the form fields.
+     * @default null
      */
     @Property(null)
     public customData: object;
@@ -696,12 +740,14 @@ export class SignatureIndicatorSettings extends ChildProperty<SignatureIndicator
 
     /**
      * Specifies the opacity of the signature indicator.
+     * @default 1
      */
     @Property(1)
     public opacity: number;
 
     /**
      * Specifies the color of the signature indicator.
+     * @default 'orange'
      */
     @Property('orange')
     public backgroundColor: string;
@@ -709,6 +755,7 @@ export class SignatureIndicatorSettings extends ChildProperty<SignatureIndicator
     /**
      * Specifies the width of the signature indicator. Maximum width is half the width of the signature field.
      * Minimum width is the default value.
+     * @default 19
      */
     @Property(19)
     public width: number;
@@ -716,24 +763,28 @@ export class SignatureIndicatorSettings extends ChildProperty<SignatureIndicator
     /**
      * Specifies the height of the signature indicator. Maximum height is half the height of the signature field.
      * Minimum height is the default value.
+     * @default 10
      */
     @Property(10)
     public height: number;
 
     /**
      * Specifies the signature Indicator's font size. The maximum size of the font is half the height of the signature field.
+     * @default 10
      */
     @Property(10)
     public fontSize: number;
 
     /**
      * Specifies the text of the signature Indicator.
+     * @default null
      */
     @Property(null)
     public text: string;
 
     /**
      * Specifies the color of the text of signature indicator.
+     * @default 'black'
      */
     @Property('black')
     public color: string;
@@ -761,12 +812,14 @@ export class SignatureIndicatorSettings extends ChildProperty<SignatureIndicator
 export class SignatureDialogSettings extends ChildProperty<SignatureDialogSettings> {
     /**
      * Get or set the required signature options will be enabled in the signature dialog.
+     * @default DisplayMode.Draw | DisplayMode.Text | DisplayMode.Upload
      */
     @Property(DisplayMode.Draw | DisplayMode.Text | DisplayMode.Upload)
     public displayMode: DisplayMode;
 
     /**
      * Get or set a boolean value to show or hide the save signature check box option in the signature dialog. FALSE by default.
+     * @default false
      */
     @Property(false)
     public hideSaveSignature: boolean;
@@ -802,78 +855,91 @@ export class SignatureDialogSettings extends ChildProperty<SignatureDialogSettin
 export class ServerActionSettings extends ChildProperty<ServerActionSettings> {
     /**
      * specifies the load action of PdfViewer.
+     * @default 'Load'
      */
     @Property('Load')
     public load: string;
 
     /**
      * specifies the unload action of PdfViewer.
+     * @default 'Unload'
      */
     @Property('Unload')
     public unload: string;
 
     /**
      * specifies the render action of PdfViewer.
+     * @default 'RenderPdfPages'
      */
     @Property('RenderPdfPages')
     public renderPages: string;
 
     /**
      * specifies the print action of PdfViewer.
+     * @default 'Print'
      */
     @Property('Print')
     public print: string;
 
     /**
      * specifies the download action of PdfViewer.
+     * @default 'Download'
      */
     @Property('Download')
     public download: string;
 
     /**
      * specifies the render thumbnail action of PdfViewer.
+     * @default 'RenderThumbnailImages'
      */
     @Property('RenderThumbnailImages')
     public renderThumbnail: string;
 
     /**
      * specifies the annotation comments action of PdfViewer.
+     * @default 'RenderAnnotationComments'
      */
     @Property('RenderAnnotationComments')
     public renderComments: string;
 
     /**
      * specifies the imports annotations action of PdfViewer.
+     * @default 'ImportAnnotations'
      */
     @Property('ImportAnnotations')
     public importAnnotations: string;
 
     /**
      * specifies the export annotations action of PdfViewer.
+     * @default 'ExportAnnotations'
      */
     @Property('ExportAnnotations')
     public exportAnnotations: string;
 
     /**
      * specifies the imports form fields action of PdfViewer.
+     * @default 'ImportFormFields'
      */
     @Property('ImportFormFields')
     public importFormFields: string;
 
     /**
      * specifies the export form fields action of PdfViewer.
+     * @default 'ExportFormFields'
      */
     @Property('ExportFormFields')
     public exportFormFields: string;
 
     /**
      * specifies the render pdf texts action of PdfViewer.
+     * @default 'RenderPdfTexts'
      */
     @Property('RenderPdfTexts')
     public renderTexts: string;
 
     /**
      * Specifies the password validation action of PDF Viewer.
+     * @default 'ValidatePassword'
      */
     @Property('ValidatePassword')
     public validatePassword: string;
@@ -921,6 +987,7 @@ export class StrikethroughSettings extends ChildProperty<StrikethroughSettings> 
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     @Property(1)
     public pageNumber: number;
@@ -934,36 +1001,42 @@ export class StrikethroughSettings extends ChildProperty<StrikethroughSettings> 
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     @Property(1)
     public opacity: number;
 
     /**
      * specifies the color of the annotation.
+     * @default '#ff0000'
      */
     @Property('#ff0000')
     public color: string;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     @Property('Guest')
     public author: string;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     @Property('')
     public annotationSelectorSettings: AnnotationSelectorSettingsModel;
 
     /**
      * specifies the custom data of the annotation.
+     * @default null
      */
     @Property(null)
     public customData: object;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     @Property(false)
     public isLock: boolean;
@@ -995,12 +1068,14 @@ export class StrikethroughSettings extends ChildProperty<StrikethroughSettings> 
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     @Property(true)
     public isPrint: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     @Property('')
     public subject: string;
@@ -1047,6 +1122,7 @@ export class SquigglySettings extends ChildProperty<SquigglySettings> {
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     @Property(1)
     public pageNumber: number;
@@ -1060,36 +1136,42 @@ export class SquigglySettings extends ChildProperty<SquigglySettings> {
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     @Property(1)
     public opacity: number;
 
     /**
      * specifies the color of the annotation.
+     * @default '#ff0000'
      */
     @Property('#ff0000')
     public color: string;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     @Property('Guest')
     public author: string;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     @Property('')
     public annotationSelectorSettings: AnnotationSelectorSettingsModel;
 
     /**
      * specifies the custom data of the annotation.
+     * @default null
      */
     @Property(null)
     public customData: object;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     @Property(false)
     public isLock: boolean;
@@ -1121,12 +1203,14 @@ export class SquigglySettings extends ChildProperty<SquigglySettings> {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     @Property(true)
     public isPrint: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     @Property('')
     public subject: string;
@@ -1173,6 +1257,7 @@ export class UnderlineSettings extends ChildProperty<UnderlineSettings> {
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     @Property(1)
     public pageNumber: number;
@@ -1186,36 +1271,42 @@ export class UnderlineSettings extends ChildProperty<UnderlineSettings> {
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     @Property(1)
     public opacity: number;
 
     /**
      * specifies the color of the annotation.
+     * @default '#00ff00'
      */
     @Property('#00ff00')
     public color: string;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     @Property('Guest')
     public author: string;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     @Property('')
     public annotationSelectorSettings: AnnotationSelectorSettingsModel;
 
     /**
      * specifies the custom data of the annotation.
+     * @default null
      */
     @Property(null)
     public customData: object;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     @Property(false)
     public isLock: boolean;
@@ -1247,12 +1338,14 @@ export class UnderlineSettings extends ChildProperty<UnderlineSettings> {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     @Property(true)
     public isPrint: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     @Property('')
     public subject: string;
@@ -1299,6 +1392,7 @@ export class HighlightSettings extends ChildProperty<HighlightSettings> {
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     @Property(1)
     public pageNumber: number;
@@ -1312,36 +1406,42 @@ export class HighlightSettings extends ChildProperty<HighlightSettings> {
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     @Property(1)
     public opacity: number;
 
     /**
      * specifies the color of the annotation.
+     * @default '#FFDF56'
      */
     @Property('#FFDF56')
     public color: string;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     @Property('Guest')
     public author: string;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     @Property('')
     public annotationSelectorSettings: AnnotationSelectorSettingsModel;
 
     /**
      * specifies the custom data of the annotation.
+     * @default null
      */
     @Property(null)
     public customData: object;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     @Property(false)
     public isLock: boolean;
@@ -1373,12 +1473,14 @@ export class HighlightSettings extends ChildProperty<HighlightSettings> {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     @Property(true)
     public isPrint: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     @Property('')
     public subject: string;
@@ -1432,12 +1534,14 @@ export class HighlightSettings extends ChildProperty<HighlightSettings> {
 export class LineSettings extends ChildProperty<LineSettings> {
     /**
      * Get or set offset of the annotation.
+     * @default { x: 0, y: 0 }
      */
     @Property({ x: 0, y: 0})
     public offset: IPoint;
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     @Property(1)
     public pageNumber: number;
@@ -1451,90 +1555,105 @@ export class LineSettings extends ChildProperty<LineSettings> {
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     @Property(1)
     public opacity: number;
 
     /**
      * specifies the fill color of the annotation.
+     * @default '#ffffff00'
      */
     @Property('#ffffff00')
     public fillColor: string;
 
     /**
      * specifies the stroke color of the annotation.
+     * @default '#ff0000'
      */
     @Property('#ff0000')
     public strokeColor: string;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     @Property('Guest')
     public author: string;
 
     /**
      * specified the thickness of the annotation.
+     * @default 1
      */
-    @Property('1')
+    @Property(1)
     public thickness: number;
 
     /**
      * specifies the line head start style of the annotation.
+     * @default 'None'
      */
     @Property('None')
     public lineHeadStartStyle: LineHeadStyle;
 
     /**
      * specifies the line head end style of the annotation.
+     * @default 'None'
      */
     @Property('None')
     public lineHeadEndStyle: LineHeadStyle;
 
     /**
      * specifies the border dash array of the annotation.
+     * @default 0
      */
     @Property(0)
     public borderDashArray: number;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     @Property('')
     public annotationSelectorSettings: AnnotationSelectorSettingsModel;
 
     /**
      * specifies the minHeight of the annotation.
+     * @default 0
      */
     @Property(0)
     public minHeight: number;
 
     /**
      * specifies the minWidth of the annotation.
+     * @default 0
      */
     @Property(0)
     public minWidth: number;
 
     /**
      * specifies the maxHeight of the annotation.
+     * @default 0
      */
     @Property(0)
     public maxHeight: number;
 
     /**
      * specifies the maxWidth of the annotation.
+     * @default 0
      */
     @Property(0)
     public maxWidth: number;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     @Property(false)
     public isLock: boolean;
 
     /**
      * specifies the custom data of the annotation.
+     * @default null
      */
     @Property(null)
     public customData: object;
@@ -1550,12 +1669,14 @@ export class LineSettings extends ChildProperty<LineSettings> {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     @Property(true)
     public isPrint: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     @Property('')
     public subject: string;
@@ -1584,6 +1705,7 @@ export class AnnotationDrawingOptions extends ChildProperty<AnnotationDrawingOpt
      * When set to `true`, lines and arrows are restricted to fixed angles defined by the `restrictLineAngleTo` property.
      * On desktop platforms, holding the **Shift** key while drawing also activates angle constraints,
      * allowing precise control over line orientation.
+     * @default false
      */
     @Property(false)
     public enableLineAngleConstraints: boolean;
@@ -1599,6 +1721,7 @@ export class AnnotationDrawingOptions extends ChildProperty<AnnotationDrawingOpt
      *     - `restrictLineAngleTo: 100` → Snapped angles: 0°, 100°, 200°, 300°, 360°
      * - Angular constraints apply only to lines and arrows when adjusted using the selector.
      * - The original direction of the line is used as the reference during selector-based modifications.
+     * @default 45
      */
     @Property(45)
     public restrictLineAngleTo: number;
@@ -1653,12 +1776,14 @@ export class AnnotationDrawingOptions extends ChildProperty<AnnotationDrawingOpt
 export class ArrowSettings extends ChildProperty<ArrowSettings> {
     /**
      * Get or set offset of the annotation.
+     * @default { x: 0, y: 0 }
      */
     @Property({ x: 0, y: 0})
     public offset: IPoint;
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     @Property(1)
     public pageNumber: number;
@@ -1672,90 +1797,105 @@ export class ArrowSettings extends ChildProperty<ArrowSettings> {
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     @Property(1)
     public opacity: number;
 
     /**
      * specifies the fill color of the annotation.
+     * @default '#ffffff00'
      */
     @Property('#ffffff00')
     public fillColor: string;
 
     /**
      * specifies the stroke color of the annotation.
+     * @default '#ff0000'
      */
     @Property('#ff0000')
     public strokeColor: string;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     @Property('Guest')
     public author: string;
 
     /**
      * specified the thickness of the annotation.
+     * @default 1
      */
-    @Property('1')
+    @Property(1)
     public thickness: number;
 
     /**
      * specifies the line head start style of the annotation.
+     * @default 'None'
      */
     @Property('None')
     public lineHeadStartStyle: LineHeadStyle;
 
     /**
      * specifies the line head end style of the annotation.
+     * @default 'None'
      */
     @Property('None')
     public lineHeadEndStyle: LineHeadStyle;
 
     /**
      * specifies the border dash array of the annotation.
+     * @default 0
      */
     @Property(0)
     public borderDashArray: number;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     @Property('')
     public annotationSelectorSettings: AnnotationSelectorSettingsModel;
 
     /**
      * specifies the minHeight of the annotation.
+     * @default 0
      */
     @Property(0)
     public minHeight: number;
 
     /**
      * specifies the minWidth of the annotation.
+     * @default 0
      */
     @Property(0)
     public minWidth: number;
 
     /**
      * specifies the maxHeight of the annotation.
+     * @default 0
      */
     @Property(0)
     public maxHeight: number;
 
     /**
      * specifies the maxWidth of the annotation.
+     * @default 0
      */
     @Property(0)
     public maxWidth: number;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     @Property(false)
     public isLock: boolean;
 
     /**
      * specifies the custom data of the annotation.
+     * @default null
      */
     @Property(null)
     public customData: object;
@@ -1771,12 +1911,14 @@ export class ArrowSettings extends ChildProperty<ArrowSettings> {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     @Property(true)
     public isPrint: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     @Property('')
     public subject: string;
@@ -1829,96 +1971,112 @@ export class ArrowSettings extends ChildProperty<ArrowSettings> {
 export class RectangleSettings extends ChildProperty<RectangleSettings> {
     /**
      * Get or set offset of the annotation.
+     * @default { x: 0, y: 0 }
      */
     @Property({ x: 0, y: 0})
     public offset: IPoint;
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     @Property(1)
     public pageNumber: number;
 
     /**
      * specifies the width of the annotation.
+     * @default 100
      */
     @Property(100)
     public width: number;
 
     /**
      * specifies the height of the annotation.
+     * @default 50
      */
     @Property(50)
     public height: number;
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     @Property(1)
     public opacity: number;
 
     /**
      * specifies the fill color of the annotation.
+     * @default '#ffffff00'
      */
     @Property('#ffffff00')
     public fillColor: string;
 
     /**
      * specifies the stroke color of the annotation.
+     * @default '#ff0000'
      */
     @Property('#ff0000')
     public strokeColor: string;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     @Property('Guest')
     public author: string;
 
     /**
      * specified the thickness of the annotation.
+     * @default 1
      */
-    @Property('1')
+    @Property(1)
     public thickness: number;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     @Property('')
     public annotationSelectorSettings: AnnotationSelectorSettingsModel;
 
     /**
      * specifies the minHeight of the annotation.
+     * @default 0
      */
     @Property(0)
     public minHeight: number;
 
     /**
      * specifies the minWidth of the annotation.
+     * @default 0
      */
     @Property(0)
     public minWidth: number;
 
     /**
      * specifies the maxHeight of the annotation.
+     * @default 0
      */
     @Property(0)
     public maxHeight: number;
 
     /**
      * specifies the maxWidth of the annotation.
+     * @default 0
      */
     @Property(0)
     public maxWidth: number;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     @Property(false)
     public isLock: boolean;
 
     /**
      * specifies the custom data of the annotation.
+     * @default null
      */
     @Property(null)
     public customData: object;
@@ -1934,12 +2092,14 @@ export class RectangleSettings extends ChildProperty<RectangleSettings> {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     @Property(true)
     public isPrint: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     @Property('')
     public subject: string;
@@ -1952,72 +2112,84 @@ export class RectangleSettings extends ChildProperty<RectangleSettings> {
 export class PdfAnnotationSettings extends ChildProperty<PdfAnnotationSettings> {
     /**
      * Get or set the bounds of the annotation.
+     * @default { x: 0, y: 0, width: 0, height: 0 }
      */
     @Property({ x: 0, y: 0, width: 0, height: 0 })
     public bound: Rectangle;
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     @Property(1)
     public pageNumber: number;
 
     /**
      * Gets or sets the fill color of the redacted area.
+     * @default '#ffffff00'
      */
     @Property('#ffffff00')
     public fillColor: string;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     @Property('Guest')
     public author: string;
 
     /**
      * specified the thickness of the annotation.
+     * @default 1
      */
-    @Property('1')
+    @Property(1)
     public thickness: number;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     @Property('')
     public annotationSelectorSettings: AnnotationSelectorSettingsModel;
 
     /**
      * specifies the minHeight of the annotation.
+     * @default 0
      */
     @Property(0)
     public minHeight: number;
 
     /**
      * specifies the minWidth of the annotation.
+     * @default 0
      */
     @Property(0)
     public minWidth: number;
 
     /**
      * specifies the minHeight of the annotation.
+     * @default 0
      */
     @Property(0)
     public maxHeight: number;
 
     /**
      * specifies the maxWidth of the annotation.
+     * @default 0
      */
     @Property(0)
     public maxWidth: number;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     @Property(false)
     public isLock: boolean;
 
     /**
      * specifies the custom data of the annotation.
+     * @default null
      */
     @Property(null)
     public customData: object;
@@ -2033,12 +2205,14 @@ export class PdfAnnotationSettings extends ChildProperty<PdfAnnotationSettings> 
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     @Property(true)
     public isPrint: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     @Property('')
     public subject: string;
@@ -2095,6 +2269,7 @@ export class PdfAnnotationSettings extends ChildProperty<PdfAnnotationSettings> 
 export class RedactionSettings extends PdfAnnotationSettings {
     /**
      * If true, disables the default redaction confirmation popup.
+     * @default false
      */
     @Property(false)
     public disableConfirmationPopup: boolean;
@@ -2102,6 +2277,7 @@ export class RedactionSettings extends PdfAnnotationSettings {
     /**
      * Gets or sets the opacity of the redaction marker.
      * This property controls the transparency of the redaction marker's fill and border.
+     * @default 1
      */
     @Property(1)
     public markerOpacity: number;
@@ -2109,6 +2285,7 @@ export class RedactionSettings extends PdfAnnotationSettings {
     /**
      * Gets or sets the border color of the redaction marker.
      * This property defines the color of the border surrounding the redaction area.
+     * @default 'rgba(255, 0, 0, 1)'
      */
     @Property('rgba(255, 0, 0, 1)')
     public markerBorderColor : string;
@@ -2116,6 +2293,7 @@ export class RedactionSettings extends PdfAnnotationSettings {
     /**
      * Gets or sets the fill color of the redaction marker.
      * This property defines the color used to fill the redaction area.
+     * @default 'rgba(255, 255, 255, 1)'
      */
     @Property('rgba(255, 255, 255, 1)')
     public markerFillColor: string;
@@ -2123,12 +2301,14 @@ export class RedactionSettings extends PdfAnnotationSettings {
     /**
      * Gets or sets the text to be displayed as an overlay in the redaction annotation.
      * Specifies the string that will appear over the redacted area.
+     * @default ''
      */
     @Property('')
     public overlayText : string;
 
     /**
      * Gets or sets a value indicating whether the overlay text should repeat to fill the redaction area.
+     * @default false
      */
     @Property(false)
     public isRepeat: boolean;
@@ -2136,6 +2316,7 @@ export class RedactionSettings extends PdfAnnotationSettings {
     /**
      * Gets or sets the font color of the overlay text in the redaction annotation.
      * Specifies the color used for the overlay text displayed within the redacted area.
+     * @default '#000'
      */
     @Property('#000')
     public fontColor: string;
@@ -2143,6 +2324,7 @@ export class RedactionSettings extends PdfAnnotationSettings {
     /**
      * Gets or sets the font size of the overlay text in the redaction annotation.
      * This property determines the size of the overlay text displayed within the redacted area.
+     * @default 16
      */
     @Property(16)
     public fontSize: number;
@@ -2150,6 +2332,7 @@ export class RedactionSettings extends PdfAnnotationSettings {
     /**
      * Gets or sets the font family used for the overlay text in the redaction annotation.
      * Defines the font style of the overlay text that appears on the redacted area.
+     * @default 'Helvetica'
      */
     @Property('Helvetica')
     public fontFamily: string;
@@ -2157,6 +2340,7 @@ export class RedactionSettings extends PdfAnnotationSettings {
     /**
      * Gets or sets the alignment of the overlay text displayed in the redaction annotation.
      * This property defines how the overlay text is aligned within the bounds of the redaction area.
+     * @default 'Center'
      */
     @Property('Center')
     public textAlignment: TextAlignment;
@@ -2209,96 +2393,112 @@ export class RedactionSettings extends PdfAnnotationSettings {
 export class CircleSettings extends ChildProperty<CircleSettings> {
     /**
      * Get or set offset of the annotation.
+     * @default { x: 0, y: 0}
      */
     @Property({ x: 0, y: 0})
     public offset: IPoint;
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     @Property(1)
     public pageNumber: number;
 
     /**
      * specifies the width of the annotation.
+     * @default 100
      */
     @Property(100)
     public width: number;
 
     /**
      * specifies the height of the annotation.
+     * @default 100
      */
     @Property(100)
     public height: number;
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     @Property(1)
     public opacity: number;
 
     /**
      * specifies the fill color of the annotation.
+     * @default '#ffffff00'
      */
     @Property('#ffffff00')
     public fillColor: string;
 
     /**
      * specifies the stroke color of the annotation.
+     * @default '#ff0000'
      */
     @Property('#ff0000')
     public strokeColor: string;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     @Property('Guest')
     public author: string;
 
     /**
      * specified the thickness of the annotation.
+     * @default 1
      */
-    @Property('1')
+    @Property(1)
     public thickness: number;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     @Property('')
     public annotationSelectorSettings: AnnotationSelectorSettingsModel;
 
     /**
      * specifies the minHeight of the annotation.
+     * @default 0
      */
     @Property(0)
     public minHeight: number;
 
     /**
      * specifies the minWidth of the annotation.
+     * @default 0
      */
     @Property(0)
     public minWidth: number;
 
     /**
      * specifies the maxHeight of the annotation.
+     * @default 0
      */
     @Property(0)
     public maxHeight: number;
 
     /**
      * specifies the maxWidth of the annotation.
+     * @default 0
      */
     @Property(0)
     public maxWidth: number;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     @Property(false)
     public isLock: boolean;
 
     /**
      * specifies the custom data of the annotation.
+     * @default null
      */
     @Property(null)
     public customData: object;
@@ -2314,12 +2514,14 @@ export class CircleSettings extends ChildProperty<CircleSettings> {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     @Property(true)
     public isPrint: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     @Property('')
     public subject: string;
@@ -2350,28 +2552,33 @@ export class CircleSettings extends ChildProperty<CircleSettings> {
 export class ShapeLabelSettings extends ChildProperty<ShapeLabelSettings> {
     /**
      * specifies the opacity of the label.
+     * @default 1
      */
     @Property(1)
     public opacity: number;
 
     /**
      * specifies the fill color of the label.
+     * @default '#ffffff00'
      */
     @Property('#ffffff00')
     public fillColor: string;
 
     /**
      * specifies the font color of the label.
+     * @default '#000'
      */
     @Property('#000')
     public fontColor: string;
     /**
      * specifies the font size of the label.
+     * @default 16
      */
     @Property(16)
     public fontSize: number;
     /**
      * specifies the font family of the label.
+     * @default 'Helvetica'
      */
     @Property('Helvetica')
     public fontFamily: string;
@@ -2380,11 +2587,13 @@ export class ShapeLabelSettings extends ChildProperty<ShapeLabelSettings> {
      *
      * @remarks
      * The labelContent is replaced with the calibrate measurement value for the calibrate annotation.
+     * @default 'Label'
      */
     @Property('Label')
     public labelContent: string;
     /**
      * specifies the default content of the label.
+     * @default ''
      */
     @Property('')
     public notes: string;
@@ -2436,12 +2645,14 @@ export class ShapeLabelSettings extends ChildProperty<ShapeLabelSettings> {
 export class PolygonSettings extends ChildProperty<PolygonSettings> {
     /**
      * Get or set offset of the annotation.
+     * @default { x: 0, y: 0}
      */
     @Property({ x: 0, y: 0})
     public offset: IPoint;
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     @Property(1)
     public pageNumber: number;
@@ -2455,72 +2666,84 @@ export class PolygonSettings extends ChildProperty<PolygonSettings> {
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     @Property(1)
     public opacity: number;
 
     /**
      * specifies the fill color of the annotation.
+     * @default '#ffffff00'
      */
     @Property('#ffffff00')
     public fillColor: string;
 
     /**
      * specifies the stroke color of the annotation.
+     * @default '#ff0000'
      */
     @Property('#ff0000')
     public strokeColor: string;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     @Property('Guest')
     public author: string;
 
     /**
      * specified the thickness of the annotation.
+     * @default 1
      */
-    @Property('1')
+    @Property(1)
     public thickness: number;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     @Property('')
     public annotationSelectorSettings: AnnotationSelectorSettingsModel;
 
     /**
      * specifies the minHeight of the annotation.
+     * @default 0
      */
     @Property(0)
     public minHeight: number;
 
     /**
      * specifies the minWidth of the annotation.
+     * @default 0
      */
     @Property(0)
     public minWidth: number;
 
     /**
      * specifies the maxHeight of the annotation.
+     * @default 0
      */
     @Property(0)
     public maxHeight: number;
 
     /**
      * specifies the maxWidth of the annotation.
+     * @default 0
      */
     @Property(0)
     public maxWidth: number;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     @Property(false)
     public isLock: boolean;
 
     /**
      * specifies the custom data of the annotation.
+     * @default null
      */
     @Property(null)
     public customData: object;
@@ -2536,12 +2759,14 @@ export class PolygonSettings extends ChildProperty<PolygonSettings> {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     @Property(true)
     public isPrint: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     @Property('')
     public subject: string;
@@ -2620,12 +2845,14 @@ export class PolygonSettings extends ChildProperty<PolygonSettings> {
 export class StampSettings extends ChildProperty<StampSettings> {
     /**
      * Get or set offset of the annotation.
+     * @default { x: 0, y: 0}
      */
     @Property({ x: 0, y: 0})
     public offset: IPoint;
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     @Property(1)
     public pageNumber: number;
@@ -2638,6 +2865,7 @@ export class StampSettings extends ChildProperty<StampSettings> {
      * - If only width is provided, height is computed from the aspect ratio.
      * - If both width and height are provided, the smaller limiting dimension
      *   is used so the annotation fits entirely within the container.
+     * @default 150
      */
     @Property(150)
     public width: number;
@@ -2650,78 +2878,91 @@ export class StampSettings extends ChildProperty<StampSettings> {
      * - If only height is provided, height is computed from the aspect ratio.
      * - If both width and height are provided, the smaller limiting dimension
      *   is used so the annotation fits entirely within the container.
+     * @default 50
      */
     @Property(50)
     public height: number;
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     @Property(1)
     public opacity: number;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     @Property('Guest')
     public author: string;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     @Property('')
     public annotationSelectorSettings: AnnotationSelectorSettingsModel;
 
     /**
      * specifies the minHeight of the annotation.
+     * @default 0
      */
     @Property(0)
     public minHeight: number;
 
     /**
      * specifies the minWidth of the annotation.
+     * @default 0
      */
     @Property(0)
     public minWidth: number;
 
     /**
      * specifies the maxHeight of the annotation.
+     * @default 0
      */
     @Property(0)
     public maxHeight: number;
 
     /**
      * specifies the maxWidth of the annotation.
+     * @default 0
      */
     @Property(0)
     public maxWidth: number;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     @Property(false)
     public isLock: boolean;
 
     /**
      * specifies the custom data of the annotation.
+     * @default null
      */
     @Property(null)
     public customData: object;
 
     /**
      * Provide option to define the required dynamic stamp items to be displayed in annotation toolbar menu.
+     * @default []
      */
     @Property([])
     public dynamicStamps: DynamicStampItem[];
 
     /**
      * Provide option to define the required sign stamp items to be displayed in annotation toolbar menu.
+     * @default []
      */
     @Property([])
     public signStamps: SignStampItem[];
 
     /**
      * Provide option to define the required standard business stamp items to be displayed in annotation toolbar menu.
+     * @default []
      */
     @Property([])
     public standardBusinessStamps: StandardBusinessStampItem[];
@@ -2737,12 +2978,14 @@ export class StampSettings extends ChildProperty<StampSettings> {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     @Property(true)
     public isPrint: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     @Property('')
     public subject: string;
@@ -2786,94 +3029,110 @@ export class StampSettings extends ChildProperty<StampSettings> {
 export class CustomStampSettings extends ChildProperty<CustomStampSettings> {
     /**
      * Get or set offset of the annotation.
+     * @default { x: 0, y: 0}
      */
     @Property({ x: 0, y: 0})
     public offset: IPoint;
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     @Property(1)
     public pageNumber: number;
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     @Property(1)
     public opacity: number;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     @Property('Guest')
     public author: string;
 
     /**
      * specifies the width of the annotation.
+     * @default 0
      */
     @Property(0)
     public width: number;
 
     /**
      * specifies the height of the annotation.
+     * @default 0
      */
     @Property(0)
     public height: number;
 
     /**
      * specifies the left position of the annotation.
+     * @default 0
      */
     @Property(0)
     public left: number;
     /**
      * specifies the top position of the annotation.
+     * @default 0
      */
     @Property(0)
     public top: number;
     /**
      * Specifies to maintain the newly added custom stamp element in the menu items.
+     * @default false
      */
     @Property(false)
     public isAddToMenu: boolean;
 
     /**
      * specifies the minHeight of the annotation.
+     * @default 0
      */
     @Property(0)
     public minHeight: number;
 
     /**
      * specifies the minWidth of the annotation.
+     * @default 0
      */
     @Property(0)
     public minWidth: number;
 
     /**
      * specifies the maxHeight of the annotation.
+     * @default 0
      */
     @Property(0)
     public maxHeight: number;
 
     /**
      * specifies the maxWidth of the annotation.
+     * @default 0
      */
     @Property(0)
     public maxWidth: number;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     @Property(false)
     public isLock: boolean;
 
     /**
      * Define the custom image path and it's name to be displayed in the menu items.
+     * @default ''
      */
     @Property('')
     public customStamps: CustomStampModel[];
 
     /**
      * If it is set as false. then the custom stamp items won't be visible in the annotation toolbar stamp menu items.
+     * @default true
      */
     @Property(true)
     public enableCustomStamp: boolean;
@@ -2889,12 +3148,14 @@ export class CustomStampSettings extends ChildProperty<CustomStampSettings> {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     @Property(true)
     public isPrint: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     @Property('')
     public subject: string;
@@ -2953,12 +3214,14 @@ export class CustomStampSettings extends ChildProperty<CustomStampSettings> {
 export class DistanceSettings extends ChildProperty<DistanceSettings> {
     /**
      * Get or set offset of the annotation.
+     * @default { x: 0, y: 0}
      */
     @Property({ x: 0, y: 0})
     public offset: IPoint;
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     @Property(1)
     public pageNumber: number;
@@ -2972,104 +3235,121 @@ export class DistanceSettings extends ChildProperty<DistanceSettings> {
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     @Property(1)
     public opacity: number;
 
     /**
      * specifies the fill color of the annotation.
+     * @default '#ff0000'
      */
     @Property('#ff0000')
     public fillColor: string;
 
     /**
      * specifies the stroke color of the annotation.
+     * @default '#ff0000'
      */
     @Property('#ff0000')
     public strokeColor: string;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     @Property('Guest')
     public author: string;
 
     /**
      * specified the thickness of the annotation.
+     * @default 1
      */
-    @Property('1')
+    @Property(1)
     public thickness: number;
 
     /**
      * specifies the line head start style of the annotation.
+     * @default 'None'
      */
     @Property('None')
     public lineHeadStartStyle: LineHeadStyle;
 
     /**
      * specifies the line head end style of the annotation.
+     * @default 'None'
      */
     @Property('None')
     public lineHeadEndStyle: LineHeadStyle;
 
     /**
      * specifies the border dash array of the annotation.
+     * @default 0
      */
     @Property(0)
     public borderDashArray: number;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     @Property('')
     public annotationSelectorSettings: AnnotationSelectorSettingsModel;
 
     /**
      * specifies the minHeight of the annotation.
+     * @default 0
      */
     @Property(0)
     public minHeight: number;
 
     /**
      * specifies the minWidth of the annotation.
+     * @default 0
      */
     @Property(0)
     public minWidth: number;
 
     /**
      * specifies the maxHeight of the annotation.
+     * @default 0
      */
     @Property(0)
     public maxHeight: number;
 
     /**
      * specifies the maxWidth of the annotation.
+     * @default 0
      */
     @Property(0)
     public maxWidth: number;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     @Property(false)
     public isLock: boolean;
 
     /**
      * specifies the custom data of the annotation.
+     * @default null
      */
     @Property(null)
     public customData: object;
 
     /**
      * specifies the leader length of the annotation.
+     * @default 40
      */
     @Property(40)
     public leaderLength: number;
 
     /**
      * Defines the cursor type for distance annotation.
+     * @default 'move'
      */
-    @Property(CursorType.move)
+    @Property('move')
     public resizeCursorType: CursorType;
 
     /**
@@ -3083,11 +3363,13 @@ export class DistanceSettings extends ChildProperty<DistanceSettings> {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     @Property(true)
     public isPrint: boolean;
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     @Property('')
     public subject: string;
@@ -3140,12 +3422,14 @@ export class DistanceSettings extends ChildProperty<DistanceSettings> {
 export class PerimeterSettings extends ChildProperty<PerimeterSettings> {
     /**
      * Get or set offset of the annotation.
+     * @default { x: 0, y: 0}
      */
     @Property({ x: 0, y: 0})
     public offset: IPoint;
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     @Property(1)
     public pageNumber: number;
@@ -3159,84 +3443,98 @@ export class PerimeterSettings extends ChildProperty<PerimeterSettings> {
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     @Property(1)
     public opacity: number;
 
     /**
      * specifies the fill color of the annotation.
+     * @default '#ffffff00'
      */
     @Property('#ffffff00')
     public fillColor: string;
 
     /**
      * specifies the stroke color of the annotation.
+     * @default '#ff0000'
      */
     @Property('#ff0000')
     public strokeColor: string;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     @Property('Guest')
     public author: string;
 
     /**
      * specified the thickness of the annotation.
+     * @default 1
      */
-    @Property('1')
+    @Property(1)
     public thickness: number;
 
     /**
      * specifies the line head start style of the annotation.
+     * @default 'None'
      */
     @Property('None')
     public lineHeadStartStyle: LineHeadStyle;
 
     /**
      * specifies the line head end style of the annotation.
+     * @default 'None'
      */
     @Property('None')
     public lineHeadEndStyle: LineHeadStyle;
 
     /**
      * specifies the border dash array of the annotation.
+     * @default 0
      */
     @Property(0)
     public borderDashArray: number;
 
     /**
      * specifies the minHeight of the annotation.
+     * @default 0
      */
     @Property(0)
     public minHeight: number;
 
     /**
      * specifies the minWidth of the annotation.
+     * @default 0
      */
     @Property(0)
     public minWidth: number;
 
     /**
      * specifies the maxHeight of the annotation.
+     * @default 0
      */
     @Property(0)
     public maxHeight: number;
 
     /**
      * specifies the maxWidth of the annotation.
+     * @default 0
      */
     @Property(0)
     public maxWidth: number;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     @Property(false)
     public isLock: boolean;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     @Property('')
     public annotationSelectorSettings: AnnotationSelectorSettingsModel;
@@ -3252,12 +3550,14 @@ export class PerimeterSettings extends ChildProperty<PerimeterSettings> {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     @Property(true)
     public isPrint: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     @Property('')
     public subject: string;
@@ -3308,12 +3608,14 @@ export class PerimeterSettings extends ChildProperty<PerimeterSettings> {
 export class AreaSettings extends ChildProperty<AreaSettings> {
     /**
      * Get or set offset of the annotation.
+     * @default { x: 0, y: 0}
      */
     @Property({ x: 0, y: 0})
     public offset: IPoint;
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     @Property(1)
     public pageNumber: number;
@@ -3327,66 +3629,77 @@ export class AreaSettings extends ChildProperty<AreaSettings> {
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     @Property(1)
     public opacity: number;
 
     /**
      * specifies the fill color of the annotation.
+     * @default '#ffffff00'
      */
     @Property('#ffffff00')
     public fillColor: string;
 
     /**
      * specifies the stroke color of the annotation.
+     * @default '#ff0000'
      */
     @Property('#ff0000')
     public strokeColor: string;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     @Property('Guest')
     public author: string;
 
     /**
      * specified the thickness of the annotation.
+     * @default 1
      */
-    @Property('1')
+    @Property(1)
     public thickness: number;
 
     /**
      * specifies the minHeight of the annotation.
+     * @default 0
      */
     @Property(0)
     public minHeight: number;
 
     /**
      * specifies the minWidth of the annotation.
+     * @default 0
      */
     @Property(0)
     public minWidth: number;
 
     /**
      * specifies the maxHeight of the annotation.
+     * @default 0
      */
     @Property(0)
     public maxHeight: number;
 
     /**
      * specifies the maxWidth of the annotation.
+     * @default 0
      */
     @Property(0)
     public maxWidth: number;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     @Property(false)
     public isLock: boolean;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     @Property('')
     public annotationSelectorSettings: AnnotationSelectorSettingsModel;
@@ -3402,12 +3715,14 @@ export class AreaSettings extends ChildProperty<AreaSettings> {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     @Property(true)
     public isPrint: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     @Property('')
     public subject: string;
@@ -3460,96 +3775,112 @@ export class AreaSettings extends ChildProperty<AreaSettings> {
 export class RadiusSettings extends ChildProperty<RadiusSettings> {
     /**
      * Get or set offset of the annotation.
+     * @default { x: 0, y: 0}
      */
     @Property({ x: 0, y: 0})
     public offset: IPoint;
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     @Property(1)
     public pageNumber: number;
 
     /**
      * specifies the width of the annotation.
+     * @default 100
      */
     @Property(100)
     public width: number;
 
     /**
      * specifies the height of the annotation.
+     * @default 90
      */
     @Property(90)
     public height: number;
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     @Property(1)
     public opacity: number;
 
     /**
      * specifies the fill color of the annotation.
+     * @default '#ffffff00'
      */
     @Property('#ffffff00')
     public fillColor: string;
 
     /**
      * specifies the stroke color of the annotation.
+     * @default '#ff0000'
      */
     @Property('#ff0000')
     public strokeColor: string;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     @Property('Guest')
     public author: string;
 
     /**
      * specified the thickness of the annotation.
+     * @default 1
      */
-    @Property('1')
+    @Property(1)
     public thickness: number;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     @Property('')
     public annotationSelectorSettings: AnnotationSelectorSettingsModel;
 
     /**
      * specifies the minHeight of the annotation.
+     * @default 0
      */
     @Property(0)
     public minHeight: number;
 
     /**
      * specifies the minWidth of the annotation.
+     * @default 0
      */
     @Property(0)
     public minWidth: number;
 
     /**
      * specifies the maxHeight of the annotation.
+     * @default 0
      */
     @Property(0)
     public maxHeight: number;
 
     /**
      * specifies the maxWidth of the annotation.
+     * @default 0
      */
     @Property(0)
     public maxWidth: number;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     @Property(false)
     public isLock: boolean;
 
     /**
      * specifies the custom data of the annotation.
+     * @default null
      */
     @Property(null)
     public customData: object;
@@ -3565,12 +3896,14 @@ export class RadiusSettings extends ChildProperty<RadiusSettings> {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     @Property(true)
     public isPrint: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     @Property('')
     public subject: string;
@@ -3621,12 +3954,14 @@ export class RadiusSettings extends ChildProperty<RadiusSettings> {
 export class VolumeSettings extends ChildProperty<VolumeSettings> {
     /**
      * Get or set offset of the annotation.
+     * @default { x: 0, y: 0}
      */
     @Property({ x: 0, y: 0})
     public offset: IPoint;
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     @Property(1)
     public pageNumber: number;
@@ -3640,66 +3975,77 @@ export class VolumeSettings extends ChildProperty<VolumeSettings> {
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     @Property(1)
     public opacity: number;
 
     /**
      * specifies the fill color of the annotation.
+     * @default '#ffffff00'
      */
     @Property('#ffffff00')
     public fillColor: string;
 
     /**
      * specifies the stroke color of the annotation.
+     * @default '#ff0000'
      */
     @Property('#ff0000')
     public strokeColor: string;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     @Property('Guest')
     public author: string;
 
     /**
      * specified the thickness of the annotation.
+     * @default 1
      */
-    @Property('1')
+    @Property(1)
     public thickness: number;
 
     /**
      * specifies the minHeight of the annotation.
+     * @default 0
      */
     @Property(0)
     public minHeight: number;
 
     /**
      * specifies the minWidth of the annotation.
+     * @default 0
      */
     @Property(0)
     public minWidth: number;
 
     /**
      * specifies the maxHeight of the annotation.
+     * @default 0
      */
     @Property(0)
     public maxHeight: number;
 
     /**
      * specifies the maxWidth of the annotation.
+     * @default 0
      */
     @Property(0)
     public maxWidth: number;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     @Property(false)
     public isLock: boolean;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     @Property('')
     public annotationSelectorSettings: AnnotationSelectorSettingsModel;
@@ -3715,12 +4061,14 @@ export class VolumeSettings extends ChildProperty<VolumeSettings> {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     @Property(true)
     public isPrint: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     @Property('')
     public subject: string;
@@ -3768,66 +4116,77 @@ export class VolumeSettings extends ChildProperty<VolumeSettings> {
 export class InkAnnotationSettings extends ChildProperty<InkAnnotationSettings> {
     /**
      * Get or set offset of the annotation.
+     * @default { x: 0, y: 0}
      */
     @Property({ x: 0, y: 0})
     public offset: IPoint;
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     @Property(1)
     public pageNumber: number;
 
     /**
      * specifies the width of the annotation.
+     * @default 0
      */
     @Property(0)
     public width: number;
 
     /**
      * specifies the height of the annotation.
+     * @default 0
      */
     @Property(0)
     public height: number;
 
     /**
      * Gets or sets the path of the ink annotation.
+     * @default ''
      */
-    @Property(0)
+    @Property('')
     public path: string;
 
     /**
      * Sets the opacity value for ink annotation.By default value is 1. It range varies from 0 to 1.
+     * @default 1
      */
     @Property(1)
     public opacity: number;
 
     /**
      * Sets the stroke color for ink annotation.By default values is #FF0000.
+     * @default '#ff0000'
      */
     @Property('#ff0000')
     public strokeColor: string;
 
     /**
      * Sets the thickness for the ink annotation. By default value is 1. It range varies from 1 to 10.
+     * @default 1
      */
     @Property(1)
     public thickness: number;
 
     /**
      * Define the default option to customize the selector for ink annotation.
+     * @default ''
      */
     @Property('')
     public annotationSelectorSettings: AnnotationSelectorSettingsModel;
 
     /**
      * If it is set as true, can't interact with annotation. Otherwise can interact the annotations. By default it is false.
+     * @default false
      */
     @Property(false)
     public isLock: boolean;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     @Property('Guest')
     public author: string;
@@ -3842,18 +4201,21 @@ export class InkAnnotationSettings extends ChildProperty<InkAnnotationSettings> 
     public allowedInteractions: AllowedInteraction[];
     /**
      * specifies the custom data of the annotation
+     * @default null
      */
     @Property(null)
     public customData: object;
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     @Property(true)
     public isPrint: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     @Property('')
     public subject: string;
@@ -3898,42 +4260,49 @@ export class StickyNotesSettings extends ChildProperty<StickyNotesSettings> {
 
     /**
      * Get or set offset of the annotation.
+     * @default { x: 0, y: 0}
      */
     @Property({ x: 0, y: 0})
     public offset: IPoint;
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     @Property(1)
     public pageNumber: number;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     @Property('Guest')
     public author: string;
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     @Property(1)
     public opacity: number;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     @Property('')
     public annotationSelectorSettings: AnnotationSelectorSettingsModel;
 
     /**
      * specifies the custom data of the annotation.
+     * @default null
      */
     @Property(null)
     public customData: object;
 
     /**
      * specifies the lock action of the annotation.
+     * @default false
      */
     @Property(false)
     public isLock: boolean;
@@ -3949,12 +4318,14 @@ export class StickyNotesSettings extends ChildProperty<StickyNotesSettings> {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     @Property(true)
     public isPrint: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     @Property('')
     public subject: string;
@@ -3982,18 +4353,21 @@ export class StickyNotesSettings extends ChildProperty<StickyNotesSettings> {
 export class MeasurementSettings extends ChildProperty<MeasurementSettings> {
     /**
      * specifies the scale ratio of the annotation.
+     * @default 1
      */
     @Property(1)
     public scaleRatio: number;
 
     /**
      * specifies the unit of the annotation.
+     * @default 'in'
      */
     @Property('in')
     public conversionUnit: CalibrationUnit;
 
     /**
      * specifies the unit of the annotation in UI.
+     * @default 'in'
      */
     @Property('in')
     public displayUnit: CalibrationUnit;
@@ -4003,6 +4377,7 @@ export class MeasurementSettings extends ChildProperty<MeasurementSettings> {
      *
      * @remarks
      * Applicable only for the volume annotation.
+     * @default 96
      */
     @Property(96)
     public depth: number;
@@ -4066,143 +4441,167 @@ export class MeasurementSettings extends ChildProperty<MeasurementSettings> {
 export class FreeTextSettings extends ChildProperty<FreeTextSettings> {
     /**
      * Get or set offset of the annotation.
+     * @default { x: 0, y: 0}
      */
     @Property({ x: 0, y: 0})
     public offset: IPoint;
 
     /**
      * Get or set page number of the annotation.
+     * @default 1
      */
     @Property(1)
     public pageNumber: number;
 
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     @Property(1)
     public opacity: number;
 
     /**
      * specifies the border color of the annotation.
+     * @default '#000000'
      */
     @Property('#000000')
     public borderColor: string;
 
     /**
      * specifies the border with of the annotation.
+     * @default 0
      */
     @Property(0)
     public borderWidth: number;
 
     /**
      * specifies the border style of the annotation.
+     * @default 'solid'
      */
     @Property('solid')
     public borderStyle: string;
 
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     @Property('Guest')
     public author: string;
 
     /**
      * specifies the background fill color of the annotation.
+     * @default '#ffffff00'
      */
     @Property('#ffffff00')
     public fillColor: string;
 
     /**
      * specifies the text box font size of the annotation.
+     * @default 16
      */
     @Property(16)
     public fontSize: number;
     /**
      * specifies the width of the annotation.
+     * @default 151
      */
     @Property(151)
     public width: number;
 
     /**
      * specifies the height of the annotation.
+     * @default 24.6
      */
     @Property(24.6)
     public height: number;
 
     /**
      * specifies the text box font color of the annotation.
+     * @default '#000'
      */
     @Property('#000')
     public fontColor: string;
 
     /**
      * specifies the text box font family of the annotation.
+     * @default 'Helvetica'
      */
     @Property('Helvetica')
     public fontFamily: string;
 
     /**
      * setting the default text for annotation.
+     * @default 'TypeHere'
      */
     @Property('TypeHere')
     public defaultText: string;
 
     /**
      * applying the font styles for the text.
+     * @default 'None'
      */
     @Property('None')
     public fontStyle: FontStyle;
 
     /**
      * Aligning the text in the annotation.
+     * @default 'Left'
      */
     @Property('Left')
     public textAlignment: TextAlignment;
 
     /**
      * specifies the allow text only action of the free text annotation.
+     * @default false
      */
     @Property(false)
     public allowEditTextOnly: boolean;
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     @Property('')
     public annotationSelectorSettings: AnnotationSelectorSettingsModel;
 
     /**
      * specifies the minHeight of the annotation.
+     * @default 0
      */
     @Property(0)
     public minHeight: number;
 
     /**
      * specifies the minWidth of the annotation.
+     * @default 0
      */
     @Property(0)
     public minWidth: number;
 
     /**
      * specifies the maxHeight of the annotation.
+     * @default 0
      */
     @Property(0)
     public maxHeight: number;
 
     /**
      * specifies the maxWidth of the annotation.
+     * @default 0
      */
     @Property(0)
     public maxWidth: number;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     @Property(false)
     public isLock: boolean;
 
     /**
      * specifies the custom data of the annotation.
+     * @default null
      */
     @Property(null)
     public customData: object;
@@ -4218,24 +4617,28 @@ export class FreeTextSettings extends ChildProperty<FreeTextSettings> {
 
     /**
      * specifies whether the individual annotations are included or not in print actions.
+     * @default true
      */
     @Property(true)
     public isPrint: boolean;
 
     /**
      * Enables or disables text editing for the annotation. FALSE, by default.
+     * @default false
      */
     @Property(false)
     public isReadonly: boolean;
 
     /**
      * Enable or disable auto fit mode for FreeText annotation in the Pdfviewer. FALSE by default.
+     * @default false
      */
     @Property(false)
     public enableAutoFit: boolean;
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     @Property('')
     public subject: string;
@@ -4272,6 +4675,7 @@ export class AnnotationSelectorSettings extends ChildProperty<AnnotationSelector
      *
      * @remarks
      * Not applicable for line type annotations, text markup annotations, and sticky note annotations.
+     * @default ''
      */
     @Property('')
     public selectionBorderColor: string;
@@ -4281,6 +4685,7 @@ export class AnnotationSelectorSettings extends ChildProperty<AnnotationSelector
      *
      * @remarks
      * Not applicable for text markup annotations and sticky note annotations.
+     * @default 'black'
      */
 
     @Property('black')
@@ -4292,6 +4697,7 @@ export class AnnotationSelectorSettings extends ChildProperty<AnnotationSelector
      * @remarks
      * Not applicable for text markup annotations and sticky note annotations.
      *
+     * @default '#FF4081'
      */
     @Property('#FF4081')
     public resizerFillColor: string;
@@ -4302,6 +4708,7 @@ export class AnnotationSelectorSettings extends ChildProperty<AnnotationSelector
      * @remarks
      * Not applicable for text markup annotations and sticky note annotations.
      *
+     * @default 8
      */
     @Property(8)
     public resizerSize: number;
@@ -4311,6 +4718,7 @@ export class AnnotationSelectorSettings extends ChildProperty<AnnotationSelector
      *
      * @remarks
      * Not applicable for line type annotations, text Markup annotations, and Sticky Note annotations.
+     * @default 1
      */
     @Property(1)
     public selectionBorderThickness: number;
@@ -4320,6 +4728,7 @@ export class AnnotationSelectorSettings extends ChildProperty<AnnotationSelector
      *
      * @remarks
      * Not applicable for text markup annotations and sticky note annotations.
+     * @default 'Square'
      */
     @Property('Square')
     public resizerShape: AnnotationResizerShape;
@@ -4329,8 +4738,9 @@ export class AnnotationSelectorSettings extends ChildProperty<AnnotationSelector
      *
      * @remarks
      * Not applicable for line type annotations, text Markup annotations, and sticky Note annotations.
+     * @default []
      */
-    @Property('')
+    @Property([])
     public selectorLineDashArray: number[];
 
     /**
@@ -4338,6 +4748,7 @@ export class AnnotationSelectorSettings extends ChildProperty<AnnotationSelector
      *
      * @remarks
      * Not applicable for text markup annotations and sticky note annotations.
+     * @default AnnotationResizerLocation.Corners | AnnotationResizerLocation.Edges
      */
     @Property(AnnotationResizerLocation.Corners | AnnotationResizerLocation.Edges)
     public resizerLocation: AnnotationResizerLocation;
@@ -4347,6 +4758,7 @@ export class AnnotationSelectorSettings extends ChildProperty<AnnotationSelector
      *
      * @remarks
      * Not applicable for text markup annotations and sticky note annotations.
+     * @default null
      */
     @Property(null)
     public resizerCursorType: CursorType;
@@ -4372,12 +4784,14 @@ export class AnnotationSelectorSettings extends ChildProperty<AnnotationSelector
 export class TextSearchColorSettings extends ChildProperty<TextSearchColorSettings> {
     /**
      * Gets or Sets the color of the current occurrence of the text searched string.
+     * @default '#fdd835'
      */
     @Property('#fdd835')
     public searchHighlightColor: string;
 
     /**
      * Gets or Sets the color of the other occurrence of the text searched string.
+     * @default '#8b4c12'
      */
     @Property('#8b4c12')
     public searchColor: string;
@@ -4401,24 +4815,28 @@ export class TextSearchColorSettings extends ChildProperty<TextSearchColorSettin
 export class PageInfo extends ChildProperty<PageInfo> {
     /**
      * The 0-based index of the page.
+     * @default 0
      */
     @Property(0)
     public pageIndex: number;
 
     /**
      * The width of the page in points.
+     * @default 0
      */
     @Property(0)
     public width: number;
 
     /**
      * The height of the page in points.
+     * @default 0
      */
     @Property(0)
     public height: number;
 
     /**
      * The rotation angle of the page in degrees.
+     * @default 0
      */
     @Property(0)
     public rotation: number;
@@ -4477,48 +4895,56 @@ export class PageInfo extends ChildProperty<PageInfo> {
 export class HandWrittenSignatureSettings extends ChildProperty<HandWrittenSignatureSettings> {
     /**
      * specifies the opacity of the annotation.
+     * @default 1
      */
     @Property(1)
     public opacity: number;
 
     /**
      * specifies the stroke color of the annotation.
+     * @default '#000000'
      */
     @Property('#000000')
     public strokeColor: string;
 
     /**
      * specified the thickness of the annotation.
+     * @default 1
      */
     @Property(1)
     public thickness: number;
 
     /**
      * specified the width of the annotation.
+     * @default 150
      */
     @Property(150)
     public width: number;
 
     /**
      * specified the height of the annotation.
+     * @default 100
      */
     @Property(100)
     public height: number;
 
     /**
      * Gets or sets the save signature limit of the signature. By default value is 1 and maximum limit is 5.
+     * @default 1
      */
     @Property(1)
     public saveSignatureLimit: number;
 
     /**
      * Gets or sets the save initial limit of the initial. By default value is 1 and maximum limit is 5.
+     * @default 1
      */
     @Property(1)
     public saveInitialLimit: number;
 
     /**
      * Provide option to define the required signature items to be displayed in signature menu.
+     * @default []
      */
     @Property([])
     public signatureItem: SignatureItem[];
@@ -4531,6 +4957,7 @@ export class HandWrittenSignatureSettings extends ChildProperty<HandWrittenSigna
 
     /**
      * specifies the annotation selector settings of the annotation.
+     * @default ''
      */
     @Property('')
     public annotationSelectorSettings: AnnotationSelectorSettingsModel;
@@ -4617,54 +5044,63 @@ export class HandWrittenSignatureSettings extends ChildProperty<HandWrittenSigna
 export class AnnotationSettings extends ChildProperty<AnnotationSettings> {
     /**
      * specifies the author of the annotation.
+     * @default 'Guest'
      */
     @Property('Guest')
     public author: string;
 
     /**
      * specifies the minHeight of the annotation.
+     * @default 0
      */
     @Property(0)
     public minHeight: number;
 
     /**
      * specifies the minWidth of the annotation.
+     * @default 0
      */
     @Property(0)
     public minWidth: number;
 
     /**
      * specifies the maxHeight of the annotation.
+     * @default 0
      */
     @Property(0)
     public maxHeight: number;
 
     /**
      * specifies the maxWidth of the annotation.
+     * @default 0
      */
     @Property(0)
     public maxWidth: number;
 
     /**
      * specifies the locked action of the annotation.
+     * @default false
      */
     @Property(false)
     public isLock: boolean;
 
     /**
      * specifies whether the annotations are included or not in print actions.
+     * @default false
      */
     @Property(false)
     public skipPrint: boolean;
 
     /**
      * specifies whether the annotations are included or not in download actions.
+     * @default false
      */
     @Property(false)
     public skipDownload: boolean;
 
     /**
      * specifies the custom data of the annotation.
+     * @default null
      */
     @Property(null)
     public customData: object;
@@ -4680,9 +5116,93 @@ export class AnnotationSettings extends ChildProperty<AnnotationSettings> {
 
     /**
      * specifies the subject of the annotation.
+     * @default ''
      */
     @Property('')
     public subject: string;
+}
+
+/**
+ * The `CommentFilterSettings` module is used to provide filter configuration for comments and annotations.
+ *
+ * @example
+ * ```typescript
+ * const filter: CommentFilterSettingsModel = {
+ *   type: ['Highlight', 'StickNote'],
+ *   color: ['#FF0000'],
+ *   author: ['John Doe'],
+ *   modifiedDate: ['2026-05-01', '2026-05-04'],
+ *   includeReplies: true,
+ *   applyToDocument: true
+ * };
+ * viewer.annotation.applyCommentFilter(filter);
+ * ```
+ */
+export class CommentFilterSettings extends ChildProperty<CommentFilterSettings> {
+    /**
+     * Filter by annotation type.
+     * Supported values: 'Highlight', 'StickNote', 'Rectangle', 'Circle',
+     * 'Polygon', 'Polyline', 'Line', 'Arrow', 'FreeText', 'Measure', 'Stamp', 'Ink', 'Redaction', 'Signature', 'InkSignature'
+     *
+     * @default 'None'
+     */
+    @Property('None')
+    public type: AnnotationType;
+
+    /**
+     * Filter by annotation color (hex or named).
+     * Examples: '#FF0000', 'red', '#FFC000'
+     *
+     * @default null
+     */
+    @Property(null)
+    public color: string[];
+
+    /**
+     * Filter by comment status.
+     *
+     * @default 'None'
+     */
+    @Property('None')
+    public status: CommentStatus;
+
+    /**
+     * Filter by comment author name.
+     *
+     * @default null
+     */
+    @Property(null)
+    public author: string[];
+
+    /**
+     * Filter by collection of specific modified dates (ISO 8601).
+     * Format: ['2026-05-01', '2026-05-04', '2026-05-10']
+     * Annotations matching any date in the collection are shown.
+     *
+     * @default null
+     */
+    @Property(null)
+    public modifiedDate: string[];
+
+    /**
+     * When author filtering is active, include reply threads by any author or only parent author.
+     * - true: Show threads if parent OR any reply matches author filter
+     * - false: Show threads only if parent matches author filter
+     *
+     * @default true
+     */
+    @Property(true)
+    public includeReplies: boolean;
+
+    /**
+     * Apply filtering to both comment panel and document annotations.
+     * - false: Comment Panel only (default)
+     * - true: Comment Panel + Document annotations
+     *
+     * @default false
+     */
+    @Property(false)
+    public applyToDocument: boolean;
 }
 
 /**
@@ -4691,16 +5211,19 @@ export class AnnotationSettings extends ChildProperty<AnnotationSettings> {
 export class DocumentTextCollectionSettings extends ChildProperty<DocumentTextCollectionSettings> {
     /**
      * specifies the text data of the document.
+     * @default []
      */
     @Property()
     public textData: TextDataSettingsModel[];
     /**
      * specifies the page text of the document.
+     * @default ''
      */
     @Property()
     public pageText: string;
     /**
      * specifies the page size of the document.
+     * @default 0
      */
     @Property()
     public pageSize: number;
@@ -4717,6 +5240,7 @@ export class TextDataSettings extends ChildProperty<TextDataSettings> {
     public bounds: RectangleBoundsModel;
     /**
      * specifies the text of the document.
+     * @default ''
      */
     @Property()
     public text: string;
@@ -4728,41 +5252,49 @@ export class TextDataSettings extends ChildProperty<TextDataSettings> {
 export class RectangleBounds extends ChildProperty<RectangleBounds> {
     /**
      * specifies the size of the rectangle.
+     * @default 0
      */
     @Property()
     public size: number;
     /**
      * specifies the x co-ordinate of the upper-left corner of the rectangle.
+     * @default 0
      */
     @Property()
     public x: number;
     /**
      * specifies the y co-ordinate of the upper-left corner of the rectangle.
+     * @default 0
      */
     @Property()
     public y: number;
     /**
      * specifies the width of the rectangle.
+     * @default 0
      */
     @Property()
     public width: number;
     /**
      * specifies the height of the rectangle.
+     * @default 0
      */
     @Property()
     public height: number;
     /**
      * specifies the left value of the rectangle.
+     * @default 0
      */
     @Property()
     public left: number;
     /**
      * specifies the top value of the rectangle.
+     * @default 0
      */
     @Property()
     public top: number;
     /**
      * specifies the right of the rectangle.
+     * @default 0
      */
     @Property()
     public right: number;
@@ -4801,18 +5333,21 @@ export class RectangleBounds extends ChildProperty<RectangleBounds> {
 export class TileRenderingSettings extends ChildProperty<TileRenderingSettings> {
     /**
      * Enable or disables tile rendering mode in the PDF Viewer.
+     * @default true
      */
     @Property(true)
     public enableTileRendering: boolean;
 
     /**
      * specifies the tileX count of the render Page.
+     * @default 0
      */
     @Property(0)
     public x: number;
 
     /**
      * specifies the tileY count of the render Page.
+     * @default 0
      */
     @Property(0)
     public y: number;
@@ -4836,6 +5371,7 @@ export class TileRenderingSettings extends ChildProperty<TileRenderingSettings> 
 export class ScrollSettings extends ChildProperty<ScrollSettings> {
     /**
      * Increase or decrease the delay time.
+     * @default 100
      */
     @Property(100)
     public delayPageRequestTimeOnScroll: number;
@@ -4846,134 +5382,156 @@ export class ScrollSettings extends ChildProperty<ScrollSettings> {
 export class FormField extends ChildProperty<FormField> {
     /**
      * Gets the name of the form field.
+     * @default ''
      */
     @Property('')
     public name: string;
 
     /**
      * Specifies whether the check box is in checked state or not.
+     * @default false
      */
     @Property(false)
     public isChecked: boolean;
 
     /**
      * Specifies whether the radio button is in selected state or not.
+     * @default false
      */
     @Property(false)
     public isSelected: boolean;
 
     /**
      * Gets the id of the form field.
+     * @default ''
      */
     @Property('')
     public id: string;
 
     /**
      * Gets or sets the value of the form field.
+     * @default ''
      */
     @Property('')
     public value: string;
 
     /**
      * Gets the type of the form field.
+     * @default ''
      */
     @Property('')
     public type: FormFieldType;
 
     /**
      * If it is set as true, can't edit the form field in the PDF document. By default it is false.
+     * @default false
      */
     @Property(false)
     public isReadOnly: boolean;
 
     /**
      * specifies the type of the signature.
+     * @default ['']
      */
     @Property([''])
     public signatureType: SignatureType[];
 
     /**
      * specifies the fontName of the signature.
+     * @default ''
      */
     @Property('')
     public fontName: string;
 
     /**
      * Get or set the form field bounds.
+     * @default { x: 0, y: 0, width: 0, height: 0 }
      */
     @Property({ x: 0, y: 0, width: 0, height: 0 })
     public bounds: IFormFieldBound;
 
     /**
      * Get or set the font family of the form field.
+     * @default 'Helvetica'
      */
     @Property('Helvetica')
     public fontFamily: string;
 
     /**
      * Get or set the font size of the form field.
+     * @default 10
      */
     @Property(10)
     public fontSize: number;
 
     /**
      * Get or set the font Style of form field.
+     * @default 'None'
      */
     @Property('None')
     public fontStyle: FontStyle;
 
     /**
      * Get or set the font color of the form field in hexadecimal string format.
+     * @default 'black'
      */
     @Property('black')
     public color: string;
 
     /**
      * Get or set the background color of the form field in hexadecimal string format.
+     * @default 'white'
      */
     @Property('white')
     public backgroundColor: string;
 
     /**
      * Get or set the text alignment of the form field.
+     * @default 'Left'
      */
     @Property('Left')
     public alignment: TextAlignment;
 
     /**
      * Gets or set the visibility of the form field.
+     * @default 'visible'
      */
     @Property('visible')
     public visibility: Visibility;
 
     /**
      * Get or set the maximum character length.
+     * @default 0
      */
     @Property(0)
     public maxLength: number;
 
     /**
      * Gets or set the is Required of form field.
+     * @default false
      */
     @Property(false)
     public isRequired: boolean;
 
     /**
      * Get or set the boolean value to print the form field. TRUE by default.
+     * @default false
      */
     @Property(false)
     public isPrint: boolean;
 
     /**
      * Get or set the text to be displayed as tooltip. By default it is empty.
+     * @default ''
      */
     @Property('')
     public tooltip: string;
 
     /**
      * Get or set the form field items. This can be Dropdown items or Listbox items.
+     * @default []
      */
-    @Property('')
+    @Property([])
     public options: ItemModel[];
 
     /**
@@ -4984,18 +5542,21 @@ export class FormField extends ChildProperty<FormField> {
 
     /**
      * Get or set the thickness of the form field.
+     * @default 1
      */
     @Property(1)
     public thickness: number;
 
     /**
      * Get or set the border color of the form field.
+     * @default '#303030'
      */
     @Property('#303030')
     public borderColor: string;
 
     /**
      * Allows multiline input in the text field. FALSE, by default.
+     * @default false
      */
     @Property(false)
     public isMultiline: boolean;
@@ -5011,42 +5572,49 @@ export class FormField extends ChildProperty<FormField> {
 
     /**
      * Get the pageIndex of the form field. Default value is -1.
+     * @default -1
      */
     @Property(-1)
     public pageIndex: number;
 
     /**
      * Get the pageNumber of the form field. Default value is 1.
+     * @default 1
      */
     @Property(1)
     public pageNumber: number;
 
     /**
      * Get the isTransparent of the form field. Default value is false.
+     * @default false
      */
     @Property(false)
     public isTransparent: boolean;
 
     /**
      * Get the rotateAngle of the form field. Default value is 0.
+     * @default 0
      */
     @Property(0)
     public rotateAngle: number;
 
     /**
      * Get the selectedIndex of the form field. Default value is null.
+     * @default []
      */
-    @Property('')
+    @Property([])
     public selectedIndex: number[];
 
     /**
      * Get the zIndex of the form field. Default value is 0.
+     * @default 0
      */
     @Property(0)
     public zIndex: number;
 
     /**
      * specifies the custom data of the form field.
+     * @default null
      */
     @Property(null)
     public customData: object;
@@ -5137,120 +5705,140 @@ export class TextFieldSettings extends ChildProperty<TextFieldSettings> {
 
     /**
      * Get or set the form field bounds.
+     * @default { x: 0, y: 0, width: 0, height: 0 }
      */
     @Property({ x: 0, y: 0, width: 0, height: 0 })
     public bounds: IFormFieldBound;
 
     /**
      * Get or set the name of the form field element.
+     * @default ''
      */
     @Property('')
     public name: string;
 
     /**
      * Get or set the value of the form field.
+     * @default ''
      */
     @Property('')
     public value: string;
 
     /**
      * Get or set the font family of the textbox field.
+     * @default 'Helvetica'
      */
     @Property('Helvetica')
     public fontFamily: string;
 
     /**
      * Get or set the font size of the textbox field.
+     * @default 10
      */
     @Property(10)
     public fontSize: number;
 
     /**
      * specifies the page number of the form field.
+     * @default 0
      */
     @Property(0)
     public pageNumber: number;
 
     /**
      * Get or set the font Style of textbox field.
+     * @default 'None'
      */
     @Property('None')
     public fontStyle: FontStyle;
 
     /**
      * Get or set the font color of the textbox in hexadecimal string format.
+     * @default 'black'
      */
     @Property('black')
     public color: string;
 
     /**
      * Get or set the background color of the textbox in hexadecimal string format.
+     * @default 'white'
      */
     @Property('white')
     public backgroundColor: string;
 
     /**
      * Get or set the alignment of the text.
+     * @default 'Left'
      */
     @Property('Left')
     public alignment: TextAlignment;
 
     /**
      * Specifies whether the textbox field is in read-only or read-write mode. FALSE by default.
+     * @default false
      */
     @Property(false)
     public isReadOnly: boolean;
 
     /**
      * Gets or set the visibility of the form field.
+     * @default 'visible'
      */
     @Property('visible')
     public visibility: Visibility;
 
     /**
      * Get or set the maximum character length.
+     * @default 0
      */
     @Property(0)
     public maxLength: number;
 
     /**
      * If it is set as true, consider as mandatory field in the PDF document. By default it is false.
+     * @default false
      */
     @Property(false)
     public isRequired: boolean;
 
     /**
      * Get or set the boolean value to print the textbox field. TRUE by default.
+     * @default false
      */
     @Property(false)
     public isPrint: boolean;
 
     /**
      * Get or set the text to be displayed as tooltip. By default it is empty.
+     * @default ''
      */
     @Property('')
     public tooltip: string;
 
     /**
      * Get or set the thickness of the textbox field.
+     * @default 1
      */
     @Property(1)
     public thickness: number;
 
     /**
      * Get or set the border color of the textbox field.
+     * @default '#303030'
      */
     @Property('#303030')
     public borderColor: string;
 
     /**
      * Allows multiline input in the text field. FALSE, by default.
+     * @default false
      */
     @Property(false)
     public isMultiline: boolean;
 
     /**
      * specifies the custom data of the form fields.
+     * @default null
      */
     @Property(null)
     public customData: object;
@@ -5294,114 +5882,133 @@ export class PasswordFieldSettings extends ChildProperty<PasswordFieldSettings> 
 
     /**
      * Get or set the form field bounds.
+     * @default { x: 0, y: 0, width: 0, height: 0 }
      */
     @Property({ x: 0, y: 0, width: 0, height: 0 })
     public bounds: IFormFieldBound;
 
     /**
      * Get or set the name of the form field element.
+     * @default ''
      */
     @Property('')
     public name: string;
 
     /**
      * Get or set the value of the form field.
+     * @default ''
      */
     @Property('')
     public value: string;
 
     /**
      * specifies the page number of the form field.
+     * @default 0
      */
     @Property(0)
     public pageNumber: number;
 
     /**
      * Get or set the font family of the password field.
+     * @default 'Helvetica'
      */
     @Property('Helvetica')
     public fontFamily: string;
 
     /**
      * Get or set the font size of the password field.
+     * @default 10
      */
     @Property(10)
     public fontSize: number;
 
     /**
      * Get or set the font Style of password field.
+     * @default 'None'
      */
     @Property('None')
     public fontStyle: FontStyle;
 
     /**
      * Get or set the font color of the password field in hexadecimal string format.
+     * @default 'black'
      */
     @Property('black')
     public color: string;
 
     /**
      * Get or set the background color of the password field in hexadecimal string format.
+     * @default 'white'
      */
     @Property('white')
     public backgroundColor: string;
 
     /**
      * Get or set the alignment of the text.
+     * @default 'Left'
      */
     @Property('Left')
     public alignment: TextAlignment;
 
     /**
      * Specifies whether the password field is in read-only or read-write mode. FALSE by default.
+     * @default false
      */
     @Property(false)
     public isReadOnly: boolean;
 
     /**
      * Gets or set the visibility of the form field.
+     * @default 'visible'
      */
     @Property('visible')
     public visibility: Visibility;
 
     /**
      * Get or set the maximum character length.
+     * @default 0
      */
     @Property(0)
     public maxLength: number;
 
     /**
      * If it is set as true, consider as mandatory field in the PDF document. By default it is false.
+     * @default false
      */
     @Property(false)
     public isRequired: boolean;
 
     /**
      * Get or set the boolean value to print the password field. TRUE by default.
+     * @default false
      */
     @Property(false)
     public isPrint: boolean;
 
     /**
      * Get or set the text to be displayed as tooltip. By default it is empty.
+     * @default ''
      */
     @Property('')
     public tooltip: string;
 
     /**
      * Get or set the thickness of the password field.
+     * @default 1
      */
     @Property(1)
     public thickness: number;
 
     /**
      * Get or set the border color of the password field.
+     * @default '#303030'
      */
     @Property('#303030')
     public borderColor: string;
 
     /**
      * specifies the custom data of the form fields.
+     * @default null
      */
     @Property(null)
     public customData: object;
@@ -5440,84 +6047,98 @@ export class CheckBoxFieldSettings extends ChildProperty<CheckBoxFieldSettings> 
 
     /**
      * Get or set the form field bounds.
+     * @default { x: 0, y: 0, width: 0, height: 0 }
      */
     @Property({ x: 0, y: 0, width: 0, height: 0 })
     public bounds: IFormFieldBound;
 
     /**
      * Get or set the name of the check box.
+     * @default ''
      */
     @Property('')
     public name: string;
 
     /**
      * Get or set the value of the check box.
+     * @default ''
      */
     @Property('')
     public value: string;
 
     /**
      * Specifies whether the check box is in checked state or not.
+     * @default false
      */
     @Property(false)
     public isChecked: boolean;
 
     /**
      * Get or set the background color of the check box in hexadecimal string format.
+     * @default 'white'
      */
     @Property('white')
     public backgroundColor: string;
 
     /**
      * Specifies whether the check box field is in read-only or read-write mode. FALSE by default.
+     * @default false
      */
     @Property(false)
     public isReadOnly: boolean;
 
     /**
      * Gets or set the visibility of the form field.
+     * @default 'visible'
      */
     @Property('visible')
     public visibility: Visibility;
 
     /**
      * Get or set the boolean value to print the check box field. TRUE by default.
+     * @default false
      */
     @Property(false)
     public isPrint: boolean;
 
     /**
      * specifies the page number of the form field.
+     * @default 0
      */
     @Property(0)
     public pageNumber: number;
 
     /**
      * Get or set the text to be displayed as tooltip. By default it is empty.
+     * @default ''
      */
     @Property('')
     public tooltip: string;
 
     /**
      * If it is set as true, consider as mandatory field in the PDF document. By default it is false.
+     * @default false
      */
     @Property(false)
     public isRequired: boolean;
 
     /**
      * Get or set the thickness of the check box field.
+     * @default 1
      */
     @Property(1)
     public thickness: number;
 
     /**
      * Get or set the border color of the check box field.
+     * @default '#303030'
      */
     @Property('#303030')
     public borderColor: string;
 
     /**
      * specifies the custom data of the form fields.
+     * @default null
      */
     @Property(null)
     public customData: object;
@@ -5556,84 +6177,98 @@ export class RadioButtonFieldSettings extends ChildProperty<RadioButtonFieldSett
 
     /**
      * Get or set the form field bounds.
+     * @default { x: 0, y: 0, width: 0, height: 0 }
      */
     @Property({ x: 0, y: 0, width: 0, height: 0 })
     public bounds: IFormFieldBound;
 
     /**
      * Get or set the name of the form field element.
+     * @default ''
      */
     @Property('')
     public name: string;
 
     /**
      * Get or set the value of the form field element.
+     * @default ''
      */
     @Property('')
     public value: string;
 
     /**
      * Specifies whether the radio button is in selected state or not.
+     * @default false
      */
     @Property(false)
     public isSelected: boolean;
 
     /**
      * Get or set the background color of the radio button in hexadecimal string format.
+     * @default 'white'
      */
     @Property('white')
     public backgroundColor: string;
 
     /**
      * Specifies whether the radio button field is in read-only or read-write mode. FALSE by default.
+     * @default false
      */
     @Property(false)
     public isReadOnly: boolean;
 
     /**
      * If it is set as true, consider as mandatory field in the PDF document. By default it is false.
+     * @default false
      */
     @Property(false)
     public isRequired: boolean;
 
     /**
      * specifies the page number of the form field.
+     * @default 0
      */
     @Property(0)
     public pageNumber: number;
 
     /**
      * Gets or set the visibility of the form field.
+     * @default 'visible'
      */
     @Property('visible')
     public visibility: Visibility;
 
     /**
      * Get or set the boolean value to print the radio button field. TRUE by default.
+     * @default false
      */
     @Property(false)
     public isPrint: boolean;
 
     /**
      * Get or set the text to be displayed as tooltip. By default it is empty.
+     * @default ''
      */
     @Property('')
     public tooltip: string;
 
     /**
      * Get or set the thickness of the radio button field.
+     * @default 1
      */
     @Property(1)
     public thickness: number;
 
     /**
      * Get or set the border color of the radio button field.
+     * @default '#303030'
      */
     @Property('#303030')
     public borderColor: string;
 
     /**
      * specifies the custom data of the form fields.
+     * @default null
      */
     @Property(null)
     public customData: object;
@@ -5677,114 +6312,133 @@ export class DropdownFieldSettings extends ChildProperty<DropdownFieldSettings> 
 
     /**
      * Get or set the form field bounds.
+     * @default { x: 0, y: 0, width: 0, height: 0 }
      */
     @Property({ x: 0, y: 0, width: 0, height: 0 })
     public bounds: IFormFieldBound;
 
     /**
      * Get or set the name of the dropdown.
+     * @default ''
      */
     @Property('')
     public name: string;
 
     /**
      * Get or set the value of the form field.
+     * @default ''
      */
     @Property('')
     public value: string;
 
     /**
      * Get or set the font family of the dropdown field.
+     * @default 'Helvetica'
      */
     @Property('Helvetica')
     public fontFamily: string;
 
     /**
      * Get or set the font size of the dropdown field.
+     * @default 10
      */
     @Property(10)
     public fontSize: number;
 
     /**
      * specifies the page number of the form field.
+     * @default 0
      */
     @Property(0)
     public pageNumber: number;
 
     /**
      * Get or set the font style of dropdown field.
+     * @default 'None'
      */
     @Property('None')
     public fontStyle: FontStyle;
 
     /**
      * Get or set the font color of the dropdown in hexadecimal string format..
+     * @default 'black'
      */
     @Property('black')
     public color: string;
 
     /**
      * Get or set the background color of the dropdown in hexadecimal string format.
+     * @default 'white'
      */
     @Property('white')
     public backgroundColor: string;
 
     /**
      * Get or set the alignment of the text.
+     * @default 'Left'
      */
     @Property('Left')
     public alignment: TextAlignment;
 
     /**
      * Specifies whether the dropdown field is in read-only or read-write mode. FALSE by default.
+     * @default false
      */
     @Property(false)
     public isReadOnly: boolean;
 
     /**
      * Gets or set the visibility of the form field.
+     * @default 'visible'
      */
     @Property('visible')
     public visibility: Visibility;
 
     /**
      * If it is set as true, consider as mandatory field in the PDF document. By default it is false.
+     * @default false
      */
     @Property(false)
     public isRequired: boolean;
 
     /**
      * Get or set the boolean value to print the dropdown field. TRUE by default.
+     * @default false
      */
     @Property(false)
     public isPrint: boolean;
 
     /**
      * Get or set the text to be displayed as tooltip. By default it is empty.
+     * @default ''
      */
     @Property('')
     public tooltip: string;
 
     /**
      * Get or set the dropdown items.
+     * @default []
      */
-    @Property('')
+    @Property([])
     public options: ItemModel[];
 
     /**
      * Get or set the thickness of the drop down field.
+     * @default 1
      */
     @Property(1)
     public thickness: number;
 
     /**
      * Get or set the border color of the drop down field.
+     * @default '#303030'
      */
     @Property('#303030')
     public borderColor: string;
 
     /**
      * specifies the custom data of the form fields.
+     * @default null
      */
     @Property(null)
     public customData: object;
@@ -5827,108 +6481,126 @@ export class ListBoxFieldSettings extends ChildProperty<ListBoxFieldSettings> {
 
     /**
      * Get or set the form field bounds.
+     * @default { x: 0, y: 0, width: 0, height: 0 }
      */
     @Property({ x: 0, y: 0, width: 0, height: 0 })
     public bounds: IFormFieldBound;
 
     /**
      * Get or set the name of the form field element.
+     * @default ''
      */
     @Property('')
     public name: string;
 
     /**
      * Get or set the value of the form field.
+     * @default ''
      */
     @Property('')
     public value: string;
 
     /**
      * Get or set the font family of the listbox field.
+     * @default 'Helvetica'
      */
     @Property('Helvetica')
     public fontFamily: string;
 
     /**
      * Get or set the font size of the listbox field.
+     * @default 10
      */
     @Property(10)
     public fontSize: number;
 
     /**
      * specifies the page number of the form field.
+     * @default 0
      */
     @Property(0)
     public pageNumber: number;
 
     /**
      * Get or set the font Style of listbox field.
+     * @default 'None'
      */
     @Property('None')
     public fontStyle: FontStyle;
 
     /**
      * Get or set the font color of the listbox in hexadecimal string format.
+     * @default 'black'
      */
     @Property('black')
     public color: string;
 
     /**
      * Get or set the background color of the listbox in hexadecimal string format.
+     * @default 'white'
      */
     @Property('white')
     public backgroundColor: string;
 
     /**
      * Get or set the alignment of the text.
+     * @default 'Left'
      */
     @Property('Left')
     public alignment: TextAlignment;
 
     /**
      * Specifies whether the listbox field is in read-only or read-write mode. FALSE by default.
+     * @default false
      */
     @Property(false)
     public isReadOnly: boolean;
 
     /**
      * Gets or set the visibility of the form field.
+     * @default 'visible'
      */
     @Property('visible')
     public visibility: Visibility;
 
     /**
      * If it is set as true, consider as mandatory field in the PDF document. By default it is false.
+     * @default false
      */
     @Property(false)
     public isRequired: boolean;
 
     /**
      * Get or set the boolean value to print the listbox field. TRUE by default.
+     * @default false
      */
     @Property(false)
     public isPrint: boolean;
 
     /**
      * Get or set the text to be displayed as tool tip. By default it is empty.
+     * @default ''
      */
     @Property('')
     public tooltip: string;
 
     /**
      * Get or set the listbox items.
+     * @default []
      */
     @Property([])
     public options: ItemModel[];
 
     /**
      * Get or set the thickness of the list box field.
+     * @default 1
      */
     @Property(1)
     public thickness: number;
 
     /**
      * Get or set the border color of the list box field.
+     * @default '#303030'
      */
     @Property('#303030')
     public borderColor: string;
@@ -5937,12 +6609,14 @@ export class ListBoxFieldSettings extends ChildProperty<ListBoxFieldSettings> {
 export class Item extends ChildProperty<Item> {
     /**
      * Get or set the name.
+     * @default ''
      */
     @Property('')
     public itemName: string;
 
     /**
      * Get or set the value.
+     * @default ''
      */
     @Property('')
     public itemValue: string;
@@ -6159,36 +6833,42 @@ export class PageOrganizerSettings extends ChildProperty<PageOrganizerSettings> 
 
     /**
      * Specifies whether the pages can be deleted.
+     * @default true
      */
     @Property(true)
     public canDelete: boolean;
 
     /**
      * Specifies whether the pages can be inserted.
+     * @default true
      */
     @Property(true)
     public canInsert: boolean;
 
     /**
      * Specifies whether the pages can be rotated.
+     * @default true
      */
     @Property(true)
     public canRotate: boolean;
 
     /**
      * Specifies whether the pages can be copied.
+     * @default true
      */
     @Property(true)
     public canCopy: boolean;
 
     /**
      * Specifies whether the pages can be rearranged.
+     * @default true
      */
     @Property(true)
     public canRearrange: boolean;
 
     /**
      * Specifies whether the other PDF document can be imported.
+     * @default true
      */
     @Property(true)
     public canImport: boolean;
@@ -6196,24 +6876,28 @@ export class PageOrganizerSettings extends ChildProperty<PageOrganizerSettings> 
     /**
      * Controls visibility of the zooming slider UI in the page organizer.
      * When enabled, a slider is shown to zoom in / out the page thumbnails
+     * @default false
      */
     @Property(false)
     public showImageZoomingSlider: boolean;
 
     /**
      * Minimum value for the image zoom scale in the page organizer view.
+     * @default 1
      */
     @Property(1)
     public imageZoomMin: number;
 
     /**
      * Maximum value for the image zoom scale in the page organizer view.
+     * @default 5
      */
     @Property(5)
     public imageZoomMax: number;
 
     /**
      * Current zoom scale of the images in the page organizer view.
+     * @default 1
      */
     @Property(1)
     public imageZoom: number;
@@ -6221,6 +6905,7 @@ export class PageOrganizerSettings extends ChildProperty<PageOrganizerSettings> 
     /**
      * Get or set a boolean value to show or hide the pages extract option in the page organizer dialog. TRUE by default.
      * The showExtractPagesOption API for the Extract Pages feature will be available only when the PDF Viewer is operating in Standalone Mode.
+     * @default true
      */
     @Property(true)
     public showExtractPagesOption: boolean;
@@ -6330,12 +7015,14 @@ export class SearchResult extends ChildProperty<SearchResult> {
 
     /**
      * Returns the page index of the search text.
+     * @default 0
      */
     @Property(0)
     public pageIndex: number;
 
     /**
      * Returns the bounds of the search text.
+     * @default []
      */
     @Property([])
     public bounds: IPdfRectBounds[];
@@ -6360,6 +7047,7 @@ export class PdfViewer extends Component<HTMLElement> implements INotifyProperty
      *
      * {% codeBlock src='pdfviewer/serviceUrl/index.md' %}{% endcodeBlock %}
      *
+     * @default ''
      */
     @Property()
     public serviceUrl: string;
@@ -6423,6 +7111,7 @@ export class PdfViewer extends Component<HTMLElement> implements INotifyProperty
      *
      * {% codeBlock src='pdfviewer/documentPath/index.md' %}{% endcodeBlock %}
      *
+     * @default ''
      */
     @Property()
     public documentPath: string;
@@ -6481,6 +7170,7 @@ export class PdfViewer extends Component<HTMLElement> implements INotifyProperty
      *
      * {% codeBlock src='pdfviewer/exportAnnotationFileName/index.md' %}{% endcodeBlock %}
      *
+     * @default null
      */
     @Property(null)
     public exportAnnotationFileName: string;
@@ -6490,6 +7180,7 @@ export class PdfViewer extends Component<HTMLElement> implements INotifyProperty
      *
      * {% codeBlock src='pdfviewer/downloadFileName/index.md' %}{% endcodeBlock %}
      *
+     * @default ''
      */
     @Property()
     public downloadFileName: string;
@@ -7336,6 +8027,7 @@ export class PdfViewer extends Component<HTMLElement> implements INotifyProperty
      *
      * {% codeBlock src='pdfviewer/dateTimeFormat/index.md' %}{% endcodeBlock %}
      *
+     * @default 'M/d/yyyy h:mm:ss a'
      */
     @Property('M/d/yyyy h:mm:ss a')
     public dateTimeFormat: string;
@@ -7365,7 +8057,7 @@ export class PdfViewer extends Component<HTMLElement> implements INotifyProperty
      *
      */
 
-    @Property({ showTooltip: true, toolbarItems: ['OpenOption', 'UndoRedoTool', 'PageNavigationTool', 'MagnificationTool', 'PanTool', 'SelectionTool', 'CommentTool', 'SubmitForm', 'AnnotationEditTool', 'FormDesignerEditTool', 'FreeTextAnnotationOption', 'InkAnnotationOption', 'ShapeAnnotationOption', 'StampAnnotation', 'SignatureOption', 'SearchOption', 'PrintOption', 'DownloadOption'], annotationToolbarItems: ['HighlightTool', 'UnderlineTool', 'StrikethroughTool', 'SquigglyTool', 'ColorEditTool', 'OpacityEditTool', 'AnnotationDeleteTool', 'StampAnnotationTool', 'HandWrittenSignatureTool', 'InkAnnotationTool', 'ShapeTool', 'CalibrateTool', 'StrokeColorEditTool', 'ThicknessEditTool', 'FreeTextAnnotationTool', 'FontFamilyAnnotationTool', 'FontSizeAnnotationTool', 'FontStylesAnnotationTool', 'FontAlignAnnotationTool', 'FontColorAnnotationTool', 'CommentPanelTool'], formDesignerToolbarItems: ['TextboxTool', 'PasswordTool', 'CheckBoxTool', 'RadioButtonTool', 'DropdownTool', 'ListboxTool', 'DrawSignatureTool', 'DeleteTool'], redactionToolbarItems: ['MarkForRedaction', 'RedactPages', 'RedactionPanel', 'Redact', 'RemoveAnnotation', 'CommentPanel', 'Close'] })
+    @Property({ showTooltip: true, toolbarItems: ['OpenOption', 'UndoRedoTool', 'PageNavigationTool', 'MagnificationTool', 'PanTool', 'SelectionTool', 'CommentTool', 'SubmitForm', 'AnnotationEditTool', 'FormDesignerEditTool', 'FreeTextAnnotationOption', 'InkAnnotationOption', 'ShapeAnnotationOption', 'StampAnnotation', 'SignatureOption', 'SearchOption', 'PrintOption', 'DownloadOption'], annotationToolbarItems: ['HighlightTool', 'UnderlineTool', 'StrikethroughTool', 'SquigglyTool', 'ColorEditTool', 'OpacityEditTool', 'AnnotationDeleteTool', 'StampAnnotationTool', 'HandWrittenSignatureTool', 'InkAnnotationTool', 'InkEraserTool', 'ShapeTool', 'CalibrateTool', 'StrokeColorEditTool', 'ThicknessEditTool', 'FreeTextAnnotationTool', 'FontFamilyAnnotationTool', 'FontSizeAnnotationTool', 'FontStylesAnnotationTool', 'FontAlignAnnotationTool', 'FontColorAnnotationTool', 'CommentPanelTool'], formDesignerToolbarItems: ['TextboxTool', 'PasswordTool', 'CheckBoxTool', 'RadioButtonTool', 'DropdownTool', 'ListboxTool', 'DrawSignatureTool', 'DeleteTool'], redactionToolbarItems: ['MarkForRedaction', 'RedactPages', 'RedactionPanel', 'Redact', 'RemoveAnnotation', 'CommentPanel', 'Close'] })
     public toolbarSettings: ToolbarSettingsModel;
 
     /**
@@ -7688,6 +8380,21 @@ export class PdfViewer extends Component<HTMLElement> implements INotifyProperty
 
     @Property({ author: 'Guest', opacity: 1, strokeColor: '#ff0000', thickness: 1, annotationSelectorSettings: { selectionBorderColor: '', resizerBorderColor: 'black', resizerFillColor: '#FF4081', resizerSize: 8, selectionBorderThickness: 1, resizerShape: 'Square', selectorLineDashArray: [], resizerLocation: AnnotationResizerLocation.Corners | AnnotationResizerLocation.Edges, resizerCursorType: null }, isLock: false, allowedInteractions: ['None'], isPrint: true, subject: 'Ink' })
     public inkAnnotationSettings: InkAnnotationSettingsModel;
+
+    /**
+     * Enable or disable Ink Eraser mode. When enabled, users can erase portions of ink annotations.
+     * @default false
+     */
+    @Property(false)
+    public enableInkEraser: boolean;
+
+    /**
+     * Sets the current eraser size for ink annotations. By default value is 20. Range: 1-20.
+     * @default 20
+     */
+    @Property(20)
+    public inkEraserSize: number;
+
 
     /**
      * Defines the settings of the annotations.
@@ -9502,7 +10209,9 @@ export class PdfViewer extends Component<HTMLElement> implements INotifyProperty
                             this.isRedactionToolbarVisible = false;
                             this.toolbarModule.redactionToolbarModule.showRedactionToolbar();
                         }
-                        this.toolbarModule.formDesignerToolbarModule.resetFormDesignerToolbar();
+                        if (this.toolbarModule.formDesignerToolbarModule) {
+                            this.toolbarModule.formDesignerToolbarModule.resetFormDesignerToolbar();
+                        }
                     }
                     else {
                         if (!isNullOrUndefined(this.toolbarModule) && !isNullOrUndefined(this.formDesignerModule) &&
@@ -9526,7 +10235,9 @@ export class PdfViewer extends Component<HTMLElement> implements INotifyProperty
                             this.isRedactionToolbarVisible = false;
                             this.toolbarModule.redactionToolbarModule.showRedactionToolbar();
                         }
-                        this.toolbarModule.annotationToolbarModule.resetToolbar();
+                        if (this.toolbarModule.annotationToolbarModule) {
+                            this.toolbarModule.annotationToolbarModule.resetToolbar();
+                        }
                     }
                     else {
                         if (!isNullOrUndefined(this.toolbarModule) && !isNullOrUndefined(this.annotationModule) &&
@@ -9557,7 +10268,9 @@ export class PdfViewer extends Component<HTMLElement> implements INotifyProperty
                             this.isFormDesignerToolbarVisible = false;
                             this.toolbarModule.formDesignerToolbarModule.showFormDesignerToolbar();
                         }
-                        this.toolbarModule.redactionToolbarModule.resetToolbar();
+                        if (this.toolbarModule.redactionToolbarModule) {
+                            this.toolbarModule.redactionToolbarModule.resetToolbar();
+                        }
                     }
                 }
                 else {
@@ -9875,16 +10588,20 @@ export class PdfViewer extends Component<HTMLElement> implements INotifyProperty
                 }
                 break;
             case 'isThumbnailViewOpen':
-                if (!isNullOrUndefined(newProp.isThumbnailViewOpen)) {
-                    const thumbnailButton: HTMLButtonElement | null = document.getElementById(this.element.id + '_thumbnail_view') as HTMLButtonElement;
-                    if (this.thumbnailView && this.enableThumbnail && !isNullOrUndefined(thumbnailButton)) {
-                        if (newProp.isThumbnailViewOpen) {
-                            this.thumbnailView.openThumbnailPane();
-                        }
-                        else {
-                            this.thumbnailView.closeThumbnailPane();
+                if (!this.viewerBase.isSkipThumbnailRender) {
+                    if (!isNullOrUndefined(newProp.isThumbnailViewOpen)) {
+                        const thumbnailButton: HTMLButtonElement | null = document.getElementById(this.element.id + '_thumbnail_view') as HTMLButtonElement;
+                        if (this.thumbnailView && this.enableThumbnail && !isNullOrUndefined(thumbnailButton)) {
+                            if (newProp.isThumbnailViewOpen) {
+                                this.thumbnailView.openThumbnailPane();
+                            }
+                            else {
+                                this.thumbnailView.closeThumbnailPane();
+                            }
                         }
                     }
+                } else {
+                    this.viewerBase.isSkipThumbnailRender = false;
                 }
                 break;
             case 'isBookmarkPanelOpen':
@@ -10954,6 +11671,8 @@ export class PdfViewer extends Component<HTMLElement> implements INotifyProperty
         'Annotation Edit text': 'Edit Annotation',
         'FormDesigner Edit text': 'Add and Edit Form Fields',
         'Line Thickness': 'Line Thickness',
+        'Eraser Thickness': 'Eraser Thickness',
+        'Eraser': 'Eraser',
         'Line Properties': 'Line Properties',
         'Start Arrow': 'Start Arrow',
         'End Arrow': 'End Arrow',
@@ -11009,6 +11728,20 @@ export class PdfViewer extends Component<HTMLElement> implements INotifyProperty
         'Page': 'Page',
         'Add a comment': 'Add a comment',
         'Add a reply': 'Add a reply',
+        'Comment filter': 'Comment filter',
+        'Author': 'Author',
+        'Include Replies': 'Include Replies',
+        'Annotation type': 'Annotation type',
+        'Status': 'Status',
+        'Date': 'Date',
+        'Color': 'Color',
+        'Filter settings': 'Filter settings',
+        'Select author': 'Select author',
+        'Select annotation type': 'Select annotation type',
+        'Select status': 'Select status',
+        'Select a date': 'Select a date',
+        'Select color': 'Select color',
+        'Filter document and comments panel': 'Filter document and comments panel',
         'Redaction': 'Redaction',
         'Redact Text': 'Redact Text',
         'Apply Redactions': 'Apply Redactions',
@@ -11016,12 +11749,19 @@ export class PdfViewer extends Component<HTMLElement> implements INotifyProperty
         'Apply Redaction': 'Apply Redaction',
         'Redact Content': 'All content marked for redaction will be permanently removed from the document. This action cannot be undone.',
         'Use Overlay Text': 'Use Overlay Text',
+        'Overlay Text': 'Overlay Text',
+        'Fill Opacity': 'Fill Opacity',
+        'Outline Color': 'Outline Color',
         'Repeat Overlay Text': 'Repeat Overlay Text',
         'REDACTED': 'REDACTED',
         'Page Range': 'Page Range',
         'Mark for Redaction': 'Mark for Redaction',
         'Mark Page Range': 'Mark Page Range',
         'Redact Pages': 'Redact Pages',
+        'Current Page': 'Current Page',
+        'Odd Pages Only': 'Odd Pages Only',
+        'Even Pages Only': 'Even Pages Only',
+        'Specific Pages': 'Specific Pages',
         'Redaction Panel': 'Redaction Panel',
         'Redact': 'Redact',
         'Close': 'Close',
@@ -11044,6 +11784,7 @@ export class PdfViewer extends Component<HTMLElement> implements INotifyProperty
         'Font color': 'Font Color',
         'Text Align': 'Text Align',
         'Text Properties': 'Font Style',
+        'Font Style': 'Font Style',
         'SignatureFieldDialogHeaderText': 'Add Signature',
         'HandwrittenSignatureDialogHeaderText': 'Add Signature',
         'InitialFieldDialogHeaderText': 'Add Initial',

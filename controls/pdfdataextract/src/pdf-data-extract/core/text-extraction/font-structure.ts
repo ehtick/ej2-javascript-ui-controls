@@ -6,56 +6,242 @@ import { _PdfCharacterMapFactory, _PdfIdentityCharacterMap } from './cmap';
 import { _PdfGlyphTable } from './glyph';
 import { _PdfCompactFont } from './compact-font-parser';
 import { _bytesToString, _PdfBaseStream, _PdfCrossReference, _PdfDictionary, _PdfName, _PdfNullStream, _PdfReference, _PdfStream, FormatError, PdfFontStyle } from '@syncfusion/ej2-pdf';
+/**
+ * Represents the font structure containing metrics, encodings and glyph mappings
+ * used during text extraction.
+ *
+ * @private
+ */
 export class _FontStructure {
+    /** Font ascent value.
+     *
+     * @private
+     */
     _ascent: number;
+    /** Font bounding box array.
+     *
+     * @private
+     */
     _boundingBox: number[];
+    /** Character map.
+     *
+     * @private
+     */
     _characterMap: any;  //eslint-disable-line
+    /** Font style flags.
+     *
+     * @private
+     */
     _fontStyle: PdfFontStyle;
+    /** Built in encoding map.
+     *
+     * @private
+     */
     _builtInEncoding: any; //eslint-disable-line
+    /** Unicode fallback mapping.
+     *
+     * @private
+     */
     _fallBackToUnicodeMap: any; //eslint-disable-line
+    /** Capital height.
+     *
+     * @private
+     */
     _capHeight: number;
+    /** encoding name.
+     *
+     * @private
+     */
     _encoding: string = '';
+    /** True if composite font.
+     *
+     * @private
+     */
     _composite: boolean = false;
+    /** CSS font info.
+     *
+     * @private
+     */
     _cssFontInfo: any = null; //eslint-disable-line
+    /** Raw font data streams.
+     *
+     * @private
+     */
     _data: Uint8Array[];
+    /** default encoding values.
+     *
+     * @private
+     */
     _defaultEncoding: any[]; //eslint-disable-line
+    /** Default glyph width.
+     *
+     * @private
+     */
     _defaultWidth: number;
+    /** Font descent.
+     *
+     * @private
+     */
     _descent: number;
+    /** Differences array for type1 encodings
+     *
+     * @private
+     */
     _differences: any[]; //eslint-disable-line
+    /** True to disable.
+     *
+     * @private
+     */
     _disableFontFace: boolean;
+    /** CIDSystemInfo for CID fonts.
+     *
+     * @private
+     */
     _characterSystemInfo: any; //eslint-disable-line
+    /** Font matrix transform array.
+     *
+     * @private
+     */
     _fontMatrix: number[];
+    /** Character cache.
+     *
+     * @private
+     */
     _charsCache: any = Object.create(null); //eslint-disable-line
+    /** Glyph cache.
+     *
+     * @private
+     */
     _glyphCache: any = Object.create(null); //eslint-disable-line
+    /** Width of array glyphs.
+     *
+     * @private
+     */
     _widths: number[];
+    /** True if vertical writing mode.
+     *
+     * @private
+     */
     _vertical: boolean;
+    /** Font type string.
+     *
+     * @private
+     */
     _type: string;
+    /** toUnicode Map objec.
+     *
+     * @private
+     */
     _toUnicode: any; //eslint-disable-line
+    /** Mapping from font char codes to Unicode or font glyph indices.
+     *
+     * @private
+     */
     _toFontChar: any; //eslint-disable-line
+    /** True when the font is considered a serif face.
+     *
+     * @private
+     */
     _isSerifFont: boolean = false;
+    /** True when the font is symbolic (Symbol/ZapfDingbats-like).
+     *
+     * @private
+     */
     _isSymbolicFont: boolean = false;
+    /** True when the font represents Type3 glyphs.
+     *
+     * @private
+     */
     _isType3Font: boolean = false;
+    /** True when the font was loaded from an internal/embedded resource.
+     *
+     * @private
+     */
     _isInternalFont: boolean = false;
+    /** Computed line height for the font in font units.
+     *
+     * @private
+     */
     _lineHeight: number;
+    /** MIME type string for detected embedded font data.
+     *
+     * @private
+     */
     _mimeType: any; //eslint-disable-line
+    /** True when the original font file is missing.
+     *
+     * @private
+     */
     _missingFile: boolean;
+    /** Resolved font name.
+     *
+     * @private
+     */
     _name: string;
+    /** Internal font flags bitfield.
+     *
+     * @private
+     */
     _flags: number;
+    /** PostScript name if available.
+     *
+     * @private
+     */
     _psName: string;
+    /** Font subtype string (e.g., 'Type1C').
+     *
+     * @private
+     */
     _subtype: string;
+    /** System font metadata object when available.
+     *
+     * @private
+     */
     _systemFontInfo: any; //eslint-disable-line
+    /** Original PDF font dictionary.
+     *
+     * @private
+     */
     _dictionary: _PdfDictionary;
+    /** Cross reference table for indirect object resolution.
+     *
+     * @private
+     */
     _crossReference: _PdfCrossReference;
+    /** True when underlying font file is OpenType/TTF.
+     *
+     * @private
+     */
     _isOpenType: boolean;
+    /** Line gap metric extracted from font tables.
+     *
+     * @private
+     */
     _lineGap: any; //eslint-disable-line
+    /** Internal markers used for fallback/format heuristics (bold/italic).
+     *
+     * @private
+     */
     _bold: any; //eslint-disable-line
     _italic: any; //eslint-disable-line
     _black: any; //eslint-disable-line
+    /** Length fields from embedded font streams (Type1/CFF).
+     *
+     * @private
+     */
     _length1: number;
     _length2: number;
     _length3: number;
     constructor();
     constructor(dictionary: _PdfDictionary, crossReference: _PdfCrossReference);
+    /**
+     * Create a `_FontStructure` instance.
+     *
+     * @param {_PdfDictionary} dictionary - Optional PDF font dictionary used to initialize the structure.
+     * @param {PdfCrossReferenceType} crossReference - Optional cross reference used to resolve indirect objects.
+     *
+     * @private
+     */
     constructor(dictionary?: _PdfDictionary, crossReference?: _PdfCrossReference) {
         if (dictionary) {
             this._dictionary = dictionary;
@@ -63,10 +249,23 @@ export class _FontStructure {
             this._initialize();
         }
     }
+    /**
+     * Initialize internal structures and pre-evaluate font information.
+     *
+     * @private
+     * @returns {void} nothing.
+     */
     _initialize(): void {
         const font: _FontHelper = new _FontHelper(this, this._crossReference);
         font._preEvaluateFont(this._dictionary);
     }
+    /**
+     * Convert a sequence of characters into glyph objects for this font.
+     *
+     * @param {string} chars - String containing one or more characters to convert.
+     * @returns {_Glyph} Array of `_Glyph` instances representing the characters.
+     * @private
+     */
     _charsToGlyphs(chars: string): _Glyph[] {
         let glyphs: any; //eslint-disable-line
         const font: _FontHelper = new _FontHelper(this, this._crossReference);
@@ -101,33 +300,146 @@ export class _FontStructure {
         return (this._charsCache[chars] = glyphs); //eslint-disable-line
     }
 }
+/**
+ * Helper that parses font dictionaries, reads font files and resolves glyph
+ * and encoding information required by `_FontStructure`.
+ *
+ * @private
+ */
 export class _FontHelper {
+    /** Parent `_FontStructure` instance being populated.
+     *
+     * @private
+     */
     _fontStructure: _FontStructure;
+    /** Optional per-glyph scale factors read from font tables.
+     *
+     * @private
+     */
     _scaleFactors: any; //eslint-disable-line
+    /** True when a ToUnicode map was included in the font resources.
+     *
+     * @private
+     */
     _hasIncludedToUnicodeMap: boolean = false;
+    /** Cross-reference table used for indirect object resolution.
+     *
+     * @private
+     */
     _crossReference: _PdfCrossReference;
+    /** First character code used by widths arrays.
+     *
+     * @private
+     */
     _firstChar: number;
+    /** Last character code used by widths arrays.
+     *
+     * @private
+     */
     _lastChar: number;
+    /** Local font table helper instance.
+     *
+     * @private
+     */
     _table: _fontTables = new _fontTables(); //option
+    /** Flag indicating whether re-measurement of fallback metrics is required.
+     *
+     * @private
+     */
     _remeasure: any; //eslint-disable-line
+    /** Standard character overrides map (used for accented character heuristics).
+     *
+     * @private
+     */
     _standardCharacter: any; //eslint-disable-line
+    /** Raw font file bytes or stream data.
+     *
+     * @private
+     */
     _data: any; //eslint-disable-line
+    /** Internal flags bitfield.
+     *
+     * @private
+     */
     _flags: number;
+    /** True when font writing direction is vertical.
+     *
+     * @private
+     */
     _vertical: boolean;
+    /** Underlying file-like object for embedded font data.
+     *
+     * @private
+     */
     _file: any; //eslint-disable-line
+    /** Detected font file type string.
+     *
+     * @private
+     */
     _fileType: string;
+    /** Detected font file subtype (e.g., 'Type1C').
+     *
+     * @private
+     */
     _fileSubtype: string;
+    /** Italic angle metric extracted from font descriptor.
+     *
+     * @private
+     */
     _italicAngle: number;
+    /** x-height metric for the font.
+     *
+     * @private
+     */
     _xHeight: number;
+    /** Name of base encoding declared in the font dictionary.
+     *
+     * @private
+     */
     _baseEncodingName: any; //eslint-disable-line
+    /** Identity transform used when normalizing font units.
+     *
+     * @private
+     */
     _fontIdentityMatrix: number[] = [0.001, 0, 0, 0.001, 0, 0];
+    /** Fallback mapping used when building ToUnicode maps.
+     *
+     * @private
+     */
     _fallBackToUnicodeMap: any; //eslint-disable-line
+    /** Mapping from character id to glyph id when present.
+     *
+     * @private
+     */
     _characterIdToGlyphMap: any; //eslint-disable-line
+    /** True when an explicit encoding is present on the font dictionary.
+     *
+     * @private
+     */
     _hasEncoding: any; //eslint-disable-line
+    /** True when the underlying file indicates OpenType-specific layouts.
+     *
+     * @private
+     */
     _isOpenType: boolean = false;
+    /** Cache for standard font binary blobs.
+     *
+     * @private
+     */
     _standardFontDataCache: Map<any, any> = new Map<any, any>(); //eslint-disable-line
+    /** Internal table of font flag constants.
+     *
+     * @private
+     */
     _fontFlags: any = { FixedPitch: 1, Serif: 2, Symbolic: 4, Script: 8, NonSymbolic: 32, Italic: 64, AllCap: 65536, SmallCap: 131072, ForceBold: 262144}; //eslint-disable-line
+    /** List of TrueType/OpenType tables we accept and parse.
+     *
+     * @private
+     */
     _validTables: any = ['OS/2', 'cmap', 'head', 'hhea', 'hmtx', 'maxp', 'name', 'post', 'loca', 'glyf', 'fpgm', 'prep', 'cvt', 'compactFont']; //eslint-disable-line
+    /**
+     * @private
+     */
     _ttOpsStackDeltas: number[] = [
         0, 0, 0, 0, 0, 0, 0, 0, -2, -2, -2, -2, 0, 0, -2, -5,
         -1, -1, -1, -1, -1, -1, -1, -1, 0, 0, -1, 0, -1, -1, -1, -1,
@@ -142,13 +454,21 @@ export class _FontHelper {
         this._fontStructure = fontStructure;
         this._crossReference = crossReference;
     }
-    _preEvaluateFont(dictionary: _PdfDictionary): any { //eslint-disable-line
+    /* eslint-disable */
+    /**
+     * Pre-evaluate the PDF font dictionary and prepare font properties.
+     *
+     * @private
+     * @param {_PdfDictionary} dictionary - The PDF font dictionary to inspect.
+     * @returns {any} internal parsing result (implementation specific).
+     */
+    _preEvaluateFont(dictionary: _PdfDictionary): any {
         const baseDictionary: _PdfDictionary = dictionary;
-        let type: any = dictionary.get('Subtype'); //eslint-disable-line
+        let type: any = dictionary.get('Subtype');
         this._fontStructure._composite = false;
         let firstChar: number;
         let lastChar: number;
-        let descendantFonts: any; //eslint-disable-line
+        let descendantFonts: any;
         const fontStyle: PdfFontStyle = this._getFontStyle(dictionary);
         this._fontStructure._fontStyle = fontStyle;
         if (type.name === 'Type0') {
@@ -169,8 +489,8 @@ export class _FontHelper {
             lastChar = this._fontStructure._composite ? 0xffff : 0xff;
         }
         this._fontStructure._type = type.name;
-        let descriptor: any; //eslint-disable-line
-        let toUnicode: any; //eslint-disable-line
+        let descriptor: any;
+        let toUnicode: any;
         if (dictionary.has('FontDescriptor')) {
             descriptor = dictionary.get('FontDescriptor');
         }
@@ -182,6 +502,14 @@ export class _FontHelper {
         }
         this._translateFont(descriptor, dictionary, baseDictionary, firstChar, lastChar, toUnicode);
     }
+    /* eslint-enable */
+    /**
+     * Determine the font style (bold/italic) from the font dictionary.
+     *
+     * @private
+     * @param {_PdfDictionary} dictionary - The PDF font dictionary.
+     * @returns {PdfFontStyle} Computed `PdfFontStyle` flags.
+     */
     _getFontStyle(dictionary: _PdfDictionary): PdfFontStyle {
         let fontStyle: PdfFontStyle = PdfFontStyle.regular;
         if (typeof (dictionary) !== 'undefined' && dictionary.has('BaseFont')) {
@@ -222,7 +550,21 @@ export class _FontHelper {
         }
         return fontStyle;
     }
-    _translateFont(descriptor: any, dictionary: any, baseDictionary: any, firstChar: number, lastChar: number, unicode: any): any {  //eslint-disable-line
+    /* eslint-disable */
+    /**
+     * Translate and extract font-related structures from font descriptor and
+     * dictionaries into the `_FontStructure`.
+     *
+     * @private
+     * @param {any} descriptor - Font descriptor dictionary.
+     * @param {any} dictionary - The font dictionary used for parsing.
+     * @param {any} baseDictionary - Base dictionary that may contain overrides.
+     * @param {number} firstChar - First character code in widths array.
+     * @param {number} lastChar - Last character code in widths array.
+     * @param {any} unicode - Optional ToUnicode mapping or stream.
+     * @returns {any} Implementation specific result.
+     */
+    _translateFont(descriptor: any, dictionary: any, baseDictionary: any, firstChar: number, lastChar: number, unicode: any): any {
         const isType3Font: boolean = this._fontStructure._type === 'Type3';
         this._fontStructure._isType3Font = isType3Font;
         if (!descriptor) {
@@ -232,36 +574,36 @@ export class _FontHelper {
                 descriptor.set('FontName', _PdfName.get(this._fontStructure._type));
                 descriptor.set('FontBBox', bbox);
             } else {
-                let baseFontName: any = dictionary.get('BaseFont'); //eslint-disable-line
+                let baseFontName: any = dictionary.get('BaseFont');
                 if (!(baseFontName instanceof _PdfName)) {
                     throw new FormatError('Base font is not specified');
                 }
                 baseFontName = baseFontName.name.replace(/[,_]/g, '-');
-                const metrics: any = this._getBaseFontMetrics(baseFontName); //eslint-disable-line
-                const fontNameWoStyle: any = baseFontName.split('-', 1)[0]; //eslint-disable-line
+                const metrics: any = this._getBaseFontMetrics(baseFontName);
+                const fontNameWoStyle: any = baseFontName.split('-', 1)[0];
                 const flags: number = (this._isSerifFont(fontNameWoStyle) ? _fontFlags.Serif : 0) | (metrics.monospace ?
                     _fontFlags.FixedPitch : 0) |
-                                       (_getSymbolsFonts()[fontNameWoStyle] ? _fontFlags.Symbolic //eslint-disable-line
+                                       (_getSymbolsFonts()[fontNameWoStyle] ? _fontFlags.Symbolic
                                            : _fontFlags.NonSymbolic);
                 this._fontStructure._name = baseFontName;
                 this._fontStructure._widths = metrics.widths;
                 this._fontStructure._defaultWidth = metrics.defaultWidth;
                 this._fontStructure._isType3Font = isType3Font;
                 this._fontStructure._flags = flags;
-                const widths: any = dictionary.get('Widths'); //eslint-disable-line
-                const standardFontName: any = this._getStandardFontName(baseFontName); //eslint-disable-line
-                let file: any = null; //eslint-disable-line
+                const widths: any = dictionary.get('Widths');
+                const standardFontName: any = this._getStandardFontName(baseFontName);
+                let file: any = null;
                 if (standardFontName) {
                     file = this._fetchStandardFontData(standardFontName);
                     this._fontStructure._isInternalFont = !!file;
                 }
                 this._extractDataStructures(dictionary, unicode);
                 if (Array.isArray(widths)) {
-                    const glyphWidths: any = []; //eslint-disable-line
+                    const glyphWidths: any = [];
                     let j: number = firstChar;
                     for (const w of widths) {
                         if (w instanceof _PdfReference) {
-                            const width: any = this._crossReference._fetch(w); //eslint-disable-line
+                            const width: any = this._crossReference._fetch(w);
                             if (typeof width === 'number') {
                                 glyphWidths[Number.parseInt(j.toString(), 10)] = width;
                             }
@@ -278,12 +620,12 @@ export class _FontHelper {
                 return;
             }
         }
-        let fontName: any; //eslint-disable-line
+        let fontName: any;
         if (descriptor.has('FontName')) {
             fontName = descriptor.get('FontName');
             this._fontStructure._name = fontName.name;
         }
-        let baseFont: any = dictionary.get('BaseFont'); //eslint-disable-line
+        let baseFont: any = dictionary.get('BaseFont');
         if (typeof fontName === 'string') {
             fontName = _PdfName.get(fontName);
         }
@@ -296,7 +638,7 @@ export class _FontHelper {
         if (!(fontName instanceof _PdfName)) {
             throw new FormatError('invalid font name');
         }
-        let fontFile: any; //eslint-disable-line
+        let fontFile: any;
         let length1: number;
         let length2: number;
         let length3: number;
@@ -313,7 +655,7 @@ export class _FontHelper {
         }
         if (fontFile) {
             if (fontFile.dictionary) {
-                const subtypeEntry: any = fontFile.dictionary.get('Subtype'); //eslint-disable-line
+                const subtypeEntry: any = fontFile.dictionary.get('Subtype');
                 if (subtypeEntry instanceof _PdfName) {
                     this._fontStructure._subtype = subtypeEntry.name;
                 }
@@ -326,7 +668,7 @@ export class _FontHelper {
                 this._file = fontFile;
             }
         }  else if (!isType3Font) {
-            const standardFontName: any = this._getStandardFontName(fontName.name); //eslint-disable-line
+            const standardFontName: any = this._getStandardFontName(fontName.name);
             if (standardFontName) {
                 fontFile = this._fetchStandardFontData(standardFontName);
                 this._fontStructure._isInternalFont = !!fontFile;
@@ -365,7 +707,7 @@ export class _FontHelper {
         this._fontStructure._flags = flags;
         let encoding: _PdfName;
         if (baseDictionary.has('Encoding')) {
-            const cidEncoding: any = baseDictionary.get('Encoding'); //eslint-disable-line
+            const cidEncoding: any = baseDictionary.get('Encoding');
             if (cidEncoding instanceof _PdfName) {
                 encoding = cidEncoding;
                 this._fontStructure._encoding = encoding.name;
@@ -375,7 +717,7 @@ export class _FontHelper {
         }
         if (this._fontStructure._composite) {
             const map: _PdfCharacterMapFactory = new _PdfCharacterMapFactory();
-            const cMap: any = map._create(encoding, null, null); //eslint-disable-line
+            const cMap: any = map._create(encoding, null, null);
             this._fontStructure._characterMap = cMap;
             this._fontStructure._vertical = this._fontStructure._characterMap._vertical;
         }
@@ -384,6 +726,14 @@ export class _FontHelper {
         this._setFontData();
         this._fontStructure._capHeight = capHeight / glyphSpaceUnits;
     }
+    /* eslint-enable */
+    /**
+     * Build a mapping from character codes to glyph widths.
+     *
+     * @private
+     * @param {any} widthsByGlyphName - Mapping of glyph names to widths.
+     * @returns {any} Map of character code -> width.
+     */
     _buildCharCodeToWidth(widthsByGlyphName: any): any { //eslint-disable-line
         const widths: any = Object.create(null); //eslint-disable-line
         const differences: any = this._fontStructure._differences; //eslint-disable-line
@@ -400,6 +750,13 @@ export class _FontHelper {
         }
         return widths;
     }
+    /**
+     * Fetch embedded standard font data by name, if available.
+     *
+     * @private
+     * @param {string} name - Standard font name.
+     * @returns {any} A `_PdfStream` containing font bytes or null when not found.
+     */
     _fetchStandardFontData(name: string): any { //eslint-disable-line
         const cachedData: any = this._standardFontDataCache.get(name); //eslint-disable-line
         if (cachedData) {
@@ -420,7 +777,14 @@ export class _FontHelper {
         this._file = new _PdfStream(bytes);
         return this._file;
     }
-    _setFontData(): any { //eslint-disable-line
+    /* eslint-disable */
+    /**
+     * Inspect font file data and initialize internal font tables and encodings.
+     *
+     * @private
+     * @returns {any} Implementation specific result.
+     */
+    _setFontData(): any {
         if (this._fontStructure._type === 'Type3') {
             this._fontStructure._toFontChar = [];
             for (let charCode: number = 0; charCode < 256; charCode++) {
@@ -435,7 +799,7 @@ export class _FontHelper {
             return;
         }
         this._getFontFileType();
-        let compactFont: any; //eslint-disable-line
+        let compactFont: any;
         try {
             switch (this._fileType) {
             case 'MMType1':
@@ -473,20 +837,50 @@ export class _FontHelper {
         this._amendFallBackToUnicodeMap(this);
         this._fontStructure._subtype = this._fileSubtype;
     }
+    /* eslint-enable */
+    /**
+     * Check whether the provided file is a TrueType font.
+     *
+     * @private
+     * @param {any} file - File-like object with `peekBytes`.
+     * @returns {boolean} True when the file header matches a TrueType signature.
+     */
     _isTrueTypeFile(file: any): boolean { //eslint-disable-line
         const header: any = file.peekBytes(4); //eslint-disable-line
         return (
             this._readUnsignedInt32(header, 0) === 0x00010000 || _bytesToString(header) === 'true'
         );
     }
+    /**
+     * Read a big-endian unsigned 32-bit integer from a byte array.
+     *
+     * @private
+     * @param {any} data - Source byte array.
+     * @param {any} offset - Offset within `data`.
+     * @returns {any} The unsigned 32-bit integer value.
+     */
     _readUnsignedInt32(data: any, offset: any): any { //eslint-disable-line
         return (((data[Number.parseInt(offset.toString(), 10)] << 24) | (data[offset + 1] << 16) | (data[offset + 2] << 8)
          |      data[offset + 3]) >>> 0);
     }
+    /**
+     * Check whether the file is an OpenType font .
+     *
+     * @private
+     * @param {any} file - File-like object with `peekBytes`.
+     * @returns {boolean} True when header equals 'OTTO'.
+     */
     _isOpenTypeFile(file: any): boolean { //eslint-disable-line
         const header: any = file.peekBytes(4); //eslint-disable-line
         return _bytesToString(header) === 'OTTO';
     }
+    /**
+     * Check whether the file appears to be a Type1 font.
+     *
+     * @private
+     * @param {any} file - File-like object with `peekBytes`.
+     * @returns {boolean} True when known Type1 signatures are found.
+     */
     _isType1File(file: any): boolean { //eslint-disable-line
         const header : any= file.peekBytes(2); //eslint-disable-line
         if (header[0] === 0x25 && header[1] === 0x21) {
@@ -497,6 +891,13 @@ export class _FontHelper {
         }
         return false;
     }
+    /**
+     * Determine whether the file represents a Compact Font Format.
+     *
+     * @private
+     * @param {any} file - File-like object with `peekBytes`.
+     * @returns {boolean} True for CFF-like headers.
+     */
     _isCompactFontFile(file: any): boolean { //eslint-disable-line
         const header: any = file.peekBytes(4); //eslint-disable-line
         if (header[0] >= 1 && header[3] >= 1 && header[3] <= 4) {
@@ -504,6 +905,13 @@ export class _FontHelper {
         }
         return false;
     }
+    /**
+     * Determine the font file type (TrueType, OpenType, Type1, etc.) and
+     * set internal fileType/fileSubtype accordingly.
+     *
+     * @private
+     * @returns {void} nothing.
+     */
     _getFontFileType(): void {
         const composite: boolean = this._fontStructure._composite;
         const type: string = this._fontStructure._type;
@@ -531,6 +939,17 @@ export class _FontHelper {
             this._fileSubtype = subtype;
         }
     }
+    /**
+     * Extract glyph widths and vertical metrics from font descriptor and
+     * populate internal width tables.
+     *
+     * @private
+     * @param {_PdfDictionary} descriptor - Font descriptor dictionary.
+     * @param {number} flags - Font flags controlling symbolic/monospace behavior.
+     * @param {number} firstChar - First character code.
+     * @param {_PdfDictionary} dictionary - Font dictionary used when extracting widths.
+     * @returns {void} nothing.
+     */
     _extractWidths(descriptor: _PdfDictionary, flags: number, firstChar: number, dictionary: _PdfDictionary): void {
         let glyphsWidths: any = []; //eslint-disable-line
         let defaultWidth: number = 0;
@@ -669,6 +1088,13 @@ export class _FontHelper {
         this._fontStructure._widths = glyphsWidths;
         this._flags = flags;
     }
+    /**
+     * Normalize rectangle coordinates so that left <= right and top <= bottom.
+     *
+     * @private
+     * @param  {number} rect - Rectangle array [left, top, right, bottom].
+     * @returns {number} Normalized rectangle array.
+     */
     _normalizeRect(rect: number[]): number[] {
         const r: number[] = rect.slice(0); // clone rect
         if (rect[0] > rect[2]) {
@@ -681,6 +1107,14 @@ export class _FontHelper {
         }
         return r;
     }
+    /**
+     * Check whether a value is a numeric array of an expected length.
+     *
+     * @private
+     * @param {any} arr - Value to test.
+     * @param {number} len - Required length or `null` to ignore length.
+     * @returns {boolean} True when `arr` is an array of numbers matching `len`.
+     */
     private _isNumberArray(arr: any, len: number): boolean { //eslint-disable-line
         if (!Array.isArray(arr)) {
             return false;
@@ -695,15 +1129,48 @@ export class _FontHelper {
         }
         return true;
     }
+    /**
+     * Return `arr` when it is a 6-element numeric matrix, otherwise the fallback.
+     *
+     * @private
+     * @param {any} arr - Candidate matrix.
+     * @param {number} fallBack - Fallback matrix.
+     * @returns {any} Either `arr` or `fallBack`.
+     */
     _lookupMatrix(arr: any, fallBack: number[]): any { //eslint-disable-line
         return this._isNumberArray(arr, 6) ? arr : fallBack;
     }
+    /**
+     * Return `arr` when it is a 4-element numeric rect, otherwise the fallback.
+     *
+     * @private
+     * @param {any} arr - Candidate rect.
+     * @param {number} fallBack - Fallback rect.
+     * @returns {any} Either `arr` or `fallBack`.
+     */
     _lookupRect(arr: any, fallBack: number[]): any { //eslint-disable-line
         return this._isNumberArray(arr, 4) ? arr : fallBack;
     }
+    /**
+     * Return a normalized rect when `arr` is a numeric rect, otherwise the fallback.
+     *
+     * @private
+     * @param {any} arr - Candidate rect.
+     * @param {number} fallBack - Fallback rect.
+     * @returns {any} Normalized rect or fallback.
+     */
     _lookupNormalRect(arr: any, fallBack: number[]): any { //eslint-disable-line
         return this._isNumberArray(arr, 4) ? this._normalizeRect(arr) : fallBack;
     }
+    /**
+     * Extract encoding, differences and ToUnicode mappings from the font
+     * dictionary into the `_FontStructure`.
+     *
+     * @private
+     * @param {_PdfDictionary} dictionary - PDF font dictionary.
+     * @param {any} unicode - Optional ToUnicode mapping or stream.
+     * @returns {void} nothing.
+     */
     _extractDataStructures(dictionary: _PdfDictionary, unicode?: any): void { //eslint-disable-line
         const differences: any = []; //eslint-disable-line
         let baseEncodingName: any = null; //eslint-disable-line
@@ -783,6 +1250,13 @@ export class _FontHelper {
         this._hasEncoding = !!baseEncodingName || differences.length > 0;
         this._fontStructure._toUnicode = this._buildToUnicode(baseEncodingName, this._hasEncoding, this._fontStructure._toUnicode);
     }
+    /**
+     * Convert a PDF string to a JavaScript string.
+     *
+     * @private
+     * @param {any} text - Input PDF string buffer.
+     * @returns {any} Decoded JavaScript string.
+     */
     _stringToPdfString(text: any): any { //eslint-disable-line
         if (text[0] >= '\xEF') {
             let encoding: any; //eslint-disable-line
@@ -832,6 +1306,13 @@ export class _FontHelper {
         }
         return strBuf.join('');
     }
+    /**
+     * Read and build a to-unicode map from a CMap name or stream.
+     *
+     * @private
+     * @param {any} cmapObj - CMap name or stream object.
+     * @returns {any} A unicode mapping object or null.
+     */
     _readToUnicode(cmapObj: any): any { //eslint-disable-line
         const cMap: _PdfCharacterMapFactory = new _PdfCharacterMapFactory();
         if (!cmapObj) {
@@ -881,6 +1362,15 @@ export class _FontHelper {
         }
         return null;
     }
+    /**
+     * Build a ToUnicode mapping taking into account base encodings and CMaps.
+     *
+     * @private
+     * @param {any} baseEncodingName - Name of the base encoding if present.
+     * @param {boolean} isEncoding - True when an explicit encoding is present.
+     * @param {any} toUnicode - Existing toUnicode structure if any.
+     * @returns {any} A mapping object representing character -> unicode.
+     */
     _buildToUnicode(baseEncodingName: any, isEncoding: boolean, toUnicode: any): any { //eslint-disable-line
         this._hasIncludedToUnicodeMap = toUnicode && toUnicode._length > 0;
         if (this._hasIncludedToUnicodeMap) {
@@ -920,6 +1410,14 @@ export class _FontHelper {
         }
         return new _PdfIdentityToUnicodeMap(this._firstChar, this._lastChar);
     }
+    /**
+     * Build a simple ToUnicode map for non-composite fonts using a base encoding.
+     *
+     * @private
+     * @param {any} baseEncodingName - Base encoding name to use.
+     * @param {boolean} forceGlyphs - When true forces glyph numeric parsing.
+     * @returns {void} Array mapping character codes to unicode strings.
+     */
     _simpleFontToUnicode(baseEncodingName: any, forceGlyphs: boolean = false): void { //eslint-disable-line  
         const toUnicode: any = []; //eslint-disable-line
         const encoding: any = this._fontStructure._defaultEncoding.slice(); //eslint-disable-line
@@ -1003,9 +1501,25 @@ export class _FontHelper {
         }
         return toUnicode;
     }
+    /**
+     * Convert a 32-bit integer to a 4-character string.
+     *
+     * @private
+     * @param {any} value - 32-bit integer value.
+     * @returns {any} The 4-character string representation.
+     */
     _string32(value: any) { //eslint-disable-line
         return String.fromCharCode((value >> 24) & 0xff, (value >> 16) & 0xff, (value >> 8) & 0xff, value & 0xff);
     }
+    /**
+     * Build mapping from character codes to font character unicode values.
+     *
+     * @private
+     * @param {any} encoding - Encoding array.
+     * @param {any} glyphsUnicodeMap - Glyph-to-unicode lookup map.
+     * @param {any} differences - Differences array from encoding.
+     * @returns {any} Mapping array from charCode to unicode.
+     */
     _buildToFontChar(encoding: any, glyphsUnicodeMap: any, differences: any): any { //eslint-disable-line
         const toFontChar: any = []; //eslint-disable-line
         let unicode: any; //eslint-disable-line
@@ -1025,6 +1539,14 @@ export class _FontHelper {
         }
         return toFontChar;
     }
+    /**
+     * Resolve a glyph name into a unicode code point using known mapping rules.
+     *
+     * @private
+     * @param {any} name - Glyph name (e.g. 'A', 'uniXXXX', 'uXXXX').
+     * @param {any} glyphsUnicodeMap - Known glyph->unicode mapping table.
+     * @returns {any} Unicode code point or -1 when unknown.
+     */
     _getUnicodeForGlyph(name: any, glyphsUnicodeMap: any): any { //eslint-disable-line
         let unicode: any = glyphsUnicodeMap[Number.parseInt(name.toString(), 10)]; //eslint-disable-line
         if (unicode !== undefined) {
@@ -1052,12 +1574,28 @@ export class _FontHelper {
         }
         return -1;
     }
+    /**
+     * Write an unsigned 32-bit value into a byte array.
+     *
+     * @private
+     * @param {number} bytes - Destination byte array.
+     * @param {number} index - Starting index in `bytes`.
+     * @param {number} value - Unsigned 32-bit value to write.
+     * @returns {void} nothing.
+     */
     _writeUnSignedInt32(bytes: number[], index: number, value: number): void {
         bytes[index + 3] = value & 0xff;
         bytes[index + 2] = value >>> 8;
         bytes[index + 1] = value >>> 16;
         bytes[Number.parseInt(index.toString(), 10)] = value >>> 24;
     }
+    /**
+     * Convert a JavaScript string to a `Uint8Array` of character codes.
+     *
+     * @private
+     * @param {any} value - Input string.
+     * @returns {Uint8Array} The resulting `Uint8Array`.
+     */
     _stringToBytes(value: any): Uint8Array { //eslint-disable-line
         if (typeof value !== 'string') {
             //unreachable('Invalid argument for stringToBytes');
@@ -1069,19 +1607,50 @@ export class _FontHelper {
         }
         return bytes;
     }
+    /**
+     * Write a signed 16-bit integer into a byte array.
+     *
+     * @private
+     * @param {number} bytes - Destination byte array.
+     * @param {number} index - Index to write to.
+     * @param {number} value - Signed 16-bit integer value.
+     * @returns {void} nothing.
+     */
     _writeSignedInt16(bytes: number[], index: number, value: number): void {
         bytes[index + 1] = value;
         bytes[Number.parseInt(index.toString(), 10)] = value >>> 8;
     }
+    /**
+     * Combine two bytes into a signed 16-bit integer.
+     *
+     * @private
+     * @param {number} b0 - High byte.
+     * @param {number} b1 - Low byte.
+     * @returns {number} Signed 16-bit integer.
+     */
     _signedInt16(b0: number, b1: number): number {
         const value: number = (b0 << 8) + b1;
         return value & (1 << 15) ? value - 0x10000 : value;
     }
+    /**
+     * Determine whether the font name is considered a serif font.
+     *
+     * @private
+     * @param {string} baseFontName - Base font name to check.
+     * @returns {boolean} True when font is a serif font.
+     */
     _isSerifFont(baseFontName: string): boolean {
         const fontNameWoStyle: any = baseFontName.split('-', 1)[0]; //eslint-disable-line
         return (fontNameWoStyle in _getSerifFonts() || /serif/gi.test(fontNameWoStyle));
     }
-    _adjustWidths(): any { //eslint-disable-line
+    /* eslint-disable */
+    /**
+     * Adjust stored glyph widths according to the font matrix scale.
+     *
+     * @private
+     * @returns {any} nothing.
+     */
+    _adjustWidths(): any {
         if (!this._fontStructure._fontMatrix[0]) {
             return;
         }
@@ -1089,14 +1658,22 @@ export class _FontHelper {
             return;
         }
         const scale: number = 0.001 / this._fontStructure._fontMatrix[0];
-        const glyphsWidths: any = this._fontStructure._widths; //eslint-disable-line
-        const keys: any = Object.keys(glyphsWidths); //eslint-disable-line
+        const glyphsWidths: any = this._fontStructure._widths;
+        const keys: any = Object.keys(glyphsWidths);
         for (let i: number = 0; i < keys.length; i++) {
-            const glyph = keys[i]; //eslint-disable-line
+            const glyph = keys[i];
             glyphsWidths[Number.parseInt(glyph.toString(), 10)] *= scale;
         }
         this._fontStructure._defaultWidth *= scale;
     }
+    /* eslint-enable */
+    /**
+     * Retrieve basic font metrics for a given base font name.
+     *
+     * @private
+     * @param {string} name - Font name to query.
+     * @returns {any} Object containing `defaultWidth`, `monospace` and `widths`.
+     */
     _getBaseFontMetrics(name: string): any { //eslint-disable-line
         let defaultWidth: number = 0;
         let widths: any = Object.create(null); //eslint-disable-line
@@ -1161,18 +1738,45 @@ export class _FontHelper {
         }
         return {defaultWidth, monospace, widths};
     }
+    /**
+     * Return the list of supported standard font names used for metric lookup.
+     *
+     * @private
+     * @returns {any} Array of standard font names.
+     */
     _getMetrics(): any { //eslint-disable-line
         const fontNames: any = ['Courier', 'Courier-Bold', 'Courier-BoldOblique', 'Courier-Oblique', 'Helvetica', 'Helvetica-Bold', 'Helvetica-BoldOblique',  'Helvetica-Oblique', 'Symbol', 'Times-Bold', 'Times-Roman', 'Times-BoldItalic', 'Times-Italic', 'ZapfDingbats']; //eslint-disable-line
         return fontNames;
     }
+    /**
+     * Normalize and map an input font name to a standard font key where possible.
+     *
+     * @private
+     * @param {name} name - Input font name.
+     * @returns {any} Standard font key or undefined when not found.
+     */
     _getStandardFontName(name: string): any { //eslint-disable-line
         const fontName: string = this._normalizeFontName(name);
         const stdFontMap: any = _getStdFontMap(); //eslint-disable-line
         return stdFontMap[fontName]; //eslint-disable-line
     }
+    /**
+     * Normalize a font name by replacing commas/underscores and removing spaces.
+     *
+     * @private
+     * @param {string} name - Font name to normalize.
+     * @returns {string} Normalized font name.
+     */
     _normalizeFontName(name: string): string {
         return name.replace(/[,_]/g, '-').replace(/\s/g, '');
     }
+    /**
+     * Amend the font's ToUnicode map with fallback mappings when necessary.
+     *
+     * @private
+     * @param {any} properties - Helper properties containing fallback maps.
+     * @returns {void} nothing.
+     */
     _amendFallBackToUnicodeMap(properties: any): void { //eslint-disable-line
         if (!properties._fallBackToUnicodeMap) {
             return;
@@ -1192,27 +1796,44 @@ export class _FontHelper {
             properties._fontStructure._toUnicode._amend(toUnicode);
         }
     }
-    _applyStandardFontGlyphMap(map: any, glyphMap: any): any { //eslint-disable-line
-        const keys: any = Object.keys(glyphMap); //eslint-disable-line
+    /* eslint-disable */
+    /**
+     * Apply a standard glyph map to an existing mapping array.
+     *
+     * @private
+     * @param {any} map - Destination map to modify.
+     * @param {any} glyphMap - Source glyph mapping object.
+     * @returns {any} nothing.
+     */
+    _applyStandardFontGlyphMap(map: any, glyphMap: any): any {
+        const keys: any = Object.keys(glyphMap);
         for (let i: number = 0; i < keys.length; i++) {
-            const charCode: any = keys[Number.parseInt(i.toString(), 10)]; //eslint-disable-line
+            const charCode: any = keys[Number.parseInt(i.toString(), 10)];
             map[+charCode] = glyphMap[Number.parseInt(charCode.toString(), 10)];
         }
     }
-    _setFallBackSystemFont(properties: any): any { //eslint-disable-line
+    /**
+     * Set a fallback system font and populate default metrics when a font
+     * file is missing or unsupported.
+     *
+     * @private
+     * @param  {any} properties - Helper properties used during fallback.
+     * @returns {any} nothing.
+     */
+    _setFallBackSystemFont(properties: any): any {
         this._fontStructure._missingFile = true;
         const name: string = this._fontStructure._name;
         const type: string = this._fontStructure._type;
         let fontName: string = this._normalizeFontName(name);
-        const stdFontMap: any = _getStdFontMap(); //eslint-disable-line
-        const nonStdFontMap: any = _getNonStdFontMap(); //eslint-disable-line
-        const isStandardFont: boolean = !!stdFontMap[fontName]; //eslint-disable-line
-        const isMappedToStandardFont: any = !!(nonStdFontMap[fontName] && stdFontMap //eslint-disable-line
-                                            [nonStdFontMap[fontName]]); //eslint-disable-line
-        fontName = stdFontMap[fontName] || nonStdFontMap[fontName]  //eslint-disable-line
+        const stdFontMap: any = _getStdFontMap();
+        const nonStdFontMap: any = _getNonStdFontMap();
+        const isStandardFont: boolean = !!stdFontMap[fontName];
+        const isMappedToStandardFont: any = !!(nonStdFontMap[fontName] && stdFontMap
+                                            [nonStdFontMap[fontName]]);
+        fontName = stdFontMap[fontName] || nonStdFontMap[fontName]
                    || fontName;
-        const fontBasicMetricsMap: any = _getFontBasicMetrics(); //eslint-disable-line
-        const metrics: any = fontBasicMetricsMap[fontName]; //eslint-disable-line
+        const fontBasicMetricsMap: any = _getFontBasicMetrics();
+        const metrics: any = fontBasicMetricsMap[fontName];
         if (metrics) {
             if (isNaN(this._fontStructure._ascent)) {
                 this._fontStructure._ascent = metrics.ascent / 1000;
@@ -1230,8 +1851,8 @@ export class _FontHelper {
         const isNarrow: boolean = /Narrow/g.test(name);
         this._remeasure = (!isStandardFont || isNarrow) && Object.keys(this._fontStructure._widths).length > 0;
         if ((isStandardFont || isMappedToStandardFont) && type === 'CIDFontType2' && this._fontStructure._encoding.startsWith('Identity-')) {
-            const cidToGidMap: any = properties.cidToGidMap; //eslint-disable-line
-            const map: any= []; //eslint-disable-line
+            const cidToGidMap: any = properties.cidToGidMap;
+            const map: any= [];
             this._applyStandardFontGlyphMap(map, _getGlyphMapForStandardFonts());
             if (/Arial-?Black/i.test(name)) {
                 this._applyStandardFontGlyphMap(map, _getSupplementalGlyphMapForArialBlack());
@@ -1239,18 +1860,18 @@ export class _FontHelper {
                 this._applyStandardFontGlyphMap(map, _getFontGlyphMap());
             }
             if (cidToGidMap) {
-                const keys: any = Object.keys(map); //eslint-disable-line
+                const keys: any = Object.keys(map);
                 for (let i: number = 0; i < keys.length; i++) {
-                    const charCode: any = keys[Number.parseInt(i.toString(), 10)]; //eslint-disable-line
-                    const cid: any = map[Number.parseInt(charCode.toString(), 10)]; //eslint-disable-line
+                    const charCode: any = keys[Number.parseInt(i.toString(), 10)];
+                    const cid: any = map[Number.parseInt(charCode.toString(), 10)];
                     if (cidToGidMap[Number.parseInt(cid.toString(), 10)] !== undefined) {
                         map[+charCode] = cidToGidMap[Number.parseInt(cid.toString(), 10)];
                     }
                 }
                 if (cidToGidMap.length !== this._fontStructure._toUnicode.length && properties.hasIncludedToUnicodeMap &&
                     this._fontStructure._toUnicode instanceof _PdfIdentityToUnicodeMap) {
-                    this._fontStructure._toUnicode._forEach((charCode: any, unicodeCharCode: any) => { //eslint-disable-line
-                        const cid: any = map[Number.parseInt(charCode.toString(), 10)]; //eslint-disable-line
+                    this._fontStructure._toUnicode._forEach((charCode: any, unicodeCharCode: any) => {
+                        const cid: any = map[Number.parseInt(charCode.toString(), 10)];
                         if (cidToGidMap[Number.parseInt(cid.toString(), 10)] === undefined) {
                             map[+charCode] = unicodeCharCode;
                         }
@@ -1258,7 +1879,7 @@ export class _FontHelper {
                 }
             }
             if (!(this._fontStructure._toUnicode instanceof _PdfIdentityToUnicodeMap)) {
-                this._fontStructure._toUnicode._forEach((charCode: any, unicodeCharCode: any) => { //eslint-disable-line
+                this._fontStructure._toUnicode._forEach((charCode: any, unicodeCharCode: any) => {
                     map[+charCode] = unicodeCharCode;
                 });
             }
@@ -1271,20 +1892,20 @@ export class _FontHelper {
             this._fontStructure._toFontChar = this._buildToFontChar(_zapfDingbatsEncoding, _getDingbatsGlyphsUnicode(),
                                                                     this._fontStructure._differences);
         } else if (isStandardFont) {
-            const map: any = this._buildToFontChar(this._fontStructure._defaultEncoding, _getGlyphsUnicode(), this._fontStructure._differences); //eslint-disable-line
+            const map: any = this._buildToFontChar(this._fontStructure._defaultEncoding, _getGlyphsUnicode(), this._fontStructure._differences);
             if (type === 'CIDFontType2' && !this._fontStructure._encoding.startsWith('Identity-') && !(this._fontStructure._toUnicode instanceof _PdfIdentityToUnicodeMap)) {
-                this._fontStructure._toUnicode._forEach((charCode: any, unicodeCharCode:any) => { //eslint-disable-line
+                this._fontStructure._toUnicode._forEach((charCode: any, unicodeCharCode:any) => {
                     map[+charCode] = unicodeCharCode;
                 });
             }
             this._fontStructure._toFontChar = map;
         } else {
-            const glyphsUnicodeMap: any = _getGlyphsUnicode(); //eslint-disable-line
-            const map: any = []; //eslint-disable-line
-            this._fontStructure._toUnicode._forEach((charCode: any, unicodeCharCode: any) => { //eslint-disable-line
+            const glyphsUnicodeMap: any = _getGlyphsUnicode();
+            const map: any = [];
+            this._fontStructure._toUnicode._forEach((charCode: any, unicodeCharCode: any) => {
                 if (!this._fontStructure._composite) {
-                    const glyphName: any = this._fontStructure._differences[charCode] || this._fontStructure._defaultEncoding[charCode]; //eslint-disable-line
-                    const unicode: any = _getUnicodeForGlyph(glyphName, glyphsUnicodeMap); //eslint-disable-line
+                    const glyphName: any = this._fontStructure._differences[charCode] || this._fontStructure._defaultEncoding[charCode];
+                    const unicode: any = _getUnicodeForGlyph(glyphName, glyphsUnicodeMap);
                     if (unicode !== -1) {
                         unicodeCharCode = unicode;
                     }
@@ -1300,6 +1921,14 @@ export class _FontHelper {
         }
         this._amendFallBackToUnicodeMap(properties);
     }
+    /* eslint-enable */
+    /**
+     * Compute a reasonable width to use for the space character when the
+     * actual space glyph is missing.
+     *
+     * @private
+     * @returns {number} Width in font units for the space glyph.
+     */
     get _spaceWidth(): number{
         const possibleSpaceReplacements: string[] = ['space', 'minus', 'one', 'i', 'I'];
         let width: number;
@@ -1331,6 +1960,14 @@ export class _FontHelper {
         }
         return width;
     }
+    /**
+     * Convert a single character code into a `_Glyph` object.
+     *
+     * @private
+     * @param  {any} charCode - Character or CID code to convert.
+     * @param {boolean} isSpace - True when the character should be treated as whitespace.
+     * @returns {_Glyph} A `_Glyph` instance representing the input code.
+     */
     _charToGlyph(charCode: any, isSpace: boolean = false): _Glyph { //eslint-disable-line
         let vmetrics: any; //eslint-disable-line
         let glyph; //eslint-disable-line
@@ -1385,6 +2022,15 @@ export class _FontHelper {
         glyph = new _Glyph(unicode, accent, width, vmetric, isSpace, isInFont);
         return (this._fontStructure._glyphCache[Number.parseInt(charCode.toString(), 10)] = glyph);
     }
+    /**
+     * Convert a character identifier string (CID) into a numeric code.
+     *
+     * @private
+     * @param {any} characterCode - Original character code.
+     * @param {any} characterIdentifier - CID string to convert.
+     * @param {boolean} shouldThrow - When true throw on unsupported formats.
+     * @returns {any} Numeric code or the original identifier on unsupported lengths.
+     */
     _convertCidString(characterCode: any, characterIdentifier: any, shouldThrow: boolean = false): any { //eslint-disable-line
         switch (characterIdentifier.length) {
         case 1:
@@ -1398,10 +2044,24 @@ export class _FontHelper {
         }
         return characterIdentifier;
     }
+    /**
+     * Check whether the file is a TrueType Collection (ttcf).
+     *
+     * @private
+     * @param {any} file - File-like object with `peekBytes`.
+     * @returns {any} True when tag equals 'ttcf'.
+     */
     _isTrueTypeCollectionFile(file: any) { //eslint-disable-line
         const header: any = file.peekBytes(4); //eslint-disable-line
         return _bytesToString(header) === 'ttcf';
     }
+    /**
+     * Read the header of a TrueType Collection.
+     *
+     * @private
+     * @param {any} data - File-like data object positioned at the TTC header.
+     * @returns {any} Parsed TTC header object.
+     */
     _readTrueTypeCollectionHeader(data: any) { //eslint-disable-line
         const ttcTag: any = data.getString(4); //eslint-disable-line
         const majorVersion: number = data.getUnsignedInteger16();
@@ -1423,13 +2083,36 @@ export class _FontHelper {
         }
         throw new FormatError(`Invalid TrueType Collection majorVersion: ${majorVersion}.`);
     }
+    /**
+     * Read a string of given length from a file-like object.
+     *
+     * @private
+     * @param {number} length - Number of bytes to read.
+     * @param {any} file - File-like object with `getBytes`.
+     * @returns {any} The decoded string.
+     */
     _getString(length: number, file: any) { //eslint-disable-line
         return _bytesToString(file.getBytes(length));
     }
+    /**
+     * Read an OpenType/TrueType header from a font file.
+     *
+     * @private
+     * @param {any} ttf - File-like object positioned at the header.
+     * @returns {any} Header fields including `version` and `numTables`.
+     */
     _readOpenTypeHeader(ttf: any) { //eslint-disable-line
         return {version: this._getString(4, ttf), numTables: ttf.getUnsignedInteger16(), searchRange: ttf.getUnsignedInteger16(),
             entrySelector: ttf.getUnsignedInteger16(), rangeShift: ttf.getUnsignedInteger16()};
     }
+    /**
+     * Read font table directory entries and collect supported tables.
+     *
+     * @private
+     * @param {any} file - File-like object to read from.
+     * @param {any} numberOfTables - Number of table entries in the header.
+     * @returns {any} Object with discovered table entries.
+     */
     _readTables(file: any, numberOfTables: any) { //eslint-disable-line
         const tables: any = Object.create(null); //eslint-disable-line
         tables['OS/2'] = null;
@@ -1452,6 +2135,13 @@ export class _FontHelper {
         }
         return tables;
     }
+    /**
+     * Read a single font table entry and extract its data bytes.
+     *
+     * @private
+     * @param {any} file - File-like object positioned at the table entry.
+     * @returns {any} Object describing the table (tag, checksum, offset, length, data).
+     */
     _readTableEntry(file: any) { //eslint-disable-line
         const tag: string = this._getString(4, file);
         const checksum: number = file.getInt32() >>> 0;
@@ -1470,12 +2160,34 @@ export class _FontHelper {
         }
         return {tag, checksum, length, offset, data};
     }
+    /**
+     * Determine whether a name table record represents a Mac name record.
+     *
+     * @private
+     * @param {any} r - Name table record.
+     * @returns {boolean} True when the record is a Mac name record.
+     */
     _isMacNameRecord(r: any) { //eslint-disable-line
         return r.platform === 1 && r.encoding === 0 && r.language === 0;
     }
+    /**
+     * Determine whether a name table record represents a Windows name record.
+     *
+     * @private
+     * @param {any} r - Name table record.
+     * @returns {any} returns whether record represents window name record.
+     */
     _isWinNameRecord(r: any) { //eslint-disable-line
         return r.platform === 3 && r.encoding === 1 && r.language === 0x409;
     }
+    /**
+     * Read the 'name' table and extract localized name strings.
+     *
+     * @private
+     * @param {any} nameTable - Table descriptor for the name table.
+     * @param {any} font - File-like font object.
+     * @returns {any} returns the name string.
+     */
     _readNameTable(nameTable: any, font: any) { //eslint-disable-line
         const start: number = (font.start || 0) + nameTable.offset;
         font.pos = start;
@@ -1522,6 +2234,16 @@ export class _FontHelper {
         }
         return [names, records];
     }
+    /**
+     * Read and locate font data inside a TrueType Collection for the requested
+     * font name.
+     *
+     * @private
+     * @param {any} data - TTC data object.
+     * @param {any} fontName - Font name to locate.
+     * @param {any} font - File-like object representing the TTC.
+     * @returns {void} nothing.
+     */
     _readTrueTypeCollectionData(data: any, fontName: any, font: any) { //eslint-disable-line
         const { numFonts, offsetTable }: any = this._readTrueTypeCollectionHeader(data); //eslint-disable-line
         const fontNameParts: any = fontName.split('+'); //eslint-disable-line
@@ -1559,9 +2281,24 @@ export class _FontHelper {
         }
         throw new FormatError(`TrueType Collection does not contain '${fontName}' font.`);
     }
+    /**
+     * Combine two bytes into a 16-bit integer.
+     *
+     * @private
+     * @param {any} b0 - High byte.
+     * @param {any} b1 - Low byte.
+     * @returns {any} 16-bit integer value.
+     */
     _int16(b0: any, b1: any) { //eslint-disable-line
         return (b0 << 8) + b1;
     }
+    /**
+     * Check font tables and attempt repair/normalization for known issues.
+     *
+     * @private
+     * @param {any} font - File-like font object to inspect and possibly repair.
+     * @returns {void} nothing.
+     */
     _checkAndRepair(font: any) : void { //eslint-disable-line
         font = new _PdfStream(new Uint8Array(font.getBytes()));
         let header: any; //eslint-disable-line
@@ -1661,6 +2398,12 @@ export class _FontHelper {
             }
         }
     }
+    /**
+     * Adjust the ToUnicode map for Type1 fonts using built-in encodings.
+     *
+     * @private
+     * @returns {void} nothing.
+     */
     _adjustType1ToUnicode() { //eslint-disable-line
         if (this._fontStructure._isInternalFont) {
             return;
@@ -1694,7 +2437,18 @@ export class _FontHelper {
             this._fontStructure._toUnicode._amend(toUnicode);
         }
     }
-    _adjustTrueTypeToUnicode(properties: any, isSymbolicFont: any, nameRecords: any) { //eslint-disable-line
+    /* eslint-disable */
+    /**
+     * Attempt to build a ToUnicode map for TrueType symbolic fonts using name
+     * table heuristics.
+     *
+     * @private
+     * @param {any} properties - Font properties used to build the map.
+     * @param {any} isSymbolicFont - True when font is symbolic.
+     * @param {any} nameRecords - Parsed name table records.
+     * @returns {any} nothing .
+     */
+    _adjustTrueTypeToUnicode(properties: any, isSymbolicFont: any, nameRecords: any) {
         if (properties._isInternalFont) {
             return;
         }
@@ -1722,16 +2476,16 @@ export class _FontHelper {
             }
         }
         const encoding: string[] = _winAnsiEncoding;
-        const toUnicode: any= []; //eslint-disable-line
-        const glyphsUnicodeMap: any = _getGlyphsUnicode(); //eslint-disable-line
-        const keys: any = Object.keys(encoding); //eslint-disable-line
+        const toUnicode: any= [];
+        const glyphsUnicodeMap: any = _getGlyphsUnicode();
+        const keys: any = Object.keys(encoding);
         for (let i: number = 0; i < keys.length; i++) {
-            const charCode: any = keys[Number.parseInt(i.toString(), 10)]; //eslint-disable-line
-            const glyphName: any = encoding[Number.parseInt(charCode.toString(), 10)]; //eslint-disable-line
+            const charCode: any = keys[Number.parseInt(i.toString(), 10)];
+            const glyphName: any = encoding[Number.parseInt(charCode.toString(), 10)];
             if (glyphName === '') {
                 continue;
             }
-            const unicode: any = glyphsUnicodeMap[Number.parseInt(glyphName.toString(), 10)]; //eslint-disable-line
+            const unicode: any = glyphsUnicodeMap[Number.parseInt(glyphName.toString(), 10)];
             if (unicode === undefined) {
                 continue;
             }
@@ -1741,14 +2495,43 @@ export class _FontHelper {
             properties._toUnicode._amend(toUnicode);
         }
     }
+    /* eslint-enable */
 }
 export class _Glyph {
+    /** Unicode character (string) represented by this glyph.
+     *
+     * @private
+     */
     _unicode: string;
+    /** Accent information used for composed characters (if any).
+     *
+     * @private
+     */
     _accent: number;
+    /** Advance width of the glyph in font units.
+     *
+     * @private
+     */
     _width: number;
+    /** Original font character (single character string) when available.
+     *
+     * @private
+     */
     _fontCharacter: string;
+    /** Vertical metrics (vmtx) for the glyph when available.
+     *
+     * @private
+     */
     _verticalMetrics: any; //eslint-disable-line
+    /** True when this glyph should be treated as whitespace.
+     *
+     * @private
+     */
     _isSpace: boolean;
+    /** True when the glyph is known to be present in the font file.
+     *
+     * @private
+     */
     _isInFont: boolean;
     constructor(unicode: string, accent: any, width: number, _verticalMetrics: any, //eslint-disable-line
                 isSpace: boolean, isInFont: boolean) {
@@ -1761,6 +2544,10 @@ export class _Glyph {
     }
 }
 class _UnicodeMap {
+    /** Internal array mapping character codes to Unicode strings or code points.
+     *
+     * @private
+     */
     _map: (number | string)[];
     constructor(cmap: any) { //eslint-disable-line
         this._map = cmap;
@@ -1812,7 +2599,15 @@ class _UnicodeMap {
     }
 }
 class _PdfIdentityToUnicodeMap {
+    /** First character code included in the identity mapping.
+     *
+     * @private
+     */
     _firstChar: number;
+    /** Last character code included in the identity mapping.
+     *
+     * @private
+     */
     _lastChar: number;
     constructor(firstChar: number, lastChar: number) {
         this._firstChar = firstChar;

@@ -3357,7 +3357,7 @@ describe('layout-info assistant support', () => {
         let diagram: Diagram;
         let ele: HTMLElement;
         beforeAll(() => {
-            
+            ;
             ele = createElement('div', { id: 'diagramdataMaps5' });
             document.body.appendChild(ele);
             let items: DataManager = new DataManager(layoutData as JSON[], new Query().take(7));

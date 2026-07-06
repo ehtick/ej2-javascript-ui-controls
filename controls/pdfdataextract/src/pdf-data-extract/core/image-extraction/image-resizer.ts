@@ -1,13 +1,33 @@
 import { _convertToRGBA, imageKind, maximumCount } from './image-utils';
 import { _isLittleEndian } from '@syncfusion/ej2-pdf';
+/**
+ * Utility to downscale large images safely based on browser/canvas capabilities.
+ *
+ * @private
+ */
 export class _PdfImageResizer {
     minimumImageDimension: number = 2048;
     maximumImageDimension: number = 65537;
     error: number = 128;
     goodSquareLength: number = 2048;
     isImageDecoderSupported: boolean = false; //FeatureTest.isImageDecoderSupported;
+    /**
+     * Original image data object .
+     *
+     * @private
+     */
     private _imgData: any; // eslint-disable-line
+    /**
+     * Flag indicating this image is used as a mask.
+     *
+     * @private
+     */
     private _isMask: boolean;
+    /**
+     * Indicates whether a maximum canvas area was already set/probed.
+     *
+     * @private
+     */
     private _hasMaxArea: boolean = false;
     constructor();
     constructor(imgData: any, isMask: boolean); // eslint-disable-line
@@ -21,6 +41,14 @@ export class _PdfImageResizer {
     get canUseImageDecoder(): any { // eslint-disable-line
         return this.isImageDecoderSupported ? Promise.resolve(false) : Promise.resolve(false);
     }
+    /**
+     * Returns whether the image should be resized based on current constraints.
+     *
+     * @private
+     * @param {number} width Image width.
+     * @param {number} height Image height.
+     * @returns {boolean} `true` if a resize is required otherwise, `false`.
+     */
     _needsToBeResized(width: number, height: number): boolean {
         if (width <= this.goodSquareLength && height <= this.goodSquareLength) {
             return false;
@@ -52,6 +80,15 @@ export class _PdfImageResizer {
         const maxArea: number = (this._maximumArea = this.goodSquareLength ** 2);
         return area > maxArea;
     }
+    /**
+     * Computes the JPX reduce power based on constraints and JPX decoder limits.
+     *
+     * @private
+     * @param {number} width Image width.
+     * @param {number} height Image height.
+     * @param {number} componentsCount Number of components.
+     * @returns {number} Reduce power `n` such that decoder can use 2^n reduction.
+     */
     _getReducePowerForJPX(width: number, height: number, componentsCount: number): number {
         const area: number  = width * height;
         const maxJPXArea: number = 2 ** 30 / (componentsCount * 4);
@@ -69,30 +106,68 @@ export class _PdfImageResizer {
         );
         return Math.ceil(Math.log2(minFactor));
     }
+    /**
+     * Probed maximum acceptable dimension for either width or height.
+     *
+     * @private
+     * @returns {number} Maximum acceptable single dimension.
+     */
     get _maximumDim(): number {
         return this._guessMax(this.maximumImageDimension, this.maximumImageDimension, 0, 1);
     }
+    /**
+     * Probed maximum acceptable area derived from current constraints.
+     *
+     * @private
+     * @returns {number} Maximum acceptable area in pixels.
+     */
     get _maximumArea(): number {
         this._hasMaxArea = true;
         return this._guessMax(this.goodSquareLength, this._maximumDim, this.error, 0) ** 2;
     }
+    /**
+     * Marks that a maximum area constraint has been established.
+     *
+     * @private
+     * @param {number} area Area value used to mark presence of max area.
+     * @returns {void} nothing.
+     */
     set _maximumArea(area: number) {
         if (area >= 0) {
             this._hasMaxArea = true;
         }
     }
+    /* eslint-disable */
+    /**
+     * Applies configuration options, like canvas max area and ImageDecoder support flag.
+     *
+     * @private
+     * @param {object} param0 Options object.
+     * @param {number} [param0.canvasMaxAreaInBytes=-1] Max canvas area in bytes.
+     * @param {boolean} [param0.isImageDecoderSupported=false] Feature flag for ImageDecoder.
+     * @returns {any} returns image flag.
+     */
     _setOptions({
         canvasMaxAreaInBytes = -1,
         isImageDecoderSupported = false
     }: {
         canvasMaxAreaInBytes?: number;
         isImageDecoderSupported?: boolean;
-    }): any { // eslint-disable-line
+    }): any {
         if (!this._hasMaxArea) {
             this._maximumArea = canvasMaxAreaInBytes >> 2;
         }
         this.isImageDecoderSupported = isImageDecoderSupported;
     }
+    /* eslint-enable */
+    /**
+     * Feature test to check if a canvas of is usable for drawing.
+     *
+     * @private
+     * @param {number} width Target width.
+     * @param {number} height Target height.
+     * @returns {boolean} `true` if drawing succeeds; otherwise, `false`.
+     */
     _areGoodDims(width: number, height: number): boolean {
         try {
             const canvas: HTMLCanvasElement = document.createElement('canvas');
@@ -107,6 +182,16 @@ export class _PdfImageResizer {
             return false;
         }
     }
+    /**
+     * Binary-search-like probe to find maximum acceptable dimension between start and end.
+     *
+     * @private
+     * @param {number} start Lower bound dimension to test from.
+     * @param {number} end Upper bound dimension to test up to.
+     * @param {number} tolerance Allowed gap to stop probing.
+     * @param {number} defaultHeight If non-zero, height to test with.
+     * @returns {number} Maximum acceptable dimension found.
+     */
     _guessMax(start: number, end: number, tolerance: number, defaultHeight: number): number {
         while (start + tolerance + 1 < end) {
             const middle: number = Math.floor((start + end) / 2);
@@ -119,9 +204,23 @@ export class _PdfImageResizer {
         }
         return start;
     }
+    /**
+     * Helper to build a resized image from external imgData.
+     *
+     * @private
+     * @param {any} imgData Image-like object with width/height/data|bitmap/kind.
+     * @param {boolean} [isMask=false] Whether the image is a mask.
+     * @returns {any} Resulting image data .
+     */
     _createImageData(imgData: any, isMask: boolean = false): any { // eslint-disable-line
         return new _PdfImageResizer(imgData, isMask)._createImage();
     }
+    /**
+     * Resizes the current instance `_imgData` if needed; returns the updated image data.
+     *
+     * @private
+     * @returns {any} Updated image data possibly with `bitmap` and new dimensions.
+     */
     _createImage(): any { // eslint-disable-line
         const { _imgData: imgData } = this;
         const { width, height } = imgData;
@@ -167,6 +266,12 @@ export class _PdfImageResizer {
         imgData.height = newHeight;
         return imgData;
     }
+    /**
+     * Downscales raw image data to fit into maximum buffer constraints and returns data or null.
+     *
+     * @private
+     * @returns {any} Updated `imgData` when final image can be used directly; otherwise `null` to continue.
+     */
     _rescaleImageData(): any { // eslint-disable-line
         const { _imgData: imgData } = this;
         const { data, width, height, kind } = imgData;
@@ -234,6 +339,13 @@ export class _PdfImageResizer {
         imgData.height = newHeight;
         return imgData;
     }
+    /**
+     * Encodes the image as a BMP byte array.
+     *
+     * @private
+     * @returns {Uint8Array} BMP-encoded byte array.
+     * @throws {Error} On invalid format.
+     */
     _encodeBMP(): Uint8Array {
         const { width, height, kind } = this._imgData;
         let data: any = this._imgData.data; // eslint-disable-line

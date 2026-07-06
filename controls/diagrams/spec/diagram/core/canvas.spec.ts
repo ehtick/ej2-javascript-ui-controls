@@ -18,6 +18,8 @@ import { SymbolPalette, SymbolInfo, PaletteModel } from '../../../src/symbol-pal
 import { IElement } from '../../../src/diagram/index';
 import { identityMatrix, rotateMatrix, transformPointByMatrix, Matrix } from '../../../src/diagram/primitives/matrix';
 import { profile, inMB, getMemoryProfile } from '../../../spec/common.spec';
+import { TextElement } from '../../../src/diagram/core/elements/text-element';
+import { PathElement } from '../../../src/diagram/core/elements/path-element';
 Diagram.Inject(UndoRedo);
 
 function drag(diagram: Diagram) {
@@ -1399,4 +1401,5 @@ describe('Diagram Control', () => {
             expect(memory).toBeLessThan(profile.samples[0] + 0.25);
         })
     });
+
 });

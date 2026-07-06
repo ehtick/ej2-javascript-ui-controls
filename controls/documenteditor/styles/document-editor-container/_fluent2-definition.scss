@@ -1,6 +1,6 @@
-@use 'ej2-base/styles/definition/fluent2' as *;
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 @use '../document-editor/fluent2-definition' as *;
-@forward 'ej2-base/styles/definition/fluent2';
+
 @forward '../document-editor/fluent2-definition';
 $de-ctnr-height: calc(100%) !default;
 $de-ctnr-tlbr-height: 72px !default;
@@ -179,8 +179,8 @@ $de-ribbon-classic-editor-height-big: calc(100% - 201px) !default;
 $de-ctnr-layout-margin-bottom: 2px;
 $de-ctnr-picture-margin-bottom: 2px;
 
-$de-ribbon-simplified-ctnr-collapsed-editor-height: calc(100% - 44px) !default;
-$de-ribbon-classic-collapsed-editor-height: calc(100% - 42.8px) !default;
+$de-ribbon-simplified-ctnr-collapsed-editor-height: calc(100% - 79px) !default;
+$de-ribbon-classic-collapsed-editor-height: calc(100% - 80px) !default;
 
 // layout.scss
 $de-toolbar-line-height: 0;

@@ -156,7 +156,7 @@ export class VirtualTreeContentRenderer extends VirtualContentRenderer {
                 this.startIndex = lastIndex - this.parent.getRows().length;
                 this.endIndex = lastIndex;
             }
-            else if (this.parent.root.editSettings.newRowPosition !== 'Top' && this.parent.root.editModule.selectedIndex !== -1 || this.parent.root.editModule.selectedIndex !== -1) {
+            else if (this.parent.root.editModule.selectedIndex !== -1) {
                 this.startIndex += 1;
                 this.endIndex += 1;
             }
@@ -658,8 +658,8 @@ export class VirtualTreeContentRenderer extends VirtualContentRenderer {
             const directVirtualRender: string = 'directVirtualRender';
             if (!this.parent[`${directVirtualRender}`]) { // with this property, columns are rendered without debouncing on horizontal scroll.
                 const preventEvent: string = 'preventEvent';
-                if (Browser.isIE && !isWheel && check && !this[`${preventEvent}`] && !this.parent.enableVirtualMaskRow) {
-                    this.parent.showSpinner();
+                if (!isWheel && check && !this[`${preventEvent}`] && !this.parent.enableVirtualMaskRow) {
+                    if (Browser.isIE) { this.parent.showSpinner(); }
                 }
                 if (this.parent.enableVirtualMaskRow && !this[`${preventEvent}`]) {
                     setTimeout(() => {
@@ -738,12 +738,12 @@ export class VirtualTreeContentRenderer extends VirtualContentRenderer {
             this.parent.root.scrollPosition = scrollArgs.offset;
         }
         const info: SentinelType = scrollArgs.sentinel;
+        const rowHeight: number = parseInt(this.parent.getRowHeight().toString(), 10);
+        const outBuffer: number = this.parent.pageSettings.pageSize - Math.ceil(this.parent.pageSettings.pageSize / 2);
         let treeGridParent: any = null;
         if (this.parent.clipboardModule && this.parent.clipboardModule['treeGridParent']) {
             treeGridParent = this.parent.clipboardModule['treeGridParent'];
         }
-        const rowHeight: number = parseInt(this.parent.getRowHeight().toString(), 10);
-        const outBuffer: number = this.parent.pageSettings.pageSize - Math.ceil(this.parent.pageSettings.pageSize / 2);
         let content: HTMLElement;
         if (!isNullOrUndefined(this.parent.contentModule)) {
             content = this.parent.getContent().querySelector('.e-content');
@@ -825,7 +825,7 @@ export class VirtualTreeContentRenderer extends VirtualContentRenderer {
             let lastIndex: number = nextSetResIndex + this.parent.pageSettings.pageSize;
             if (lastIndex > this.totalRecords) {
                 lastIndex = nextSetResIndex +
-          (this.totalRecords - nextSetResIndex);
+                    (this.totalRecords - nextSetResIndex);
             }
             this.startIndex =  !isLastBlock || isNullOrUndefined(this['' + selectedRowIndex]) ? lastIndex - this.parent.pageSettings.pageSize : nextSetResIndex;
             this.endIndex = lastIndex;
@@ -1005,6 +1005,9 @@ export class VirtualTreeContentRenderer extends VirtualContentRenderer {
             }
             const focusCell: string = 'focusCell'; const restoreAdd: string = 'restoreAdd';
             const ensureSelectedRowPosition: string = 'ensureSelectedRowPosition';
+            if (this['pressedKey'] === 'downArrow' || this['pressedKey'] === 'upArrow') {
+                this['activeKey'] = this['pressedKey'];
+            }
             super[`${focusCell}`](e);
             const isAdd: string = 'isAdd';
             if (this[`${isAdd}`] && !this.parent.getContent().querySelector('.e-content').querySelector('.e-addedrow')) {

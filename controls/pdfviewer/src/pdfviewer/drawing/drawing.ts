@@ -1,19 +1,13 @@
-import { PdfViewer, LineTool } from '../index';
+import { PdfViewer, LineTool, AnnotationStatus } from '../index';
 import { PdfAnnotationBaseModel, PdfFormFieldBaseModel } from './pdf-annotation-model';
 import { ZOrderPageTable, PdfAnnotationBase, PdfFormFieldBase } from './pdf-annotation';
-import { Container, Rect, PointModel, Point, Matrix, identityMatrix, rotateMatrix, getDiagramElement, ThumbsConstraints, BaseAttributes, RectAttributes, CircleAttributes, IElement, scaleMatrix, cornersPointsBeforeRotation, Corners, SelectorConstraints, LineAttributes, ImageElement, TextAlign } from '@syncfusion/ej2-drawings';
-import { DrawingElement } from '@syncfusion/ej2-drawings';
-import { PathElement } from '@syncfusion/ej2-drawings';
-import { createMeasureElements } from '@syncfusion/ej2-drawings';
-import { randomId } from '@syncfusion/ej2-drawings';
-import { Size, transformPointByMatrix, RotateTransform, TextElement } from '@syncfusion/ej2-drawings';
-import { Canvas, refreshDiagramElements, DrawingRenderer } from '@syncfusion/ej2-drawings';
+import { SvgRenderer, Canvas, refreshDiagramElements, DrawingRenderer, Size, transformPointByMatrix, RotateTransform, TextElement, randomId, createMeasureElements, PathElement, DrawingElement, Container, Rect, PointModel, Point, Matrix, identityMatrix, rotateMatrix, getDiagramElement, ThumbsConstraints, BaseAttributes, RectAttributes, CircleAttributes, IElement, scaleMatrix, cornersPointsBeforeRotation, Corners, SelectorConstraints, LineAttributes, ImageElement, TextAlign } from './../ej2-drawings/index';
 import { Selector } from './selector';
-import { SvgRenderer } from '@syncfusion/ej2-drawings';
 import { SelectorModel } from './selector-model';
 import { isLineShapes, setElementStype, findPointsLength, getBaseShapeAttributes, isLeader, Leader, cloneObject, updateColorWithOpacity } from './drawing-util';
 import { getConnectorPoints, updateSegmentElement, getSegmentElement, updateDecoratorElement, getDecoratorElement, clipDecorators, initDistanceLabel, initLeaders, initLeader, getPolygonPath, initPerimeterLabel } from './connector-util';
 import { isNullOrUndefined, isBlazor, Browser } from '@syncfusion/ej2-base';
+import { buildFilterPredicates } from '../annotation/comment-filter-predicates';
 import { AnnotationResizerLocation, AnnotationSelectorSettingsModel } from '../index';
 import { DiagramHtmlElement } from './html-element';
 import { IFormField, IFormFieldBound } from '../form-designer';
@@ -712,6 +706,8 @@ export class Drawing {
                 { x: obj.bounds.x + obj.bounds.width, y: obj.bounds.y + obj.bounds.height }]);
             if (!this.pdfViewer.enableImportAnnotationMeasurement && obj.notes && obj.notes !== '') {
                 radiusTextEle.content = obj.notes;
+            } else if (obj.enableShapeLabel && obj.labelContent) {
+                radiusTextEle.content = obj.labelContent;
             } else {
                 radiusTextEle.content = this.pdfViewer.annotation.measureAnnotationModule.setConversion((obj.bounds.width / 2) *
                  this.pdfViewer.annotation.measureAnnotationModule.pixelToPointFactor, obj);
@@ -1203,16 +1199,39 @@ export class Drawing {
             });
             for (let i: number = 0; i < uniqueObjects.length; i++) {
                 let renderElement: DrawingElement;
+                const currentObject: any = uniqueObjects[parseInt(i.toString(), 10)];
+
+                // Check if comment filter is active and should skip rendering this annotation
+                if (!isNullOrUndefined(this.pdfViewer.annotationModule) &&
+                    !isNullOrUndefined(this.pdfViewer.annotationModule.getCurrentFilterState)) {
+                    const filterState: any = this.pdfViewer.annotationModule.getCurrentFilterState();
+                    if (filterState && filterState.applyToDocument) {
+                        // Check if annotation was added while filter was active - bypass filter if so
+                        if (!isNullOrUndefined(this.pdfViewer.annotationModule.isNewlyAddedAnnotation) &&
+                            this.pdfViewer.annotationModule.isNewlyAddedAnnotation(currentObject.id)) {
+                            // New annotation - don't skip rendering
+                        } else {
+                            // Use pre-computed hidden annotation IDs for efficient filtering
+                            const hiddenIds: any = this.pdfViewer.annotationModule.getHiddenAnnotationIds();
+                            const hiddenAnnotationIds: string[] = Array.isArray(hiddenIds) ? hiddenIds : [];
+                            const annotationIdentifier : any = (currentObject as any).annotationId || currentObject.annotName;
+                            // Skip rendering if annotation is in the hidden IDs set
+                            if (hiddenAnnotationIds.indexOf(annotationIdentifier) > -1) {
+                                continue;
+                            }
+                        }
+                    }
+                }
                 if (diagramLayer.id === this.pdfViewer.element.id + '_print_annotation_layer_' + pageIndex) {
-                    if (uniqueObjects[parseInt(i.toString(), 10)].isPrint) {
-                        renderElement = (this.pdfViewer.nameTable as any)[uniqueObjects[parseInt(i.toString(), 10)].id].wrapper;
+                    if (currentObject.isPrint) {
+                        renderElement = (this.pdfViewer.nameTable as any)[currentObject.id].wrapper;
                         if (!isNullOrUndefined(renderElement)) {
                             refreshDiagramElements(diagramLayer, [renderElement], this.renderer);
                         }
                     }
                 } else {
-                    renderElement = (this.pdfViewer.nameTable as any)[uniqueObjects[parseInt(i.toString(), 10)].id].wrapper;
-                    const uniqueObjectId: string = uniqueObjects[parseInt(i.toString(), 10)].id;
+                    renderElement = (this.pdfViewer.nameTable as any)[currentObject.id].wrapper;
+                    const uniqueObjectId: string = currentObject.id;
                     const uniqueObject: any = (this.pdfViewer.nameTable as any)[`${uniqueObjectId}`];
                     if ((renderElement && this.shouldRefreshElement(uniqueObject)) ||
                     isNullOrUndefined(this.pdfViewer.formDesignerModule)) {
@@ -1235,6 +1254,9 @@ export class Drawing {
                             if ((<any>window).signatureCollection && !(<any>window).signatureCollection.get(renderElement.id)) {
                                 (<any>window).signatureCollection.set(renderElement.id, image);
                             }
+                        }
+                        if (uniqueObject.shapeAnnotationType === 'Rectangle') {
+                            (renderElement as any).children[0].isRectangle = true;
                         }
                         if ((renderElement as any).children[1] instanceof TextElement) {
                             (renderElement as any).children[1].isEJ2 = true;
@@ -1345,17 +1367,21 @@ export class Drawing {
     public clearSelectorLayer(index?: number): void {
         const adornerSvg: SVGElement = this.getAdornerLayerSvg(this.pdfViewer.element.id, index);
         if (adornerSvg) {
-            const selectionRect: SVGElement =
-                (adornerSvg as SVGSVGElement).getElementById(this.pdfViewer.adornerSvgLayer.id + '_selected_region') as SVGElement;
+            const adornerLayerId: string = this.pdfViewer.adornerSvgLayer ? this.pdfViewer.adornerSvgLayer.id : '';
+            const selectionRect: SVGElement = adornerLayerId ?
+                (adornerSvg as SVGSVGElement).getElementById(adornerLayerId + '_selected_region') as SVGElement : null;
             if (selectionRect) {
                 selectionRect.parentNode.removeChild(selectionRect);
             }
             this.clearHighlighter(index);
-            const childNodes: NodeList = this.getSelectorElement(this.pdfViewer.element.id, index).childNodes;
-            let child: SVGElement;
-            for (let i: number = childNodes.length; i > 0; i--) {
-                child = childNodes[i - 1] as SVGElement;
-                child.parentNode.removeChild(child);
+            const selectorElement: SVGElement = this.getSelectorElement(this.pdfViewer.element.id, index);
+            if (selectorElement) {
+                const childNodes: NodeList = selectorElement.childNodes;
+                let child: SVGElement;
+                for (let i: number = childNodes.length; i > 0; i--) {
+                    child = childNodes[i - 1] as SVGElement;
+                    child.parentNode.removeChild(child);
+                }
             }
         }
     }
@@ -4094,6 +4120,7 @@ export class Drawing {
                                     }
                                     if (newNode.shapeAnnotationType === 'SignatureText' || newNode.shapeAnnotationType === 'HandWrittenSignature' || newNode.shapeAnnotationType === 'SignatureImage') {
                                         newNode.signatureName = newNode.id;
+                                        newNode.status = AnnotationStatus.NewlyAdded;
                                         this.pdfViewer.viewerBase.signatureModule.storeSignatureData(newNode.pageIndex, newNode);
                                     }
                                     if (!newNode.formFieldAnnotationType && newNode.shapeAnnotationType !== 'SignatureText' && newNode.shapeAnnotationType !== 'HandWrittenSignature' && newNode.shapeAnnotationType !== 'SignatureImage') {
@@ -4116,6 +4143,7 @@ export class Drawing {
                                             updateAnnotationCollection(newNode, copiedItems[0], true);
                                     }
                                     if (newNode.shapeAnnotationType === 'SignatureText' || newNode.shapeAnnotationType === 'HandWrittenSignature' || newNode.shapeAnnotationType === 'SignatureImage') {
+                                        newNode.status = AnnotationStatus.NewlyAdded;
                                         this.pdfViewer.viewerBase.signatureModule.storeSignatureData(newNode.pageIndex, newNode);
                                     }
                                     if (!newNode.formFieldAnnotationType && newNode.shapeAnnotationType !== 'SignatureText' && newNode.shapeAnnotationType !== 'HandWrittenSignature' && newNode.shapeAnnotationType !== 'SignatureImage') {
@@ -4123,6 +4151,55 @@ export class Drawing {
                                     }
                                 }
                                 const addedAnnot: PdfAnnotationBaseModel | PdfFormFieldBaseModel = this.add(newNode);
+                                if (addedAnnot && (addedAnnot as PdfAnnotationBaseModel).shapeAnnotationType === 'Ink') {
+                                    const inkAnnot: any = addedAnnot as PdfAnnotationBaseModel;
+                                    const transformPath: any = (pathData: string, dx: number, dy: number): string => {
+                                        return pathData.replace(/(\d+\.?\d*),(\d+\.?\d*)/g, (_: string, x: string, y: string) => {
+                                            return (parseFloat(x) + dx) + ',' + (parseFloat(y) + dy);
+                                        });
+                                    };
+                                    const original: any = (this.pdfViewer.clipboardData.clipObject as any)[0] as PdfAnnotationBaseModel;
+                                    const dx: number = inkAnnot.bounds.x - original.bounds.x;
+                                    const dy: number = inkAnnot.bounds.y - original.bounds.y;
+                                    if (dx !== 0 || dy !== 0) {
+                                        inkAnnot.data = transformPath(original.data as string, dx, dy);
+                                        const nameTableObj: any = (this.pdfViewer.nameTable as any)[inkAnnot.id];
+                                        if (nameTableObj) {
+                                            nameTableObj.data = inkAnnot.data;
+                                        }
+                                        const storeObject: any = this.pdfViewer.annotationsCollection.get(
+                                            this.pdfViewer.viewerBase.documentId + '_annotations_ink'
+                                        );
+                                        if (storeObject) {
+                                            const pageCollection: number = this.pdfViewer.annotationModule.getPageCollection(
+                                                storeObject,
+                                                inkAnnot.pageIndex
+                                            );
+                                            if (
+                                                pageCollection != null &&
+                                                storeObject[(pageCollection as number)] &&
+                                                storeObject[(pageCollection as number)].annotations
+                                            ) {
+                                                const pageAnnotations: any[] = storeObject[(pageCollection as number)].annotations;
+                                                for (let i: number = 0; i < pageAnnotations.length; i++) {
+                                                    if (
+                                                        pageAnnotations[(i as number)].id === inkAnnot.id ||
+                                                        pageAnnotations[(i as number)].annotName === inkAnnot.annotName
+                                                    ) {
+                                                        pageAnnotations[(i as number)].data = inkAnnot.data;
+                                                        pageAnnotations[(i as number)].vertexPoints = inkAnnot.vertexPoints;
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        this.pdfViewer.annotationModule.inkAnnotationModule.modifySignatureInkCollection(
+                                            'modify',
+                                            inkAnnot.pageIndex,
+                                            inkAnnot
+                                        );
+                                    }
+                                }
                                 if (this.pdfViewer.formDesigner && addedAnnot.formFieldAnnotationType && this.pdfViewer.annotation) {
                                     this.pdfViewer.annotation.addAction(this.pdfViewer.viewerBase.getActivePage(true), null, addedAnnot as PdfFormFieldBase, 'Addition', '', addedAnnot as PdfFormFieldBase, addedAnnot as PdfFormFieldBase);
                                 }

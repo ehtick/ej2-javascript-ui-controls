@@ -336,8 +336,7 @@ export class EditorManager {
         case 'aiassistant':
             this.observer.notify(
                 EVENTS.AI_ASSISTANT_ACTIONS, {
-                    command: command, subCommand: value, callBack: callBack, value: text, item: exeValue,
-                    enteraction: enterAction }
+                    command: command, subCommand: value, callBack: callBack, value: text, item: exeValue, enteraction: enterAction }
             );
             break;
         }

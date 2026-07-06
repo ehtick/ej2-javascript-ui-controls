@@ -1,11 +1,8 @@
 import { ChildProperty, Property, Complex } from '@syncfusion/ej2-base';
-import { PointModel, DecoratorShapes } from '@syncfusion/ej2-drawings';
-import { Point } from '@syncfusion/ej2-drawings';
-import { Size } from '@syncfusion/ej2-drawings';
+import { Container, Size, Point, PointModel, DecoratorShapes } from './../ej2-drawings/index';
 import { PdfBoundsModel, PdfAnnotationBaseModel, PdfFontModel } from './pdf-annotation-model';
-import { Container } from '@syncfusion/ej2-drawings';
 import { PdfAnnotationType, FormFieldAnnotationType } from './enum';
-import { ICommentsCollection, IReviewCollection, AnnotationSelectorSettingsModel, AllowedInteraction, ItemModel, SignatureIndicatorSettingsModel, Visibility } from '../index';
+import { ICommentsCollection, IReviewCollection, AnnotationSelectorSettingsModel, AllowedInteraction, ItemModel, SignatureIndicatorSettingsModel, Visibility, AnnotationStatus } from '../index';
 
 /**
  * The `PdfBounds` is base for annotation bounds.
@@ -548,6 +545,14 @@ export class PdfAnnotationBase extends ChildProperty<PdfAnnotationBase> {
     public enableShapeLabel: boolean;
 
     /**
+     * Represents the shape annotation label name
+     *
+     * @default 'None'
+     */
+    @Property('')
+    public shapeLabelName: string;
+
+    /**
      * Represents the shape annotation label content
      *
      * @default 'label'
@@ -735,6 +740,22 @@ export class PdfAnnotationBase extends ChildProperty<PdfAnnotationBase> {
      */
     @Property(0)
     public pageRotation: number;
+
+    /**
+     * Represents the unique id of annotation
+     *
+     * @private
+     */
+    @Property(0)
+    public annotationIndex: number;
+
+    /**
+     * Represents the unique id of annotation
+     *
+     * @private
+     */
+    @Property(null)
+    public status: AnnotationStatus;
 
     /**
      * Represents the stamp icon name
@@ -1077,6 +1098,7 @@ export class PdfFormFieldBase extends ChildProperty<PdfFormFieldBase> {
      */
     @Property(null)
     public customData: object;
+
     /**
      * specifies the unison selection of the form field.
      */

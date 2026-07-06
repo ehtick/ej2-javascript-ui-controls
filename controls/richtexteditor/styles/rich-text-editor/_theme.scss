@@ -1,4 +1,4 @@
-@use 'ej2-base/styles/common/mixin' as *;
+@use 'variables' as *;
 @mixin quick-toolbar-background-color {
   @if $theme-name == 'bootstrap5' {
     background: $content-bg-color;
@@ -566,7 +566,7 @@
     z-index: 1000;
   }
 
-  #{if(&, '&', '*')}.e-disabled {
+  *.e-disabled {
     user-select: none;
     .e-rte-toolbar .e-toolbar-item {
       cursor: default;

@@ -1471,4 +1471,4 @@ describe('Paste CR issues ', ()=> {
             }, 100);
         });
     });
-}); // Add the tests above.
+});// Add the tests above.

@@ -1156,5 +1156,23 @@ describe('Comments ->', () => {
             closeContainer();
             done();
         });
+        it('Undo action not working when delete comments through More thread actions', function (done: Function) {
+            helper.getInstance().updateCell({ comment: { text: 'Syncfusion', createdTime: 'November 18, 2025 at 5:00 PM', isResolved: false, replies: [] } }, 'Sheet1!D1');
+            expect(helper.invoke('getCell', [0, 3]).querySelector('.e-comment-indicator')).not.toBeNull();
+            expect(helper.getInstance().sheets[0].rows[0].cells[3].comment).not.toBeUndefined();
+            const indicator: HTMLElement = helper.invoke('getCell', [0, 3]).querySelector('.e-comment-indicator');
+            expect(indicator).not.toBeNull();
+            indicator.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+            helper.click('.e-comment-menu');
+            const popup = helper.getElement('.e-dropdown-popup.e-lib.e-popup.e-control.e-caret-hide.e-menu-popup.e-popup-open');
+            const target = popup.children[0].lastChild as HTMLElement;
+            target.click();
+            expect(helper.invoke('getCell', [0, 3]).querySelector('.e-comment-indicator')).toBeNull();
+            expect(helper.getInstance().sheets[0].rows[0].cells[3].comment).toBeUndefined();
+            helper.triggerKeyNativeEvent(90, true, false, document.activeElement, 'keydown');
+            expect(helper.invoke('getCell', [0, 3]).querySelector('.e-comment-indicator')).not.toBeNull();
+            expect(helper.getInstance().sheets[0].rows[0].cells[3].comment).not.toBeUndefined();
+            done();
+        });
     });
 });

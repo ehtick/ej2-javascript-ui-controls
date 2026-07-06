@@ -1,5 +1,5 @@
 import { createElement } from '@syncfusion/ej2-base';
-import { BaseChildrenProp, BaseStylesProp, BlockModel } from '../../src/models/index';
+import { BaseChildrenProp, BaseStylesProp, BlockModel, ITableBlockSettings } from '../../src/models/index';
 import { getBlockContentElement, getBlockText, IClipboardPayloadOptions, setCursorPosition } from '../../src/common/index';
 import { createEditor } from '../common/util.spec';
 import { BlockEditor } from '../../src/index';
@@ -17,6 +17,11 @@ function createMockClipboardEvent(type: string, clipboardData: any = {}): Clipbo
     return event as ClipboardEvent;
 }
 
+function triggerUndo(editorElement: HTMLElement): void {
+  editorElement.dispatchEvent(
+    new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, code: 'KeyZ' })
+  );
+}
 
 describe('Clipboard Actions', () => {
     beforeAll(() => {
@@ -420,6 +425,92 @@ describe('Clipboard Actions', () => {
             });
         });
 
+        it('should copy and paste divider block with multiple blocks correctly', (done) => {
+            if (editor) editor.destroy();
+            editor = createEditor({
+                blocks: [
+                    {
+                        id: 'paragraph1',
+                        blockType: BlockType.Paragraph,
+                        content: [
+                            { contentType: ContentType.Text, content: 'Paragraph before divider' }
+                        ]
+                    },
+                    {
+                        id: 'divider1',
+                        blockType: BlockType.Divider,
+                        content: []
+                    },
+                    {
+                        id: 'paragraph2',
+                        blockType: BlockType.Paragraph,
+                        content: [
+                            { contentType: ContentType.Text, content: 'Paragraph after divider' }
+                        ]
+                    }
+                ]
+            });
+            editor.appendTo('#editor');
+
+            // Select all blocks including divider
+            editor.selectAllBlocks();
+
+            const copiedData = editor.blockManager.clipboardAction.getClipboardPayload().blockeditorData;
+            expect(copiedData).toBeTruthy();
+
+            const mockClipboard: any = {
+                setData: jasmine.createSpy(),
+                getData: (format: string) => {
+                    if (format === 'text/blockeditor') {
+                        return copiedData;
+                    }
+                    return '';
+                }
+            };
+
+            // Perform copy
+            editor.blockManager.clipboardAction.handleCopy(createMockClipboardEvent('copy', mockClipboard));
+
+            // Focus on the first paragraph and paste at the end
+            const firstParagraph = editorElement.querySelector('#paragraph1') as HTMLElement;
+            editor.blockManager.setFocusToBlock(firstParagraph);
+            const contentElement = getBlockContentElement(firstParagraph);
+            setCursorPosition(contentElement, contentElement.textContent.length);
+
+            // Perform paste
+            editor.blockManager.clipboardAction.handlePaste(createMockClipboardEvent('paste', mockClipboard));
+
+            setTimeout(() => {
+                // After paste, we should have:
+                // paragraph1 -> divider1 -> paragraph2 -> divider1(copied) -> paragraph2(copied)
+                expect(editor.blocks.length).toBe(6);
+                
+                // Verify original blocks are intact
+                expect(editor.blocks[0].blockType).toBe(BlockType.Paragraph);
+                expect(editor.blocks[0].content[0].content).toBe('Paragraph before divider');
+                
+                expect(editor.blocks[1].blockType).toBe(BlockType.Divider);
+                
+                expect(editor.blocks[2].blockType).toBe(BlockType.Paragraph);
+                expect(editor.blocks[2].content[0].content).toBe('Paragraph after divider');
+                // Verify pasted paragraph
+                expect(editor.blocks[3].blockType).toBe(BlockType.Paragraph);
+                expect(editor.blocks[3].content.length).toBe(1);
+                // Verify pasted divider
+                expect(editor.blocks[4].blockType).toBe(BlockType.Divider);
+                
+                // Verify in DOM - should have 6 blocks
+                const blockElements = editorElement.querySelectorAll('.e-block');
+                expect(blockElements.length).toBe(6);
+                
+                // Verify divider elements in DOM
+                const dividerElements = editorElement.querySelectorAll('.e-be-hr-wrapper hr, .e-divider-block');
+                expect(dividerElements.length).toBeGreaterThan(0);
+                
+                done();
+            }, 100);
+        });
+
         it('should delete selected content and paste correctly - Single Block', (done) => {
             if (editor) editor.destroy();
             editor = createEditor({
@@ -633,6 +724,93 @@ describe('Clipboard Actions', () => {
                 expect(contentEle.childNodes[0].textContent).toBe('Hello '); // Selected and pasted text
                 expect((contentEle.childNodes[1] as HTMLElement).classList).toContain('e-mention-chip');
                 expect(contentEle.childNodes[2].textContent).toBe(' World'); // After content
+                done();
+            }, 100);
+        });
+
+        it('copy heading and quote block to empty paragraph should preserve block structure without concatenation', (done) => {
+            if (editor) editor.destroy();
+            editor = createEditor({
+                blocks: [
+                    {
+                        id: 'heading-1',
+                        blockType: BlockType.Heading,
+                        content: [{ contentType: ContentType.Text, content: 'Test Heading' }]
+                    },
+                    {
+                        id: 'quote-1',
+                        blockType: BlockType.Quote,
+                        properties: { children: [
+                            {
+                                id: 'para-in-quote',
+                                blockType: BlockType.Paragraph,
+                                content: [{ contentType: ContentType.Text, content: 'Quote content' }]
+                            }
+                        ]}
+                    }
+                ]
+            });
+            editor.appendTo('#editor');
+
+            // Select all blocks and copy
+            editor.selectAllBlocks();
+            const copiedData = editor.blockManager.clipboardAction.getClipboardPayload();
+
+            const mockClipboard: any = {
+                setData: jasmine.createSpy(),
+                getData: (format: string) => {
+                    if (format === 'text/blockeditor') {
+                        return copiedData.blockeditorData;
+                    } else if (format === 'text/html') {
+                        return copiedData.html;
+                    } else if (format === 'text/plain') {
+                        return copiedData.text;
+                    }
+                    return '';
+                }
+            };
+
+            // Create empty paragraph and position cursor there
+            editor.blocks = [
+                ...editor.blocks,
+                {
+                    id: 'para-empty',
+                    blockType: BlockType.Paragraph,
+                    content: []
+                }
+            ];
+            editor.refresh();
+
+            // Focus on the empty paragraph and position cursor
+            const emptyBlock = editorElement.querySelector('#para-empty') as HTMLElement;
+            editor.blockManager.setFocusToBlock(emptyBlock);
+            
+            const contentElement = getBlockContentElement(emptyBlock);
+            editor.blockManager.stateManager.updateContentOnUserTyping(emptyBlock);
+            setCursorPosition(contentElement, 0);
+
+            // Paste
+            editor.blockManager.clipboardAction.handlePaste(createMockClipboardEvent('paste', mockClipboard));
+
+            setTimeout(() => {
+                // Verify 4 blocks total: original heading, original quote, pasted heading, pasted quote
+                expect(editor.blocks.length).toBe(4);
+
+                // Verify original blocks are intact
+                expect(editor.blocks[0].blockType).toBe(BlockType.Heading);
+                expect(editor.blocks[0].content[0].content).toBe('Test Heading');
+
+                expect(editor.blocks[1].blockType).toBe(BlockType.Quote);
+                expect((editor.blocks[1].properties as BaseChildrenProp ).children.length).toBe(1);
+                expect((editor.blocks[1].properties as BaseChildrenProp).children[0].content[0].content).toBe('Quote content');
+
+                // Verify pasted blocks (blocks 2 and 3)
+                expect(editor.blocks[2].blockType).toBe(BlockType.Heading);
+                expect(editor.blocks[2].content[0].content).toBe('Test Heading');
+
+                expect(editor.blocks[3].blockType).toBe(BlockType.Quote);
+                expect((editor.blocks[3].properties as BaseChildrenProp).children.length).toBe(1);
+                expect((editor.blocks[3].properties as BaseChildrenProp).children[0].content[0].content).toBe('Quote content');
                 done();
             }, 100);
         });
@@ -1683,6 +1861,35 @@ describe('Clipboard Actions', () => {
             document.body.removeChild(editorElement);
         });
 
+        it('should restore selection after context menu cut and undo using triggerUndo', (done) => {
+            spyOn((navigator as any).clipboard, 'write').and.returnValue(Promise.resolve());
+            spyOn((navigator as any).clipboard, 'read').and.returnValue(Promise.resolve([]));
+            spyOn((navigator as any).clipboard, 'readText').and.returnValue(Promise.resolve(''));
+            const blockElement = editorElement.querySelector('#paragraph1') as HTMLElement;
+            expect(blockElement).not.toBeNull();
+
+            const contentElement = getBlockContentElement(blockElement);
+            const range = document.createRange();
+            range.selectNodeContents(contentElement);
+
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+
+            editor.blockManager.clipboardAction.handleContextCut().then(() => {
+              triggerUndo(editorElement);
+
+              setTimeout(() => {
+                const restoredSelection = window.getSelection();
+                expect(restoredSelection.rangeCount).toBe(1);
+                const restoredRange = restoredSelection.getRangeAt(0);
+                expect(restoredRange.startOffset).toBe(0);
+                expect(contentElement.textContent!.length).toBe(27);
+                done();
+              }, 50);
+            }).catch(done.fail);
+        });
+
         it('should handle context copy operation', (done) => {
             // spy on the methods we call
             const spy = spyOn(editor.blockManager.clipboardAction, 'getClipboardPayload').and.returnValue({
@@ -1981,6 +2188,523 @@ describe('Clipboard Actions', () => {
                     done();
                 }, 500);
             }, 200);
+        });
+
+        describe('updateImageBlockSrc - Comprehensive Coverage', () => {
+            let editor: BlockEditor;
+            let editorElement: HTMLElement;
+
+            beforeEach(() => {
+                editorElement = createElement('div', { id: 'editor' });
+                document.body.appendChild(editorElement);
+                const blocks: BlockModel[] = [
+                    {
+                        id: 'paragraph-1',
+                        blockType: BlockType.Paragraph,
+                        content: [
+                            { contentType: ContentType.Text, content: 'Test paragraph' }
+                        ]
+                    }
+                ];
+                editor = createEditor({ blocks });
+                editor.appendTo('#editor');
+            });
+
+            afterEach(() => {
+                if (editor) {
+                    editor.destroy();
+                }
+                document.body.removeChild(editorElement);
+            });
+
+            // Test 1: Handle null/empty blocks array
+            it('should return early when blocks array is null', () => {
+                (editor.blockManager.clipboardAction as any).updateImageBlockSrc(null);
+                expect(true).toBe(true); // Should not throw error
+            });
+
+            it('should return early when blocks array is empty', () => {
+                (editor.blockManager.clipboardAction as any).updateImageBlockSrc([]);
+                expect(true).toBe(true); // Should not throw error
+            });
+
+            // Test 2: Return early for Base64 saveFormat (no processing needed)
+            it('should return early when saveFormat is Base64', () => {
+                editor.imageBlockSettings.saveFormat = 'Base64';
+                const testBlocks: BlockModel[] = [
+                    {
+                        id: 'img-1',
+                        blockType: BlockType.Image,
+                        content: [],
+                        properties: { src: 'data:image/png;base64,ABC123', altText: 'Test' }
+                    }
+                ];
+
+                (editor.blockManager.clipboardAction as any).updateImageBlockSrc(testBlocks);
+                const imageProps: any = testBlocks[0].properties;
+                // Should remain unchanged
+                expect(imageProps.src).toBe('data:image/png;base64,ABC123');
+            });
+
+            // Test 3: Direct image blocks with Blob format
+            it('should process direct image block when saveFormat is Blob', () => {
+                editor.imageBlockSettings.saveFormat = 'Blob';
+                const testBlocks: BlockModel[] = [
+                    {
+                        id: 'img-1',
+                        blockType: BlockType.Image,
+                        content: [],
+                        properties: { src: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', altText: 'Test' }
+                    }
+                ];
+
+                (editor.blockManager.clipboardAction as any).updateImageBlockSrc(testBlocks);
+                const imageProps: any = testBlocks[0].properties;
+                expect(imageProps.src).toContain('blob:');
+            });
+
+            // Test 4: Non-image blocks should be skipped
+            it('should skip non-image blocks', () => {
+                editor.imageBlockSettings.saveFormat = 'Blob';
+                const testBlocks: BlockModel[] = [
+                    {
+                        id: 'para-1',
+                        blockType: BlockType.Paragraph,
+                        content: [{ contentType: ContentType.Text, content: 'Paragraph' }],
+                        properties: undefined
+                    }
+                ];
+
+                (editor.blockManager.clipboardAction as any).updateImageBlockSrc(testBlocks);
+                // Should not throw error and remain unchanged
+                expect(testBlocks[0].blockType).toBe(BlockType.Paragraph);
+                expect(testBlocks[0].properties).toBeUndefined();
+            });
+
+            // Test 5: Image block without properties should be skipped
+            it('should skip image block without properties', () => {
+                editor.imageBlockSettings.saveFormat = 'Blob';
+                const testBlocks: BlockModel[] = [
+                    {
+                        id: 'img-1',
+                        blockType: BlockType.Image,
+                        content: [],
+                        properties: undefined
+                    }
+                ];
+
+                (editor.blockManager.clipboardAction as any).updateImageBlockSrc(testBlocks);
+                expect(testBlocks[0].blockType).toBe(BlockType.Image);
+                expect(testBlocks[0].properties).toBeUndefined();
+            });
+
+            // Test 6: Image with empty src should be skipped
+            it('should skip image with empty src', () => {
+                editor.imageBlockSettings.saveFormat = 'Blob';
+                const testBlocks: BlockModel[] = [
+                    {
+                        id: 'img-1',
+                        blockType: BlockType.Image,
+                        content: [],
+                        properties: { src: '', altText: 'Test' }
+                    }
+                ];
+
+                (editor.blockManager.clipboardAction as any).updateImageBlockSrc(testBlocks);
+                const imageProps: any = testBlocks[0].properties;
+                expect(imageProps.src).toBe('');
+            });
+
+            // Test 7: Image with null src should be skipped
+            it('should skip image with null src', () => {
+                editor.imageBlockSettings.saveFormat = 'Blob';
+                const testBlocks: BlockModel[] = [
+                    {
+                        id: 'img-1',
+                        blockType: BlockType.Image,
+                        content: [],
+                        properties: { src: null, altText: 'Test' }
+                    }
+                ];
+
+                (editor.blockManager.clipboardAction as any).updateImageBlockSrc(testBlocks);
+                const imageProps: any = testBlocks[0].properties;
+                expect(imageProps.src).toBe(null);
+            });
+
+            // Test 8: Non-base64 image src (e.g., external URL) should be skipped
+            it('should skip non-base64 image URLs', () => {
+                editor.imageBlockSettings.saveFormat = 'Blob';
+                const externalUrl = 'https://example.com/image.png';
+                const testBlocks: BlockModel[] = [
+                    {
+                        id: 'img-1',
+                        blockType: BlockType.Image,
+                        content: [],
+                        properties: { src: externalUrl, altText: 'Test' }
+                    }
+                ];
+
+                (editor.blockManager.clipboardAction as any).updateImageBlockSrc(testBlocks);
+                const imageProps: any = testBlocks[0].properties;
+                expect(imageProps.src).toBe(externalUrl);
+            });
+
+            // Test 9: Recursion - Children blocks (Callout)
+            it('should recursively process image in Callout children', () => {
+                editor.imageBlockSettings.saveFormat = 'Blob';
+                const base64Src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+                const testBlocks: BlockModel[] = [
+                    {
+                        id: 'callout-1',
+                        blockType: BlockType.Callout,
+                        content: [],
+                        properties: {
+                            children: [
+                                {
+                                    id: 'img-1',
+                                    blockType: BlockType.Image,
+                                    content: [],
+                                    properties: { src: base64Src, altText: 'Test' }
+                                }
+                            ]
+                        }
+                    }
+                ];
+
+                (editor.blockManager.clipboardAction as any).updateImageBlockSrc(testBlocks);
+                const childBlock = (testBlocks[0].properties as any).children[0];
+                const childProps: any = childBlock.properties;
+                expect(childProps.src).toContain('blob:');
+            });
+
+            // Test 10: Recursion - Quote with children
+            it('should recursively process image in Quote children', () => {
+                editor.imageBlockSettings.saveFormat = 'Blob';
+                const base64Src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+                const testBlocks: BlockModel[] = [
+                    {
+                        id: 'quote-1',
+                        blockType: BlockType.Quote,
+                        content: [],
+                        properties: {
+                            children: [
+                                {
+                                    id: 'img-1',
+                                    blockType: BlockType.Image,
+                                    content: [],
+                                    properties: { src: base64Src, altText: 'Test' }
+                                }
+                            ]
+                        }
+                    }
+                ];
+
+                (editor.blockManager.clipboardAction as any).updateImageBlockSrc(testBlocks);
+                const childBlock = (testBlocks[0].properties as any).children[0];
+                const childProps: any = childBlock.properties;
+                expect(childProps.src).toContain('blob:');
+            });
+
+            // Test 11: Recursion - Empty children array
+            it('should handle blocks with empty children array', () => {
+                editor.imageBlockSettings.saveFormat = 'Blob';
+                const testBlocks: BlockModel[] = [
+                    {
+                        id: 'callout-1',
+                        blockType: BlockType.Callout,
+                        content: [],
+                        properties: {
+                            children: []
+                        }
+                    }
+                ];
+
+                (editor.blockManager.clipboardAction as any).updateImageBlockSrc(testBlocks);
+                expect(testBlocks[0].blockType).toBe(BlockType.Callout);
+                expect((testBlocks[0].properties as BaseChildrenProp).children.length).toBe(0);
+            });
+
+            // Test 12: Recursion - Null children property
+            it('should handle blocks with null children property', () => {
+                editor.imageBlockSettings.saveFormat = 'Blob';
+                const testBlocks: BlockModel[] = [
+                    {
+                        id: 'callout-1',
+                        blockType: BlockType.Callout,
+                        content: [],
+                        properties: {
+                            children: null
+                        }
+                    }
+                ];
+
+                (editor.blockManager.clipboardAction as any).updateImageBlockSrc(testBlocks);
+                expect(testBlocks[0].blockType).toBe(BlockType.Callout);
+                expect((testBlocks[0].properties as BaseChildrenProp).children).toBeNull();
+            });
+
+            // Test 13: Table blocks - processing cell contents
+            it('should recursively process images in table cells', () => {
+                editor.imageBlockSettings.saveFormat = 'Blob';
+                const base64Src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+                const testBlocks: BlockModel[] = [
+                    {
+                        id: 'table-1',
+                        blockType: BlockType.Table,
+                        content: [],
+                        properties: {
+                            rows: [
+                                {
+                                    cells: [
+                                        {
+                                            columnId: 'col-1',
+                                            blocks: [
+                                                {
+                                                    id: 'img-1',
+                                                    blockType: BlockType.Image,
+                                                    content: [],
+                                                    properties: { src: base64Src, altText: 'Test' }
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ];
+
+                (editor.blockManager.clipboardAction as any).updateImageBlockSrc(testBlocks);
+                const cellBlocks = (testBlocks[0].properties as any).rows[0].cells[0].blocks;
+                const cellImageProps: any = cellBlocks[0].properties;
+                expect(cellImageProps.src).toContain('blob:');
+            });
+
+            // Test 14: Table without rows
+            it('should handle table block without rows property', () => {
+                editor.imageBlockSettings.saveFormat = 'Blob';
+                const testBlocks: BlockModel[] = [
+                    {
+                        id: 'table-1',
+                        blockType: BlockType.Table,
+                        content: [],
+                        properties: { rows: null }
+                    }
+                ];
+
+                (editor.blockManager.clipboardAction as any).updateImageBlockSrc(testBlocks);
+                expect(testBlocks[0].blockType).toBe(BlockType.Table);
+                expect((testBlocks[0].properties as ITableBlockSettings).rows).toBeNull();
+            });
+
+            // Test 15: Table with empty rows
+            it('should handle table block with empty rows array', () => {
+                editor.imageBlockSettings.saveFormat = 'Blob';
+                const testBlocks: BlockModel[] = [
+                    {
+                        id: 'table-1',
+                        blockType: BlockType.Table,
+                        content: [],
+                        properties: { rows: [] }
+                    }
+                ];
+
+                (editor.blockManager.clipboardAction as any).updateImageBlockSrc(testBlocks);
+                expect(testBlocks[0].blockType).toBe(BlockType.Table);
+                expect((testBlocks[0].properties as ITableBlockSettings).rows.length).toBe(0);
+            });
+
+            // Test 16: Row without cells
+            it('should handle table row without cells property', () => {
+                editor.imageBlockSettings.saveFormat = 'Blob';
+                const testBlocks: BlockModel[] = [
+                    {
+                        id: 'table-1',
+                        blockType: BlockType.Table,
+                        content: [],
+                        properties: {
+                            rows: [
+                                { cells: null }
+                            ]
+                        }
+                    }
+                ];
+
+                (editor.blockManager.clipboardAction as any).updateImageBlockSrc(testBlocks);
+                expect(testBlocks[0].blockType).toBe(BlockType.Table);
+                expect((testBlocks[0].properties as ITableBlockSettings).rows[0].cells).toBeNull();
+            });
+
+            // Test 17: Cell without blocks
+            it('should handle table cell without blocks property', () => {
+                editor.imageBlockSettings.saveFormat = 'Blob';
+                const testBlocks: BlockModel[] = [
+                    {
+                        id: 'table-1',
+                        blockType: BlockType.Table,
+                        content: [],
+                        properties: {
+                            rows: [
+                                {
+                                    cells: [
+                                        { columnId: 'col-1', blocks: null }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ];
+
+                (editor.blockManager.clipboardAction as any).updateImageBlockSrc(testBlocks);
+                expect(testBlocks[0].blockType).toBe(BlockType.Table);
+                expect((testBlocks[0].properties as ITableBlockSettings).rows[0].cells[0].blocks).toBeNull();
+            });
+
+            // Test 18: Multiple direct image blocks
+            it('should process multiple direct image blocks', () => {
+                editor.imageBlockSettings.saveFormat = 'Blob';
+                const base64Src1 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+                const base64Src2 = 'data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+                const testBlocks: BlockModel[] = [
+                    {
+                        id: 'img-1',
+                        blockType: BlockType.Image,
+                        content: [],
+                        properties: { src: base64Src1, altText: 'Image 1' }
+                    },
+                    {
+                        id: 'img-2',
+                        blockType: BlockType.Image,
+                        content: [],
+                        properties: { src: base64Src2, altText: 'Image 2' }
+                    }
+                ];
+
+                (editor.blockManager.clipboardAction as any).updateImageBlockSrc(testBlocks);
+                const img1Props: any = testBlocks[0].properties;
+                const img2Props: any = testBlocks[1].properties;
+                expect(img1Props.src).toContain('blob:');
+                expect(img2Props.src).toContain('blob:');
+            });
+
+            // Test 19: Mixed block types - should process only images
+            it('should process only image blocks and skip other types', () => {
+                editor.imageBlockSettings.saveFormat = 'Blob';
+                const base64Src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+                const testBlocks: BlockModel[] = [
+                    {
+                        id: 'para-1',
+                        blockType: BlockType.Paragraph,
+                        content: [{ contentType: ContentType.Text, content: 'Text' }]
+                    },
+                    {
+                        id: 'img-1',
+                        blockType: BlockType.Image,
+                        content: [],
+                        properties: { src: base64Src, altText: 'Image' }
+                    },
+                    {
+                        id: 'heading-1',
+                        blockType: BlockType.Heading,
+                        content: [{ contentType: ContentType.Text, content: 'Heading' }]
+                    }
+                ];
+
+                (editor.blockManager.clipboardAction as any).updateImageBlockSrc(testBlocks);
+                expect(testBlocks[0].blockType).toBe(BlockType.Paragraph);
+                const imgProps: any = testBlocks[1].properties;
+                expect(imgProps.src).toContain('blob:');
+                expect(testBlocks[2].blockType).toBe(BlockType.Heading);
+            });
+
+            // Test 20: Deep nesting - children within children
+            it('should handle deeply nested children structures', () => {
+                editor.imageBlockSettings.saveFormat = 'Blob';
+                const base64Src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+                const testBlocks: BlockModel[] = [
+                    {
+                        id: 'callout-1',
+                        blockType: BlockType.Callout,
+                        content: [],
+                        properties: {
+                            children: [
+                                {
+                                    id: 'quote-1',
+                                    blockType: BlockType.Quote,
+                                    content: [],
+                                    properties: {
+                                        children: [
+                                            {
+                                                id: 'img-1',
+                                                blockType: BlockType.Image,
+                                                content: [],
+                                                properties: { src: base64Src, altText: 'Nested Image' }
+                                            }
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ];
+
+                (editor.blockManager.clipboardAction as any).updateImageBlockSrc(testBlocks);
+                const quoteBlock = (testBlocks[0].properties as any).children[0];
+                const imgBlock = (quoteBlock.properties as any).children[0];
+                const imgProps: any = imgBlock.properties;
+                expect(imgProps.src).toContain('blob:');
+            });
+
+            // Test 21: Multiple cells in table with mixed content
+            it('should process all cells in multi-cell table', () => {
+                editor.imageBlockSettings.saveFormat = 'Blob';
+                const base64Src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+                const testBlocks: BlockModel[] = [
+                    {
+                        id: 'table-1',
+                        blockType: BlockType.Table,
+                        content: [],
+                        properties: {
+                            rows: [
+                                {
+                                    cells: [
+                                        {
+                                            columnId: 'col-1',
+                                            blocks: [
+                                                {
+                                                    id: 'img-1',
+                                                    blockType: BlockType.Image,
+                                                    content: [],
+                                                    properties: { src: base64Src, altText: 'Image 1' }
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            columnId: 'col-2',
+                                            blocks: [
+                                                {
+                                                    id: 'img-2',
+                                                    blockType: BlockType.Image,
+                                                    content: [],
+                                                    properties: { src: base64Src, altText: 'Image 2' }
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ];
+
+                (editor.blockManager.clipboardAction as any).updateImageBlockSrc(testBlocks);
+                const row = (testBlocks[0].properties as any).rows[0];
+                const cell1Img: any = row.cells[0].blocks[0].properties;
+                const cell2Img: any = row.cells[1].blocks[0].properties;
+                expect(cell1Img.src).toContain('blob:');
+                expect(cell2Img.src).toContain('blob:');
+            });
         });
     });
 });

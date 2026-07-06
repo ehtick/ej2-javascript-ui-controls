@@ -29,7 +29,12 @@ export class ListRenderer {
         const listContainer: HTMLElement = createElement(listType, {});
         const listProps: BasePlaceholderProp = block.properties as BasePlaceholderProp;
         listProps.placeholder = this.parent.getPlaceholderValue(block);
+        const isValidContent: boolean = block.content && (block.content.length > 0 && block.content[0].content !== '');
+        if (!isValidContent && isChecklist) {
+            (block.properties as IChecklistBlockSettings).isChecked = false;
+        }
         const listItem: HTMLElement = createElement('li', {
+            className: isChecklist && (block.properties as IChecklistBlockSettings).isChecked ? 'e-checked' : '',
             attrs: {
                 contenteditable: 'true',
                 placeholder: listProps.placeholder
@@ -59,7 +64,9 @@ export class ListRenderer {
             className: 'e-checkmark-container',
             attrs: { contenteditable: 'false', tabindex: '-1' }
         });
-        const checkboxSvg: SVGSVGElement = this.renderUncheckedCheckmark();
+        const checkboxSvg: SVGSVGElement = (block.properties as IChecklistBlockSettings).isChecked
+            ? this.renderCheckedCheckmark()
+            : this.renderUncheckedCheckmark();
         checkmarkContainer.appendChild(checkboxSvg);
 
         blockElement.prepend(checkmarkContainer);
@@ -158,6 +165,16 @@ export class ListRenderer {
         const svg: SVGSVGElement = createBaseSvg();
 
         this.getUncheckedSvgElements().forEach((element: SVGElement) => {
+            svg.appendChild(element);
+        });
+
+        return svg;
+    }
+
+    private renderCheckedCheckmark(): SVGSVGElement {
+        const svg: SVGSVGElement = createBaseSvg();
+
+        this.getCheckedSvgElements().forEach((element: SVGElement) => {
             svg.appendChild(element);
         });
 

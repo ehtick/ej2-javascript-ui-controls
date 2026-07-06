@@ -1,4 +1,4 @@
-import { _PdfStream } from './base-stream';
+import { _PdfContentStream, _PdfStream } from './base-stream';
 import { _PdfCrossReference } from './pdf-cross-reference';
 import { _Linearization } from './pdf-parser';
 import { _isWhiteSpace, FormatError, _decode, _getNewGuidString, _isNullOrUndefined, _updatePageSettings, _updatePageCount, _convertDateToString, _convertStringToDate, _getCjkEncoding, _getCjkDescendantFont, _resolveStandardFontFamily, _resolveCjkFontFamily, _bytesToHex } from './utils';
@@ -6,10 +6,10 @@ import { _PdfCatalog } from './pdf-catalog';
 import { _PdfDictionary, _PdfReference, _isName, _PdfName, _clearPrimitiveCaches } from './pdf-primitives';
 import { PdfDestination, PdfPage } from './pdf-page';
 import { Save } from '@syncfusion/ej2-file-utils';
-import { DataFormat, PdfPermissionFlag, PdfTextAlignment, PdfPageOrientation, PdfRotationAngle, _PdfWordWrapType } from './enumerator';
+import { DataFormat, PdfPermissionFlag, PdfTextAlignment, PdfPageOrientation, PdfRotationAngle, _PdfWordWrapType, PdfTemplateHorizontalAlignment, PdfTemplateVerticalAlignment, PdfTemplateLayerMode, _PdfDocumentTemplateKey, _TemplateSide, _PdfAlignmentStyle } from './enumerator';
 import { PdfForm } from './form/form';
 import { PdfField } from './form/field';
-import { PdfBrush, PdfGraphics} from './graphics/pdf-graphics';
+import { _PdfTransformationMatrix, PdfBrush, PdfGraphics, PdfGraphicsState} from './graphics/pdf-graphics';
 import { _FontData, _PdfCjkStandardFontMetricsFactory, _PdfFontPrimitive, _PdfStandardFontMetricsFactory, PdfCjkFontFamily, PdfCjkStandardFont, PdfFont, PdfFontFamily, PdfFontStyle, PdfStandardFont, PdfTrueTypeFont } from './fonts/pdf-standard-font';
 import { PdfStringFormat, PdfVerticalAlignment } from './fonts/pdf-string-format';
 import { _ExportHelper, _XfdfDocument } from './import-export/xfdf-document';
@@ -27,10 +27,18 @@ import { _PdfFontMetrics } from './fonts/pdf-font-metrics';
 import { _UnicodeTrueTypeFont } from './fonts/unicode-true-type-font';
 import { _MD5 } from './security/encryptors/messageDigest5';
 import { PdfSignature } from './security/digital-signature/signature/pdf-signature';
-import { Rectangle, Size } from './pdf-type';
+import { Rectangle, Size, PdfDocumentTemplate } from './pdf-type';
 import { validateLicense } from '@syncfusion/ej2-base';
 import { PdfUriAnnotation } from './annotations/annotation';
 import { _LineInfo, _PdfStringLayouter, _PdfStringLayoutResult } from './fonts/string-layouter';
+import { PdfXmpMetadata } from './xmp/pdf-xmp-metadata';
+import { _XmlReader } from './xmp/xml-reader';
+import { _PdfFlateStream } from './flate-stream';
+import { PdfCustomMetadata } from './xmp/pdf-custom-metadata';
+import { PdfPageTemplateElement } from './graphics/pdf-page-template-element';
+import { PdfLayer } from './layers/layer';
+import { _PdfStreamWriter } from './graphics/pdf-stream-writer';
+import { PdfTemplate } from './graphics/pdf-template';
 /**
  * Represents a PDF document and can be used to parse an existing PDF document.
  * ```typescript
@@ -243,6 +251,31 @@ export class PdfDocument {
     _startXRefParsedCache: number[];
     private _revisions: number[];
     _isFormImport: boolean = false;
+    private _xmpMetadata: PdfXmpMetadata;
+    /**
+     * Stores the template configuration for document or section-level headers and footers.
+     *
+     * @private
+     */
+    private _template: PdfDocumentTemplate;
+    /**
+     * Collection of sections within the document.
+     *
+     * @private
+     */
+    _sections: PdfSection[] = [];
+    /**
+     * Maintains background layer mappings for each page.
+     *
+     * @private
+     */
+    private _backgroundLayers: Map<PdfPage, PdfLayer> = new Map();
+    /**
+     * Indicates whether template rendering has started for the document.
+     *
+     * @private
+     */
+    _templateRenderingStarted: boolean = false;
     /*
      * An event triggered during the splitting process, providing access to split PDF data and split index.
      *
@@ -605,6 +638,51 @@ export class PdfDocument {
         this._flatten = value;
     }
     /**
+     * Decompresses PDF stream bytes if they are compressed with a filter.
+     *
+     * @private
+     * @param {_PdfStream} stream The PDF stream to decompress.
+     * @returns {Uint8Array} The decompressed bytes, or original bytes if not compressed.
+     */
+    _getDecompressedStreamBytes(stream: any): Uint8Array { // eslint-disable-line
+        if (stream instanceof _PdfFlateStream) {
+            const len: number = (stream as any).bytes ? (stream as any).bytes.length : ((stream as any).bufferLength || 0); // eslint-disable-line
+            return stream.getBytes(len);
+        }
+        return stream.bytes;
+    }
+    /**
+     * Gets the XMP metadata of the PDF document.
+     *
+     * @private
+     * @returns {PdfXmpMetadata} The XMP metadata object present.
+     */
+    _getMetadataValue(): PdfXmpMetadata {
+        if (this._xmpMetadata) {
+            return this._xmpMetadata;
+        }
+        if (this._catalog && this._catalog._catalogDictionary.has('Metadata')) {
+            const metadataRef: any = this._catalog._catalogDictionary.getRaw('Metadata'); // eslint-disable-line
+            let metadataStream: any; // eslint-disable-line
+            if (metadataRef instanceof _PdfReference) {
+                const obj: any = this._crossReference._fetch(metadataRef); // eslint-disable-line
+                if (obj instanceof _PdfStream || obj instanceof _PdfFlateStream) {
+                    metadataStream = obj;
+                }
+            } else if (metadataRef instanceof _PdfStream || metadataRef instanceof _PdfFlateStream) {
+                metadataStream = metadataRef;
+            }
+            if (metadataStream) {
+                const reader: _XmlReader = new _XmlReader();
+                reader._load(this._getDecompressedStreamBytes(metadataStream));
+                this._xmpMetadata = reader._parseXmp();
+                return this._xmpMetadata;
+            }
+        }
+        this._xmpMetadata = new PdfXmpMetadata();
+        return this._xmpMetadata;
+    }
+    /**
      * Gets the permission flag of the PDF document (Read only).
      *
      * @returns {PdfPermissionFlag} permission flag. Default value is PdfPermissionFlag.default.
@@ -707,6 +785,39 @@ export class PdfDocument {
             this._layers = new PdfLayerCollection(this);
         }
         return this._layers;
+    }
+    /**
+     * Gets the template configuration for document-level headers and footers.
+     *
+     * ```typescript
+     * // Create new document
+     * let document: PdfDocument = new PdfDocument();
+     * // Initialize the standard font
+     * const font: PdfStandardFont = new PdfStandardFont(PdfFontFamily.helvetica, 12);
+     * / Initialize brush
+     * const brush: PdfBrush = new PdfBrush({ r: 0, g: 0, b: 0 });
+     * // Create header template
+     * let headerTemplate: PdfPageTemplateElement = new PdfPageTemplateElement({width: 500, height: 50});
+     * // Draw content on header
+     * headerTemplate.graphics.drawString('Document Header', font, {x: 10, y: 10, width: 400, height: 30}, brush);
+     * // Assign template to document
+     * document.template.top = {template: headerTemplate };
+     * // Save the document
+     * document.save('output.pdf');
+     * // Destroy the document
+     * document.destroy();
+     * ```
+     *
+     * @returns {PdfDocumentTemplate} The document template.
+     */
+    get template(): PdfDocumentTemplate {
+        if (this._isLoaded) {
+            return this._template;
+        }
+        if (!this._template) {
+            this._template = {};
+        }
+        return this._template;
     }
     /**
      * Gets an array of revision numbers for the PDF document.
@@ -1272,6 +1383,7 @@ export class PdfDocument {
         if (!this._isLoaded) {
             const pageSettings: PdfPageSettings = settings ? settings : new PdfPageSettings();
             result = new PdfSection(this, pageSettings);
+            this._sections.push(result);
         }
         return result;
     }
@@ -1344,13 +1456,18 @@ export class PdfDocument {
      * document.destroy();
      * ```
      *
+     * @param {boolean} skipMetadata flag value to skip the metadata.
      * @returns {PdfDocumentInformation} Document information.
      */
-    public getDocumentInformation(): PdfDocumentInformation {
+    public getDocumentInformation(skipMetadata: boolean = true): PdfDocumentInformation {
         const infoDict: _PdfDictionary = this._getInfoDictionary(false);
         const catalogDictionary: _PdfDictionary = this._catalog._catalogDictionary;
         const result: PdfDocumentInformation = {};
         if (!infoDict) {
+            if (!skipMetadata) {
+                result.xmpMetadata = this._getMetadataValue();
+            }
+            result.customMetadata = new PdfCustomMetadata();
             return result;
         }
         result.title = this._readInfoString(infoDict, 'Title');
@@ -1368,6 +1485,23 @@ export class PdfDocument {
         if (typeof mod === 'string') {
             result.modificationDate = _convertStringToDate(mod);
         }
+        if (!skipMetadata){
+            result.xmpMetadata = this._getMetadataValue();
+        }
+        const standardKeys: Set<string> = new Set([
+            'Title', 'Author', 'Subject', 'Keywords',
+            'Creator', 'Producer', 'CreationDate', 'ModDate', 'Trapped'
+        ]);
+        const custom: PdfCustomMetadata = new PdfCustomMetadata();
+        for (const key of Object.keys(infoDict._map)) {
+            if (!standardKeys.has(key)) {
+                const value: any = infoDict.get(key); // eslint-disable-line
+                if (typeof value === 'string') {
+                    custom.set(key, value);
+                }
+            }
+        }
+        result.customMetadata = custom;
         return result;
     }
     private _readInfoString(dict: _PdfDictionary, key: string): string | undefined {
@@ -1414,6 +1548,26 @@ export class PdfDocument {
         this._writeInfoString(catalogDictionary, 'Lang', information.language);
         this._writeInfoDate(infoDict, 'CreationDate', information.creationDate);
         this._writeInfoDate(infoDict, 'ModDate', information.modificationDate);
+        if (information.customMetadata) {
+            const map: Map<string, string> = information.customMetadata._customData;
+            let schemaMap: Map<string, string>;
+            if (this._xmpMetadata) {
+                schemaMap = this._xmpMetadata.customSchema.customData;
+            }
+            map.forEach((value: string, key: string) => {
+                if (typeof key === 'string' && typeof value === 'string') {
+                    this._writeInfoString(infoDict, key, value);
+                }
+                if (this._xmpMetadata) {
+                    if (!schemaMap.has(key)) {
+                        schemaMap.set(key, value);
+                    }
+                }
+            });
+            if (this._xmpMetadata) {
+                this._xmpMetadata.customSchema.customData = schemaMap;
+            }
+        }
         infoDict._updated = true;
     }
     /**
@@ -2356,6 +2510,9 @@ export class PdfDocument {
             this._crossReference._destroy();
             this._crossReference = undefined;
         }
+        if (this._xmpMetadata) {
+            this._xmpMetadata._destroy();
+        }
         if (this._catalog) {
             this._catalog._destroy();
             this._catalog = undefined;
@@ -2461,10 +2618,10 @@ export class PdfDocument {
         }
         if (!this._version) {
             this._version = version.substring(5);
-            if (this._version === '%PDF-1.3' || this._version === '%PDF-1.0' || this._version === '%PDF-1.1'
-                || this._version === '%PDF-1.2') {
-                this.fileStructure.isIncrementalUpdate = false;
-            }
+            // if (this._version === '%PDF-1.3' || this._version === '%PDF-1.0' || this._version === '%PDF-1.1'
+            //     || this._version === '%PDF-1.2') {
+            //     this.fileStructure.isIncrementalUpdate = false;
+            // }
         }
     }
     /**
@@ -2536,8 +2693,859 @@ export class PdfDocument {
      * @returns {void} nothing.
      */
     _doPostProcess(isFlatten: boolean = false): void {
+        this._renderDocumentTemplates(PdfTemplateLayerMode.background);
+        this._renderDocumentTemplates(undefined);
         this._doPostProcessOnFormFields(isFlatten);
         this._doPostProcessOnAnnotations(isFlatten);
+        this._addXmpMetadata();
+        this._renderDocumentTemplates(PdfTemplateLayerMode.foreground);
+    }
+    /**
+     * Adds XMP metadata stream to the PDF document catalog.
+     *
+     * @private
+     * @returns {void} nothing.
+     */
+    _addXmpMetadata(): void {
+        if (this._xmpMetadata && !this._xmpMetadata._isUpdated) {
+            this._xmpMetadata._serializeToStream();
+            const xmpStream: _PdfStream = this._xmpMetadata._xmpStream;
+            if (xmpStream) {
+                if (!xmpStream.dictionary) {
+                    const dict: _PdfDictionary = new _PdfDictionary(this._crossReference);
+                    dict._updated = true;
+                    xmpStream.dictionary = dict;
+                }
+                xmpStream.dictionary.update('Type', _PdfName.get('Metadata'));
+                xmpStream.dictionary.update('Subtype', _PdfName.get('XML'));
+                xmpStream._isCompress = false;
+                const reference: _PdfReference = this._crossReference._getNextReference();
+                this._crossReference._cacheMap.set(reference, xmpStream);
+                this._catalog._catalogDictionary.update('Metadata', reference);
+                this._crossReference._allowCatalog = true;
+                this._xmpMetadata._isUpdated = true;
+            }
+        }
+    }
+    /**
+     * Renders document templates (headers/footers) onto all pages for the specified layer mode.
+     *
+     * @private
+     * @param {PdfTemplateLayerMode} mode The template layer mode to render (background|foreground|undefined for default).
+     * @returns {void} Nothing.
+     */
+    _renderDocumentTemplates(mode: PdfTemplateLayerMode): void {
+        let hasTemplate: boolean = typeof this._template !== 'undefined' && this._template !== null;
+        if (!hasTemplate && this._sections) {
+            for (const section of this._sections) {
+                if (section.template) {
+                    hasTemplate = true;
+                    break;
+                }
+            }
+        }
+        if (!hasTemplate) {
+            return;
+        }
+        for (let i: number = 0; i < this.pageCount; i++) {
+            const page: PdfPage = this.getPage(i);
+            const pageNumber: number = i + 1;
+            const isOddPage: boolean = pageNumber % 2 === 1;
+            this._renderPageTemplates(page, isOddPage, mode);
+        }
+    }
+    /**
+     * Renders templates for a specific page based on odd/even precedence.
+     *
+     * @private
+     * @param {PdfPage} page The page to render templates on.
+     * @param {boolean} isOddPage Whether the page is odd-numbered.
+     * @param {PdfTemplateLayerMode | undefined} mode The template layer mode to render (background|foreground|undefined for default).
+     * @returns {void} Nothing.
+     */
+    _renderPageTemplates(page: PdfPage, isOddPage: boolean, mode: PdfTemplateLayerMode): void {
+        this._templateRenderingStarted = true;
+        const sectionIndex: number = page._getSectionIndex();
+        const sides: _TemplateSide[] = [
+            _TemplateSide.top,
+            _TemplateSide.bottom,
+            _TemplateSide.left,
+            _TemplateSide.right
+        ];
+        let pageGraphics: PdfGraphics;
+        for (const side of sides) {
+            let templateInserted: boolean = false;
+            const isLateGraphics: any = typeof page._g !== 'undefined' && page._g !== null && !page._needInitializeGraphics; // eslint-disable-line
+            const sectionTemplateInfo: any = // eslint-disable-line
+                (sectionIndex >= 0 && sectionIndex < this._sections.length)
+                    ? this._getSectionTemplateForSide(this._sections[<number>sectionIndex], side, isOddPage)
+                    : null;
+            const documentTemplateInfo: any = this._getTemplateForSide(side, isOddPage); // eslint-disable-line
+            const templatesToRender: any[] = []; // eslint-disable-line
+            if (documentTemplateInfo && documentTemplateInfo.template) {
+                templatesToRender.push(documentTemplateInfo);
+            }
+            if (sectionTemplateInfo && sectionTemplateInfo.template) {
+                templatesToRender.push(sectionTemplateInfo);
+            }
+            for (const templateInfo of templatesToRender) {
+                if (!templateInfo || !templateInfo.template) {
+                    continue;
+                }
+                const templateMode: PdfTemplateLayerMode = templateInfo.templateLayerMode;
+                const matchesMode: boolean =
+                    (typeof templateMode !== 'undefined' && templateMode === mode) ||
+                    (typeof templateMode === 'undefined' && mode === undefined);
+                if (!matchesMode) {
+                    continue;
+                }
+                const position: Rectangle = this._getTemplateAlignmentPosition(page, templateInfo.documentTemplate,
+                                                                               templateInfo.alignment,
+                                                                               side,
+                                                                               isOddPage
+                );
+                let direction: string;
+                if (typeof templateInfo.alignment === 'undefined') {
+                    direction = this._templateSideToString(side);
+                }
+                const fixNeeded: boolean = isLateGraphics && page._accessedBeforeTemplate &&
+                    !page._templatesRendered;
+                if (templateMode === PdfTemplateLayerMode.background) {
+                    let bgLayer: PdfLayer = this._backgroundLayers.get(page);
+                    if (!bgLayer) {
+                        bgLayer = this.layers.add('_background');
+                        this.layers.move(0, bgLayer);
+                        this._backgroundLayers.set(page, bgLayer);
+                    }
+                    const bgGraphics: PdfGraphics = bgLayer.createGraphics(page);
+                    const state: PdfGraphicsState = bgGraphics.save();
+                    bgGraphics.setTransparency(0.5);
+                    templateInfo.template._draw(bgGraphics, position.x, position.y,
+                                                position.width, position.height, direction);
+                    bgGraphics.restore(state);
+                } else if (templateMode === PdfTemplateLayerMode.foreground) {
+                    if (!page._contents || page._contents.length === 0) {
+                        page.graphics.save();
+                        page.graphics.restore();
+                    }
+                    this._drawForegroundTemplate(page, templateInfo.template._template, position);
+                } else {
+                    if (fixNeeded && !templateInserted) {
+                        page._templatesRendered = true;
+                        templateInserted = true;
+                        page._loadContents();
+                        if (page._contents && page._contents.length > 0) {
+                            const tempStream: _PdfContentStream = new _PdfContentStream([]);
+                            const g: PdfGraphics = new PdfGraphics(page.size, tempStream, this._crossReference, page);
+                            g._initializeCoordinates();
+                            const margins: PdfMargins = page._pageSettings.margins;
+                            const bounds: number[] = [margins.left, margins.top,
+                                page.size.width - margins.left - margins.right,
+                                page.size.height - margins.top - margins.bottom
+                            ];
+                            g._clipTranslateMargins(bounds);
+                            g.translateTransform({ x: position.x, y: 0 });
+                            templateInfo.template._draw(g, 0, 0, position.width, position.height, direction);
+                            tempStream._bytes = [32, 113, 32, 10,
+                                ...tempStream._bytes,
+                                32, 81, 32, 10
+                            ];
+                            const ref: _PdfReference = this._crossReference._getNextReference();
+                            this._crossReference._cacheMap.set(ref, tempStream);
+                            const insertIndex: number = page._contents.length - 1;
+                            page._contents.splice(insertIndex, 0, ref);
+                            page._pageDictionary.set('Contents', page._contents);
+                            page._pageDictionary._updated = true;
+                        }
+                    } else {
+                        if (!pageGraphics) {
+                            pageGraphics = page.graphics;
+                        }
+                        templateInfo.template._draw(pageGraphics, position.x, position.y,
+                                                    position.width, position.height, direction);
+                    }
+                }
+            }
+        }
+    }
+    /**
+     * Gets the index of the section that contains the specified page reference.
+     *
+     * @param {_PdfReference} parentRef - The reference of the page's parent section.
+     * @returns {number} The zero-based index of the matching section, or -1 if not found.
+     * @private
+     */
+    _getSectionIndexByPage(parentRef: _PdfReference): number {
+        if (!this._sections || this._sections.length === 0) {
+            return -1;
+        }
+        for (let i: number = 0; i < this._sections.length; i++) {
+            const section: PdfSection = this._sections[<number>i];
+            if (section && section._reference === parentRef) {
+                return i;
+            }
+        }
+        return -1;
+    }
+    /**
+     * Renders a `PdfTemplate` into the page contents as a form XObject (foreground).
+     * This method creates a content stream that places and scales the template
+     * to the provided `bounds`, registers the template as an XObject resource,
+     * and appends the resulting content stream to the page contents.
+     *
+     * @private
+     * @param {PdfPage} page The target page to draw the template onto.
+     * @param {PdfTemplate} template The template to render as an XObject.
+     * @param {Rectangle} bounds The bounds on the page where the template should be drawn.
+     * @returns {void} Nothing.
+     */
+    private _drawForegroundTemplate(page: PdfPage, template: PdfTemplate,
+                                    bounds: Rectangle): void {
+        const stream: _PdfContentStream = new _PdfContentStream([]);
+        const sw: _PdfStreamWriter = new _PdfStreamWriter(stream);
+        sw._write('q');
+        const matrix: _PdfTransformationMatrix = new _PdfTransformationMatrix();
+        matrix._translate(bounds.x, -(bounds.y + bounds.height));
+        matrix._scale(
+            bounds.width / template._size.width,
+            bounds.height / template._size.height
+        );
+        sw._modifyCtm(matrix);
+        let pageResources: _PdfDictionary = page._pageDictionary.get('Resources');
+        if (!pageResources) {
+            pageResources = new _PdfDictionary(this._crossReference);
+            page._pageDictionary.set('Resources', pageResources);
+        }
+        stream.dictionary.update('Resources', pageResources);
+        let xObject: _PdfDictionary = pageResources.get('XObject');
+        if (!xObject) {
+            xObject = new _PdfDictionary(this._crossReference);
+            pageResources.set('XObject', xObject);
+        }
+        if (!template._key) {
+            template._key = _getNewGuidString();
+        }
+        const key: _PdfName = _PdfName.get(template._key);
+        const ref: _PdfReference = this._crossReference._getNextReference();
+        this._crossReference._cacheMap.set(ref, template._content);
+        xObject.set(key.name, ref);
+        sw._executeObject(key);
+        sw._write('Q');
+        page._loadContents();
+        const cref: _PdfReference = this._crossReference._getNextReference();
+        this._crossReference._cacheMap.set(cref, stream);
+        page._contents.push(cref);
+    }
+    /**
+     * Gets the appropriate template and alignment for the specified side based on odd or even page.
+     *
+     * @private
+     * @param {_TemplateSide} side The template side (top, bottom, left, or right).
+     * @param {boolean} isOddPage Whether the current page is odd-numbered.
+     * @param {number} sectionIndex The section index to resolve section-specific templates or -1 if not applicable.
+     * @returns {Object} The resolved template information, template layer mode and alignment, or null if none is found.
+     */
+    private _getTemplateForSide(side: _TemplateSide, isOddPage: boolean, sectionIndex: number = -1
+    ): { template: any, templateLayerMode: PdfTemplateLayerMode, alignment: PdfTemplateHorizontalAlignment | PdfTemplateVerticalAlignment, // eslint-disable-line
+        documentTemplate: PdfDocumentTemplate} { // eslint-disable-line
+        const templateKeyMap: Map<_TemplateSide, {
+            odd: _PdfDocumentTemplateKey;
+            even: _PdfDocumentTemplateKey;
+            base: _PdfDocumentTemplateKey;
+        }> = new Map([
+            [_TemplateSide.top, {
+                odd: _PdfDocumentTemplateKey.oddTop,
+                even: _PdfDocumentTemplateKey.evenTop,
+                base: _PdfDocumentTemplateKey.top
+            }],
+            [_TemplateSide.bottom, {
+                odd: _PdfDocumentTemplateKey.oddBottom,
+                even: _PdfDocumentTemplateKey.evenBottom,
+                base: _PdfDocumentTemplateKey.bottom
+            }],
+            [_TemplateSide.left, {
+                odd: _PdfDocumentTemplateKey.oddLeft,
+                even: _PdfDocumentTemplateKey.evenLeft,
+                base: _PdfDocumentTemplateKey.left
+            }],
+            [_TemplateSide.right, {
+                odd: _PdfDocumentTemplateKey.oddRight,
+                even: _PdfDocumentTemplateKey.evenRight,
+                base: _PdfDocumentTemplateKey.right
+            }]
+        ]);
+        const keys: any = templateKeyMap.get(side); // eslint-disable-line
+        if (!keys) {
+            return null;
+        }
+        if (sectionIndex >= 0 && sectionIndex < this._sections.length) {
+            const section: PdfSection = this._sections[<number>sectionIndex];
+            const sectionTemplateInfo: any = this._getSectionTemplateForSide(section, side, isOddPage); // eslint-disable-line
+            if (sectionTemplateInfo) {
+                return sectionTemplateInfo;
+            }
+        }
+        const templateKeyToCheck: any = isOddPage ? keys.odd : keys.even; // eslint-disable-line
+        const templateObj: any = this._getTemplateByKey(templateKeyToCheck); // eslint-disable-line
+        if (templateObj && templateObj.template) {
+            return {
+                template: templateObj.template,
+                templateLayerMode: templateObj.templateLayerMode,
+                alignment: templateObj.alignment,
+                documentTemplate: this._template
+            };
+        }
+        const baseTemplateObj: any = this._getTemplateByKey(keys.base); // eslint-disable-line
+        if (baseTemplateObj && baseTemplateObj.template) {
+            return {
+                template: baseTemplateObj.template,
+                templateLayerMode: baseTemplateObj.templateLayerMode,
+                alignment: baseTemplateObj.alignment,
+                documentTemplate: this._template
+            };
+        }
+        return null;
+    }
+    /**
+     * Retrieves template object by template key.
+     *
+     * @private
+     * @param {_PdfDocumentTemplateKey} key The template key.
+     * @returns {any} The template object or undefined.
+     */
+    private _getTemplateByKey(key: _PdfDocumentTemplateKey): any { // eslint-disable-line
+        if (!this._template) {
+            return;
+        }
+        switch (key) {
+        case _PdfDocumentTemplateKey.top:
+            return this._template.top;
+        case _PdfDocumentTemplateKey.bottom:
+            return this._template.bottom;
+        case _PdfDocumentTemplateKey.left:
+            return this._template.left;
+        case _PdfDocumentTemplateKey.right:
+            return this._template.right;
+        case _PdfDocumentTemplateKey.evenTop:
+            return this._template.evenTop;
+        case _PdfDocumentTemplateKey.evenBottom:
+            return this._template.evenBottom;
+        case _PdfDocumentTemplateKey.evenLeft:
+            return this._template.evenLeft;
+        case _PdfDocumentTemplateKey.evenRight:
+            return this._template.evenRight;
+        case _PdfDocumentTemplateKey.oddTop:
+            return this._template.oddTop;
+        case _PdfDocumentTemplateKey.oddBottom:
+            return this._template.oddBottom;
+        case _PdfDocumentTemplateKey.oddLeft:
+            return this._template.oddLeft;
+        case _PdfDocumentTemplateKey.oddRight:
+            return this._template.oddRight;
+        default:
+            return undefined;
+        }
+    }
+    /**
+     * Gets the appropriate template and alignment for a section.
+     *
+     * @param {PdfSection} section The section to get the template from.
+     * @param {_TemplateSide} side The template side.
+     * @param {boolean} isOddPage Whether the page is odd-numbered.
+     * @returns {Object} The resolved template info, or null if none is found.
+     * @private
+     */
+    private _getSectionTemplateForSide(section: PdfSection, side: _TemplateSide, isOddPage: boolean): { template: any; alignment: any, // eslint-disable-line
+        templateLayerMode?: PdfTemplateLayerMode, documentTemplate: PdfDocumentTemplate } {
+        const sectionTemplate: any = section.template; // eslint-disable-line
+        const templateKeyMap: Map<_TemplateSide, string> = new Map([
+            [_TemplateSide.top, 'top'],
+            [_TemplateSide.bottom, 'bottom'],
+            [_TemplateSide.left, 'left'],
+            [_TemplateSide.right, 'right']
+        ]);
+        const baseKey: string = templateKeyMap.get(side);
+        if (!baseKey) {
+            return null;
+        }
+        const cap: string = baseKey.charAt(0).toUpperCase() + baseKey.slice(1);
+        const oddKey: string = 'odd' + cap;
+        const evenKey: string = 'even' + cap;
+        let templateInfo: any = undefined; // eslint-disable-line
+        if (isOddPage && sectionTemplate[<string>oddKey]) {
+            templateInfo = sectionTemplate[<string>oddKey];
+        } else if (!isOddPage && sectionTemplate[<string>evenKey]) {
+            templateInfo = sectionTemplate[<string>evenKey];
+        }
+        if (!templateInfo && sectionTemplate[<string>baseKey]) {
+            templateInfo = sectionTemplate[<string>baseKey];
+        }
+        if (templateInfo && templateInfo.template) {
+            return {template: templateInfo.template,
+                alignment: templateInfo.alignment,
+                templateLayerMode: templateInfo.templateLayerMode,
+                documentTemplate: section.template
+            };
+        }
+        return null;
+    }
+    /**
+     * Gets the alignment position for a template on a page.
+     *
+     * @private
+     * @param {PdfPage} page The target page on which the template will be positioned.
+     * @param {PdfDocumentTemplate} documentTemplate The document template containing the template elements.
+     * @param {PdfTemplateHorizontalAlignment | PdfTemplateVerticalAlignment | undefined} alignment Specifies the alignment
+     * (horizontal or vertical) used to position the template within the page.
+     * @param {_TemplateSide} side Specifies the side of the page (such as top, bottom, left, or right)
+     * where the template should be placed.
+     * @param {boolean} isOddPage Indicates whether the current page is an odd-numbered page,
+     * which may affect template placement (e.g., for mirrored layouts).
+     * @returns {{ x: number, y: number, width: number, height: number }} An object representing
+     * the calculated position (x, y) and dimensions (width, height) of the template.
+     */
+    _getTemplateAlignmentPosition(page: PdfPage, documentTemplate: PdfDocumentTemplate,
+                                  alignment: PdfTemplateHorizontalAlignment | PdfTemplateVerticalAlignment | undefined,
+                                  side: _TemplateSide, isOddPage: boolean ): { x: number, y: number, width: number, height: number } {
+        let result: Rectangle;
+        const baseKey: string = this._templateSideToString(side);
+        const cap: string = baseKey.charAt(0).toUpperCase() + baseKey.slice(1);
+        const oddKey: keyof PdfDocumentTemplate  = ('odd' + cap) as keyof PdfDocumentTemplate;
+        const evenKey: keyof PdfDocumentTemplate = ('even' + cap) as keyof PdfDocumentTemplate;
+        const base: keyof PdfDocumentTemplate = baseKey as keyof PdfDocumentTemplate;
+        let templateObj: any; // eslint-disable-line
+        if (isOddPage && documentTemplate[<keyof PdfDocumentTemplate>oddKey]) {
+            templateObj = documentTemplate[<keyof PdfDocumentTemplate>oddKey];
+        } else if (!isOddPage && documentTemplate[<keyof PdfDocumentTemplate>evenKey]) {
+            templateObj = documentTemplate[<keyof PdfDocumentTemplate>evenKey];
+        } else {
+            templateObj = documentTemplate[<keyof PdfDocumentTemplate>base];
+        }
+        if (!templateObj) {
+            return { x: 0, y: 0, width: 0, height: 0 };
+        }
+        const template: PdfPageTemplateElement = templateObj.template;
+        if (typeof alignment !== 'undefined' && alignment !== PdfTemplateVerticalAlignment.none &&
+            alignment !== PdfTemplateHorizontalAlignment.none) {
+            result = this._getAlignmentBounds(side, template, page, alignment);
+        } else {
+            const direction: string = this._templateSideToString(side);
+            result = this._getTemplateDockBounds(page, template, direction);
+        }
+        return result;
+    }
+    /**
+     * Gets alignment bounds for a template.
+     *
+     * @private
+     * @param {_TemplateSide} side The template side.
+     * @param {PdfPageTemplateElement} template The template element.
+     * @param {PdfPage} page The page.
+     * @param {PdfTemplateHorizontalAlignment | PdfTemplateVerticalAlignment | undefined} alignment The alignment.
+     * @returns {Rectangle} The alignment bounds.
+     */
+    _getAlignmentBounds(side: _TemplateSide,
+                        template: PdfPageTemplateElement, page: PdfPage,
+                        alignment: PdfTemplateHorizontalAlignment | PdfTemplateVerticalAlignment | undefined): Rectangle {
+        const alignStyle: _PdfAlignmentStyle = this._mapTemplateAlignmentStyle(side, alignment);
+        return this._getTemplateAlignmentBounds(template,
+                                                page, alignStyle, side
+        );
+    }
+    /**
+     * Converts template side enum to string for legacy compatibility.
+     *
+     * @private
+     * @param {_TemplateSide} side The template side enum.
+     * @returns {string} The side as string ('top', 'bottom', 'left', 'right').
+     */
+    private _templateSideToString(side: _TemplateSide): string {
+        switch (side) {
+        case _TemplateSide.top:
+            return 'top';
+        case _TemplateSide.bottom:
+            return 'bottom';
+        case _TemplateSide.left:
+            return 'left';
+        case _TemplateSide.right:
+            return 'right';
+        default:
+            return 'top';
+        }
+    }
+    /**
+     * Normalizes a document template key or template side into its corresponding
+     * base template side (Top, Bottom, Left, or Right).
+     *
+     * @private
+     * @param {_PdfDocumentTemplateKey | _TemplateSide} key
+     * The document template key or template side to normalize.
+     * @returns {_TemplateSide} The normalized base template side.
+     */
+    private _normalizeTemplateSide( key: _PdfDocumentTemplateKey | _TemplateSide ): _TemplateSide {
+        if (key === _TemplateSide.top ||
+            key === _TemplateSide.bottom ||
+            key === _TemplateSide.left ||
+            key === _TemplateSide.right) {
+            return key;
+        }
+        switch (key) {
+        case _PdfDocumentTemplateKey.top:
+        case _PdfDocumentTemplateKey.evenTop:
+        case _PdfDocumentTemplateKey.oddTop:
+            return _TemplateSide.top;
+        case _PdfDocumentTemplateKey.bottom:
+        case _PdfDocumentTemplateKey.evenBottom:
+        case _PdfDocumentTemplateKey.oddBottom:
+            return _TemplateSide.bottom;
+        case _PdfDocumentTemplateKey.left:
+        case _PdfDocumentTemplateKey.evenLeft:
+        case _PdfDocumentTemplateKey.oddLeft:
+            return _TemplateSide.left;
+        case _PdfDocumentTemplateKey.right:
+        case _PdfDocumentTemplateKey.evenRight:
+        case _PdfDocumentTemplateKey.oddRight:
+        default:
+            return _TemplateSide.right;
+        }
+    }
+    /**
+     * Resolves the effective template alignment style based on the document template key
+     * (including odd/even variants) and the specified horizontal or vertical alignment.
+     *
+     * @private
+     * @param {_PdfDocumentTemplateKey | _TemplateSide} templateKey
+     * The document template key or normalized template side used to determine alignment context.
+     * @param {PdfTemplateHorizontalAlignment | PdfTemplateVerticalAlignment} alignment
+     * The alignment value applied to the template.
+     * @returns {_PdfAlignmentStyle} The resolved alignment style for positioning the template.
+     */
+    private _mapTemplateAlignmentStyle(
+        templateKey: _PdfDocumentTemplateKey | _TemplateSide,
+        alignment: PdfTemplateHorizontalAlignment | PdfTemplateVerticalAlignment): _PdfAlignmentStyle {
+        const side: _TemplateSide = this._normalizeTemplateSide(templateKey);
+        if (typeof alignment === 'undefined' ||
+            alignment === PdfTemplateHorizontalAlignment.none ||
+            alignment === PdfTemplateVerticalAlignment.none) {
+            switch (side) {
+            case _TemplateSide.top:
+            case _TemplateSide.left:
+                return _PdfAlignmentStyle.topLeft;
+            case _TemplateSide.bottom:
+                return _PdfAlignmentStyle.bottomLeft;
+            case _TemplateSide.right:
+                return _PdfAlignmentStyle.topRight;
+            }
+        }
+        if (side === _TemplateSide.top || side === _TemplateSide.bottom) {
+            const isTop: boolean = side === _TemplateSide.top;
+            switch (alignment) {
+            case PdfTemplateHorizontalAlignment.center:
+                return isTop
+                    ? _PdfAlignmentStyle.topCenter
+                    : _PdfAlignmentStyle.bottomCenter;
+            case PdfTemplateHorizontalAlignment.right:
+                return isTop
+                    ? _PdfAlignmentStyle.topRight
+                    : _PdfAlignmentStyle.bottomRight;
+            case PdfTemplateHorizontalAlignment.left:
+            default:
+                return isTop
+                    ? _PdfAlignmentStyle.topLeft
+                    : _PdfAlignmentStyle.bottomLeft;
+            }
+        }
+        if (side === _TemplateSide.left || side === _TemplateSide.right) {
+            const isLeft: boolean = side === _TemplateSide.left;
+            switch (alignment) {
+            case PdfTemplateVerticalAlignment.middle:
+                return isLeft
+                    ? _PdfAlignmentStyle.middleLeft
+                    : _PdfAlignmentStyle.middleRight;
+            case PdfTemplateVerticalAlignment.bottom:
+                return isLeft
+                    ? _PdfAlignmentStyle.bottomLeft
+                    : _PdfAlignmentStyle.bottomRight;
+            case PdfTemplateVerticalAlignment.top:
+            default:
+                return isLeft
+                    ? _PdfAlignmentStyle.topLeft
+                    : _PdfAlignmentStyle.topRight;
+            }
+        }
+        return _PdfAlignmentStyle.topLeft;
+    }
+    /**
+     * Gets the template alignment bounds based on alignment style.
+     *
+     * @private
+     * @param {PdfPageTemplateElement} template The template element.
+     * @param {PdfPage} page The page.
+     * @param {_PdfAlignmentStyle} alignmentStyle The alignment style enum.
+     * @param {_TemplateSide} [side] Optional template side for context-specific positioning.
+     * @returns {Rectangle} The alignment bounds.
+     */
+    _getTemplateAlignmentBounds(template: PdfPageTemplateElement, page: PdfPage,
+                                alignmentStyle: _PdfAlignmentStyle, side?: _TemplateSide): Rectangle {
+        const result: Rectangle = template._bounds;
+        let actualBounds: number[];
+        if (page._isNew) {
+            actualBounds = page._getActualTemplateBounds(page._pageSettings);
+        }
+        if (actualBounds && actualBounds.length > 0) {
+            let x: number = template._bounds.x;
+            let y: number = template._bounds.y;
+            switch (alignmentStyle) {
+            case _PdfAlignmentStyle.topLeft:
+                x = -actualBounds[0];
+                y = (side === _TemplateSide.top) ? -actualBounds[1] : 0;
+                break;
+            case _PdfAlignmentStyle.topCenter:
+                x = (actualBounds[2] - template._bounds.width) / 2;
+                y = -actualBounds[1];
+                break;
+            case _PdfAlignmentStyle.topRight:
+                x = actualBounds[2] + this._getRightIndentWidth(page, false) - template._bounds.width;
+                y = (side === _TemplateSide.top) ? -actualBounds[1] : 0;
+                break;
+            case _PdfAlignmentStyle.middleLeft:
+                x = -actualBounds[0];
+                y = (actualBounds[3] - template._bounds.height) / 2;
+                break;
+            case _PdfAlignmentStyle.middleCenter:
+                x = (actualBounds[2] - template._bounds.width) / 2;
+                y = (actualBounds[3] - template._bounds.height) / 2;
+                break;
+            case _PdfAlignmentStyle.middleRight:
+                x = actualBounds[2] + this._getRightIndentWidth(page, false) - template._bounds.width;
+                y = (actualBounds[3] - template._bounds.height) / 2;
+                break;
+            case _PdfAlignmentStyle.bottomLeft:
+                x = -actualBounds[0];
+                y = (side === _TemplateSide.bottom)
+                    ? actualBounds[3] + this._getBottomIndentHeight(page, false) - template._bounds.height
+                    : actualBounds[3] - template._bounds.height;
+                break;
+            case _PdfAlignmentStyle.bottomCenter:
+                x = (actualBounds[2] - template._bounds.width) / 2;
+                y = actualBounds[3] + this._getBottomIndentHeight(page, false) - template._bounds.height;
+                break;
+            case _PdfAlignmentStyle.bottomRight:
+                x = actualBounds[2] + this._getRightIndentWidth(page, false) - template._bounds.width;
+                y = (side === _TemplateSide.bottom)
+                    ? actualBounds[3] + this._getBottomIndentHeight(page, false) - template._bounds.height
+                    : actualBounds[3] - template._bounds.height;
+                break;
+            }
+            result.x = x;
+            result.y = y;
+        }
+        return result;
+    }
+    /**
+     * Checks if a template should not reserve space (background or foreground templates).
+     *
+     * @param {PdfTemplateLayerMode} templateLayerMode Template layer mode.
+     * @returns {boolean} True if the template should not reserve space.
+     * @private
+     */
+    private _isNonReservingTemplate(templateLayerMode?: PdfTemplateLayerMode): boolean {
+        if (typeof templateLayerMode === 'undefined') {
+            return false;
+        }
+        return templateLayerMode === PdfTemplateLayerMode.background || templateLayerMode === PdfTemplateLayerMode.foreground;
+    }
+    /**
+     * Calculates the left indent width reserved by page templates and optional page margins.
+     *
+     * @private
+     * @param {PdfPage} page The page to compute the left indent for.
+     * @param {boolean} includeMargins If true, include the page left margin in the returned width.
+     * @returns {number} The total left indent width (in points).
+     */
+    _getLeftIndentWidth(page: PdfPage, includeMargins: boolean): number {
+        let value: number = 0;
+        if (includeMargins) {
+            value += page._pageSettings.margins.left;
+        }
+        const templates: PdfDocumentTemplate = page._crossReference._document.template;
+        if (templates) {
+            const pageIndex: number = page._pageIndex ? page._pageIndex : 0;
+            const isEven: boolean = ((pageIndex + 1) % 2) === 0;
+            const widths: number[] = [];
+            if (templates.left && !this._isNonReservingTemplate(templates.left.templateLayerMode)) {
+                widths.push(templates.left.template._bounds.width);
+            }
+            if (isEven && templates.evenLeft && !this._isNonReservingTemplate(templates.evenLeft.templateLayerMode)) {
+                widths.push(templates.evenLeft.template._bounds.width);
+            }
+            if (!isEven && templates.oddLeft && !this._isNonReservingTemplate(templates.oddLeft.templateLayerMode)) {
+                widths.push(templates.oddLeft.template._bounds.width);
+            }
+            if (widths.length > 0) {
+                value += Math.max(...widths);
+            }
+        }
+        return value;
+    }
+    /**
+     * Calculates the top indent height reserved by page templates and optional page margins.
+     *
+     * @private
+     * @param {PdfPage} page The page to compute the top indent for.
+     * @param {boolean} includeMargins If true, include the page top margin in the returned height.
+     * @returns {number} The total top indent height (in points).
+     */
+    _getTopIndentHeight(page: PdfPage, includeMargins: boolean): number {
+        let value: number = 0;
+        if (includeMargins) {
+            value += page._pageSettings.margins.top;
+        }
+        const templates: PdfDocumentTemplate = page._crossReference._document.template;
+        if (templates) {
+            const pageIndex: number = page._pageIndex ? page._pageIndex : 0;
+            const isEven: boolean = ((pageIndex + 1) % 2) === 0;
+            const heights: number[] = [];
+            if (templates.top && !this._isNonReservingTemplate(templates.top.templateLayerMode)) {
+                heights.push(templates.top.template._bounds.height);
+            }
+            if (isEven && templates.evenTop && !this._isNonReservingTemplate(templates.evenTop.templateLayerMode)) {
+                heights.push(templates.evenTop.template._bounds.height);
+            }
+            if (!isEven && templates.oddTop && !this._isNonReservingTemplate(templates.oddTop.templateLayerMode)) {
+                heights.push(templates.oddTop.template._bounds.height);
+            }
+            if (heights.length > 0) {
+                value += Math.max(...heights);
+            }
+        }
+        return value;
+    }
+    /**
+     * Calculates the right indent width reserved by page templates and optional page margins.
+     *
+     * @private
+     * @param {PdfPage} page The page to compute the right indent for.
+     * @param {boolean} includeMargins If true, include the page right margin in the returned width.
+     * @returns {number} The total right indent width (in points).
+     */
+    _getRightIndentWidth(page: PdfPage, includeMargins: boolean): number {
+        let value: number = 0;
+        if (includeMargins) {
+            value += page._pageSettings.margins.right;
+        }
+        const templates: PdfDocumentTemplate = page._crossReference._document.template;
+        if (templates) {
+            const pageIndex: number = page._pageIndex ? page._pageIndex : 0;
+            const isEven: boolean = ((pageIndex + 1) % 2) === 0;
+            const widths: number[] = [];
+            if (templates.right && !this._isNonReservingTemplate(templates.right.templateLayerMode)) {
+                widths.push(templates.right.template._bounds.width);
+            }
+            if (isEven && templates.evenRight && !this._isNonReservingTemplate(templates.evenRight.templateLayerMode)) {
+                widths.push(templates.evenRight.template._bounds.width);
+            }
+            if (!isEven && templates.oddRight && !this._isNonReservingTemplate(templates.oddRight.templateLayerMode)) {
+                widths.push(templates.oddRight.template._bounds.width);
+            }
+            if (widths.length > 0) {
+                value += Math.max(...widths);
+            }
+        }
+        return value;
+    }
+    /**
+     * Calculates the bottom indent height reserved by page templates and optional page margins.
+     *
+     * @private
+     * @param {PdfPage} page The page to compute the bottom indent for.
+     * @param {boolean} includeMargins If true, include the page bottom margin in the returned height.
+     * @returns {number} The total bottom indent height (in points).
+     */
+    _getBottomIndentHeight(page: PdfPage, includeMargins: boolean): number {
+        let value: number = 0;
+        if (includeMargins) {
+            value += page._pageSettings.margins.bottom;
+        }
+        const templates: PdfDocumentTemplate = page._crossReference._document.template;
+        if (templates) {
+            const pageIndex: number = page._pageIndex ? page._pageIndex : 0;
+            const isEven: boolean = ((pageIndex + 1) % 2) === 0;
+            const heights: number[] = [];
+            if (templates.bottom && !this._isNonReservingTemplate(templates.bottom.templateLayerMode)) {
+                heights.push(templates.bottom.template._bounds.height);
+            }
+            if (isEven && templates.evenBottom && !this._isNonReservingTemplate(templates.evenBottom.templateLayerMode)) {
+                heights.push(templates.evenBottom.template._bounds.height);
+            }
+            if (!isEven && templates.oddBottom && !this._isNonReservingTemplate(templates.oddBottom.templateLayerMode)) {
+                heights.push(templates.oddBottom.template._bounds.height);
+            }
+            if (heights.length > 0) {
+                value += Math.max(...heights);
+            }
+        }
+        return value;
+    }
+    /**
+     * Calculates the docking bounds for a page template based on the specified dock position.
+     *
+     * @private
+     * @param {PdfPage} page The page on which the template is being positioned.
+     * @param {PdfPageTemplateElement} template The template element to dock.
+     * @param {string} dock The dock position applied to the template ('left', 'top', 'right', or 'bottom').
+     * @returns {Rectangle} The calculated bounds of the docked template.
+     */
+    _getTemplateDockBounds(page: PdfPage, template: PdfPageTemplateElement, dock: string): Rectangle {
+        let result: Rectangle = template._bounds;
+        let actualBounds: number[];
+        let actualSize: number[];
+        if (page._isNew) {
+            actualBounds = page._getActualTemplateBounds(page._pageSettings);
+            actualSize = page._pageSettings._getActualSize();
+        }
+        if (actualBounds && actualBounds.length > 0 && actualSize && actualSize.length > 0) {
+            let x: number = template._bounds.x;
+            let y: number = template._bounds.y;
+            let width: number = template._bounds.width;
+            let height: number = template._bounds.height;
+            const topIndent: number = this._getTopIndentHeight(page, false);
+            const bottomIndent: number = this._getBottomIndentHeight(page, false);
+            switch (dock) {
+            case 'left':
+                x = -actualBounds[0];
+                y = topIndent > 0 ? topIndent : 0;
+                width = template._bounds.width;
+                height = actualBounds[3] - topIndent - bottomIndent;
+                break;
+            case 'top':
+                x = -actualBounds[0];
+                y = -actualBounds[1];
+                width = actualSize[0];
+                height = template._bounds.height;
+                if (actualBounds[3] < 0) {
+                    y = -actualBounds[1] + actualSize[1];
+                }
+                break;
+            case 'right':
+                x = actualBounds[2] + this._getRightIndentWidth(page, false) - template._bounds.width;
+                y = topIndent > 0 ? topIndent : 0;
+                width = template._bounds.width;
+                height = actualBounds[3] - topIndent - bottomIndent;
+                break;
+            case 'bottom':
+                x = -actualBounds[0];
+                y = actualBounds[3] + this._getBottomIndentHeight(page, false) - template._bounds.height;
+                width = actualSize[0];
+                height = template._bounds.height;
+                if (actualBounds[3] < 0) {
+                    y -= actualSize[1];
+                }
+                break;
+            }
+            result = { x, y, width, height };
+        }
+        return result;
     }
     /**
      * Finalizes form fields, optionally flattening and updating appearance flags.
@@ -2676,7 +3684,7 @@ export class PdfDocument {
      * @param { PdfStandardFont } font It denotes the font for the text added.
      * @param { PdfGraphics } graphics It denotes the graphis of the page.
      * @param { boolean } isLastPage It denotes it is a last page or not.
-     * @returns { void } Returns voidgulp
+     * @returns {void} Returns void.
      */
     private _drawWatermarkOnPage(page: PdfPage, font: PdfStandardFont, graphics: PdfGraphics, isLastPage: boolean): void {
         const watermarkHeaderText: string = 'Created with a trial version of Syncfusion PDF library or registered the wrong key in your application. To obtain the valid key, Click';
@@ -3235,6 +4243,40 @@ export class PdfDocument {
         const signature: PdfSignature = new PdfSignature();
         signature._initializeInternals(dictionary, field);
         return signature;
+    }
+    /**
+     * Determines whether the document has any template content (headers/footers) defined.
+     *
+     * @private
+     * @returns {boolean} `true` if the document has template content; otherwise, `false`.
+     */
+    _hasTemplateContent(): boolean {
+        if (!this._template) {
+            return false;
+        }
+        return (
+            (this._template.oddTop !== null && typeof this._template.oddTop !== 'undefined') ||
+            (this._template.evenTop !== null && typeof this._template.evenTop !== 'undefined') ||
+            (this._template.oddBottom !== null && typeof this._template.oddBottom !== 'undefined') ||
+            (this._template.evenBottom !== null && typeof this._template.evenBottom !== 'undefined') ||
+            (this._template.left !== null  && typeof this._template.left !== 'undefined') ||
+            (this._template.oddLeft !== null && typeof this._template.oddLeft !== 'undefined') ||
+            (this._template.evenLeft !== null && typeof this._template.evenLeft !== 'undefined') ||
+            (this._template.right !== null && typeof this._template.right !== 'undefined') ||
+            (this._template.oddRight !== null && typeof this._template.oddRight !== 'undefined') ||
+            (this._template.evenRight !== null && typeof this._template.evenRight !== 'undefined') ||
+            (this._template.top !== null && typeof this._template.top !== 'undefined') ||
+            (this._template.bottom !== null && typeof this._template.bottom !== 'undefined')
+        );
+    }
+    /**
+     * Gets a value indicating whether the document contains any header or footer templates.
+     *
+     * @private
+     * @returns {boolean} `true` if at least one template is defined; otherwise, `false`.
+     */
+    get _hasTemplateContentValue(): boolean {
+        return this._hasTemplateContent();
     }
 }
 /**

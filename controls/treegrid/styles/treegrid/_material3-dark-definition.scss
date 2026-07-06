@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/material3-dark' as *;
-@forward 'ej2-base/styles/definition/material3-dark';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $treegrid-right-arrow-icon-color: rgba($icon-color) !default;
 $treegrid-right-arrow-hover-color: rgba($icon-color-hover) !default;
 $childborder-color: rgba($primary) !default;
@@ -24,3 +24,5 @@ $treegrid-rowdd-boxshadow: rgba($primary) !default;
 $treegrid-rowdd-childborder-width: 2px 0 0 !default;
 $treegrid-lastrowdd-childborder-width: 2px 0 !default;
 $treegrid-rtl-rowdd-childborder-width: 2px 0 2px 0 !default;
+$treegrid-cbox-height: $text-sm !default;
+$treegrid-cbox-width: $text-sm !default;

@@ -529,5 +529,162 @@ describe('968309 : Add Authorization Header Support for Word Import and PDF/Word
             }, 100);
         });
     });
+    describe('1017612: Basic Implementation of Progress Button for Export PDF and Word in Rich Text Editor', () => {
+        let rteObj: RichTextEditor;
+        beforeEach(() => {
+            spyOn(window, 'fetch').and.callFake(() => {
+                return Promise.resolve({
+                    ok: true,
+                    blob: () => Promise.resolve(new Blob(['Dummy content'], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }))
+                });
+            });
+            rteObj = renderRTE({
+                toolbarSettings: {
+                    items: ['ExportWord', 'ExportPdf' ]
+                },
+                exportWord: {
+                    serviceUrl: hostURL + '/api/RichTextEditor/ExportToDocx',
+                    fileName: 'RichTextEditor.docx',
+                    stylesheet: `.e-rte-content { font-size: 1em; font-weight: 400; margin: 0; }`
+                }
+            });
+        });
+        afterEach(() => {
+            destroy(rteObj);
+        });
+        it('should click the ico and actionComplete should trigger ', () => {
+            const rteEle: HTMLElement = rteObj.element;
+            (rteObj.contentModule.getEditPanel() as HTMLElement).focus();
+            const ExportWord = (<HTMLElement>rteEle.querySelectorAll(".e-toolbar-item button")[0] as HTMLElement);
+            const ExportPdf = (<HTMLElement>rteEle.querySelectorAll(".e-toolbar-item button")[1] as HTMLElement);
+            expect (ExportWord.className === 'e-control e-progress-btn e-lib e-tbar-btn e-icons e-icon-btn e-btn e-spin-center').toBe(true);
+            expect (ExportPdf.className === 'e-control e-progress-btn e-lib e-tbar-btn e-icons e-icon-btn e-btn e-spin-center').toBe(true);
+
+        });
+    });
+    describe('1017612 : ImportExport onExport error handling', () => {
+        let rteObj: RichTextEditor;
+        let origConsoleError: any;
+        let originalFetch: any;
+        beforeEach(() => {
+            rteObj = renderRTE({
+                toolbarSettings: { items: ['ExportWord'] },
+                exportWord: {
+                    serviceUrl: hostURL + '/api/RichTextEditor/ExportToDocx',
+                    fileName: 'RichTextEditor.docx',
+                    stylesheet: `.e-rte-content { font-size: 1em; }`
+                },
+                actionBegin: (e: any) => { e.cancel = false; }
+            });
+            if (!(console.error as any).and) {
+                origConsoleError = console.error;
+                spyOn(console, 'error').and.stub();
+            }
+        });
+        afterEach(() => {
+            if (origConsoleError) {
+                console.error = origConsoleError;
+            }
+            if (originalFetch) {
+                window.fetch = originalFetch;
+            }
+            destroy(rteObj);
+        });
+
+        it('should call progressComplete and log error when fetch rejects', (done: Function) => {
+            if (!(window.fetch as any).and) {
+                originalFetch = window.fetch;
+                spyOn(window, 'fetch').and.callFake(() => Promise.reject(new Error('Network Failure')));
+            }
+            (<any>rteObj).importExportModule.onExport({ member: 'ExportWord' });
+            setTimeout(() => {
+                expect((console.error as jasmine.Spy).calls.argsFor(0)[0]).toBe('Fetch error:');
+                done();
+            }, 50);
+        });
+    });
 });
 
+describe('Bug 1031522: Export to Word button not highlighted after file download in EJ2 Rich Text Editor', () => {
+    let rteObj: RichTextEditor;
+    let fetchOptions: any;
+    beforeEach(() => {
+        // Mock fetch and capture options
+        spyOn(window, 'fetch').and.callFake((url: string, options: any) => {
+            fetchOptions = options;
+            return Promise.resolve({
+                ok: true,
+                blob: () => Promise.resolve(new Blob(['Dummy content'], {
+                    type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                }))
+            });
+        });
+        rteObj = renderRTE({
+            toolbarSettings: {
+                items: ['ExportWord', 'ExportPdf']
+            },
+            exportPdf: {
+                serviceUrl: hostURL + '/api/RichTextEditor/ExportToPdf',
+                fileName: 'RichTextEditor.pdf',
+                stylesheet: `.e-rte-content { font-size: 1em; font-weight: 400; margin: 0; }`
+            },
+            documentExporting: (args: ExportingEventArgs) => {
+                const accessToken = "Authorization_token";
+                const token = (args.exportType === "PDF" as ExportDocumentType) ? "Pdf Bearer token" : "Word Bearer token";
+                args.customFormData = [{ 'Authorization': accessToken }];
+                args.currentRequest = [{
+                    Authorization: token,
+                }];
+            }
+        });
+    });
+    afterEach(() => {
+        destroy(rteObj);
+    });
+    it(' active element should be content editable div after the export button click', (done: Function) => {
+        rteObj.focusIn();
+        const exportBtn = rteObj.element.querySelectorAll(".e-toolbar-item button")[1] as HTMLElement;
+        exportBtn.click();
+        setTimeout(() => {
+            expect(document.activeElement === rteObj.inputElement).toBe(true);
+            done();
+        }, 100);
+    });
+});
+describe('Bug 1033122: count event not triggered for the import word document', () => {
+    let rteObj: RichTextEditor;
+    beforeEach(() => {
+        rteObj = renderRTE({
+            toolbarSettings: {
+                items: ['ImportWord']
+            },
+            importWord: {
+                serviceUrl: hostURL + '/api/RichTextEditor/ImportFromWord',
+            },
+            showCharCount: true
+        });
+    });
+    afterEach(() => {
+        destroy(rteObj);
+    });
+    it('To check character count after import word success', (done: Function) => {
+        let rteEle: HTMLElement = rteObj.element;
+        (rteObj.contentModule.getEditPanel() as HTMLElement).focus();
+        (<HTMLElement>rteEle.querySelectorAll(".e-toolbar-item button")[0] as HTMLElement).click();
+        const args = {
+            e: {
+                currentTarget: {
+                    response: `<div class="Section0">
+                            <p style="text-align:left;page-break-inside:auto;page-break-after:auto;page-break-before:avoid;margin-top:0pt;margin-bottom:8pt;">
+                                <span lang="en-US" style="font-family:Aptos;font-size:26pt;text-transform:none;font-weight:bold;font-style:normal;font-variant:normal;text-decoration:none;line-height:107.916664%;">
+                                    CheckingggggWord
+                                </span>
+                            </p>
+                        </div>` }
+            }
+        };
+        (<any>rteObj).importExportModule.uploaderObj.success(args);
+        expect(rteObj.getCharCount() === 16).toBe(true)
+        done();
+    });
+});

@@ -54,11 +54,11 @@ export class TableRenderer {
         }) as HTMLElement;
         const table: HTMLTableElement = createElement('table', {
             className: 'e-table-element',
+            styles: 'width: ' + formatUnit(props.width),
             attrs: {
                 'data-block-id': blockId,
                 'data-col-counter': `${(props.columns).length}`,
-                'role': 'grid',
-                'style': `width: ${formatUnit(props.width)}`
+                'role': 'grid'
             }
         }) as HTMLTableElement;
         tableContainer.appendChild(table);
@@ -281,6 +281,7 @@ export class TableRenderer {
         if (!blockElement || (blockElement && extractBlockTypeFromElement(blockElement) !== 'Table')) { return; }
 
         const blockModel: BlockModel = getBlockModelById(blockElement.id, this.parent.getEditorBlocks());
+        const oldBlockModel: BlockModel = decoupleReference(blockModel);
         const props: ITableBlockSettings = blockModel.properties as ITableBlockSettings;
         const tableHeaders: NodeListOf<HTMLTableCellElement> = blockElement.querySelectorAll('thead th:not(.e-row-number)');
         const oldColumns: TableColumnModel[] = decoupleReference(props.columns);
@@ -297,6 +298,9 @@ export class TableRenderer {
             oldColumns,
             updatedColumns
         });
+
+        // Trigger block update to sync header text changes
+        this.parent.tableService.triggerBlockUpdate({ block: blockModel, oldBlock: oldBlockModel });
     }
 
     private destroyAllTableManagers(): void {

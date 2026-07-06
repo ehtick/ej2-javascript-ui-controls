@@ -2,7 +2,8 @@ import { PdfViewer, PdfViewerBase, IRectangle, IPageAnnotations, IPoint, Annotat
     ShapeLabelSettingsModel,
     AnnotationType,
     IPointBase,
-    IAnnotation} from '../../index';
+    IAnnotation,
+    AnnotationStatus} from '../../index';
 import { NumericTextBox } from '@syncfusion/ej2-inputs';
 import { PdfAnnotationBase } from '../drawing/pdf-annotation';
 import { PdfAnnotationBaseModel } from '../drawing/pdf-annotation-model';
@@ -10,7 +11,7 @@ import { PdfAnnotationType } from '../drawing/enum';
 import { createElement, Browser, isNullOrUndefined, isBlazor } from '@syncfusion/ej2-base';
 import { Dialog } from '@syncfusion/ej2-popups';
 import { DropDownButton, MenuEventArgs } from '@syncfusion/ej2-splitbuttons';
-import { PointModel, Point } from '@syncfusion/ej2-drawings';
+import { PointModel, Point } from './../ej2-drawings/index';
 import { ICommentsCollection, IReviewCollection } from './sticky-notes-annotation';
 import { LineHeadStyle, CalibrationUnit, AllowedInteraction } from '../base';
 import { AnnotationSelectorSettingsModel, MeasurementSettingsModel, RadiusSettingsModel } from '../pdfviewer-model';
@@ -303,10 +304,10 @@ export class MeasureAnnotation {
                                                               annotation.AnnotationRotation);
                                 } else {
                                     for (let j: number = 0; j < annotation.VertexPoints.length; j++) {
-                                        const x: number = annotation.VertexPoints[parseInt(j.toString(), 10)].X ?
+                                        const x: number = !isNullOrUndefined(annotation.VertexPoints[parseInt(j.toString(), 10)].X) ?
                                             annotation.VertexPoints[parseInt(j.toString(), 10)].X :
                                             annotation.VertexPoints[parseInt(j.toString(), 10)].x;
-                                        const y: number = annotation.VertexPoints[parseInt(j.toString(), 10)].Y ?
+                                        const y: number = !isNullOrUndefined(annotation.VertexPoints[parseInt(j.toString(), 10)].Y) ?
                                             annotation.VertexPoints[parseInt(j.toString(), 10)].Y :
                                             annotation.VertexPoints[parseInt(j.toString(), 10)].y;
                                         const point: IPoint = { x: x, y: y };
@@ -353,12 +354,16 @@ export class MeasureAnnotation {
                             if (annotation.Calibrate.Depth) {
                                 measureObject.depth = annotation.Calibrate.Depth;
                             }
-                            const left: number = annotation.Bounds.X ? annotation.Bounds.X : annotation.Bounds.x;
-                            const top: number = annotation.Bounds.Y ? annotation.Bounds.Y : annotation.Bounds.y;
+                            const left: number = !isNullOrUndefined(annotation.Bounds.X) ? annotation.Bounds.X : annotation.Bounds.x;
+                            const top: number = !isNullOrUndefined(annotation.Bounds.Y) ? annotation.Bounds.Y : annotation.Bounds.y;
                             const width: number = annotation.Bounds.Width ? annotation.Bounds.Width : annotation.Bounds.width;
                             const height: number = annotation.Bounds.Height ? annotation.Bounds.Height : annotation.Bounds.height;
+                            let status: AnnotationStatus;
+                            if (isImportAction) {
+                                status = AnnotationStatus.NewlyAdded;
+                            }
                             annotationObject = {
-                                id: 'measure' + this.measureShapeCount, shapeAnnotationType: annotation.ShapeAnnotationType, author: annotation.Author, allowedInteractions: annotation.allowedInteractions, modifiedDate: annotation.ModifiedDate, subject: annotation.Subject,
+                                id: 'measure' + this.measureShapeCount, annotationIndex: annotation.AnnotationIndex, shapeAnnotationType: annotation.ShapeAnnotationType, author: annotation.Author, allowedInteractions: annotation.allowedInteractions, modifiedDate: annotation.ModifiedDate, subject: annotation.Subject,
                                 note: annotation.Note, strokeColor: this.pdfViewer.annotation.rgbaToHex(annotation.StrokeColor),
                                 fillColor: this.pdfViewer.annotation.rgbaToHex(annotation.FillColor),
                                 opacity: annotation.Opacity, thickness: annotation.Thickness,
@@ -386,7 +391,8 @@ export class MeasureAnnotation {
                                 customData: this.pdfViewer.annotation.getCustomData(annotation),
                                 isPrint: annotation.IsPrint, isCommentLock: annotation.IsCommentLock,
                                 isAnnotationRotated: isAnnotationRotated,
-                                originalName: annotation.OriginalName ? annotation.OriginalName : null
+                                originalName: annotation.OriginalName ? annotation.OriginalName : null,
+                                status: !isNullOrUndefined(annotation.Status) ? annotation.Status : status
                             };
                             let vPoints: PointModel[] = annotationObject.vertexPoints;
                             if (vertexPoints == null) {
@@ -403,7 +409,7 @@ export class MeasureAnnotation {
                                 annotation.AllowedInteractions : this.pdfViewer.annotationModule.
                                     updateAnnotationAllowedInteractions(annotation);
                             const annot: PdfAnnotationBaseModel = {
-                                id: 'measure' + this.measureShapeCount, shapeAnnotationType: this.getShapeType(annotationObject), author: annotationObject.author, allowedInteractions: annotation.allowedInteractions, modifiedDate: annotationObject.modifiedDate,
+                                id: 'measure' + this.measureShapeCount, annotationIndex: annotation.AnnotationIndex, shapeAnnotationType: this.getShapeType(annotationObject), author: annotationObject.author, allowedInteractions: annotation.allowedInteractions, modifiedDate: annotationObject.modifiedDate,
                                 subject: annotationObject.subject, notes: annotationObject.note, fillColor: annotationObject.fillColor,
                                 strokeColor: annotationObject.strokeColor, opacity: annotationObject.opacity,
                                 thickness: annotationObject.thickness, borderStyle: annotationObject.borderStyle, borderDashArray: annotationObject.borderDashArray.toString(), rotateAngle: parseFloat(annotationObject.rotateAngle.split('Angle')[1]),
@@ -422,7 +428,8 @@ export class MeasureAnnotation {
                                 fontSize: annotation.FontSize,
                                 labelBounds: annotation.LabelBounds, annotationSelectorSettings: annotation.AnnotationSelectorSettings,
                                 annotationSettings: annotationObject.annotationSettings, annotationAddMode: annotation.annotationAddMode,
-                                isPrint: isPrint, isCommentLock: annotationObject.isCommentLock, customData: annotationObject.customData
+                                isPrint: isPrint, isCommentLock: annotationObject.isCommentLock, customData: annotationObject.customData,
+                                status: !isNullOrUndefined(annotation.Status) ? annotation.Status : status
                             };
                             if (this.scaleRatioCollection) {
                                 const matchedScaleRatio: any = this.scaleRatioCollection.find(
@@ -733,9 +740,9 @@ export class MeasureAnnotation {
         const allowedInteractions: any = this.pdfViewer.annotationModule.updateAnnotationAllowedInteractions(annotationModel);
         annotationModel.isPrint = annotationSettings.isPrint;
         const setting: any = this.pdfViewer.shapeLabelSettings;
-        const labelSettings: any = { borderColor: annotationModel.strokeColor, fillColor: annotationModel.fillColor,
-            fontColor: annotationModel.fontColor, fontSize: annotationModel.fontSize, labelContent: annotationModel.labelContent,
-            labelHeight: setting.labelHeight, labelWidth: setting.labelMaxWidth, opacity: annotationModel.opacity
+        const labelSettings: any = { borderColor: annotationModel.labelBorderColor, fillColor: annotationModel.labelFillColor,
+            fontColor: setting.fontColor, fontSize: setting.fontSize, labelContent: annotationModel.labelContent,
+            labelHeight: setting.labelHeight, labelWidth: setting.labelMaxWidth, opacity: setting.labelOpacity
         };
         return {
             id: annotationModel.id, shapeAnnotationType: this.getShapeAnnotType(annotationModel.measureType),
@@ -759,7 +766,7 @@ export class MeasureAnnotation {
             labelSettings: labelSettings, annotationSettings: annotationSettings,
             customData: this.pdfViewer.annotation.getMeasureData(annotationModel.subject), isPrint: annotationModel.isPrint,
             isCommentLock: annotationModel.isCommentLock, isAnnotationRotated: false,
-            pageNumber: annotationModel.pageIndex
+            pageNumber: annotationModel.pageIndex, status: AnnotationStatus.NewlyAdded
         };
     }
 
@@ -1370,6 +1377,9 @@ export class MeasureAnnotation {
                                     measureObject.calibrate.depth = matchedRatio.volumeDepth;
                                 }
                                 pageAnnotations[parseInt(j.toString(), 10)] = measureObject;
+                                if (pageAnnotations[parseInt(j.toString(), 10)].status !== 'NewlyAdded') {
+                                    pageAnnotations[parseInt(j.toString(), 10)].status = AnnotationStatus.ExistingModified;
+                                }
                                 this.manageAnnotations(pageAnnotations, i);
 
                                 this.pdfViewer.annotation.updateCalibrateValues(this.getAnnotationBaseModel(measureObject.id));
@@ -1474,8 +1484,7 @@ export class MeasureAnnotation {
                             } else {
                                 pageAnnotations[parseInt(i.toString(), 10)].bounds =
                                 {
-                                    left: annotationBase.bounds.x, top: annotationBase.bounds.y,
-                                    width: annotationBase.bounds.width,
+                                    left: annotationBase.bounds.x, top: annotationBase.bounds.y, width: annotationBase.bounds.width,
                                     height: annotationBase.bounds.height, right: annotationBase.bounds.right,
                                     bottom: annotationBase.bounds.bottom
                                 };
@@ -1525,6 +1534,7 @@ export class MeasureAnnotation {
                         currentAnnotObject = pageAnnotations.splice(i, 1)[0];
                         break;
                     } else if (property === 'labelContent') {
+                        isEdited = true;
                         pageAnnotations[parseInt(i.toString(), 10)].note = annotationBase.labelContent;
                         pageAnnotations[parseInt(i.toString(), 10)].labelContent = annotationBase.labelContent;
                         break;
@@ -1536,6 +1546,9 @@ export class MeasureAnnotation {
                     if (this.pdfViewerBase.isBounds) {
                         pageAnnotations[parseInt(i.toString(), 10)].modifiedDate =
                             this.pdfViewer.annotation.stickyNotesAnnotationModule.getDateAndTime();
+                    }
+                    if (pageAnnotations[parseInt(i.toString(), 10)].status !== 'NewlyAdded') {
+                        pageAnnotations[parseInt(i.toString(), 10)].status = AnnotationStatus.ExistingModified;
                     }
                     this.pdfViewer.annotationModule.storeAnnotationCollections(pageAnnotations[parseInt(i.toString(), 10)], pageNumber);
                 }
@@ -1939,7 +1952,8 @@ export class MeasureAnnotation {
             labelBounds: annotation.LabelBounds, annotationSelectorSettings: this.getSettings(annotation),
             labelSettings: annotation.LabelSettings, annotationSettings: annotation.AnnotationSettings,
             customData: this.pdfViewer.annotation.getCustomData(annotation), isPrint: annotation.IsPrint,
-            isCommentLock: annotation.IsCommentLock, isAnnotationRotated: false
+            isCommentLock: annotation.IsCommentLock, isAnnotationRotated: false, status: annotation.status,
+            annotationIndex: annotation.AnnotationIndex
         };
         this.pdfViewer.annotationModule.storeAnnotations(pageNumber, annotationObject, '_annotations_shape_measure');
     }
@@ -2001,7 +2015,9 @@ export class MeasureAnnotation {
             annotation.AnnotationSettings.isLock = annotation.IsLocked;
         }
         annotationObject = {
-            id: 'measure', shapeAnnotationType: annotation.ShapeAnnotationType, author: annotation.Author, allowedInteractions: annotation.allowedInteractions, modifiedDate: annotation.ModifiedDate, subject: annotation.Subject,
+            id: 'measure', shapeAnnotationType: annotation.ShapeAnnotationType, annotationIndex: annotation.AnnotationIndex,
+            author: annotation.Author, allowedInteractions: annotation.allowedInteractions,
+            modifiedDate: annotation.ModifiedDate, subject: annotation.Subject,
             note: annotation.Note, strokeColor: annotation.StrokeColor, fillColor: annotation.FillColor,
             opacity: annotation.Opacity, thickness: annotation.Thickness, rectangleDifference: annotation.RectangleDifference,
             borderStyle: annotation.BorderStyle, borderDashArray: annotation.BorderDashArray,
@@ -2345,6 +2361,7 @@ export class MeasureAnnotation {
             ShapeAnnotationType: shapeAnnotationType,
             State: '',
             StateModel: '',
+            Status: AnnotationStatus.NewlyAdded,
             StrokeColor: annotationObject.strokeColor ? annotationObject.strokeColor : '#ff0000',
             Subject: annotationObject.subject ? annotationObject.subject : subject,
             Thickness: annotationObject.thickness ? annotationObject.thickness : 1,

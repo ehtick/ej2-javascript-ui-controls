@@ -13,3 +13,4 @@ export * from './sort';
 export * from './filter';
 export * from './image';
 export * from './chart';
+export * from './ai-assist';

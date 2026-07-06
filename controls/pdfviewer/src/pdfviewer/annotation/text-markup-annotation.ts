@@ -4,7 +4,8 @@ import {
     ISize,
     AllowedInteraction,
     AnnotationsInternal,
-    IAnnotation
+    IAnnotation,
+    AnnotationStatus
 } from '../index';
 import { createElement, Browser, isNullOrUndefined, isBlazor } from '@syncfusion/ej2-base';
 import { ChangeEventArgs } from '@syncfusion/ej2-inputs';
@@ -555,6 +556,31 @@ export class TextMarkupAnnotation {
             if (annotations) {
                 for (let i: number = 0; i < annotations.length; i++) {
                     const annotation: any = annotations[parseInt(i.toString(), 10)];
+
+                    // Check if comment filter is active and should skip rendering this annotation
+                    if (!isNullOrUndefined(this.pdfViewer.annotationModule) &&
+                        !isNullOrUndefined(this.pdfViewer.annotationModule.getCurrentFilterState)) {
+                        const filterState: any = this.pdfViewer.annotationModule.getCurrentFilterState();
+                        if (filterState && filterState.applyToDocument) {
+                            // Check if annotation was added while filter was active - bypass filter if so
+                            const annotId: string = annotation.AnnotName || annotation.annotName;
+                            if (!isNullOrUndefined(this.pdfViewer.annotationModule.isNewlyAddedAnnotation) &&
+                                this.pdfViewer.annotationModule.isNewlyAddedAnnotation(annotId)) {
+                                // New annotation - don't skip rendering
+                            } else {
+                                // Use pre-computed hidden annotation IDs for efficient filtering
+                                const hiddenIds: any = this.pdfViewer.annotationModule.getHiddenAnnotationIds();
+                                const hiddenAnnotationIds: string[] = Array.isArray(hiddenIds) ? hiddenIds : [];
+                                const annotationIdentifier: string = annotation.annotationId ||
+                                    annotation.AnnotName || annotation.annotName;
+                                // Skip rendering if annotation is in the hidden IDs set
+                                if (hiddenAnnotationIds.indexOf(annotationIdentifier) > -1) {
+                                    continue;
+                                }
+                            }
+                        }
+                    }
+
                     let annotationObject: ITextMarkupAnnotation = null;
                     let isAnnotationRotated: boolean;
                     if (annotation.TextMarkupAnnotationType) {
@@ -562,7 +588,7 @@ export class TextMarkupAnnotation {
                             if (this.pdfViewerBase.isJsonImported) {
                                 const newArray: any[] = [];
                                 for (let i: number = 0; i < annotation.Bounds.length; i++) {
-                                    annotation.Bounds[parseInt(i.toString(), 10)] =  this.pdfViewerBase.
+                                    annotation.Bounds[parseInt(i.toString(), 10)] = this.pdfViewerBase.
                                         importJsonForRotatedDocuments(annotation.Rotate, pageNumber,
                                                                       annotation.Bounds[parseInt(i.toString(), 10)],
                                                                       annotation.AnnotationRotation);
@@ -583,8 +609,13 @@ export class TextMarkupAnnotation {
                         if (annotation.IsLocked) {
                             annotation.AnnotationSettings.isLock = annotation.IsLocked;
                         }
+                        let status: AnnotationStatus;
+                        if (isImportAction) {
+                            status = AnnotationStatus.NewlyAdded;
+                        }
                         annotationObject = {
-                            textMarkupAnnotationType: annotation.TextMarkupAnnotationType, color: annotation.Color,
+                            textMarkupAnnotationType: annotation.TextMarkupAnnotationType,
+                            annotationIndex: annotation.AnnotationIndex, color: annotation.Color,
                             allowedInteractions: annotation.allowedInteractions, opacity: annotation.Opacity,
                             bounds: annotation.Bounds, author: annotation.Author, subject: annotation.Subject,
                             modifiedDate: annotation.ModifiedDate, note: annotation.Note, rect: annotation.Rect,
@@ -595,7 +626,8 @@ export class TextMarkupAnnotation {
                              annotation.annotationAddMode, annotationSettings: annotation.AnnotationSettings,
                             isLocked: annotation.IsLocked, isPrint: annotation.IsPrint, isCommentLock: annotation.IsCommentLock,
                             isAnnotationRotated: isAnnotationRotated, annotationRotation: annotation.AnnotationRotation,
-                            originalName: annotation.OriginalName ? annotation.OriginalName : null
+                            originalName: annotation.OriginalName ? annotation.OriginalName : null,
+                            status: !isNullOrUndefined(annotation.Status) ? annotation.Status : status
                         };
                         if (annotation.IsMultiSelect) {
                             annotationObject.annotNameCollection = annotation.AnnotNameCollection;
@@ -1065,6 +1097,9 @@ export class TextMarkupAnnotation {
                                 if (status === null || status === 'changed') {
                                     this.pdfViewer.annotationModule.addAction(annotationList[parseInt(z.toString(), 10)].pageNumber, z, annotationList[parseInt(z.toString(), 10)], 'Text Markup Property modified', property);
                                 }
+                                if (annotationList[parseInt(z.toString(), 10)].status !== 'NewlyAdded') {
+                                    annotationList[parseInt(z.toString(), 10)].status = AnnotationStatus.ExistingModified;
+                                }
                                 this.pdfViewer.annotationModule.stickyNotesAnnotationModule.
                                     updateAnnotationModifiedDate(annotationList[parseInt(z.toString(), 10)]);
                                 this.manageAnnotations(annotationList, currentPage);
@@ -1127,6 +1162,9 @@ export class TextMarkupAnnotation {
                         pageAnnotations[parseInt(i.toString(), 10)].modifiedDate =
                          this.pdfViewer.annotation.stickyNotesAnnotationModule.getDateAndTime();
                         annotation = pageAnnotations[parseInt(i.toString(), 10)];
+                        if (pageAnnotations[parseInt(i.toString(), 10)].status !== 'NewlyAdded') {
+                            pageAnnotations[parseInt(i.toString(), 10)].status = AnnotationStatus.ExistingModified;
+                        }
                     }
                 }
                 this.manageAnnotations(pageAnnotations, pageBounds[parseInt(currentIndex.toString(), 10)].pageIndex);
@@ -1205,6 +1243,9 @@ export class TextMarkupAnnotation {
                         pageAnnotations[parseInt(i.toString(), 10)].annotNameCollection = annotNamesCollections;
                         pageAnnotations[parseInt(i.toString(), 10)].annotpageNumbers = annotpageNumbers;
                         annotation = pageAnnotations[parseInt(i.toString(), 10)];
+                        if (pageAnnotations[parseInt(i.toString(), 10)].status !== 'NewlyAdded') {
+                            pageAnnotations[parseInt(i.toString(), 10)].status = AnnotationStatus.ExistingModified;
+                        }
                     }
                 }
                 this.manageAnnotations(pageAnnotations, pageNumber);
@@ -1223,6 +1264,9 @@ export class TextMarkupAnnotation {
                         pageAnnotations[parseInt(i.toString(), 10)].textMarkupStartIndex = pageBound.startIndex;
                         pageAnnotations[parseInt(i.toString(), 10)].textMarkupEndIndex = pageBound.endIndex;
                         annotation = pageAnnotations[parseInt(i.toString(), 10)];
+                        if (pageAnnotations[parseInt(i.toString(), 10)].status !== 'NewlyAdded') {
+                            pageAnnotations[parseInt(i.toString(), 10)].status = AnnotationStatus.ExistingModified;
+                        }
                     }
                     this.pdfViewer.annotationModule.storeAnnotationCollections(pageAnnotations[parseInt(i.toString(), 10)],
                                                                                this.selectTextMarkupCurrentPage);
@@ -1412,13 +1456,13 @@ export class TextMarkupAnnotation {
         for (let i: number = 0; i < bounds.length; i++) {
             const bound: any = bounds[parseInt(i.toString(), 10)];
             context.beginPath();
-            let x: number = bound.X ? bound.X : bound.left;
-            let y: number = bound.Y ? bound.Y : bound.top;
+            let x: number = !isNullOrUndefined(bound.X) ? bound.X : bound.left;
+            let y: number = !isNullOrUndefined(bound.Y) ? bound.Y : bound.top;
             let width: number = bound.Width ? bound.Width : bound.width;
             let height: number = bound.Height ? bound.Height : bound.height;
             let rotation: number = bound.Rotation ? bound.Rotation : bound.rotation;
-            x = x ? x : bound.x;
-            y = y ? y : bound.y;
+            x = !isNullOrUndefined(x) ? x : bound.x;
+            y = !isNullOrUndefined(y) ? y : bound.y;
             // The highlighted position is slightly increased. So Subtract -1 from the height.
             if (this.pdfViewerBase.clientSideRendering) {
                 if (rotation >= 0) {
@@ -1531,12 +1575,12 @@ export class TextMarkupAnnotation {
     }
 
     private getProperBounds(bound: any): any {
-        let x: number = bound.X ? bound.X : bound.left;
-        let y: number = bound.Y ? bound.Y : bound.top;
+        let x: number = !isNullOrUndefined(bound.X) ? bound.X : bound.left;
+        let y: number = !isNullOrUndefined(bound.Y) ? bound.Y : bound.top;
         const width: number = bound.Width ? bound.Width : bound.width;
         const height: number = bound.Height ? bound.Height : bound.height;
-        x = x ? x : bound.x;
-        y = y ? y : bound.y;
+        x = !isNullOrUndefined(x) ? x : bound.x;
+        y = !isNullOrUndefined(y) ? y : bound.y;
         return { x: x, y: y, width: width, height: height };
     }
 
@@ -2053,7 +2097,10 @@ export class TextMarkupAnnotation {
                         pageAnnotations[parseInt(i.toString(), 10)].annotationSelectorSettings = value;
                     }
                     pageAnnotations[parseInt(i.toString(), 10)].modifiedDate =
-                     this.pdfViewer.annotation.stickyNotesAnnotationModule.getDateAndTime();
+                        this.pdfViewer.annotation.stickyNotesAnnotationModule.getDateAndTime();
+                    if (pageAnnotations[parseInt(i.toString(), 10)].status !== 'NewlyAdded') {
+                        pageAnnotations[parseInt(i.toString(), 10)].status = AnnotationStatus.ExistingModified;
+                    }
                     this.currentAnnotationIndex = i;
                     if (status === null || status === 'changed') {
                         this.pdfViewer.annotationModule.addAction(this.selectTextMarkupCurrentPage, i, this.currentTextMarkupAnnotation, 'Text Markup Property modified', property);
@@ -2851,9 +2898,20 @@ export class TextMarkupAnnotation {
             const topClickPosition: number = clientY - canvasParentPosition.top;
             const annotationList: ITextMarkupAnnotation[] = this.getAnnotations(pageNumber, null);
             let isAnnotationGot: boolean = false;
+            let hiddenAnnotationIds: string[] = [];
+            if (this.pdfViewer.annotationModule &&
+                this.pdfViewer.annotationModule.getHiddenAnnotationIds) {
+                hiddenAnnotationIds = this.pdfViewer.annotationModule.getHiddenAnnotationIds() || [];
+            }
             if (annotationList) {
                 for (let i: number = 0; i < annotationList.length; i++) {
                     const annotation: ITextMarkupAnnotation = annotationList[parseInt(i.toString(), 10)];
+                    const annotationIdentifier: string =
+                        (annotation as any).annotationId ||
+                        annotation.annotName;
+                    if (hiddenAnnotationIds.indexOf(annotationIdentifier) > -1) {
+                        continue;
+                    }
                     for (let j: number = 0; j < annotation.bounds.length; j++) {
                         const bound: any = annotation.bounds[parseInt(j.toString(), 10)];
                         const left: number = bound.left ? bound.left : bound.Left;
@@ -3243,7 +3301,7 @@ export class TextMarkupAnnotation {
             customData: this.pdfViewer.annotation.getTextMarkupData(subject), annotationAddMode: this.annotationAddMode,
             annotationSettings: annotationSettings, isPrint: isPrint, isCommentLock: isCommentLock, isAnnotationRotated: false,
             annotationRotation: annotationRotate,
-            isLocked: false
+            isLocked: false, status: AnnotationStatus.NewlyAdded
         };
         annotation.annotationSettings = this.pdfViewer.annotationModule.updateAnnotationSettings(annotation);
         if (isMultiSelect) {
@@ -3385,7 +3443,9 @@ export class TextMarkupAnnotation {
             isMultiSelect: annotation.IsMultiSelect, annotNameCollection: annotation.AnnotNameCollection,
             annotpageNumbers: annotation.AnnotpageNumbers,
             annotationAddMode: this.annotationAddMode, annotationSettings : annotation.AnnotationSettings,
-            isPrint: annotation.IsPrint, isCommentLock: annotation.IsCommentLock, isAnnotationRotated: false
+            isPrint: annotation.IsPrint, isCommentLock: annotation.IsCommentLock,
+            isAnnotationRotated: false, status: annotation.status,
+            annotationIndex: annotation.AnnotationIndex
         };
         this.pdfViewer.annotationModule.storeAnnotations(pageNumber, annotationObject, '_annotations_textMarkup');
     }
@@ -3406,7 +3466,8 @@ export class TextMarkupAnnotation {
             annotation.AnnotationSettings.isLock = annotation.IsLocked;
         }
         annotationObject = {
-            textMarkupAnnotationType: annotation.TextMarkupAnnotationType, allowedInteractions: annotation.allowedInteractions,
+            textMarkupAnnotationType: annotation.TextMarkupAnnotationType, annotationIndex: annotation.AnnotationIndex,
+            allowedInteractions: annotation.allowedInteractions,
             color: annotation.Color, opacity: annotation.Opacity, bounds: annotation.Bounds, author: annotation.Author,
             subject: annotation.Subject, modifiedDate: annotation.ModifiedDate, note: annotation.Note, rect: annotation.Rect,
             annotationId: annotation.AnnotName, comments: this.pdfViewer.annotationModule.getAnnotationComments(annotation.Comments, annotation, annotation.Author), review: { state: annotation.State, stateModel: annotation.StateModel, modifiedDate: annotation.ModifiedDate, author: annotation.Author }, shapeAnnotationType: 'textMarkup', pageNumber: pageNumber, isMultiSelect: annotation.IsMultiSelect, annotNameCollection: annotation.AnnotNameCollection, annotpageNumbers: annotation.AnnotpageNumbers, customData: this.pdfViewer.annotation.getCustomData(annotation),
@@ -3624,6 +3685,7 @@ export class TextMarkupAnnotation {
             Rect: {},
             State: '',
             StateModel: '',
+            Status: AnnotationStatus.NewlyAdded,
             Subject: annotationObject.subject ? annotationObject.subject : textMarkupAnnotationType,
             TextMarkupAnnotationType: textMarkupAnnotationType
         };

@@ -99,6 +99,7 @@ export class WorkbookFilter {
             const rowKey: string = '__rowIndex';
             let sheet: SheetModel;
             let sheetIdx: number;
+            const isSuspended: boolean = this.parent.paintSuspendCount > 0;
             if (range.indexOf('!') > -1) {
                 sheetIdx = getSheetIndex(this.parent, range.substring(0, range.lastIndexOf('!')));
                 sheet = getSheet(this.parent, sheetIdx);
@@ -128,14 +129,14 @@ export class WorkbookFilter {
                             setRow(sheet, Number(data[`${rowKey}`]) - 1, <ExtendedRowModel>{ hidden: hide, isFiltered: hide });
                         } else {
                             const eventArgs: { [key: string]: number | boolean } = { startIndex: Number(data[`${rowKey}`]) - 1, hide: hide,
-                                isFiltering: true, sheetIndex: sheetIdx };
+                                isFiltering: true, sheetIndex: sheetIdx, isSuspended: isSuspended };
                             eventArgs.endIndex = eventArgs.startIndex;
                             this.parent.notify(hideShow, eventArgs);
                             refreshUI = <boolean>eventArgs.refreshUI;
                         }
                     });
                 }
-                if (refreshUI) {
+                if (refreshUI && !isSuspended) {
                     parent.renderModule.refreshSheet(false, false, document.activeElement.id !== `${this.parent.element.id}_SearchBox`);
                 }
             } else {

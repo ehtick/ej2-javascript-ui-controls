@@ -1,7 +1,6 @@
 @use 'sass:math';
 @use 'sass:color';
-@use 'ej2-base/styles/definition/bootstrap4' as *;
-@forward 'ej2-base/styles/definition/bootstrap4';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 
 $pager-numericitem-border-radius: 0 !default;
 $pager-border-type: solid !default;

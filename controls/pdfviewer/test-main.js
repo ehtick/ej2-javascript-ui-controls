@@ -78,11 +78,6 @@ require.config({
       main: 'ej2-notifications.umd.min.js'
     },
     {
-      name: '@syncfusion/ej2-drawings',
-      location: 'node_modules/@syncfusion/ej2-drawings/dist',
-      main: 'ej2-drawings.umd.min.js'
-    },
-    {
       name: '@syncfusion/ej2-inplace-editor',
       location: 'node_modules/@syncfusion/ej2-inplace-editor/dist',
       main: 'ej2-inplace-editor.umd.min.js'

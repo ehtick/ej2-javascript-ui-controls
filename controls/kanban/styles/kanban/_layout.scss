@@ -1,4 +1,4 @@
-@use 'ej2-base/styles/common/mixin' as *;
+@use 'variables' as *;
 
 @include export-module('kanban-layout') {
 
@@ -626,7 +626,7 @@
       }
     }
 
-    #{if(&, '&', '*')}.e-rtl {
+    &.e-rtl {
       .e-kanban-table {
         .e-header-cells {
           text-align: right;
@@ -676,7 +676,7 @@
       }
     }
 
-    #{if(&, '&', '*')}.e-device {
+    &.e-device {
       .e-swimlane-header {
         .e-swimlane-header-toolbar {
           background: $kanban-column-bg-color;
@@ -849,7 +849,7 @@
     }
   }
 
-  #{if(&, '&', '*')}.e-rtl {
+  *.e-rtl {
 
     .e-kanban-form-wrapper table,
     .e-kanban-form-container table {

@@ -47,9 +47,9 @@ export class TextArea extends Component<HTMLTextAreaElement> implements INotifyP
     /**
      * Sets the content of the TextArea.
      *
-     * @default null
+     * @default ''
      */
-    @Property(null)
+    @Property('')
     public value: string;
 
     /**
@@ -501,10 +501,10 @@ export class TextArea extends Component<HTMLTextAreaElement> implements INotifyP
         });
         this.updateHTMLAttributesToWrapper();
         this.wireEvents();
-        if (!isNullOrUndefined(this.value)) {
+        if (!isNullOrUndefined(this.value) && this.value !== '') {
             Input.setValue(this.value, this.element, this.floatLabelType, this.showClearButton);
         }
-        if (!isNullOrUndefined(this.value)) {
+        if (!isNullOrUndefined(this.value) && this.value !== '') {
             this.initialValue = this.value;
             if (!this.isAngular) {
                 this.element.setAttribute('value', this.initialValue);

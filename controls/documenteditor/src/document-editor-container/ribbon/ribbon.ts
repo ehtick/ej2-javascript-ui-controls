@@ -440,8 +440,8 @@ export class Ribbon implements IToolbarHandler {
         if (this.tabManager.insertTab && this.tabManager.insertTab.commentsGroup) {
             this.tabManager.insertTab.commentsGroup.enableDisableComment(enable);
         }
-        if (this.tabManager.reviewTab && this.tabManager.reviewTab.commentsGroup) {
-            this.tabManager.reviewTab.commentsGroup.enableDisableCommentGroup(enable);
+        if (this.tabManager.reviewTab && this.tabManager.reviewTab.reviewCommentsGroup) {
+            this.tabManager.reviewTab.reviewCommentsGroup.enableDisableCommentGroup(enable);
         }
     }
 

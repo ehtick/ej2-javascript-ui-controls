@@ -1,12 +1,6 @@
-import { PointModel, randomId, Point, TextAlign } from '@syncfusion/ej2-drawings';
-import { IElement } from '@syncfusion/ej2-drawings';
-import { rotatePoint } from '@syncfusion/ej2-drawings';
-import { Rect } from '@syncfusion/ej2-drawings';
-import { Matrix, transformPointByMatrix, rotateMatrix, identityMatrix } from '@syncfusion/ej2-drawings';
+import { DrawingElement, TextElement, Matrix, transformPointByMatrix, rotateMatrix, identityMatrix, Rect, rotatePoint, IElement, PointModel, randomId, Point, TextAlign } from './../ej2-drawings/index';
 import { SelectorModel } from './selector-model';
-import { TextElement } from '@syncfusion/ej2-drawings';
 import { Selector } from './selector';
-import { DrawingElement } from '@syncfusion/ej2-drawings';
 import { findActiveElement } from './action';
 import { PdfViewer, PdfViewerBase, MeasureAnnotation, AnnotationSelectorSettingsModel, AnnotationDrawingOptions } from '../index';
 import { PdfAnnotationBaseModel, PdfFormFieldBaseModel } from './pdf-annotation-model';
@@ -1164,7 +1158,11 @@ export class InkDrawingTool extends ToolBase {
         super.mouseDown(args);
         this.inAction = true;
         const node: any = { currentPosition: this.currentPosition, prevPosition: this.prevPosition };
-        this.commandHandler.annotation.inkAnnotationModule.drawInkInCanvas(node, this.pdfViewerBase.activeElements.activePageID);
+        if (!this.commandHandler.enableInkEraser) {
+            this.commandHandler.annotation.inkAnnotationModule.drawInkInCanvas(node, this.pdfViewerBase.activeElements.activePageID);
+        } else {
+            this.commandHandler.annotation.inkAnnotationModule.addEraserPath(node);
+        }
     }
 
     /**
@@ -1175,9 +1173,26 @@ export class InkDrawingTool extends ToolBase {
     public mouseMove(args: MouseEventArgs): boolean {
         super.mouseMove(args);
         if (this.inAction) {
-
             const node: any = { currentPosition: this.currentPosition, prevPosition: this.pdfViewerBase.prevPosition };
-            this.commandHandler.annotation.inkAnnotationModule.drawInkInCanvas(node, this.pdfViewerBase.activeElements.activePageID);
+            if (this.commandHandler.enableInkEraser) {
+                const inkModule: any = this.commandHandler.annotationModule.inkAnnotationModule;
+                if (inkModule && inkModule.outputString && inkModule.outputString !== '') {
+                    const currentPageNumber: string = inkModule.currentPageNumber;
+                    if (currentPageNumber) {
+                        inkModule.drawInkAnnotation(parseInt(currentPageNumber, 10));
+                        this.pdfViewerBase.isToolbarInkClicked = true;
+                        this.pdfViewerBase.pdfViewer.tool = 'Ink';
+                        this.pdfViewerBase.pdfViewer.clearSelection(parseInt(currentPageNumber, 10));
+                    }
+                }
+                this.commandHandler.annotation.inkAnnotationModule.addEraserPath(node);
+                const eraserSize: number = this.commandHandler.inkEraserSize;
+                const pageIndex: number = this.pdfViewerBase.activeElements.activePageID;
+                this.commandHandler.annotation.renderAnnotations(pageIndex, null, null, null);
+                inkModule.drawEraserPreview(pageIndex, eraserSize);
+            } else {
+                this.commandHandler.annotation.inkAnnotationModule.drawInkInCanvas(node, this.pdfViewerBase.activeElements.activePageID);
+            }
         }
         return this.inAction;
     }
@@ -1188,8 +1203,210 @@ export class InkDrawingTool extends ToolBase {
      * @returns {boolean} - Returns true.
      */
     public mouseUp(args: MouseEventArgs): boolean {
+        if (this.commandHandler.enableInkEraser) {
+            const eraserPath: PointModel[] = this.commandHandler.annotation.inkAnnotationModule.eraserPath;
+            const eraserSize: number = this.commandHandler.inkEraserSize;
+            const pageIndex: number = this.pdfViewerBase.activeElements.activePageID;
+            if (eraserPath.length > 0) {
+                const storeObject: any = this.commandHandler.annotationsCollection.get(
+                    this.pdfViewerBase.documentId + '_annotations_ink'
+                );
+                if (storeObject) {
+                    const pageCollection: number = this.commandHandler.annotationModule.getPageCollection(storeObject, pageIndex);
+                    if (pageCollection != null && storeObject[parseInt(pageCollection.toString(), 10)]) {
+                        const pageAnnotations: any[] = storeObject[parseInt(pageCollection.toString(), 10)].annotations;
+                        if (pageAnnotations && pageAnnotations.length > 0) {
+                            for (const annotation of pageAnnotations) {
+                                if (this.eraserIntersectsBounds(eraserPath, annotation.bounds)) {
+                                    const inkModule: any = this.commandHandler.annotation.inkAnnotationModule;
+                                    let oldPathData: string = annotation.data;
+                                    const currentZoom: number = this.commandHandler.viewerBase.getZoomFactor();
+                                    if (this.commandHandler.annotation.inkAnnotationModule.isAddAnnotationProgramatically) {
+                                        oldPathData = this.convertPathToBoundsRelative(oldPathData, annotation.bounds);
+                                        annotation.data = oldPathData;
+                                        annotation.initialZoom = 1;
+                                    }
+                                    const initialZoom: number = annotation.initialZoom || 0.75;
+                                    if (currentZoom !== initialZoom && oldPathData) {
+                                        const zoomRatio: number = currentZoom / initialZoom;
+                                        oldPathData = this.transformPathDataByZoom(oldPathData, zoomRatio);
+                                        annotation.data = oldPathData;
+                                        annotation.initialZoom = currentZoom;
+                                    }
+                                    // Normalize eraser path coordinates
+                                    // Convert eraser points from zoom (screen) space → PDF space
+                                    const normalizedEraserPath: { x: number; y: number }[] = eraserPath.map(
+                                        (pt: { x: number; y: number }) => {
+                                            return {
+                                                x: pt.x / currentZoom,
+                                                y: pt.y / currentZoom
+                                            };
+                                        }
+                                    );
+                                    // Convert old path to bounds-relative space (for proper undo/redo alignment)
+                                    const normalizedOldPathData: string = this.convertPathToBoundsRelative(oldPathData, annotation.bounds);
+                                    annotation.data = this.convertPathToBoundsRelative(oldPathData, annotation.bounds);
+                                    const adjustEraserSize: number = eraserSize / currentZoom;
+                                    const pathData: string = inkModule.processInkErase(annotation, normalizedEraserPath, adjustEraserSize);
+                                    if (pathData === '') {
+                                        this.commandHandler.select([annotation.id]);
+                                        this.commandHandler.annotationModule.deleteAnnotation();
+                                    } else {
+                                        inkModule.applyInkErase(annotation, pathData, pageIndex);
+                                        const newPathData: string = annotation.data;
+                                        this.commandHandler.annotation.addAction(
+                                            pageIndex as number,
+                                            null,
+                                            annotation,
+                                            'InkPathModified',
+                                            'data',
+                                            {
+                                                id: annotation.id as string,
+                                                data: normalizedOldPathData as string,
+                                                bounds: JSON.parse(JSON.stringify(annotation.bounds)) as any
+                                            },
+                                            {
+                                                id: annotation.id as string,
+                                                data: newPathData as string,
+                                                bounds: JSON.parse(JSON.stringify(annotation.bounds)) as any
+                                            }
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                this.commandHandler.annotation.inkAnnotationModule.eraserPath = [];
+                this.commandHandler.annotation.renderAnnotations(pageIndex, null, null, null);
+            }
+            return true;
+        }
         this.commandHandler.annotation.inkAnnotationModule.storePathData();
         return true;
+    }
+
+    /**
+     * Convert SVG path coordinates to be relative to a bounding box.
+     * Maps original path points to new coordinates within the specified bounds.
+     * @param {string} pathStr - The SVG path data string.
+     * @param {any} bounds - The bounding box containing x, y, width, and height.
+     * @returns {string} - The converted path data string with coordinates relative to bounds.
+     * @private
+     */
+    private convertPathToBoundsRelative(pathStr: string, bounds: any): string {
+        const tokens: string[] = pathStr.match(/[ML]|-?\d*\.?\d+/g) || [];
+        const points: PointModel[] = [];
+        const commands: string[] = [];
+        for (let i: number = 0; i < tokens.length;) {
+            const cmd: string = tokens[i++];
+            const x: number = parseFloat(tokens[i++]);
+            const y: number = parseFloat(tokens[i++]);
+            commands.push(cmd);
+            points.push({ x, y });
+        }
+        let minX: number = Infinity;
+        let minY: number = Infinity;
+        let maxX: number = -Infinity;
+        let maxY: number = -Infinity;
+        points.forEach((p: PointModel) => {
+            minX = Math.min(minX, p.x);
+            minY = Math.min(minY, p.y);
+            maxX = Math.max(maxX, p.x);
+            maxY = Math.max(maxY, p.y);
+        });
+        const pathWidth: number = maxX - minX;
+        const pathHeight: number = maxY - minY;
+        const result: string[] = [];
+        for (let i: number = 0; i < points.length; i++) {
+            const p: PointModel = points[(i as number)];
+            let nx: number = bounds.x + ((p.x - minX) / pathWidth) * bounds.width;
+            let ny: number = bounds.y + ((p.y - minY) / pathHeight) * bounds.height;
+            nx = Number(nx.toFixed(7));
+            ny = Number(ny.toFixed(7));
+            result.push(`${commands[(i as number)]}${nx},${ny}`);
+        }
+        return result.join(' ');
+    }
+
+    /**
+     * Transform SVG path data by scaling all numeric coordinates by zoom ratio.
+     * @param {string} pathData - The SVG path data string.
+     * @param {number} zoomRatio - The zoom scaling ratio.
+     * @returns {string} - The transformed path data string.
+     * @private
+     */
+    private transformPathDataByZoom(pathData: string, zoomRatio: number): string {
+        if (!pathData) {
+            return pathData;
+        }
+        return pathData.replace(/(\d+\.?\d*)/g, (match: string) => {
+            return Math.round(parseFloat(match) * zoomRatio).toString();
+        });
+    }
+
+    /**
+     * Quick bounding box check for eraser-annotation intersection
+     * Checks whether the eraser path intersects with the annotation bounds.
+     * @param {PointModel[]} eraserPath - Array of eraser path points.
+     * @param {any} bounds - The annotation bounds to check intersection against.
+     * @returns {boolean} - Returns true if the eraser intersects the bounds, otherwise false.
+     * @private
+     */
+    private eraserIntersectsBounds(eraserPath: PointModel[], bounds: any): boolean {
+        const zoom: number = this.commandHandler.viewerBase.getZoomFactor();
+        const scaledBounds: any = {
+            x: bounds.x * zoom,
+            y: bounds.y * zoom,
+            width: bounds.width * zoom,
+            height: bounds.height * zoom
+        };
+        const distPointToSegment: any = (p: PointModel, a: PointModel, b: PointModel): number => {
+            const dx: any = b.x - a.x;
+            const dy: any = b.y - a.y;
+            const lenSq: any = dx * dx + dy * dy;
+            const t: any = lenSq ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq)) : 0;
+            return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+        };
+        const segmentsCross: any = (a1: PointModel, a2: PointModel, b1: PointModel, b2: PointModel): boolean => {
+            const cross2D: any = (o: PointModel, u: PointModel, v: PointModel): number => {
+                return (u.x - o.x) * (v.y - o.y) - (u.y - o.y) * (v.x - o.x);
+            };
+            const d1: any = cross2D(b1, b2, a1);
+            const d2: any = cross2D(b1, b2, a2);
+            const d3: any = cross2D(a1, a2, b1);
+            const d4: any = cross2D(a1, a2, b2);
+            return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
+                   ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
+        };
+        const boundsCorners: any = [
+            { x: scaledBounds.x, y: scaledBounds.y },
+            { x: scaledBounds.x + scaledBounds.width, y: scaledBounds.y },
+            { x: scaledBounds.x + scaledBounds.width, y: scaledBounds.y + scaledBounds.height },
+            { x: scaledBounds.x, y: scaledBounds.y + scaledBounds.height }
+        ];
+        for (let i: any = 0; i < eraserPath.length - 1; i++) {
+            const eraserSegStart: any = eraserPath[(i as any)];
+            const eraserSegEnd: any = eraserPath[i + 1];
+            for (let j: any = 0; j < boundsCorners.length; j++) {
+                const corner1: any = boundsCorners[(j as any)];
+                const corner2: any = boundsCorners[(j + 1) % boundsCorners.length];
+                if (segmentsCross(eraserSegStart, eraserSegEnd, corner1, corner2)) {
+                    return true;
+                }
+            }
+            if (eraserSegStart.x >= scaledBounds.x && eraserSegStart.x <= scaledBounds.x + scaledBounds.width &&
+                eraserSegStart.y >= scaledBounds.y && eraserSegStart.y <= scaledBounds.y + scaledBounds.height) {
+                return true;
+            }
+            for (let j: any = 0; j < boundsCorners.length; j++) {
+                const corner: any = boundsCorners[(j as any)];
+                if (distPointToSegment(corner, eraserSegStart, eraserSegEnd) <= 2) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**

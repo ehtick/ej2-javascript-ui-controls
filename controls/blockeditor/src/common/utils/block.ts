@@ -529,6 +529,13 @@ export function isChildrenProp(block: BlockModel): boolean {
     return block.properties && 'children' in block.properties;
 }
 
+export function isPlaceholderApplicable(blockType: string): boolean {
+    const placeholderBlkTypes: string[] = [BlockType.BulletList, BlockType.Checklist, BlockType.NumberedList,
+        BlockType.Paragraph, BlockType.Heading, BlockType.CollapsibleHeading, BlockType.CollapsibleParagraph
+    ];
+    return (placeholderBlkTypes.indexOf(blockType) >= 0);
+}
+
 export function isAlwaysOnPlaceHolderBlk(blockType: string): boolean {
     const showPlaceholdersAlwaysFor: string[] = [BlockType.BulletList, BlockType.Checklist, BlockType.NumberedList];
     return blockType && (showPlaceholdersAlwaysFor.indexOf(blockType) >= 0);
@@ -561,7 +568,7 @@ export function getTargetBlock(currentBlock: HTMLElement, direction: string): HT
 
 export function getBlockSpecificRange(globalRange: Range, blockElement: HTMLElement): Range {
     const contentElement: HTMLElement = getBlockContentElement(blockElement);
-
+    if (contentElement.childNodes.length === 0) { return null; }
     const blockRange: Range = document.createRange();
     const startTextNode: Node = contentElement.firstChild.nodeType === Node.ELEMENT_NODE
         ? (getDeepestTextNode((contentElement.firstChild as HTMLElement)) || contentElement.firstChild) : contentElement.firstChild;

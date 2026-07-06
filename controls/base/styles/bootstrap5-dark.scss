@@ -1,3 +1,4 @@
-@use 'ej2-icons/styles/bootstrap5' as *;
-@forward 'bootstrap5-dark-definition';
-@use 'all.bootstrap5-dark' as *;
+@use '@syncfusion/ej2-icons/styles/bootstrap5.scss' as *;
+@use 'bootstrap5-dark-definition' as *;
+@use './common/all' as *;
+@use './animation/all' as *;

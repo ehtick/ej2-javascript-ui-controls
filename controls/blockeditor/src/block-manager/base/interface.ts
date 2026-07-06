@@ -6,23 +6,19 @@ export interface CommandOptions {
     state?: any
 }
 
-export interface BlockManagerModel {
-    rootEditorElement: HTMLElement;
-}
-
 /* Table block Interfaces */
 
 export interface ITableRowInsertOptions {
     blockId: string;
     rowIndex: number;
     rowModel?: TableRowModel;
-    isUndoRedoAction?: boolean
+    preventTracking?: boolean;
 }
 
 export interface ITableRowDeletionOptions {
     blockId: string;
     modelIndex: number;
-    isUndoRedoAction?: boolean
+    preventTracking?: boolean;
 }
 
 export interface ITableColumnInsertOptions {
@@ -30,13 +26,13 @@ export interface ITableColumnInsertOptions {
     colIndex: number;
     columnModel?: TableColumnModel;
     columnCells?: TableCellModel[];
-    isUndoRedoAction?: boolean;
+    preventTracking?: boolean;
 }
 
 export interface ITableColumnDeletionOptions {
     blockId: string;
     colIndex: number;
-    isUndoRedoAction?: boolean
+    preventTracking?: boolean;
 }
 
 export interface ITableCellsClearOperation {
