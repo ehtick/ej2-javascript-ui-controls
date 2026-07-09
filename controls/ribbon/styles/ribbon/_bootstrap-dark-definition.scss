@@ -1,5 +1,6 @@
 @use 'sass:color';
-@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+@use 'ej2-base/styles/definition/bootstrap-dark' as *;
+@forward 'ej2-base/styles/definition/bootstrap-dark';
 
 $ribbon-border: none !default;
 $ribbon-border-radius: unset !default;

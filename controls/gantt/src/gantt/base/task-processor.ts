@@ -756,7 +756,7 @@ export class TaskProcessor extends DateProcessor {
             if (!ganttData.taskData) {
                 continue;
             }
-            const cloneTaskData: Object = { ...ganttData.taskData };
+            const cloneTaskData: Object = Object.assign({}, ganttData.taskData);
             const ganttProperties: ITaskData = ganttData.ganttProperties;
             if (cloneTaskData[dataMapping.startDate]) {
                 cloneTaskData[dataMapping.startDate] = ganttProperties.startDate;
@@ -1010,7 +1010,9 @@ export class TaskProcessor extends DateProcessor {
             const endDate: Date = this.parent.dataOperation.getEndDate(
                 ganttProp.startDate, ganttProp.duration, ganttProp.durationUnit, ganttProp, false);
             this.parent.setRecordValue('endDate', endDate, data.ganttProperties, true);
-            this.parent.setRecordValue(this.parent.taskFields.endDate, endDate, data, true);
+            if (!isNullOrUndefined(this.parent.taskFields.endDate)) {
+                this.parent.setRecordValue(this.parent.taskFields.endDate, endDate, data, true);
+            }
             this.parent.setRecordValue('segments', segments, data.ganttProperties, true);
             this.parent.setRecordValue(this.parent.taskFields.segments, segments, data, true);
         }
@@ -3301,7 +3303,7 @@ export class TaskProcessor extends DateProcessor {
     public updateOverlappingValues(resourceTask: IGanttData): void {
         let tasks: IGanttData[] = resourceTask.childRecords;
         let currentTask: IGanttData;
-        const ranges: IWorkTimelineRanges[] = [];
+        let ranges: IWorkTimelineRanges[] = [];
         if (tasks.length <= 1) {
             resourceTask.ganttProperties.workTimelineRanges = [];
             return;
@@ -3361,7 +3363,7 @@ export class TaskProcessor extends DateProcessor {
                     });
                 }
             });
-            ranges.push(...this.mergeRangeCollections(range));
+            ranges = ranges.concat(this.mergeRangeCollections(range));
         }
         this.parent.setRecordValue('workTimelineRanges', this.mergeRangeCollections(ranges, true), resourceTask.ganttProperties, true);
         this.calculateRangeLeftWidth(resourceTask.ganttProperties.workTimelineRanges, resourceTask.ganttProperties.calendarContext);
@@ -3474,7 +3476,7 @@ export class TaskProcessor extends DateProcessor {
     private getRangeWithDay(ranges: IWorkTimelineRanges[], fromField: string, toField: string): IWorkTimelineRanges[] {
         const splitArray: IWorkTimelineRanges[] = [];
         for (let i: number = 0; i < ranges.length; i++) {
-            splitArray.push(...this.splitRangeForDayMode(ranges[parseInt(i.toString(), 10)], fromField, toField));
+            Array.prototype.push.apply(splitArray, this.splitRangeForDayMode(ranges[parseInt(i.toString(), 10)], fromField, toField));
         }
         return splitArray;
     }

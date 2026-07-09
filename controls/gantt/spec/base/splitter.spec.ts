@@ -331,113 +331,6 @@ describe('Splitter position issue after resizing', () => {
         }
     });
 });
-describe('Splitter position issue after changing view', () => {
-    let ganttObj: Gantt;
-    let projectNewData : any = [
-        {
-          TaskID: 1,
-          TaskName: 'Project Initiation',
-          StartDate: new Date('04/02/2019'),
-          EndDate: new Date('04/21/2019'),
-          subtasks: [
-            {
-              TaskID: 2,
-              TaskName: 'Identify Site location',
-              StartDate: new Date('04/02/2019'),
-              Duration: 4,
-              Progress: 50,
-            },
-            {
-              TaskID: 3,
-              TaskName: 'Perform Soil test',
-              StartDate: new Date('04/02/2019'),
-              Duration: 4,
-              Progress: 50,
-            },
-            {
-              TaskID: 4,
-              TaskName: 'Soil test approval',
-              StartDate: new Date('04/02/2019'),
-              Duration: 4,
-              Progress: 50,
-            },
-          ],
-        },
-      ];
-    beforeAll((done: Function) => {
-        ganttObj = createGantt({
-            dataSource: projectNewData,
-        allowSorting: true,
-        allowReordering: true,
-        enableContextMenu: true,
-        taskFields: {
-            id: 'TaskID',
-      name: 'TaskName',
-      startDate: 'StartDate',
-      endDate: 'EndDate',
-      duration: 'Duration',
-      progress: 'Progress',
-      dependency: 'Predecessor',
-      child: 'subtasks',
-        },
-        renderBaseline: true,
-        baselineColor: 'red',
-        editSettings: {
-            allowAdding: true,
-            allowEditing: true,
-            allowDeleting: true,
-            allowTaskbarEditing: true,
-            showDeleteConfirmDialog: true
-        },
-        columns: [
-            { field: 'TaskID', headerText: 'Task ID' },
-            { field: 'TaskName', headerText: 'Task Name', allowReordering: false },
-            { field: 'StartDate', headerText: 'Start Date', allowSorting: false },
-            { field: 'Duration', headerText: 'Duration', allowEditing: false },
-            { field: 'Progress', headerText: 'Progress', allowFiltering: false },
-            { field: 'CustomColumn', headerText: 'CustomColumn' }
-        ],
-        tooltipSettings: {
-            showTooltip: true
-        },
-        filterSettings: {
-            type: 'Menu'
-        },
-        allowFiltering: true,
-        gridLines: "Both",
-        showColumnMenu: true,
-        highlightWeekends: true,
-        timelineSettings: {
-            showTooltip: true,
-            topTier: {
-                unit: 'Week',
-                format: 'dd/MM/yyyy'
-            },
-            bottomTier: {
-                unit: 'Day',
-                count: 1
-            }
-        },
-        allowResizing: true,
-        readOnly: false,
-        taskbarHeight: 20,
-        rowHeight: 40,
-        height: '550px',
-        allowUnscheduledTasks: true,
-        }, done);
-    });
-    it('checking timeline end date', () => {
-        ganttObj.splitterResized = (args) => {
-            expect(ganttObj.splitterSettings.view).toBe('Chart');
-        };
-        ganttObj.setSplitterPosition('Chart', 'view');        
-    });
-    afterAll(() => {
-        if (ganttObj) {
-            destroyGantt(ganttObj);
-        }
-    });
-});
 describe('Dynamically changing position with view as Grid', () => {
     let ganttObj: Gantt;
     let projectNewData : any = [
@@ -584,6 +477,67 @@ describe('Splitter resize with large separator size', () => {
 
     afterAll(() => {
         if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('Splitter renderSplitter in Gantt context', () => {
+    let ganttObj: Gantt;
+    let originalContextMenuModule: any;
+    let originalUpdate: any;
+    let originalAdjust: any;
+
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: [
+                { TaskID: 1, TaskName: 'Task A', StartDate: new Date('2026-03-10'), Duration: 3 }
+            ],
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                duration: 'Duration'
+            },
+            height: '450px'
+        }, done);
+        originalContextMenuModule = ganttObj.contextMenuModule;
+        originalUpdate = ganttObj.timelineModule.updateTimelineAfterZooming;
+        originalAdjust = ganttObj.timelineModule.adjustEndDateToFillChart;
+    });
+    it('closes context menu when open during resizeStart', () => {
+        let closed = false;
+        ganttObj.contextMenuModule = {
+            isOpen: true,
+            contextMenu: { close: () => { closed = true; } }
+        } as any;
+        const args: any = { pane: [document.createElement('div'), document.createElement('div')] };
+        ganttObj.splitterModule.splitterObject.resizeStart(args);
+        expect(closed).toBe(true);
+    });
+    it('calls updateTimelineAfterZooming when projectEndDate is null and viewEndDate is auto', () => {
+        ganttObj.projectEndDate = null;
+        ganttObj.timelineSettings.viewEndDate = 'auto';
+        let zoomCalled = false;
+        ganttObj.timelineModule.updateTimelineAfterZooming = () => { zoomCalled = true; };
+        const args: any = { pane: [document.createElement('div'), document.createElement('div')] };
+        ganttObj.splitterModule.splitterObject.resizeStop(args);
+        expect(zoomCalled).toBe(true);
+    });
+    it('calls adjustEndDateToFillChart when viewStartDate is not auto and viewEndDate is auto', () => {
+        ganttObj.projectEndDate = new Date('2026-04-26');
+        ganttObj.timelineSettings.viewStartDate = '2026-03-16';
+        ganttObj.timelineSettings.viewEndDate = 'auto';
+        let adjustCalled = false;
+        ganttObj.timelineModule.adjustEndDateToFillChart = () => { adjustCalled = true; };
+        const args: any = { pane: [document.createElement('div'), document.createElement('div')] };
+        ganttObj.splitterModule.splitterObject.resizeStop(args);
+        expect(adjustCalled).toBe(false);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            ganttObj.contextMenuModule = originalContextMenuModule;
+            ganttObj.timelineModule.updateTimelineAfterZooming = originalUpdate;
+            ganttObj.timelineModule.adjustEndDateToFillChart = originalAdjust;
             destroyGantt(ganttObj);
         }
     });

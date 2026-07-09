@@ -2317,8 +2317,9 @@ export class Toolbar {
             } else {
                 this.updateCurrentPage(this.pdfViewerBase.currentPageNumber);
             }
-            this.currentPageBoxElement.blur();
-            this.pdfViewerBase.focusViewerContainer();
+            setTimeout(() => {
+                (this.currentPageBoxElement as any).focus();
+            }, 0);
         }
     };
 

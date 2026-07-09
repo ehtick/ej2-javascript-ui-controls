@@ -19,8 +19,9 @@ import  {profile , inMB, getMemoryProfile} from '../base/common.spec';
 import { Toolbar } from '../../../src/grid/actions/toolbar';
 import { Aggregate } from '../../../src/grid/actions/aggregate';
 import { getParentIns } from '../../../src/grid/base/util';
+import { Reorder } from '../../../src/grid/actions/reorder';
 
-Grid.Inject(Sort, Page, Filter, DetailRow, Group, Selection, Edit, RowDD, Toolbar, Aggregate);
+Grid.Inject(Sort, Page, Filter, DetailRow, Group, Selection, Edit, RowDD, Toolbar, Aggregate,Reorder);
 
 describe('Detail template module', () => {
 
@@ -1385,6 +1386,529 @@ describe('Detail template module', () => {
         it('Coverage the expand row', (done: Function) => {
             gridObj.isReact = true;
             gridObj.detailRowModule.expand(gridObj.getDataRows()[1].querySelector('.e-detailrowcollapse'));
+            done();
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+   
+    describe('DetailHeaderIndentCellRenderer - Unit Tests', () => {
+        let gridObj: Grid;
+
+        beforeAll((done: Function) => {
+            gridObj = createGrid(
+                {
+                    dataSource: filterData,
+                    allowPaging: true,
+                    detailTemplate: '#detailtemplate',
+                    allowGrouping: true,
+                    selectionSettings: { type: 'Multiple', mode: 'Row' },
+                    allowFiltering: true,
+                    allowSorting: true,
+                    columns: [
+                        { field: 'OrderID', headerText: 'Order ID', width: 120, textAlign: 'Right' },
+                        { field: 'CustomerID', headerText: 'Customer ID', width: 125 },
+                        { field: 'Freight', width: 120, format: 'C', textAlign: 'Right' },
+                        { field: 'ShipCity', headerText: 'Ship City', width: 150 }
+                    ]
+                }, done);
+        });
+
+        it('DetailHeaderIndentCellRenderer - render method with cell having rowSpan > 0', () => {
+            const renderService:any = gridObj.serviceLocator.getService('cellRendererFactory');
+            const renderer: any = renderService.getCellRenderer('DetailHeader');
+            renderer.parent = gridObj;
+
+            // Create a cell object with rowSpan > 0
+            const mockCell: any = {
+                rowSpan: 2,
+                index: 0
+            };
+
+            // Render with cell having rowSpan > 0
+            const element = renderer.render(mockCell, {});
+            
+            // Verify element has rowspan attribute set and is visible
+            expect(element).toBeDefined();
+            expect(element.getAttribute('rowspan')).toBe('2');
+            expect((element as HTMLElement).style.display).not.toBe('none');
+            expect(element.classList.contains('e-detailheadercell')).toBeTruthy();
+        });
+
+        it('DetailHeaderIndentCellRenderer - render method with cell having rowSpan === 0', () => {
+            const renderService:any = gridObj.serviceLocator.getService('cellRendererFactory');
+            const renderer: any = renderService.getCellRenderer('DetailHeader');
+            renderer.parent = gridObj;
+
+            // Create a cell object with rowSpan === 0
+            const mockCell: any = {
+                rowSpan: 0,
+                index: 0
+            };
+
+            // Render with cell having rowSpan === 0
+            const element = renderer.render(mockCell, {});
+            
+            // Verify element is hidden (display: none) when rowSpan is 0
+            expect(element).toBeDefined();
+            expect((element as HTMLElement).style.display).toBe('none');
+            expect(element.getAttribute('rowspan')).toBeNull();
+        });
+
+        it('DetailHeaderIndentCellRenderer - render method with cell having rowSpan undefined', () => {
+            const renderService:any = gridObj.serviceLocator.getService('cellRendererFactory');
+            const renderer: any = renderService.getCellRenderer('DetailHeader');
+            renderer.parent = gridObj;
+
+            // Create a cell object without rowSpan property
+            const mockCell: any = {
+                index: 0
+            };
+
+            // Render with cell having undefined rowSpan
+            const element = renderer.render(mockCell, {});
+            
+            // Verify element is visible and does not have rowspan attribute
+            expect(element).toBeDefined();
+            expect((element as HTMLElement).style.display).not.toBe('none');
+            expect(element.getAttribute('rowspan')).toBeNull();
+        });
+
+        it('DetailHeaderIndentCellRenderer - element class name verification', () => {
+            const renderService:any = gridObj.serviceLocator.getService('cellRendererFactory');
+            const renderer: any = renderService.getCellRenderer('DetailHeader');
+            renderer.parent = gridObj;
+
+            // Render element
+            const element = renderer.render(null, {});
+            
+            // Verify CSS classes
+            expect(element.classList.contains('e-detailheadercell')).toBeTruthy();
+            expect(element.classList.length).toBeGreaterThanOrEqual(1);
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+});
+
+describe('Detail-expand-cell-rendererModule', () => {
+
+    let DetailExpandCellRenderer: any;
+
+    beforeAll(() => {
+        // require the module under test
+        // path relative to this spec file
+        DetailExpandCellRenderer = require('../../../src/grid/renderer/detail-expand-cell-renderer').DetailExpandCellRenderer;
+    });
+
+    function makeRenderer() {
+        const parent = {
+            createElement: (tagName: string, options?: any) => {
+                const el = document.createElement(tagName);
+                if (options) {
+                    if (options.className) { el.className = options.className; }
+                    if (options.attrs) {
+                        Object.keys(options.attrs).forEach((k) => {
+                            el.setAttribute(k, options.attrs[k]);
+                        });
+                    }
+                }
+                return el;
+            }
+        };
+
+        const obj: any = Object.create(DetailExpandCellRenderer.prototype);
+        obj.parent = parent;
+        obj.localizer = { getConstant: (k: string) => (k === 'Expanded' ? 'Expanded Text' : 'Collapsed Text') };
+        obj.element = parent.createElement('TD', { className: 'e-detailrowcollapse', attrs: { 'aria-expanded': 'false', tabindex: '-1' } });
+        return obj as any;
+    }
+
+    it('should render collapsed anchor when no attributes provided', () => {
+        const r = makeRenderer();
+        const cell: any = { isSelected: false };
+        const node: Element = r.render(cell, {});
+        expect(node.nodeName.toUpperCase()).toBe('TD');
+        const a = (node as HTMLElement).querySelector('a') as HTMLElement;
+        expect(a).toBeDefined();
+        expect(a.className).toContain('e-dtdiagonalright');
+        expect(a.getAttribute('title')).toBe('Collapsed Text');
+        expect(node.classList.contains('e-selectionbackground')).toBe(false);
+    });
+
+    it('should render expanded anchor when attributes.class is provided', () => {
+        const r = makeRenderer();
+        const cell: any = { isSelected: false };
+        const node: Element = r.render(cell, {}, { class: 'custom-class' });
+        expect(node.className).toBe('custom-class');
+        const a = (node as HTMLElement).querySelector('a') as HTMLElement;
+        expect(a).toBeDefined();
+        expect(a.className).toContain('e-dtdiagonaldown');
+        expect(a.getAttribute('title')).toBe('Expanded Text');
+    });
+
+    it('should add selection classes when cell.isSelected is true', () => {
+        const r = makeRenderer();
+        const cell: any = { isSelected: true };
+        const node: Element = r.render(cell, {});
+        expect(node.classList.contains('e-selectionbackground')).toBe(true);
+        expect(node.classList.contains('e-active')).toBe(true);
+    });
+
+    it('should treat empty string class as provided (append expanded anchor)', () => {
+        const r = makeRenderer();
+        const cell: any = { isSelected: false };
+        const node: Element = r.render(cell, {}, { class: '' });
+        // className should be set to the empty string by implementation
+        expect(node.className).toBe('');
+        const a = (node as HTMLElement).querySelector('a') as HTMLElement;
+        expect(a.className).toContain('e-dtdiagonaldown');
+    });
+
+    it('should fallback to collapsed anchor when attributes present but class is null', () => {
+        const r = makeRenderer();
+        const cell: any = { isSelected: false };
+        const node: Element = r.render(cell, {}, { class: null });
+        const a = (node as HTMLElement).querySelector('a') as HTMLElement;
+        expect(a.className).toContain('e-dtdiagonalright');
+    });
+
+});
+
+describe('Improve coverage for Detail Row Module', () => {
+    let gridObj: any;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: filterData.slice(0, 5),
+                detailTemplate: '#detailtemplate',
+                allowPaging: false,
+                allowTextWrap: true,
+                height: 'auto',
+                columns: [
+                    { field: 'OrderID', headerText: 'Order ID', width: 120, textAlign: 'Right' },
+                    { field: 'CustomerID', headerText: 'Customer ID', width: 125 },
+                    { field: 'Freight', width: 120, format: 'C', textAlign: 'Right' },
+                    { field: 'ShipCity', headerText: 'Ship City', width: 150 }
+                ]
+            }, done);
+    });
+
+    it('covers early return when rowObj is null/undefined (invalid UID)', () => {
+        const fakeTr = createElement('tr', { attrs: { 'data-uid': 'invalid-uid-12345' } });
+        const fakeTarget = createElement('td', { className: 'e-detailrowcollapse' });
+        fakeTr.appendChild(fakeTarget);
+        (gridObj.detailRowModule as any).toogleExpandcollapse(fakeTarget);
+    });
+
+    it('covers early return when target is masked cell', () => {
+        const target = gridObj.getDataRows()[0].querySelector('.e-detailrowcollapse') as HTMLElement;
+        target.classList.add('e-masked-cell');
+        (gridObj.detailRowModule as any).toogleExpandcollapse(target);
+        target.classList.remove('e-masked-cell');
+    });
+
+    it('covers no-nextSibling path when expanding the last data row', () => {
+        const rows = gridObj.getDataRows();
+        const lastRowCollapse = rows[rows.length - 1].querySelector('.e-detailrowcollapse') as HTMLElement;
+        gridObj.detailRowModule.expand(lastRowCollapse);
+        const detailRows = gridObj.getContentTable().querySelectorAll('.e-detailrow');
+    });
+
+    it('covers Mac metaKey remapping (downArrow → ctrlDownArrow) in keyPressHandler', () => {
+        const original = navigator.platform;  // safer string restore
+        Object.defineProperty(navigator, 'platform', { value: 'MacIntel', configurable: true });
+        const e: any = { action: 'downArrow', metaKey: true, preventDefault: () => { } };
+        (gridObj.detailRowModule as any).keyPressHandler(e);
+
+        const detailRows = gridObj.getContentTable().querySelectorAll('.e-detailrow');
+        const visibleDetailRows = Array.from(detailRows).filter(el => (el as HTMLElement).style.display !== 'none');
+        expect(visibleDetailRows.length).toBeGreaterThan(0);
+
+        Object.defineProperty(navigator, 'platform', { value: original, configurable: true });
+    });
+
+    it('covers Mac metaKey remapping (upArrow → ctrlUpArrow) in keyPressHandler', () => {
+        const original = navigator.platform;
+        Object.defineProperty(navigator, 'platform', { value: 'MacIntel', configurable: true });
+        const e: any = { action: 'upArrow', metaKey: true, preventDefault: () => { } };
+        (gridObj.detailRowModule as any).keyPressHandler(e);
+
+        const detailRows = gridObj.getContentTable().querySelectorAll('.e-detailrow');
+        const visibleDetailRows = Array.from(detailRows).filter(el => (el as HTMLElement).style.display !== 'none');
+        expect(visibleDetailRows.length).toBe(0);
+
+        Object.defineProperty(navigator, 'platform', { value: original, configurable: true });
+    });
+
+    it('covers enter key when focused element is the expand/collapse icon (parentElement logic)', () => {
+        const row = gridObj.getDataRows()[0];
+        const collapseTd = row.querySelector('.e-detailrowcollapse') as HTMLElement;
+        const icon = collapseTd.querySelector('.e-icon-grightarrow, .e-icon-gdownarrow') || collapseTd.firstElementChild as HTMLElement;
+        const originalGetFocused = gridObj.focusModule.getFocusedElement.bind(gridObj.focusModule);
+        gridObj.focusModule.getFocusedElement = () => icon;
+        (gridObj.detailRowModule as any).keyPressHandler({ action: 'enter', preventDefault: () => { } } as any);
+        const detailRows = gridObj.getContentTable().querySelectorAll('.e-detailrow');
+        gridObj.focusModule.getFocusedElement = originalGetFocused;
+    });
+
+    it('covers lastrowcell logic in expand (clientHeight > scrollHeight) and collapse', () => {
+        const rows = gridObj.getDataRows();
+        const target = rows[rows.length - 1].querySelector('.e-detailrowcollapse') as HTMLElement;
+        target.classList.add('e-lastrowcell');
+        const content = gridObj.getContent();
+        const table = gridObj.getContentTable();
+        const origClient = content.clientHeight;
+        const origScroll = table.scrollHeight;
+        Object.defineProperty(content, 'clientHeight', { value: 2000, configurable: true });
+        Object.defineProperty(table, 'scrollHeight', { value: 1000, configurable: true });
+        gridObj.detailRowModule.expand(target);
+        gridObj.detailRowModule.collapse(target);
+
+        // Restore native getters (prevents any leak)
+        delete content.clientHeight;
+        delete table.scrollHeight;
+
+        target.classList.remove('e-lastrowcell');
+    });
+
+    afterAll(() => {
+        if (gridObj) {
+            // Clean all detail rows before destroy (prevents DOM pollution for later specs like row-reorder hierarchy/child-grid)
+            gridObj.detailRowModule.collapseAll();
+        }
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('Detail row expand/collapse complete events (detailExpanded & detailCollapsed)', () => {
+    let gridObj: Grid;
+    let detailExpandedFired: boolean = false;
+    let detailCollapsedFired: boolean = false;
+    let detailExpandFiredBeforeExpanded: boolean = false;
+    let detailCollapseFiredBeforeCollapsed: boolean = false;
+    let expandedEventArgs: any = null;
+    let collapsedEventArgs: any = null;
+
+    describe('detailExpanded event firing', () => {
+        beforeAll((done: Function) => {
+            detailExpandedFired = false;
+            detailExpandFiredBeforeExpanded = false;
+            expandedEventArgs = null;
+            gridObj = createGrid(
+                {
+                    dataSource: filterData,
+                    allowPaging: true,
+                    detailTemplate: '#detailtemplate',
+                    detailExpand: (args: any) => {
+                        detailExpandFiredBeforeExpanded = true;
+                    },
+                    detailExpanded: (args: any) => {
+                        detailExpandedFired = true;
+                        expandedEventArgs = args;
+                    },
+                    columns: [
+                        { field: 'OrderID', headerText: 'Order ID', width: 120, textAlign: 'Right' },
+                        { field: 'CustomerID', headerText: 'Customer ID', width: 125 },
+                        { field: 'Freight', width: 120, format: 'C', textAlign: 'Right' },
+                        { field: 'ShipCity', headerText: 'Ship City', width: 150 }
+                    ]
+                }, done);
+        });
+
+        it('detailExpanded event fires after detail row is expanded', (done: Function) => {
+            (gridObj.getDataRows()[0].querySelector('.e-detailrowcollapse') as HTMLElement).click();
+            expect(detailExpandedFired).toBe(true);
+            expect(detailExpandFiredBeforeExpanded).toBe(true);
+            done();
+        });
+
+        it('detailExpanded fires after detailExpand event', (done: Function) => {
+            detailExpandFiredBeforeExpanded = false;
+            detailExpandedFired = false;
+            (gridObj.getDataRows()[1].querySelector('.e-detailrowcollapse') as HTMLElement).click();
+            expect(detailExpandFiredBeforeExpanded).toBe(true);
+            expect(detailExpandedFired).toBe(true);
+            done();
+        });
+
+        it('detailExpanded event args contain rowData', (done: Function) => {
+            expect(expandedEventArgs).toBeDefined();
+            expect(expandedEventArgs.rowData).toBeDefined();
+            done();
+        });
+
+        it('detailExpanded event args contain parentRow', (done: Function) => {
+            expect(expandedEventArgs).toBeDefined();
+            expect(expandedEventArgs.parentRow).toBeDefined();
+            expect(expandedEventArgs.parentRow.classList.contains('e-grid')).toBe(false);
+            done();
+        });
+
+        it('detailExpanded event args contain event property when triggered by user interaction', (done: Function) => {
+            expect(expandedEventArgs).toBeDefined();
+            expect(expandedEventArgs.event).toBeDefined();
+            done();
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    describe('detailCollapsed event firing', () => {
+        beforeAll((done: Function) => {
+            detailCollapsedFired = false;
+            detailCollapseFiredBeforeCollapsed = false;
+            collapsedEventArgs = null;
+            gridObj = createGrid(
+                {
+                    dataSource: filterData,
+                    allowPaging: true,
+                    detailTemplate: '#detailtemplate',
+                    detailCollapse: (args: any) => {
+                        detailCollapseFiredBeforeCollapsed = true;
+                    },
+                    detailCollapsed: (args: any) => {
+                        detailCollapsedFired = true;
+                        collapsedEventArgs = args;
+                    },
+                    columns: [
+                        { field: 'OrderID', headerText: 'Order ID', width: 120, textAlign: 'Right' },
+                        { field: 'CustomerID', headerText: 'Customer ID', width: 125 },
+                        { field: 'Freight', width: 120, format: 'C', textAlign: 'Right' },
+                        { field: 'ShipCity', headerText: 'Ship City', width: 150 }
+                    ]
+                }, done);
+        });
+
+        it('detailCollapsed event fires after detail row is collapsed', (done: Function) => {
+            (gridObj.getDataRows()[0].querySelector('.e-detailrowcollapse') as HTMLElement).click();
+            detailCollapsedFired = false;
+            (gridObj.getDataRows()[0].querySelector('.e-detailrowexpand') as HTMLElement).click();
+            expect(detailCollapsedFired).toBe(true);
+            done();
+        });
+
+        it('detailCollapsed fires after detailCollapse event', (done: Function) => {
+            (gridObj.getDataRows()[1].querySelector('.e-detailrowcollapse') as HTMLElement).click();
+            detailCollapseFiredBeforeCollapsed = false;
+            detailCollapsedFired = false;
+            (gridObj.getDataRows()[1].querySelector('.e-detailrowexpand') as HTMLElement).click();
+            expect(detailCollapseFiredBeforeCollapsed).toBe(true);
+            expect(detailCollapsedFired).toBe(true);
+            done();
+        });
+
+        it('detailCollapsed event args contain rowData', (done: Function) => {
+            expect(collapsedEventArgs).toBeDefined();
+            expect(collapsedEventArgs.rowData).toBeDefined();
+            expect(collapsedEventArgs.rowData.OrderID).toBeDefined();
+            done();
+        });
+
+        it('detailCollapsed event args contain parentRow', (done: Function) => {
+            expect(collapsedEventArgs).toBeDefined();
+            expect(collapsedEventArgs.parentRow).toBeDefined();
+            done();
+        });
+
+        it('detailCollapsed event args contain detailRow element', (done: Function) => {
+            expect(collapsedEventArgs).toBeDefined();
+            expect(collapsedEventArgs.detailRow).toBeDefined();
+            expect(collapsedEventArgs.detailRow.classList.contains('e-detailrow')).toBe(true);
+            done();
+        });
+
+        it('detailCollapsed event fires with collapsed DOM state', (done: Function) => {
+            expect(collapsedEventArgs.detailRow.style.display).toBe('none');
+            done();
+        });
+
+        it('detailCollapsed does not fire when detailCollapse cancellation occurs', (done: Function) => {
+            let gridObj2: Grid;
+            detailCollapsedFired = false;
+            gridObj2 = createGrid(
+                {
+                    dataSource: filterData,
+                    allowPaging: true,
+                    detailTemplate: '#detailtemplate',
+                    detailCollapse: (args: any) => {
+                        args.cancel = true;
+                    },
+                    detailCollapsed: (args: any) => {
+                        detailCollapsedFired = true;
+                    },
+                    columns: [
+                        { field: 'OrderID', headerText: 'Order ID', width: 120, textAlign: 'Right' },
+                        { field: 'CustomerID', headerText: 'Customer ID', width: 125 },
+                        { field: 'Freight', width: 120, format: 'C', textAlign: 'Right' }
+                    ]
+                }, (a: any) => {
+                    (gridObj2.getDataRows()[0].querySelector('.e-detailrowcollapse') as HTMLElement).click();
+                    (gridObj2.getDataRows()[0].querySelector('.e-detailrowexpand') as HTMLElement).click();
+                    expect(detailCollapsedFired).toBe(false);
+                    destroy(gridObj2);
+                    gridObj2 = null;
+                    done();
+                });
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    describe('Multiple rapid expand/collapse actions', () => {
+        let expandedCount: number = 0;
+        let collapsedCount: number = 0;
+
+        beforeAll((done: Function) => {
+            expandedCount = 0;
+            collapsedCount = 0;
+            gridObj = createGrid(
+                {
+                    dataSource: filterData,
+                    allowPaging: true,
+                    detailTemplate: '#detailtemplate',
+                    detailExpanded: (args: any) => {
+                        expandedCount++;
+                    },
+                    detailCollapsed: (args: any) => {
+                        collapsedCount++;
+                    },
+                    columns: [
+                        { field: 'OrderID', headerText: 'Order ID', width: 120, textAlign: 'Right' },
+                        { field: 'CustomerID', headerText: 'Customer ID', width: 125 },
+                        { field: 'Freight', width: 120, format: 'C', textAlign: 'Right' }
+                    ]
+                }, done);
+        });
+
+        it('detailExpanded fires correctly for multiple rows', (done: Function) => {
+            for (let i = 0; i < 3; i++) {
+                (gridObj.getDataRows()[i].querySelector('.e-detailrowcollapse') as HTMLElement).click();
+            }
+            expect(expandedCount).toBe(3);
+            done();
+        });
+
+        it('detailCollapsed fires correctly for multiple rows', (done: Function) => {
+            for (let i = 0; i < 3; i++) {
+                (gridObj.getDataRows()[i].querySelector('.e-detailrowexpand') as HTMLElement).click();
+            }
+            expect(collapsedCount).toBe(3);
             done();
         });
 

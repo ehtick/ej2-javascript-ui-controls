@@ -359,6 +359,10 @@ export class Switch extends Component<HTMLInputElement> implements INotifyProper
         this.formElement = <HTMLFormElement>closest(this.element, 'form');
         this.tagName = this.element.tagName;
         preRender(this, 'EJS-SWITCH', WRAPPER, element, this.getModuleName());
+        if (element && element.hasAttribute('id') && this.isAngular && element.tagName === 'EJS-SWITCH') {
+            this.element.id = element.id;
+            element.removeAttribute('id');
+        }
     }
     /**
      * Initialize control rendering.

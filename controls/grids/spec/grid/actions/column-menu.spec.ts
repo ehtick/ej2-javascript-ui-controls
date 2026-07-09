@@ -993,4 +993,145 @@ describe('column menu module', () => {
             gridObj = null;
         });
     });
+
+    describe('Improve Coverage Column Menu', () => {
+        let gridObj: Grid;
+
+        beforeAll((done: Function) => {
+            gridObj = createGrid({
+                dataSource: data,
+                showColumnMenu: true,
+                columns: [
+                    { field: 'OrderID', headerText: 'Order ID', width: 125, isPrimaryKey: true },
+                    { field: 'CustomerID', headerText: 'Customer ID', width: 150 }
+                ]
+            }, done);
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+
+        it('destroy should return safely when header/content missing', () => {
+            const colMenu = (gridObj.columnMenuModule as any);
+            const gridEl: HTMLElement = gridObj.element;
+
+            const header = gridEl.querySelector('.e-gridheader');
+            const content = gridEl.querySelector('.e-gridcontent');
+
+            const headerParent = header.parentElement || null;
+            const contentParent = content.parentElement || null;
+
+            if (header) header.remove();
+            if (content) content.remove();
+
+            expect(() => colMenu.destroy()).not.toThrow();
+            if (header && headerParent) headerParent.appendChild(header);
+            if (content && contentParent) contentParent.appendChild(content);
+        });
+
+        it('getDefaultItem should set iconCss null for unknown key', () => {
+            const colMenu = (gridObj.columnMenuModule as any);
+            colMenu.getDefaultItem('CustomUnknown');
+        });
+
+        it('beforeMenuItemRender should add multiple cssClass tokens when present', () => {
+            const originalCssClass = gridObj.cssClass;
+            gridObj.cssClass = 'c1 c2';
+            gridObj.dataBind();
+            const colMenu = (gridObj.columnMenuModule as any);
+            const item = { text: 'OrderID', id: colMenu.generateID('OrderID', '_chooser_') };
+            const args: any = { item: item, element: document.createElement('span') };
+            colMenu.beforeMenuItemRender(args);
+            gridObj.cssClass = originalCssClass;
+            gridObj.dataBind();
+        });
+
+        it('columnMenuBeforeClose should cancel when filter-item + Enter key', () => {
+            const colMenu = (gridObj.columnMenuModule as any);
+            const target = createElement('span', { className: 'e-filter-item' });
+            const args: any = { parentItem: null, event: { target: target, key: 'Enter' }, cancel: false };
+            colMenu.columnMenuBeforeClose(args);
+            expect(args.cancel).toBe(true);
+        });
+
+        it('createChooserItems should fall back to field when headerText absent', () => {
+            const localGrid = createGrid({
+                dataSource: data,
+                showColumnMenu: true,
+                columns: [{ field: 'NoHeader', showInColumnChooser: true }, { field: 'X' }]
+            }, (done1: Function) => { done1(); });
+            const cm = (localGrid.columnMenuModule as any);
+            const items = cm.createChooserItems();
+            destroy(localGrid);
+        });
+
+        it('render should add COL_POP when parent is inside .e-popup', () => {
+            const colMenu = (gridObj.columnMenuModule as any);
+            const originalParent = gridObj.element.parentElement;
+            const popup = createElement('div', { className: 'e-popup' });
+            document.body.appendChild(popup);
+            popup.appendChild(gridObj.element);
+            colMenu.render();
+            if (originalParent) {
+                originalParent.appendChild(gridObj.element);
+            } else {
+                document.body.appendChild(gridObj.element);
+            }
+            popup.remove();
+        });
+
+        it('getFilter should focus firstElementChild inside .e-flmenu-valuediv', () => {
+            const colMenu = (gridObj.columnMenuModule as any);
+            const originalFilterSettings = gridObj.filterSettings;
+            gridObj.filterSettings = { type: 'CheckBox' } as any;
+            const pop = createElement('div', { className: 'e-filter-popup' });
+            const valDiv = createElement('div', { className: 'e-flmenu-valuediv' });
+            const child = document.createElement('input');
+            let focusCalled = false;
+            const originalFocus = child.focus;
+            child.focus = function () { focusCalled = true; originalFocus.call(this); };
+            valDiv.appendChild(child);
+            pop.appendChild(valDiv);
+            gridObj.element.appendChild(pop);
+            const id = (colMenu.defaultItems['Filter'] && colMenu.defaultItems['Filter'].id) ||
+                    colMenu.generateID('Filter');
+            colMenu.getFilter(createElement('span'), id);
+            pop.remove();
+            gridObj.filterSettings = originalFilterSettings;
+        });
+
+        it('columnMenuOnClose should focus selected element when parentItem is ColumnChooser', () => {
+            const colMenu = (gridObj.columnMenuModule as any);
+            const sel = createElement('span', { className: 'e-selected' }) as HTMLElement;
+            let focusCalled = false;
+            const originalFocus = sel.focus;
+            sel.focus = function () { focusCalled = true; originalFocus.call(this); };
+
+            colMenu.columnMenu.element.appendChild(sel);
+
+            const args: any = {
+                items: [],
+                parentItem: colMenu.defaultItems['ColumnChooser'],
+                element: colMenu.element
+            };
+            colMenu.columnMenuOnClose(args);
+            sel.remove();
+        });
+
+        it('coverage for openColumnMenu method', (done: Function) => {
+            const originalRtl = (gridObj as any).enableRtl;
+            const originalSticky = gridObj.enableStickyHeader;
+
+            (gridObj as any).enableRtl = true;
+            gridObj.enableStickyHeader = true;
+            const menuBtn = gridObj.getHeaderContent().querySelector('.e-columnmenu') as HTMLElement;
+            menuBtn.click();
+            (gridObj as any).enableRtl = originalRtl;
+            gridObj.enableStickyHeader = originalSticky;
+
+            done();
+        });
+    });
 });

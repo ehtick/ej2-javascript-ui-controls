@@ -8,6 +8,7 @@ import { Grid, FilterSettings } from '../../../src/grid/base/grid';
 import { StringFilterUI } from '../../../src/grid/renderer/string-filter-ui';
 import { Filter } from '../../../src/grid/actions/filter';
 import { FilterMenuRenderer } from '../../../src/grid/renderer/filter-menu-renderer';
+import * as util from '../../../src/grid/base/util';
 import { ColumnMenu } from '../../../src/grid/actions/column-menu';
 import { Group } from '../../../src/grid/actions/group';
 import { Sort } from '../../../src/grid/actions/sort';
@@ -31,6 +32,7 @@ import * as events from '../../../src/grid/base/constant';
 import { NumberFilterUI } from '../../../src/grid/renderer/number-filter-ui';
 import { VirtualScroll } from '../../../src/grid/actions/virtual-scroll';
 import { IFilterCreate, IFilterRead, IFilterWrite } from '../../../src/grid/base/interface';
+import { DateFilterUI } from '../../../src/grid/renderer/date-filter-ui';
 
 Grid.Inject(Filter, Page, Selection, Group, Sort, Reorder, ColumnMenu, VirtualScroll);
 
@@ -1676,6 +1678,130 @@ describe('filter menu module =>', () => {
             destroy(gridObj);
             gridObj = null;
             actionComplete = null;
+        });
+    });
+
+    describe('1015517: BooleanFilterUI Coverage =>', () => {
+        let gridObj: Grid;
+        beforeAll((done: Function) => {
+            gridObj = createGrid({
+                dataSource: [{ Id: 1, Flag: true }, { Id: 2, Flag: false }],
+                allowFiltering: true,
+                filterSettings: { type: 'Menu' },
+                columns: [
+                    { field: 'Id', headerText: 'ID' },
+                    { field: 'Flag', headerText: 'Flag', type: 'boolean', foreignKeyValue: 'Flag' }
+                ]
+            }, done);
+        });
+
+        it('should render boolean filter UI', () => {
+            const col = gridObj.getColumns()[1];
+            col.dataSource = gridObj.dataSource as any;
+            const target = document.createElement('div');
+            const args: any = {
+                target: target,
+                column: col,
+                getOptrInstance: { dropOptr: { value: 'in', previousValue: 'equal' } },
+                dialogObj: { element: document.createElement('div') },
+                localizeText: (gridObj as any).localizer || { getConstant: (k: string) => 'SelectValue' }
+            };
+            const ui: any = new BooleanFilterUI(gridObj, gridObj.serviceLocator, gridObj.filterSettings as any);
+            ui.create(args);
+            const boolElem = target.querySelector('#bool-ui-' + col.uid);
+            expect(boolElem).toBeTruthy();
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    describe('1015517: DateFilterUI Coverage', () => {
+        let parentElement: any;
+        beforeEach(() => {
+            parentElement = {
+                createElement: (tag: string, attrs?: any) => {
+                    const el = document.createElement(tag);
+                    if (attrs) {
+                        if (attrs.className) { el.className = attrs.className; }
+                        if (attrs.id) { el.id = attrs.id; }
+                    }
+                    return el;
+                },
+                cssClass: undefined,
+                locale: 'en',
+                enableRtl: false,
+                on: jasmine.createSpy('on'),
+                off: jasmine.createSpy('off')
+            };
+            // ensure a clean DOM target
+            (document.body.querySelector('#test-target') || document.body.appendChild(document.createElement('div'))).innerHTML = '';
+        });
+
+        it('constructor without parent does not throw and leaves parent undefined', () => {
+            const dateFilter = new DateFilterUI(undefined, undefined, undefined);
+            expect((dateFilter as any).parent).toBeUndefined();
+        });
+
+        it('create with date type and falsy cssClass appends input and creates datePickerObj', () => {
+            const dateFilter = new DateFilterUI(parentElement, undefined, undefined);
+            const target = document.createElement('div');
+            const args: any = {
+                column: { format: 'yMd', type: 'date', uid: 'u-date', filter: { params: {} } },
+                dialogObj: { zIndex: 10 },
+                target: target,
+                localizeText: { getConstant: () => 'ChooseDate' }
+            };
+            dateFilter.create(args);
+            const input = target.querySelector('#dateui-u-date');
+            expect(input).not.toBeNull();
+            expect((dateFilter as any).datePickerObj).toBeDefined();
+        });
+
+        afterEach(() => {
+            parentElement = null;
+        });
+    });
+    
+    describe('Filter Menu Operator Change Handler =>', () => {
+        let gridObj: Grid;
+        beforeAll((done: Function) => {
+            gridObj = createGrid({
+                dataSource: filterData,
+                allowFiltering: true,
+                filterSettings: { type: 'Menu' },
+                columns: [{ field: 'OrderID', type: 'number' }]
+            }, done);
+        });
+
+        it('should remove disabled attribute when operator changes from isempty to equal without ej2_instances', (done: Function) => {
+            const column: Column = gridObj.getColumns()[0];
+            const valDiv: HTMLElement = document.createElement('div');
+            valDiv.className = 'e-flmenu-valuediv';
+            const valInput: HTMLInputElement = document.createElement('input');
+            // start with disabled attribute (simulating previous isempty)
+            valInput.setAttribute('disabled', 'true');
+            valDiv.appendChild(valInput);
+            document.body.appendChild(valDiv);
+
+            const dlgObj: any = { zIndex: 100, element: document.createElement('div') };
+            const operators = [{ value: 'equal', text: 'Equal' }, { value: 'isempty', text: 'Is Empty' }];
+            const flMenu: FlMenuOptrUI = new FlMenuOptrUI(gridObj, undefined, gridObj.serviceLocator, gridObj.filterSettings as FilterSettings);
+            spyOn(util, 'toggleFilterUI').and.callFake(() => {});
+            flMenu.renderOperatorUI(document.body, document.createElement('div'), column as Column, dlgObj as any, operators as any);
+            // set to a non-empty operator and invoke change
+            flMenu.dropOptr.value = 'equal';
+            // ensure previousValue exists to exercise toggleFilterUI call path
+            (flMenu as any)['dropOptr']['previousValue'] = 'isempty';
+            flMenu.dropOptr.change();
+            document.body.removeChild(valDiv);
+            done();
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
         });
     });
 });

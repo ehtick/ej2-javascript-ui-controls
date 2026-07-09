@@ -303,7 +303,11 @@ export class GanttChart {
             if (!this.parent.allowTaskbarOverlap && !currentRecord.expanded && this.parent.enableMultiTaskbar) {
                 // Render proper overallocation line height during collapseall actions - Task:872518
                 const parentRecord: IGanttData = this.parent.getRootParent(currentRecord, 0);
-                rowIndex = parentRecord.expanded ? rowIndex : this.parent.currentViewData.indexOf(parentRecord);
+                rowIndex = this.resolveNextElement(
+                    parentRecord.expanded,
+                    rowIndex,
+                    this.parent.currentViewData.indexOf(parentRecord)
+                ) as number;
                 height = parseInt((node[rowIndex as number] as HTMLElement).style.height, 10) -
                          (this.parent.rowHeight - this.parent.chartRowsModule.taskBarHeight);
             }
@@ -401,10 +405,12 @@ export class GanttChart {
         }        //let element: HTMLElement = this.chartTimelineContainer.querySelector('.' + cls.timelineHeaderTableContainer);
         // Handled zoomtofit horizontal scrollbar hide while performing different zooming levels in browser at virtualtimeline mode-Task(919516)
         if (this.parent.timelineModule.isZoomToFit && this.parent.enableTimelineVirtualization) {
-            this.chartBodyContent.style.width = (this.parent.enableTimelineVirtualization
-                && (this.parent.timelineModule.totalTimelineWidth > this.parent.element.offsetWidth * 3)) ?
-                formatUnit(this.parent.element.offsetWidth * 3)
-                : formatUnit(this.parent.timelineModule.totalTimelineWidth - this.parent.timelineModule['clientWidthDifference']);
+            this.chartBodyContent.style.width = this.resolveNextElement(
+                this.parent.enableTimelineVirtualization &&
+                (this.parent.timelineModule.totalTimelineWidth > this.parent.element.offsetWidth * 3),
+                formatUnit(this.parent.element.offsetWidth * 3),
+                formatUnit(this.parent.timelineModule.totalTimelineWidth - this.parent.timelineModule['clientWidthDifference'])
+            ) as string;
         }
         else {
             this.chartBodyContent.style.width = (this.parent.enableTimelineVirtualization
@@ -626,10 +632,15 @@ export class GanttChart {
             const dateObject: Date = this.parent.currentViewData[rowIndex as number].ganttProperties.startDate;
             const dateObjLeft: number = this.parent.currentViewData[rowIndex as number].ganttProperties.left;
             if (!isNullOrUndefined(dateObject)) {
-                const left: number | {} = !this.parent.enableTimelineVirtualization ?
+                const left: number | {} = this.resolveNextElement(
+                    !this.parent.enableTimelineVirtualization,
                     this.parent.dataOperation.getTaskLeft(
-                        dateObject, false, this.parent.currentViewData[rowIndex as number].ganttProperties.calendarContext
-                    ) : {};
+                        dateObject,
+                        false,
+                        this.parent.currentViewData[rowIndex as number].ganttProperties.calendarContext
+                    ),
+                    {}
+                );
                 if (this.parent.autoFocusTasks) {
                     if (this.parent.enableTimelineVirtualization) {
                         this.updateScrollLeft(dateObjLeft as number);
@@ -1290,7 +1301,11 @@ export class GanttChart {
         const mouseDown: string = Browser.touchStartEvent;
         const mouseUp: string = Browser.touchEndEvent;
         const mouseMove: string = Browser.touchMoveEvent;
-        const cancel: string = isIE11Pointer ? 'pointerleave' : 'mouseleave';
+        const cancel: string = this.resolveNextElement(
+            !!isIE11Pointer,
+            'pointerleave',
+            'mouseleave'
+        ) as string;
         EventHandler.add(this.parent.chartPane, mouseDown, this.ganttChartMouseDown, this);
         EventHandler.add(this.parent.chartPane, cancel, this.ganttChartLeave, this);
         EventHandler.add(this.parent.chartPane, mouseMove, this.ganttChartMove, this);
@@ -1327,7 +1342,11 @@ export class GanttChart {
         const mouseDown: string = Browser.touchStartEvent;
         const mouseUp: string = Browser.touchEndEvent;
         const mouseMove: string = Browser.touchMoveEvent;
-        const cancel: string = isIE11Pointer ? 'pointerleave' : 'mouseleave';
+        const cancel: string = this.resolveNextElement(
+            !!isIE11Pointer,
+            'pointerleave',
+            'mouseleave'
+        ) as string;
         if (!isNullOrUndefined(this.parent.chartRowsModule.ganttChartTableBody)) {
             EventHandler.remove(this.parent.chartRowsModule.ganttChartTableBody, mouseDown, this.ganttChartMouseDown);
         }
@@ -1364,6 +1383,28 @@ export class GanttChart {
             EventHandler.remove(this.parent.chartRowsModule.ganttChartTableBody, 'dblclick', this.doubleClickHandler);
         }
     }
+    private isTouchpad(deltaY: number): boolean {
+        return Math.abs(deltaY) < 75;
+    }
+    private updateDebounceTimeout(): void {
+        if (this.debounceTimeout) {
+            if (((this.debounceTimeoutNext + 20) > this.debounceTimeout)) {
+                clearTimeout(this.debounceTimeout);
+            }
+            if ((this.debounceTimeoutNext + 20) <= this.debounceTimeout) {
+                this.debounceTimeoutNext = this.debounceTimeout;
+            }
+        }
+    }
+    private performZoomCheck(deltaY: number, zoomIn: boolean, isTouchpad: boolean): void {
+        const verticalScrollDelta: number = Math.abs(deltaY);
+        const isValidScrollDelta: boolean = isTouchpad
+            ? (verticalScrollDelta > 0.5 && verticalScrollDelta < 15)
+            : (verticalScrollDelta > 5 && verticalScrollDelta <= 200);
+        if (isValidScrollDelta) {
+            this.parent.timelineModule.processZooming(zoomIn);
+        }
+    }
 
     // Triggers while perform ctrl+mouse wheel Pinch IN/OUT actions
     private onWheelZoom(e: WheelEvent): void {
@@ -1371,27 +1412,10 @@ export class GanttChart {
             e.preventDefault();
             const zoomIn1: boolean = e.deltaY < 0;
             // Differentiating between touchpad and mouse wheel
-            let isTouchpad: boolean = false;
-            if (Math.abs(e.deltaY) < 75) {  // Smaller deltaY typically indicates touchpad
-                isTouchpad = true;
-            }
-            if (this.debounceTimeout) {
-                if (((this.debounceTimeoutNext + 20) > this.debounceTimeout)) {
-                    clearTimeout(this.debounceTimeout);
-                }
-                if ((this.debounceTimeoutNext + 20) <= this.debounceTimeout || !this.debounceTimeoutNext) {
-                    this.debounceTimeoutNext = this.debounceTimeout;
-                }
-            }
+            const isTouchpad: boolean = this.isTouchpad(e.deltaY);
+            this.updateDebounceTimeout();
             this.debounceTimeout = setTimeout(function (): void {
-                const verticalScrollDelta: number = Math.abs(e.deltaY);
-                // Adjust threshold based on the input method
-                const isValidScrollDelta: boolean = isTouchpad
-                    ? (verticalScrollDelta > 0.5 && verticalScrollDelta < 15)
-                    : (verticalScrollDelta > 5 && verticalScrollDelta <= 200);
-                if (isValidScrollDelta) {
-                    this.parent.timelineModule.processZooming(zoomIn1);
-                }
+                this.performZoomCheck(e.deltaY, zoomIn1, isTouchpad);
             }.bind(this), 100);
         }
     }
@@ -1421,6 +1445,13 @@ export class GanttChart {
             this.parent.treeGrid.editCell(rowIndex, this.parent.ganttColumns[parseInt(next.getAttribute('aria-colindex'), 10) - 1].field);
         }
         return next;
+    }
+    private resolveNextElement(
+        condition: boolean,
+        elementIfTrue: Element | number | string,
+        elementIfFalse: Element | number | string | {}
+    ): Element | number | string | {} {
+        return condition ? elementIfTrue : elementIfFalse;
     }
     /**
      * Trigger Tab & Shift + Tab keypress to highlight active element.
@@ -1466,7 +1497,11 @@ export class GanttChart {
                     colIndex = colIndex - 1;
                 }
                 if (colIndex !== -1) {
-                    colIndex = this.parent.allowRowDragAndDrop ? colIndex + 1 : colIndex;
+                    colIndex = this.resolveNextElement(
+                        this.parent.allowRowDragAndDrop,
+                        colIndex + 1,
+                        colIndex
+                    ) as number;
                     nextElement = document.getElementsByClassName('e-columnheader')[0].childNodes[colIndex as number] as HTMLElement;
                 }
                 else {
@@ -1492,8 +1527,7 @@ export class GanttChart {
             ($target.classList.contains('e-headercell') || $target.classList.contains('e-toolbar-item') ||
             $target.classList.contains('e-treegrid') ||
             $target.classList.contains('e-input') || $target.classList.contains('e-btn')) && !nextElement) {
-            let itemIndex: number = this.currentToolbarIndex !== -1 ? (e.action === 'tab' ? this.currentToolbarIndex + 1 :
-                this.currentToolbarIndex - 1) : (e.action === 'shiftTab' ? toolbarItems.length - 1 : 1);
+            let itemIndex: number = this.currentToolbarIndex !== -1 ? (this.resolveNextElement(e.action === 'tab', this.currentToolbarIndex + 1, this.currentToolbarIndex - 1) as number) : (this.resolveNextElement(e.action === 'shiftTab', toolbarItems.length - 1, 1) as number);
             let isUpdated: boolean = false;
             if (itemIndex !== -1 && (e.action === 'shiftTab' || (e.action === 'tab' && itemIndex < toolbarItems.length))) {
                 do {
@@ -1673,7 +1707,11 @@ export class GanttChart {
                     const fmodule: FocusStrategy = getValue('focusModule', this.parent.treeGrid.grid);
                     if ((nextElement.classList.contains('e-rowcell') && $target.nextElementSibling)
                         || $target.classList.contains('e-right-label-container')) {
-                        const gridRowElement: any = nextElement.parentElement.classList.contains('e-chart-row-cell') ? nextElement.parentElement.parentElement : nextElement.parentElement;
+                        const gridRowElement: any = this.resolveNextElement(
+                            nextElement.parentElement.classList.contains('e-chart-row-cell'),
+                            nextElement.parentElement.parentElement,
+                            nextElement.parentElement
+                        );
                         if (!$target.classList.contains('e-rowcell')) {
                             this.parent.treeGrid.grid.notify('key-pressed', e);
                         }
@@ -1731,9 +1769,11 @@ export class GanttChart {
             || nextElement.classList.contains('e-right-connectorpoint-outer-div'))) {
             const record: IGanttData = this.parent.currentViewData[this.focusedRowIndex];
             if (!isNullOrUndefined(record.ganttProperties.segments) && record.ganttProperties.segments.length > 0) {
-                nextElement = nextElement.classList.contains('e-right-connectorpoint-outer-div')
-                    ? nextElement.parentElement.nextElementSibling
-                    : nextElement.getElementsByClassName('e-gantt-child-taskbar-inner-div')[0];
+                nextElement = this.resolveNextElement(
+                    nextElement.classList.contains('e-right-connectorpoint-outer-div'),
+                    nextElement.parentElement.nextElementSibling,
+                    nextElement.getElementsByClassName('e-gantt-child-taskbar-inner-div')[0]
+                ) as Element;
             }
         }
         if (this.validateNextElement(nextElement)) {
@@ -1782,11 +1822,11 @@ export class GanttChart {
                 /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
                 rowIndex = (closest($target, '.e-chart-row') as any).rowIndex;
                 if (isTab) {
-                    if (!isTab && this.parent.virtualScrollModule && this.parent.enableVirtualization) {
-                        /* eslint-disable-next-line */
-                        const rowRecord: IGanttData = this.parent.currentViewData[rowIndex];
-                        rowIndex = this.parent.flatData.indexOf(rowRecord);
-                    }
+                    // if (!isTab && this.parent.virtualScrollModule && this.parent.enableVirtualization) {
+                    //     /* eslint-disable-next-line */
+                    //     const rowRecord: IGanttData = this.parent.currentViewData[rowIndex];
+                    //     rowIndex = this.parent.flatData.indexOf(rowRecord);
+                    // }
                     rowElement = this.getNextRowElement(rowIndex, isTab, true);
                 } else {
                     rowElement = this.parent.treeGrid.getRows()[rowIndex as number];

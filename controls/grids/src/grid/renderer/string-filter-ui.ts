@@ -77,12 +77,18 @@ export class StringFilterUI implements IFilterMUI {
                 .records || [];
             let filterQuery: Predicate;
             for (let i: number = 0; i < filteredData.length; i++) {
+                const ejValue: string = 'ejValue';
+                const operator: string = typeof filteredData[parseInt(i.toString(), 10)][`${ejValue}`] === 'string' ? 'contains' : 'equal';
                 if (filterQuery) {
-                    filterQuery = filterQuery.or(args.column.field, 'contains', filteredData[parseInt(i.toString(), 10)][args.column.field], this.parent
-                        .filterSettings.enableCaseSensitivity, this.parent.filterSettings.ignoreAccent);
+                    filterQuery = filterQuery.or(args.column.foreignKeyField, operator,
+                                                 filteredData[parseInt(i.toString(), 10)][args.column.field],
+                                                 this.parent.filterSettings.enableCaseSensitivity,
+                                                 this.parent.filterSettings.ignoreAccent);
                 } else {
-                    filterQuery = new Predicate(args.column.field, 'contains', filteredData[parseInt(i.toString(), 10)][args.column.field], this.parent
-                        .filterSettings.enableCaseSensitivity, this.parent.filterSettings.ignoreAccent);
+                    filterQuery = new Predicate(args.column.foreignKeyField, operator,
+                                                filteredData[parseInt(i.toString(), 10)][args.column.field],
+                                                this.parent.filterSettings.enableCaseSensitivity,
+                                                this.parent.filterSettings.ignoreAccent);
                 }
             }
             foreignColumnQuery = new Query().where(filterQuery);

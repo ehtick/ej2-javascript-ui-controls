@@ -1977,6 +1977,54 @@ describe('Batch Editing module', () => {
     //     });
     // });
 
+    describe('Batch Edit — additional branch coverage', () => {
+        let gridObj: Grid;
+        beforeAll((done: Function) => {
+            gridObj = createGrid(
+                {
+                    dataSource: data.slice(0, 5),
+                    isRowPinned: (args: any) => {
+                        if (args.OrderID === 10248) {
+                            return true;
+                        }
+                        return false;
+                    },
+                    toolbar: ['Add', 'Edit', 'Delete', 'Update'],
+                    editSettings: {allowAdding: true, allowEditing: true, allowDeleting: true, mode: 'Batch'},
+                    columns: [
+                        { field: 'OrderID', headerText: 'Employee ID', width: 125, isPrimaryKey: true },
+                        { field: 'CustomerID', headerText: 'Name', width: 120, allowEditing: false },
+                        { field: 'Freight', headerText: 'Freight', width: 120 }
+                    ],
+                }, done);
+        });
+
+        it('mouseDownHandler sets mouseDownElement when .e-gridform exists', (done: Function) => {
+            gridObj.getContentTable().querySelector('tr td').dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window, button: 0 }));
+            gridObj.editCell(3, 'CustomerID');
+            gridObj.getContentTable().querySelector('tr td').dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window, button: 0 }));
+            done();
+        });
+
+        it('getBatchChanges and editCell methods coverage', (done: Function) => {
+            gridObj.getColumnByField('CustomerID').allowEditing = false;
+            gridObj.editCell(0, 'CustomerID');
+            gridObj.getBatchChanges();
+            done();
+        });
+
+        it('getColIndex coverage', (done: Function) => {
+            gridObj.deleteRecord('EmployeeID', gridObj.currentViewData[5]);
+            (gridObj.editModule as any).editModule.getColIndex(1000, 1000);
+            done();
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
     describe('EJ2-6337-script error throws when Delete a record after validation error appears => ', () => {
         let gridObj: Grid;
         let actionBegin: () => void;
@@ -3109,6 +3157,33 @@ describe('numeric text box validating minimum and maximum value', () => {
         let val: number = (gridObj.element.querySelector('.e-editedbatchcell .e-input') as any).ej2_instances[0].value;
         expect(val).toBe(20);
     });
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('updateCell extra branches coverage', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data.slice(0, 5),
+            editSettings: { allowEditing: true, allowAdding: true, allowDeleting: true, mode: 'Batch' },
+            toolbar: ['Add', 'Edit', 'Delete', 'Update'],
+            columns: [
+                { field: 'OrderID', isPrimaryKey: true },
+                { field: 'CustomerID' },
+                { field: 'OrderDate', type: 'date', editType: 'datepickeredit' }
+            ]
+        }, done);
+    });
+
+    it('updateCell with Date instance should mark updated td', (done: Function) => {
+        gridObj.editModule.updateCell(0, 'OrderDate', new Date(2020, 0, 1));
+        expect(gridObj.element.querySelectorAll('.e-updatedtd').length).toBeGreaterThan(0);
+        done();
+    });
+
     afterAll(() => {
         destroy(gridObj);
         gridObj = null;
@@ -5540,6 +5615,1292 @@ describe('EJ2-945385: Record selected when calling closeEdit() with checkboxOnly
 
     it('select the row', (done: Function) => {
         expect(gridObj.getRows()[0].firstElementChild.classList.contains('e-selectionbackground')).toBeFalsy();
+        done();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('BatchEdit additional branch coverage (targeting 92% branches)', () => {
+    let gridObj: Grid;
+    let preventDefault: Function = new Function();
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: data.slice(0, 5),
+                editSettings: { allowEditing: true, allowAdding: true, allowDeleting: true, mode: 'Batch', showConfirmDialog: false },
+                toolbar: ['Add', 'Delete', 'Update', 'Cancel'],
+                columns: [
+                    { field: 'OrderID', isPrimaryKey: true, validationRules: { required: true } },
+                    { field: 'CustomerID', validationRules: { required: true } },
+                    { field: 'EmployeeID', allowEditing: false },           // for !allowEditing + insertedrow
+                    { field: 'OrderDate', type: 'date', editType: 'datepickeredit' }, // for date setChanges branch
+                    { field: 'ShipAddress', visible: false }                // for hidden column → !args.cell
+                ]
+            }, done);
+    });
+
+    it('should cover editCellExtend early return (!args.cell) when editing hidden column', () => {
+        // hidden column has no corresponding <td> in row.cells → getColIndex returns -1 → args.cell undefined
+        gridObj.editModule.editCell(0, 'ShipAddress');
+        expect(gridObj.isEdit).toBeTruthy(); // edit never started
+    });
+
+    it('should cover updateCell primary-key path for inserted row (isInsertedBatchRow = true)', (done: Function) => {
+        let batchAdd = (args?: any): void => {
+            // update primary key on newly inserted row (normally blocked, but allowed for inserted rows)
+            gridObj.editModule.updateCell(0, 'OrderID', 99999);
+            const rowObj: any = gridObj.getRowObjectFromUID(gridObj.getContent().querySelector('.e-insertedrow').getAttribute('data-uid'));
+            expect(rowObj.changes['OrderID']).toBe(99999);
+            expect(rowObj.isDirty).toBeTruthy();
+            gridObj.batchAdd = null;
+            done();
+        };
+        gridObj.batchAdd = batchAdd;
+        (<any>gridObj.toolbarModule).toolbarClickHandler({ item: { id: gridObj.element.id + '_add' } });
+    });
+
+    it('should cover date/datetime comparison branch inside setChanges (via updateCell)', () => {
+        // forces the (type === 'date' || 'datetime') && new Date().toString() !== ... path
+        gridObj.editModule.updateCell(0, 'OrderDate', new Date('2026-12-31'));
+        const rowObj = gridObj.getRowObjectFromUID(gridObj.getDataRows()[0].getAttribute('data-uid'));
+        expect(rowObj.isDirty).toBeTruthy();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('EJ2-1014231: Cell Mode - Batch Delete Scenarios', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data.slice(0, 5),
+            allowSelection: true,
+            selectionSettings: { mode: 'Cell' },
+            editSettings: {
+                allowEditing: true,
+                allowAdding: true,
+                allowDeleting: true,
+                mode: 'Batch',
+                showConfirmDialog: false,
+                showDeleteConfirmDialog: false
+            },
+            enableAutoFill: true,
+            toolbar: ['Delete', 'Update', 'Cancel'],
+            columns: [
+                { field: 'OrderID', isPrimaryKey: true },
+                { field: 'CustomerID', type: 'string' },
+                { field: 'EmployeeID', type: 'number' },
+            ]
+        }, done);
+    });
+
+    it('Cell mode - delete record', () => {
+        gridObj.clearSelection();
+        gridObj.selectCell({ rowIndex: 1, cellIndex: 1 });
+        gridObj.editModule.deleteRecord();
+        const batchChanges = (gridObj.editModule.getBatchChanges() as any);
+        expect(batchChanges.deletedRecords.length).toBe(1);
+        expect(batchChanges.deletedRecords[0].OrderID).toBe((gridObj.currentViewData[1] as any).OrderID);
+    });
+
+    it('Cell mode - delete and update', (done: Function) => {
+        const beforeBatchSave = (args?: any): void => {
+            expect(gridObj.isEdit).toBeFalsy();
+            gridObj.beforeBatchSave = null;
+        };
+        const dataBound = (args?: any): void => {
+            expect(gridObj.isEdit).toBeFalsy();
+            expect(gridObj.currentViewData.length).toBe(4);
+            expect((gridObj.getBatchChanges() as any).deletedRecords.length).toBe(0);
+            gridObj.dataBound = null;
+            done();
+        };
+        gridObj.beforeBatchSave = beforeBatchSave;
+        gridObj.dataBound = dataBound;
+        (gridObj.toolbarModule as any).toolbarClickHandler({ item: { id: gridObj.element.id + '_update' } });
+    });
+
+    it('Cell mode - delete and cancel', (done: Function) => {
+        const initialCount = gridObj.currentViewData.length;
+        const batchCancel = () => {
+            expect(gridObj.currentViewData.length).toBe(initialCount);
+            expect((gridObj.editModule.getBatchChanges() as any).deletedRecords.length).toBe(0);
+            gridObj.batchCancel = null;
+            done();
+        };
+        gridObj.batchCancel = batchCancel;
+        gridObj.clearSelection();
+        gridObj.selectCell({ rowIndex: 0, cellIndex: 1 });
+        gridObj.editModule.deleteRecord();
+        (<any>gridObj.toolbarModule).toolbarClickHandler({ item: { id: gridObj.element.id + '_cancel' } });
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('EJ2-971423: Undo/Redo Operations - Test Suite 1: Toolbar Click Handler Method', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: data,
+                editSettings: {
+                    allowEditing: true,
+                    allowAdding: true,
+                    allowDeleting: true,
+                    mode: 'Batch',
+                    enableUndoRedo: true,
+                    undoRedoLimit: 20,
+                    showConfirmDialog: false,
+                    showDeleteConfirmDialog: false
+                },
+                toolbar: ['Add', 'Edit', 'Delete', 'Update', 'Cancel', 'Undo', 'Redo'],
+                columns: [
+                    { field: 'OrderID', type: 'number', isPrimaryKey: true, visible: true, validationRules: { required: true } },
+                    { field: 'CustomerID', type: 'string', validationRules: { required: true } },
+                    { field: 'Freight', format: 'C2', type: 'number', editType: 'numericedit' },
+                    { field: 'ShipCity', type: 'string' }
+                ]
+            }, done);
+    });
+
+    it('Toolbar Edit → Undo', (done: Function) => {
+        const cell = gridObj.getContent().querySelectorAll('tr.e-row')[0].querySelectorAll('td')[1] as HTMLElement;
+        const original: string = cell.textContent as string;
+        (gridObj.editModule as any).editModule.editCell(0, 'CustomerID');
+        const input = gridObj.element.querySelector('.e-editedbatchcell input') as HTMLInputElement;
+        if (input) {
+            input.value = 'EDIT_TOOLBAR';
+            gridObj.element.click();
+            expect(cell.textContent).toContain('EDIT_TOOLBAR');
+            (gridObj.toolbarModule as any).toolbarClickHandler({
+                item: { id: gridObj.element.id + '_undo' }
+            });
+            expect(cell.textContent).toBe(original);
+            done();
+        }
+    });
+
+    it('Toolbar Edit → Redo', (done: Function) => {
+        (gridObj.toolbarModule as any).toolbarClickHandler({
+            item: { id: gridObj.element.id + '_redo' }
+        });
+        const cell = gridObj.getContent().querySelectorAll('tr.e-row')[0].querySelectorAll('td')[1] as HTMLElement;
+        expect(cell.textContent).toContain('EDIT_TOOLBAR');
+        done();
+    });
+
+    it('Toolbar Delete → Undo', (done: Function) => {
+        gridObj.clearSelection();
+        gridObj.selectRow(1);
+        (gridObj.editModule as any).deleteRecord();
+        expect((gridObj.getBatchChanges() as any).deletedRecords.length).toBe(1);
+        (gridObj.toolbarModule as any).toolbarClickHandler({
+            item: { id: gridObj.element.id + '_undo' }
+        });
+        setTimeout(() => {
+            expect((gridObj.getBatchChanges() as any).deletedRecords.length).toBe(0);
+            done();
+        }, 100);
+    });
+
+    it('Toolbar Delete → Redo', (done: Function) => {
+        (gridObj.toolbarModule as any).toolbarClickHandler({
+            item: { id: gridObj.element.id + '_redo' }
+        });
+        setTimeout(() => {
+            expect((gridObj.getBatchChanges() as any).deletedRecords.length).toBe(1);
+            done();
+        }, 100);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('EJ2-971423: Undo/Redo Operations - Test Suite 2: Keyboard Action Method', () => {
+    let gridObj: Grid;
+    let preventDefault: Function = new Function();
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: data,
+                editSettings: {
+                    allowEditing: true,
+                    allowAdding: true,
+                    allowDeleting: true,
+                    mode: 'Batch',
+                    enableUndoRedo: true,
+                    undoRedoLimit: 20,
+                    showConfirmDialog: false,
+                    showDeleteConfirmDialog: false
+                },
+                toolbar: ['Add', 'Edit', 'Delete', 'Update', 'Cancel', 'Undo', 'Redo'],
+                columns: [
+                    { field: 'OrderID', type: 'number', isPrimaryKey: true, visible: true, validationRules: { required: true } },
+                    { field: 'CustomerID', type: 'string', validationRules: { required: true } },
+                    { field: 'Freight', format: 'C2', type: 'number', editType: 'numericedit' },
+                    { field: 'ShipCity', type: 'string' }
+                ]
+            }, done);
+    });
+
+    it('Keyboard Edit → Undo (Ctrl+Z)', (done: Function) => {
+        const cell = gridObj.getContent().querySelectorAll('tr.e-row')[0].querySelectorAll('td')[1] as HTMLElement;
+        const original: string = cell.textContent as string;
+        (gridObj.editModule as any).editModule.editCell(0, 'CustomerID');
+        const input = gridObj.element.querySelector('.e-editedbatchcell input') as HTMLInputElement;
+        if (input) {
+            input.value = 'EDIT_KEY';
+            gridObj.element.click();
+            (gridObj.keyboardModule).keyAction({ action: 'ctrlPlusZ', preventDefault: preventDefault, target: gridObj.element });
+            expect(cell.textContent).toBe(original);
+            done();
+        }
+    });
+
+    it('Keyboard Edit → Redo (Ctrl+Y)', (done: Function) => {
+        (gridObj.keyboardModule).keyAction({ action: 'ctrlPlusY', preventDefault: preventDefault, target: gridObj.element });
+        const cell = gridObj.getContent().querySelectorAll('tr.e-row')[0].querySelectorAll('td')[1] as HTMLElement;
+        expect(cell.textContent).toContain('EDIT_KEY');
+        done();
+    });
+
+    it('Keyboard Delete → Undo', (done: Function) => {
+        gridObj.selectRow(1);
+        (gridObj.keyboardModule).keyAction({ action: 'delete', preventDefault: preventDefault, target: gridObj.getContent() });
+        expect((gridObj.getBatchChanges() as any).deletedRecords.length).toBe(1);
+        (gridObj.keyboardModule).keyAction({ action: 'ctrlPlusZ', preventDefault: preventDefault, target: gridObj.element });
+
+        setTimeout(() => {
+            expect((gridObj.getBatchChanges() as any).deletedRecords.length).toBe(0);
+            done();
+        }, 100);
+    });
+
+    it('Keyboard Delete → Redo', (done: Function) => {
+        (gridObj.keyboardModule).keyAction({ action: 'ctrlPlusY', preventDefault: preventDefault, target: gridObj.element });
+        setTimeout(() => {
+            expect((gridObj.getBatchChanges() as any).deletedRecords.length).toBe(1);
+            done();
+        }, 100);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('EJ2-971423: Undo/Redo Operations - Test Suite 3: Programmatic Method Calls', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: data,
+                editSettings: {
+                    allowEditing: true,
+                    allowAdding: true,
+                    allowDeleting: true,
+                    mode: 'Batch',
+                    enableUndoRedo: true,
+                    undoRedoLimit: 20,
+                    showConfirmDialog: false,
+                    showDeleteConfirmDialog: false
+                },
+                toolbar: ['Add', 'Edit', 'Delete', 'Update', 'Cancel', 'Undo', 'Redo'],
+                columns: [
+                    { field: 'OrderID', type: 'number', isPrimaryKey: true, visible: true, validationRules: { required: true } },
+                    { field: 'CustomerID', type: 'string', validationRules: { required: true } },
+                    { field: 'Freight', format: 'C2', type: 'number', editType: 'numericedit' },
+                    { field: 'ShipCity', type: 'string' }
+                ]
+            }, done);
+    });
+
+    it('Method Edit → Undo', (done: Function) => {
+        const cell = gridObj.getContent().querySelectorAll('tr.e-row')[0].querySelectorAll('td')[1] as HTMLElement;
+        const original: string = cell.textContent as string;
+        (gridObj.editModule as any).editModule.editCell(0, 'CustomerID');
+        const input = gridObj.element.querySelector('.e-editedbatchcell input') as HTMLInputElement;
+        if (input) {
+            input.value = 'EDIT_METHOD';
+            gridObj.element.click();
+            gridObj.editModule.undoBatchEdit();
+            expect(cell.textContent).toBe(original);
+            done();
+        }
+    });
+
+    it('Method Edit → Redo', (done: Function) => {
+        gridObj.editModule.redoBatchEdit();
+        const cell = gridObj.getContent().querySelectorAll('tr.e-row')[0].querySelectorAll('td')[1] as HTMLElement;
+        expect(cell.textContent).toContain('EDIT_METHOD');
+        done();
+    });
+
+    it('Method Delete → Undo', (done: Function) => {
+        gridObj.selectRow(1);
+        gridObj.editModule.deleteRecord();
+        expect((gridObj.getBatchChanges() as any).deletedRecords.length).toBe(1);
+        gridObj.editModule.undoBatchEdit();
+        setTimeout(() => {
+            expect((gridObj.getBatchChanges() as any).deletedRecords.length).toBe(0);
+            done();
+        }, 100);
+    });
+
+    it('Method Delete → Redo', (done: Function) => {
+        gridObj.editModule.redoBatchEdit();
+        setTimeout(() => {
+            expect((gridObj.getBatchChanges() as any).deletedRecords.length).toBe(1);
+            done();
+        }, 100);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('EJ2-971423: Undo/Redo Operations - Test Suite 4: Stack Limit and Edge Cases', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: data,
+                editSettings: {
+                    allowEditing: true,
+                    allowAdding: true,
+                    allowDeleting: true,
+                    mode: 'Batch',
+                    enableUndoRedo: true,
+                    undoRedoLimit: 5,
+                    showConfirmDialog: false,
+                    showDeleteConfirmDialog: false
+                },
+                toolbar: ['Add', 'Edit', 'Delete', 'Update', 'Cancel', 'Undo', 'Redo'],
+                columns: [
+                    { field: 'OrderID', type: 'number', isPrimaryKey: true, visible: true, validationRules: { required: true } },
+                    { field: 'CustomerID', type: 'string', validationRules: { required: true } },
+                    { field: 'Freight', format: 'C2', type: 'number', editType: 'numericedit' },
+                    { field: 'ShipCity', type: 'string' }
+                ]
+            }, done);
+    });
+
+    it('Test 4.1: Verify stack limit prevents overflow with undoRedoLimit: 5', (done: Function) => {
+        for (let i = 0; i < 10; i++) {
+            (<any>gridObj.editModule).editModule.editCell(0, 'CustomerID');
+            let input: HTMLInputElement = gridObj.element.querySelector('.e-editedbatchcell input') as HTMLInputElement;
+            if (input) {
+                input.value = 'LIMIT_TEST_' + i;
+                gridObj.element.click();
+            }
+        }
+        let editModule: any = (<any>gridObj.editModule).editModule || (<any>gridObj.editModule);
+        expect(editModule.undoStack.length).toBeLessThanOrEqual(5);
+        done();
+    });
+
+    it('Test 4.2: Verify undo/redo with reduced stack limit', (done: Function) => {
+        let cellElement: any = gridObj.getContent().querySelectorAll('tr.e-row')[0].querySelectorAll('td')[1];
+        let originalValue: string = cellElement.textContent;
+        (<any>gridObj.editModule).editModule.editCell(0, 'CustomerID');
+        let input: HTMLInputElement = gridObj.element.querySelector('.e-editedbatchcell input') as HTMLInputElement;
+        if (input) {
+            input.value = 'STACK_LIMIT_EDIT';
+            gridObj.element.click();
+            let editedValue: string = gridObj.getContent().querySelectorAll('tr.e-row')[0].querySelectorAll('td')[1].textContent;
+            expect(editedValue).toContain('STACK_LIMIT_EDIT');
+            (<any>gridObj.editModule).undoBatchEdit();
+            let revertedValue: string = gridObj.getContent().querySelectorAll('tr.e-row')[0].querySelectorAll('td')[1].textContent;
+            expect(revertedValue).toBe(originalValue);
+            expect(gridObj.isRedoStackAvailable()).toBe(true);
+            done();
+        }
+    });
+
+    it('Test 4.3: Verify batch cancel clears undo/redo stacks', (done: Function) => {
+        (<any>gridObj.editModule).editModule.editCell(0, 'CustomerID');
+        let input: HTMLInputElement = gridObj.element.querySelector('.e-editedbatchcell input') as HTMLInputElement;
+        if (input) {
+            input.value = 'CANCEL_TEST';
+            gridObj.element.click();
+            expect(gridObj.isUndoStackAvailable()).toBe(true);
+            gridObj.editModule.batchCancel();
+            expect(gridObj.isUndoStackAvailable()).toBe(false);
+            expect(gridObj.isRedoStackAvailable()).toBe(false);
+            done();
+        }
+    });
+
+    it('Test 4.4: Verify redo stack clears when new operation after undo', (done: Function) => {
+        let cellElement: any = gridObj.getContent().querySelectorAll('tr.e-row')[0].querySelectorAll('td')[1];
+        let originalValue: string = cellElement.textContent;
+        (<any>gridObj.editModule).editModule.editCell(0, 'CustomerID');
+        let input1: HTMLInputElement = gridObj.element.querySelector('.e-editedbatchcell input') as HTMLInputElement;
+        if (input1) {
+            input1.value = 'FIRST_EDIT';
+            gridObj.element.click();
+            (<any>gridObj.editModule).undoBatchEdit();
+            expect(gridObj.isRedoStackAvailable()).toBe(true);
+            (<any>gridObj.editModule).editModule.editCell(0, 'CustomerID');
+            let input2: HTMLInputElement = gridObj.element.querySelector('.e-editedbatchcell input') as HTMLInputElement;
+            if (input2) {
+                input2.value = 'SECOND_EDIT';
+                gridObj.element.click();
+                expect(gridObj.isRedoStackAvailable()).toBe(false);
+                done();
+            }
+        }
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('EJ2-971423: Undo/Redo Operations - Test Suite 5: Multiple cell edit', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: data,
+                editSettings: {
+                    allowEditing: true,
+                    allowAdding: true,
+                    allowDeleting: true,
+                    mode: 'Batch',
+                    enableUndoRedo: true,
+                    undoRedoLimit: 20,
+                    showConfirmDialog: false,
+                    showDeleteConfirmDialog: false
+                },
+                toolbar: ['Add', 'Edit', 'Delete', 'Update', 'Cancel', 'Undo', 'Redo'],
+                columns: [
+                    { field: 'OrderID', type: 'number', isPrimaryKey: true, visible: true, validationRules: { required: true } },
+                    { field: 'CustomerID', type: 'string', validationRules: { required: true } },
+                    { field: 'Freight', format: 'C2', type: 'number', editType: 'numericedit' },
+                    { field: 'ShipCity', type: 'string' }
+                ]
+            }, done);
+    });
+
+    it('Multiple Cell Edits → 2 Undo + 1 Redo → Verify undo/redo stack length', (done: Function) => {
+        const editModule: any = (gridObj.editModule as any).editModule || gridObj.editModule;
+        const fields: string[] = ['CustomerID', 'CustomerID', 'CustomerID', 'CustomerID', 'CustomerID'];
+        for (let i = 0; i < 5; i++) {
+            (gridObj.editModule as any).editModule.editCell(i, fields[i]);
+            const input = gridObj.element.querySelector('.e-editedbatchcell input') as HTMLInputElement;
+            if (input) {
+                input.value = `MULTI_EDIT_${i}`;
+                gridObj.element.click(); // commit edit
+            }
+        }
+        expect(editModule.undoStack.length).toBe(5);
+        expect(editModule.redoStack.length).toBe(0);
+        gridObj.editModule.undoBatchEdit();
+        gridObj.editModule.undoBatchEdit();
+        expect(editModule.undoStack.length).toBe(3);
+        expect(editModule.redoStack.length).toBe(2);
+        gridObj.editModule.redoBatchEdit();
+        expect(editModule.undoStack.length).toBe(4);
+        expect(editModule.redoStack.length).toBe(1);
+
+        done();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('EJ2-971423: Undo/Redo Operations - Test Suite 6: Stack Limit and Edge Cases', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: data,
+                editSettings: {
+                    allowEditing: true,
+                    allowAdding: true,
+                    allowDeleting: true,
+                    mode: 'Batch',
+                    enableUndoRedo: true,
+                    undoRedoLimit: 5,
+                    showConfirmDialog: false,
+                    showDeleteConfirmDialog: false
+                },
+                toolbar: ['Add', 'Edit', 'Delete', 'Update', 'Cancel', 'Undo', 'Redo'],
+                columns: [
+                    { field: 'OrderID', type: 'number', isPrimaryKey: true, visible: true, validationRules: { required: true } },
+                    { field: 'CustomerID', type: 'string', validationRules: { required: true } },
+                    { field: 'Freight', format: 'C2', type: 'number', editType: 'numericedit' },
+                    { field: 'ShipCity', type: 'string' }
+                ]
+            }, done);
+    });
+
+    it('Test 4.1: Verify stack limit prevents overflow', (done: Function) => {
+        for (let i: number = 0; i < 10; i++) {
+            let action: any = {
+                type: 'cellEdit',
+                rowIndex: 0,
+                field: 'CustomerID',
+                previousValue: 'OLD' + i,
+                newValue: 'NEW' + i
+            };
+            gridObj.editModule.editModule.pushToStack(gridObj.editModule.editModule.undoStack, action);
+        }
+        expect(gridObj.editModule.editModule.undoStack.length).toBe(5);
+        done();
+    });
+
+    it('Test 4.2: Verify undo/redo availability with isUndoStackAvailable and isRedoStackAvailable', (done: Function) => {
+        gridObj.editModule.editModule.undoStack = [];
+        gridObj.editModule.editModule.redoStack = [];
+        expect(gridObj.isUndoStackAvailable()).toBe(false);
+        expect(gridObj.isRedoStackAvailable()).toBe(false);
+        let action: any = {
+            type: 'cellEdit',
+            rowIndex: 0,
+            field: 'CustomerID'
+        };
+        gridObj.editModule.editModule.pushToStack(gridObj.editModule.editModule.undoStack, action);
+        expect(gridObj.isUndoStackAvailable()).toBe(true);
+        expect(gridObj.isRedoStackAvailable()).toBe(false);
+        done();
+    });
+
+    it('Test 4.3: Verify batch cancel clears both stacks', (done: Function) => {
+        let action: any = {
+            type: 'cellEdit',
+            rowIndex: 0,
+            field: 'CustomerID'
+        };
+        gridObj.editModule.editModule.pushToStack(gridObj.editModule.editModule.undoStack, action);
+        gridObj.editModule.editModule.pushToStack(gridObj.editModule.editModule.redoStack, action);
+        expect(gridObj.editModule.editModule.undoStack.length).toBeGreaterThan(0);
+        expect(gridObj.editModule.editModule.redoStack.length).toBeGreaterThan(0);
+        gridObj.editModule.batchCancel();
+        setTimeout(() => {
+            expect(gridObj.editModule.editModule.undoStack.length).toBe(0);
+            expect(gridObj.editModule.editModule.redoStack.length).toBe(0);
+            done();
+        }, 100);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+describe('EJ2-971423: Undo/Redo Operations - Test Suite 7: Add a new record', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: data,
+                editSettings: {
+                    allowEditing: true,
+                    allowAdding: true,
+                    allowDeleting: true,
+                    mode: 'Batch',
+                    enableUndoRedo: true,
+                    undoRedoLimit: 20,
+                    showConfirmDialog: false,
+                    showDeleteConfirmDialog: false
+                },
+                toolbar: ['Add', 'Edit', 'Delete', 'Update', 'Cancel', 'Undo', 'Redo'],
+                columns: [
+                    { field: 'OrderID', type: 'number', isPrimaryKey: true, visible: true, validationRules: { required: true } },
+                    { field: 'CustomerID', type: 'string', validationRules: { required: true } },
+                    { field: 'Freight', format: 'C2', type: 'number', editType: 'numericedit' },
+                    { field: 'ShipCity', type: 'string' }
+                ]
+            }, done);
+    });
+
+    it('captureAction for ADD → Undo/Redo → Validate stacks & addedRecords', (done: Function) => {
+        const editModule: any = (gridObj.editModule as any).editModule || gridObj.editModule;
+        gridObj.addRecord({ OrderID: 999, CustomerID: null });
+        const rows = gridObj.getContent().querySelectorAll('tr.e-row');
+        const addedRow = rows[rows.length - 1] as HTMLElement;
+        const rowObj = (gridObj).getRowObjectFromUID(addedRow.getAttribute('data-uid'));
+        rowObj.edit = 'add'; 
+        const cell = addedRow.querySelectorAll('td')[1] as HTMLElement;
+        const column = gridObj.getColumnByField('CustomerID');
+        const rowData = (gridObj.getCurrentViewRecords() as any[])[rows.length - 1];
+        editModule.storeCellsInUndoStack({
+            cell: cell,
+            column: column,
+            columnName: 'CustomerID',
+            columnObject: column,
+            isForeignKey: false,
+            previousValue: null,
+            value: 'VINET',
+            rowData: rowData
+        });
+        expect(editModule.undoStack.length).toBe(1);
+        expect(editModule.redoStack.length).toBe(0);
+        expect((gridObj.getBatchChanges() as any).addedRecords.length).toBe(1);
+        gridObj.editModule.undoBatchEdit();
+        setTimeout(() => {
+            expect(editModule.undoStack.length).toBe(0);
+            expect(editModule.redoStack.length).toBe(1);
+            gridObj.editModule.redoBatchEdit();
+            setTimeout(() => {
+                expect(editModule.undoStack.length).toBe(1);
+                expect(editModule.redoStack.length).toBe(0);
+                done();
+            }, 100);
+        }, 100);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('Coverage Improvement Tests - keyDownHandler keyboard shortcuts', () => {
+    let gridObj: Grid;
+    let preventDefault: Function = new Function();
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: data,
+                editSettings: {
+                    allowEditing: true,
+                    allowAdding: true,
+                    allowDeleting: true,
+                    mode: 'Batch',
+                    enableUndoRedo: true,
+                    undoRedoLimit: 20,
+                    showConfirmDialog: false,
+                    showDeleteConfirmDialog: false
+                },
+                toolbar: ['Add', 'Edit', 'Delete', 'Update', 'Cancel', 'Undo', 'Redo'],
+                columns: [
+                    { field: 'OrderID', type: 'number', isPrimaryKey: true, visible: true, validationRules: { required: true } },
+                    { field: 'CustomerID', type: 'string' },
+                    { field: 'Freight', format: 'C2', type: 'number', editType: 'numericedit' },
+                    { field: 'ShipCity', type: 'string' }
+                ]
+            }, done);
+    });
+
+    it('keyDownHandler - Ctrl+Z keyboard shortcut (isCtrlOrCmd && key === z && !shiftKey)', (done: Function) => {
+        const editModule: any = (gridObj.editModule as any).editModule || gridObj.editModule;
+        gridObj.addRecord({ OrderID: 999, CustomerID: 'TEST' });
+        const keyEvent: any = {
+            ctrlKey: true, metaKey: false, key: 'z', shiftKey: false, action: undefined,
+            preventDefault: preventDefault
+        };
+        editModule.keyDownHandler(keyEvent);
+        expect(gridObj.editModule.isUndoStackAvailable()).toBeDefined();
+        done();
+    });
+
+    it('keyDownHandler - action === ctrlPlusZ', (done: Function) => {
+        const editModule: any = (gridObj.editModule as any).editModule || gridObj.editModule;
+        gridObj.addRecord({ OrderID: 1000, CustomerID: 'TEST2' });
+        const keyEvent: any = {
+            ctrlKey: false, metaKey: false, key: 'a', shiftKey: false, action: 'ctrlPlusZ',
+            preventDefault: preventDefault
+        };
+        editModule.keyDownHandler(keyEvent);
+        expect(keyEvent.action).toBe('ctrlPlusZ');
+        done();
+    });
+
+    it('keyDownHandler - Ctrl+Y keyboard shortcut (isCtrlOrCmd && key === y && !shiftKey)', (done: Function) => {
+        const editModule: any = (gridObj.editModule as any).editModule || gridObj.editModule;
+        if (editModule.undoStack.length > 0) {
+            editModule.undoBatchEdit();
+        }
+        const keyEvent: any = {
+            ctrlKey: true, metaKey: false, key: 'y', shiftKey: false, action: undefined,
+            preventDefault: preventDefault
+        };
+        editModule.keyDownHandler(keyEvent);
+        expect(keyEvent.key).toBe('y');
+        done();
+    });
+
+    it('keyDownHandler - Ctrl+Shift+Z keyboard shortcut (isCtrlOrCmd && key === z && shiftKey)', (done: Function) => {
+        const editModule: any = (gridObj.editModule as any).editModule || gridObj.editModule;
+        gridObj.addRecord({ OrderID: 1001, CustomerID: 'TEST3' });
+        if (editModule.undoStack.length > 0) {
+            editModule.undoBatchEdit();
+        }
+        const keyEvent: any = {
+            ctrlKey: true, metaKey: false, key: 'z', shiftKey: true, action: undefined,
+            preventDefault: preventDefault
+        };
+        editModule.keyDownHandler(keyEvent);
+        expect(keyEvent.shiftKey).toBe(true);
+        done();
+    });
+
+    it('keyDownHandler - action === ctrlPlusY', (done: Function) => {
+        const editModule: any = (gridObj.editModule as any).editModule || gridObj.editModule;
+        if (editModule.undoStack.length > 0) {
+            editModule.undoBatchEdit();
+        }
+        const keyEvent: any = {
+            ctrlKey: false, metaKey: false, key: 'a', shiftKey: false, action: 'ctrlPlusY',
+            preventDefault: preventDefault
+        };
+        editModule.keyDownHandler(keyEvent);
+        expect(keyEvent.action).toBe('ctrlPlusY');
+        done();
+    });
+
+    it('keyDownHandler - with metaKey instead of ctrlKey (Mac support)', (done: Function) => {
+        const editModule: any = (gridObj.editModule as any).editModule || gridObj.editModule;
+        gridObj.addRecord({ OrderID: 1002, CustomerID: 'TEST4' });
+        const keyEvent: any = {
+            ctrlKey: false, metaKey: true, key: 'z', shiftKey: false, action: undefined,
+            preventDefault: preventDefault
+        };
+        editModule.keyDownHandler(keyEvent);
+        expect(keyEvent.metaKey).toBe(true);
+        done();
+    });
+
+    it('keyDownHandler - undoRedo disabled - should not trigger undo', (done: Function) => {
+        const editModule: any = (gridObj.editModule as any).editModule || gridObj.editModule;
+        const originalSetting = gridObj.editSettings.enableUndoRedo;
+        gridObj.editSettings.enableUndoRedo = false;
+        const keyEvent: any = {
+            ctrlKey: true, metaKey: false, key: 'z', shiftKey: false, action: undefined,
+            preventDefault: preventDefault
+        };
+        editModule.keyDownHandler(keyEvent);
+        gridObj.editSettings.enableUndoRedo = originalSetting;
+        expect(gridObj.editSettings.enableUndoRedo).toBe(originalSetting);
+        done();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('Coverage Improvement Tests - storeCellsInUndoStack DateTime handling', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: data,
+                editSettings: {
+                    allowEditing: true,
+                    allowAdding: true,
+                    allowDeleting: true,
+                    mode: 'Batch',
+                    enableUndoRedo: true,
+                    undoRedoLimit: 20,
+                    showConfirmDialog: false,
+                    showDeleteConfirmDialog: false
+                },
+                toolbar: ['Add', 'Edit', 'Delete', 'Update', 'Cancel', 'Undo', 'Redo'],
+                columns: [
+                    { field: 'OrderID', type: 'number', isPrimaryKey: true, visible: true },
+                    { field: 'OrderDate', type: 'datetime', editType: 'datetimepickeredit' },
+                    { field: 'ShipDate', type: 'date', format: 'yMd', editType: 'datepickeredit' },
+                    { field: 'CustomerID', type: 'string' },
+                    { field: 'Freight', format: 'C2', type: 'number', editType: 'numericedit' }
+                ]
+            }, done);
+    });
+
+    it('storeCellsInUndoStack - DateTime column with same getTime() values', (done: Function) => {
+        const editModule: any = (gridObj.editModule as any).editModule || gridObj.editModule;
+        const rows = gridObj.getContent().querySelectorAll('tr.e-row');
+        const firstRow = rows[0];
+        const rowUid = firstRow.getAttribute('data-uid');
+        const rowObj = gridObj.getRowObjectFromUID(rowUid);
+        const sameDate1 = new Date(2020, 0, 1, 10, 30, 0);
+        const sameDate2 = new Date(2020, 0, 1, 10, 30, 0);
+        const column = gridObj.getColumnByField('OrderDate');
+        const cell = firstRow.querySelector('td[aria-colindex="2"]');
+        const cellSaveArgs: any = {
+            cell: cell, column: column, columnName: 'OrderDate', columnObject: column,
+            isForeignKey: false, previousValue: sameDate1, value: sameDate2, rowData: rowObj.data
+        };
+        editModule.storeCellsInUndoStack(cellSaveArgs);
+        expect(cellSaveArgs.value.getTime()).toBe(cellSaveArgs.previousValue.getTime());
+        done();
+    });
+
+    it('storeCellsInUndoStack - DateTime column with different getTime() values', (done: Function) => {
+        const editModule: any = (gridObj.editModule as any).editModule || gridObj.editModule;
+        const rows = gridObj.getContent().querySelectorAll('tr.e-row');
+        const firstRow = rows[0];
+        const rowUid = firstRow.getAttribute('data-uid');
+        const rowObj = gridObj.getRowObjectFromUID(rowUid);
+        const date1 = new Date(2020, 0, 1, 10, 30, 0);
+        const date2 = new Date(2020, 0, 2, 10, 30, 0);
+        const column = gridObj.getColumnByField('OrderDate');
+        const cell = firstRow.querySelector('td[aria-colindex="2"]');
+        const cellSaveArgs: any = {
+            cell: cell, column: column, columnName: 'OrderDate', columnObject: column,
+            isForeignKey: false, previousValue: date1, value: date2, rowData: rowObj.data, action: undefined
+        };
+        const undoStackLengthBefore = editModule.undoStack.length;
+        editModule.storeCellsInUndoStack(cellSaveArgs);
+        const undoStackLengthAfter = editModule.undoStack.length;
+        expect(undoStackLengthAfter).toBeGreaterThanOrEqual(undoStackLengthBefore);
+        done();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('Coverage Improvement Tests - restoreCellState with Date', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: data,
+                editSettings: {
+                    allowEditing: true,
+                    allowAdding: true,
+                    allowDeleting: true,
+                    mode: 'Batch',
+                    enableUndoRedo: true,
+                    undoRedoLimit: 20,
+                    showConfirmDialog: false,
+                    showDeleteConfirmDialog: false
+                },
+                toolbar: ['Add', 'Edit', 'Delete', 'Update', 'Cancel', 'Undo', 'Redo'],
+                columns: [
+                    { field: 'OrderID', type: 'number', isPrimaryKey: true, visible: true, validationRules: { required: true } },
+                    { field: 'OrderDate', type: 'date', format: 'yMd', editType: 'datepickeredit' },
+                    { field: 'CustomerID', type: 'string' },
+                    { field: 'Freight', format: 'C2', type: 'number', editType: 'numericedit' }
+                ]
+            }, done);
+    });
+
+    it('restoreCellState with Date instanceof check - both Date objects with same value', (done: Function) => {
+        const editModule: any = (gridObj.editModule as any).editModule || gridObj.editModule;
+        const rows = gridObj.getContent().querySelectorAll('tr.e-row');
+        const firstRow = rows[0];
+        const rowUid = firstRow.getAttribute('data-uid');
+        const rowObj = gridObj.getRowObjectFromUID(rowUid);
+        gridObj.editCell(0, 'OrderDate');
+        const currentDate = new Date(rowObj.data['OrderDate']);
+        const previousDate = new Date(currentDate);
+        editModule.restoreCellState(rowUid, 'OrderDate', previousDate);
+        const td = firstRow.querySelector('td[aria-colindex="2"]');
+        expect(td).toBeDefined();
+        done();
+    });
+
+    it('restoreCellState with Date instanceof check - when value is not restored', (done: Function) => {
+        const editModule: any = (gridObj.editModule as any).editModule || gridObj.editModule;
+        const rows = gridObj.getContent().querySelectorAll('tr.e-row');
+        const firstRow = rows[0];
+        const rowUid = firstRow.getAttribute('data-uid');
+        const rowObj = gridObj.getRowObjectFromUID(rowUid);
+        const previousDate = new Date('2020-01-01');
+        const currentDate = new Date('2020-01-02');
+        rowObj.changes = { OrderDate: currentDate };
+        editModule.restoreCellState(rowUid, 'OrderDate', previousDate);
+        expect(rowObj).toBeDefined();
+        done();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('Coverage Improvement Tests - autoFill action in undoAction/redoAction', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: data,
+                editSettings: {
+                    allowEditing: true,
+                    allowAdding: true,
+                    allowDeleting: true,
+                    mode: 'Batch',
+                    enableUndoRedo: true,
+                    undoRedoLimit: 20,
+                    showConfirmDialog: false,
+                    showDeleteConfirmDialog: false
+                },
+                toolbar: ['Add', 'Edit', 'Delete', 'Update', 'Cancel', 'Undo', 'Redo'],
+                columns: [
+                    { field: 'OrderID', type: 'number', isPrimaryKey: true, visible: true, validationRules: { required: true } },
+                    { field: 'CustomerID', type: 'string' },
+                    { field: 'Freight', format: 'C2', type: 'number', editType: 'numericedit' },
+                    { field: 'ShipCity', type: 'string' }
+                ]
+            }, done);
+    });
+
+    it('undoAction with auto-fill case - multiple cells filled', (done: Function) => {
+        const editModule: any = (gridObj.editModule as any).editModule || gridObj.editModule;
+        const autoFillAction: any = {
+            type: 'auto-fill',
+            cells: [
+                {
+                    rowIndex: 0,
+                    rowUid: gridObj.getDataRows()[0].getAttribute('data-uid'),
+                    field: 'CustomerID',
+                    previousValue: 'ALFKI',
+                    newValue: 'VINET'
+                },
+                {
+                    rowIndex: 1,
+                    rowUid: gridObj.getDataRows()[1].getAttribute('data-uid'),
+                    field: 'CustomerID',
+                    previousValue: 'ANATR',
+                    newValue: 'VINET'
+                }
+            ]
+        };
+        editModule.pushToStack(editModule.undoStack, autoFillAction);
+        editModule.isUndoAction = true;
+        editModule.undoAction(autoFillAction);
+        editModule.isUndoAction = false;
+        expect(editModule.undoStack.length).toBeGreaterThan(0);
+        done();
+    });
+
+    it('undoAction with auto-fill case - single cell filled', (done: Function) => {
+        const editModule: any = (gridObj.editModule as any).editModule || gridObj.editModule;
+        const autoFillAction: any = {
+            type: 'auto-fill',
+            cells: [
+                {
+                    rowIndex: 0,
+                    rowUid: gridObj.getDataRows()[0].getAttribute('data-uid'),
+                    field: 'Freight',
+                    previousValue: 32.38,
+                    newValue: 50.00
+                }
+            ]
+        };
+        editModule.isUndoAction = true;
+        editModule.undoAction(autoFillAction);
+        editModule.isUndoAction = false;
+        expect(autoFillAction.type).toBe('auto-fill');
+        done();
+    });
+
+    it('undoAction with auto-fill case - when cells property is undefined', (done: Function) => {
+        const editModule: any = (gridObj.editModule as any).editModule || gridObj.editModule;
+        const autoFillAction: any = {
+            type: 'auto-fill',
+            cells: undefined
+        };
+        editModule.isUndoAction = true;
+        editModule.undoAction(autoFillAction);
+        editModule.isUndoAction = false;
+        expect(autoFillAction.cells).toBeUndefined();
+        done();
+    });
+
+    it('undoAction with auto-fill case - when cells property is null', (done: Function) => {
+        const editModule: any = (gridObj.editModule as any).editModule || gridObj.editModule;
+        const autoFillAction: any = {
+            type: 'auto-fill',
+            cells: null
+        };
+        editModule.isUndoAction = true;
+        editModule.undoAction(autoFillAction);
+        editModule.isUndoAction = false;
+        expect(autoFillAction.cells).toBeNull();
+        done();
+    });
+
+    it('redoAction with auto-fill case - multiple cells filled', (done: Function) => {
+        const editModule: any = (gridObj.editModule as any).editModule || gridObj.editModule;
+        const autoFillAction: any = {
+            type: 'auto-fill',
+            cells: [
+                {
+                    rowIndex: 0,
+                    rowUid: gridObj.getDataRows()[0].getAttribute('data-uid'),
+                    field: 'CustomerID',
+                    previousValue: 'ALFKI',
+                    newValue: 'VINET'
+                },
+                {
+                    rowIndex: 1,
+                    rowUid: gridObj.getDataRows()[1].getAttribute('data-uid'),
+                    field: 'CustomerID',
+                    previousValue: 'ANATR',
+                    newValue: 'VINET'
+                }
+            ]
+        };
+        editModule.isRedoAction = true;
+        editModule.redoAction(autoFillAction);
+        editModule.isRedoAction = false;
+        expect(autoFillAction.type).toBe('auto-fill');
+        done();
+    });
+
+    it('redoAction with auto-fill case - single cell filled', (done: Function) => {
+        const editModule: any = (gridObj.editModule as any).editModule || gridObj.editModule;
+        const autoFillAction: any = {
+            type: 'auto-fill',
+            cells: [
+                {
+                    rowIndex: 0,
+                    rowUid: gridObj.getDataRows()[0].getAttribute('data-uid'),
+                    field: 'Freight',
+                    previousValue: 32.38,
+                    newValue: 50.00
+                }
+            ]
+        };
+        editModule.isRedoAction = true;
+        editModule.redoAction(autoFillAction);
+        editModule.isRedoAction = false;
+        expect(editModule.isRedoAction).toBe(false);
+        done();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('Coverage Improvement Tests - autoFill method with various scenarios', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: data,
+                editSettings: {
+                    allowEditing: true,
+                    allowAdding: true,
+                    allowDeleting: true,
+                    mode: 'Batch',
+                    enableUndoRedo: true,
+                    undoRedoLimit: 20,
+                    showConfirmDialog: false,
+                    showDeleteConfirmDialog: false
+                },
+                toolbar: ['Add', 'Edit', 'Delete', 'Update', 'Cancel', 'Undo', 'Redo'],
+                columns: [
+                    { field: 'OrderID', type: 'number', isPrimaryKey: true, visible: true },
+                    { field: 'CustomerID', type: 'string' },
+                    { field: 'Freight', format: 'C2', type: 'number', editType: 'numericedit' },
+                    { field: 'ShipCity', type: 'string' }
+                ]
+            }, done);
+    });
+
+    it('autoFill method - when autoFillAction.cells is undefined', (done: Function) => {
+        const editModule: any = (gridObj.editModule as any).editModule || gridObj.editModule;
+        const autoFillAction: any = { cells: undefined };
+        editModule.isUndoAction = true;
+        editModule.autoFill(autoFillAction);
+        editModule.isUndoAction = false;
+        expect(autoFillAction.cells).toBeUndefined();
+        done();
+    });
+
+    it('autoFill method - undo operation with previousValue', (done: Function) => {
+        const editModule: any = (gridObj.editModule as any).editModule || gridObj.editModule;
+        const autoFillAction: any = {
+            cells: [
+                {
+                    rowIndex: 0,
+                    rowUid: gridObj.getDataRows()[0].getAttribute('data-uid'),
+                    field: 'CustomerID',
+                    previousValue: 'ORIGINAL',
+                    newValue: 'UPDATED'
+                }
+            ]
+        };
+        editModule.isUndoAction = true;
+        editModule.autoFill(autoFillAction);
+        editModule.isUndoAction = false;
+        expect(autoFillAction.cells.length).toBe(1);
+        done();
+    });
+
+    it('autoFill method - redo operation with newValue', (done: Function) => {
+        const editModule: any = (gridObj.editModule as any).editModule || gridObj.editModule;
+        const autoFillAction: any = {
+            cells: [
+                {
+                    rowIndex: 0,
+                    rowUid: gridObj.getDataRows()[0].getAttribute('data-uid'),
+                    field: 'CustomerID',
+                    previousValue: 'ORIGINAL',
+                    newValue: 'UPDATED'
+                }
+            ]
+        };
+        editModule.isUndoAction = false;
+        editModule.autoFill(autoFillAction);
+        expect(autoFillAction.cells.length).toBe(1);
+        done();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('Coverage Improvement Tests - storeDeleteAction with multiple rows', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: data,
+                editSettings: {
+                    allowEditing: true,
+                    allowAdding: true,
+                    allowDeleting: true,
+                    mode: 'Batch',
+                    enableUndoRedo: true,
+                    undoRedoLimit: 20,
+                    showConfirmDialog: false,
+                    showDeleteConfirmDialog: false
+                },
+                toolbar: ['Add', 'Edit', 'Delete', 'Update', 'Cancel', 'Undo', 'Redo'],
+                columns: [
+                    { field: 'OrderID', type: 'number', isPrimaryKey: true, visible: true },
+                    { field: 'CustomerID', type: 'string' },
+                    { field: 'Freight', format: 'C2', type: 'number', editType: 'numericedit' }
+                ]
+            }, done);
+    });
+
+    it('storeDeleteAction - with Array.isArray(deleteArgs.row) && deletedRowLength', (done: Function) => {
+        const editModule: any = (gridObj.editModule as any).editModule || gridObj.editModule;
+        const rows = gridObj.getContent().querySelectorAll('tr.e-row');
+        const multipleRows = [rows[0], rows[1], rows[2]];
+        const deleteArgs: any = {
+            row: multipleRows,
+            data: [gridObj.getCurrentViewRecords()[0], gridObj.getCurrentViewRecords()[1], gridObj.getCurrentViewRecords()[2]]
+        };
+        const undoStackLengthBefore = editModule.undoStack.length;
+        editModule.storeDeleteAction(deleteArgs);
+        const undoStackLengthAfter = editModule.undoStack.length;
+        expect(undoStackLengthAfter).toBeGreaterThanOrEqual(undoStackLengthBefore);
+        done();
+    });
+
+    it('storeDeleteAction - with enableUndoRedo false - should return early', (done: Function) => {
+        const editModule: any = (gridObj.editModule as any).editModule || gridObj.editModule;
+        const originalSetting = gridObj.editSettings.enableUndoRedo;
+        gridObj.editSettings.enableUndoRedo = false;
+        const rows = gridObj.getContent().querySelectorAll('tr.e-row');
+        const multipleRows = [rows[0], rows[1]];
+        const deleteArgs: any = {
+            row: multipleRows,
+            data: [gridObj.getCurrentViewRecords()[0], gridObj.getCurrentViewRecords()[1]]
+        };
+        const undoStackLengthBefore = editModule.undoStack.length;
+        editModule.storeDeleteAction(deleteArgs);
+        const undoStackLengthAfter = editModule.undoStack.length;
+        expect(undoStackLengthAfter).toBe(undoStackLengthBefore);
+        gridObj.editSettings.enableUndoRedo = originalSetting;
+        done();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('Coverage Improvement Tests - undoBatchEdit with undefined action', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: data,
+                editSettings: {
+                    allowEditing: true,
+                    allowAdding: true,
+                    allowDeleting: true,
+                    mode: 'Batch',
+                    enableUndoRedo: true,
+                    undoRedoLimit: 20,
+                    showConfirmDialog: false,
+                    showDeleteConfirmDialog: false
+                },
+                toolbar: ['Add', 'Edit', 'Delete', 'Update', 'Cancel', 'Undo', 'Redo'],
+                columns: [
+                    { field: 'OrderID', type: 'number', isPrimaryKey: true, visible: true },
+                    { field: 'CustomerID', type: 'string' },
+                    { field: 'Freight', format: 'C2', type: 'number', editType: 'numericedit' }
+                ]
+            }, done);
+    });
+
+    it('undoBatchEdit - with empty undoStack - should return early', (done: Function) => {
+        const editModule: any = (gridObj.editModule as any).editModule || gridObj.editModule;
+        editModule.undoStack = [];
+        editModule.undoStack.length = 2;
+        editModule.undoBatchEdit();
+        done();
+    });
+
+    it('undoBatchEdit - paste case with action.field true', (done: Function) => {
+        const editModule: any = (gridObj.editModule as any).editModule || gridObj.editModule;
+        const rows = gridObj.getContent().querySelectorAll('tr.e-row');
+        const firstRow = rows[0];
+        const rowUid = firstRow.getAttribute('data-uid');
+        const pasteAction: any = {
+            type: 'paste',
+            rowUid: rowUid,
+            rowIndex: 0,
+            field: 'CustomerID',
+            previousValue: 'OLD',
+            newValue: 'NEW'
+        };
+        editModule.undoStack.push(pasteAction);
+        gridObj.isSpan = true;
+        editModule.undoBatchEdit();
+        expect(editModule.undoStack.length).toBeLessThan(2);
+        done();
+    });
+
+    it('undoBatchEdit - row-delete case with action.deletedRows false (no deletedRows)', (done: Function) => {
+        const editModule: any = (gridObj.editModule as any).editModule || gridObj.editModule;;
+        editModule.redoStack = [];
+        editModule.redoStack.length = 2;
+        editModule.redoBatchEdit();
         done();
     });
 

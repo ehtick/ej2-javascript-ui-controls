@@ -34,7 +34,7 @@ export class Resize {
                 this.parent.undoRedoModule['createUndoCollection']();
                 const details: Object = {};
                 details['action'] = 'ColumnResize';
-                details['resizedColumn'] = { ...args.column };
+                details['resizedColumn'] = Object.assign({}, args.column);
                 this.parent.undoRedoModule['getUndoCollection'][this.parent.undoRedoModule['getUndoCollection'].length - 1] = details;
             }
             this.parent.trigger('resizeStart', args);

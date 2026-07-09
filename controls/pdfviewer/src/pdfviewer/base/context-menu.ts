@@ -116,7 +116,8 @@ export class ContextMenu implements IContextMenu {
         }
         this.contextMenuObj = new Context({
             target: '#' + this.pdfViewerBase.viewerContainer.id, items: this.copyContextMenu,
-            beforeOpen: this.contextMenuOnBeforeOpen.bind(this), select: this.onMenuItemSelect.bind(this),
+            beforeOpen: this.contextMenuOnBeforeOpen.bind(this), beforeClose: this.contextMenuOnBeforeClose.bind(this),
+            select: this.onMenuItemSelect.bind(this),
             created: this.contextMenuOnCreated.bind(this)
         });
         if (this.pdfViewer.enableRtl) {
@@ -159,6 +160,13 @@ export class ContextMenu implements IContextMenu {
             this.currentTarget = target;
         }
         return target;
+    }
+
+    private contextMenuOnBeforeClose(args: BeforeOpenCloseMenuEventArgs): void {
+        if (this.pdfViewerBase.isContextMenuOpen) {
+            args.cancel = true;
+            this.pdfViewerBase.isContextMenuOpen = false;
+        }
     }
 
     private contextMenuOnBeforeOpen(args: BeforeOpenCloseMenuEventArgs): void {

@@ -3676,3 +3676,173 @@ describe('Code Coverage.', () => {
         gridObj = actionComplete = null;
     });
 });
+
+describe('Filter Coverage - Targeted Direct Method Calls (All remaining branches)', () => {
+    let gridObj: Grid;
+    let fm: any;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: filterData.slice(0, 5),
+                allowFiltering: true,
+                filterSettings: { type: 'FilterBar', mode: 'Immediate' },
+                columns: [
+                    { field: 'OrderID', type: 'number' },
+                    { field: 'CustomerID', type: 'string' },
+                    { field: 'Freight', type: 'number' }
+                ]
+            }, done);
+        fm = (gridObj as any).filterModule;
+    });
+
+    it('refreshClearIcon - targetText + Immediate mode branch', () => {
+        const input = document.createElement('input');
+        input.id = 'OrderID_filterBarcell';
+        const clearIcon = document.createElement('span');
+        clearIcon.classList.add('e-clear-icon');
+        const cell = document.createElement('th');
+        cell.classList.add('e-filterbarcell');
+        cell.appendChild(input);
+        cell.appendChild(clearIcon);
+        gridObj.getHeaderContent().appendChild(cell);
+        spyOn(fm, 'removeFilteredColsByField').and.callFake(() => {});
+        const e = { target: clearIcon } as any;
+        fm.refreshClearIcon(e);
+        input.remove();
+        clearIcon.remove();
+    });
+
+    it('clearFiltering - should remove e-filtered class from all elements', () => {
+        const fake1 = document.createElement('div'); fake1.classList.add('e-filtered');
+        const fake2 = document.createElement('div'); fake2.classList.add('e-filtered');
+        gridObj.element.appendChild(fake1);
+        gridObj.element.appendChild(fake2);
+        spyOn(gridObj.renderModule, 'refresh').and.callFake(() => {});
+        fm.clearFiltering();
+        fake1.remove();
+        fake2.remove();
+    });
+
+    it('checkDateColumnValue - isNullOrUndefined(filterDate) branch', () => {
+        expect(fm['checkDateColumnValue'](null, undefined)).toBe(true);
+        expect(fm['checkDateColumnValue'](null, null)).toBe(true);
+    });
+
+    it('columnMenuFilter - !ele branch should call closeDialog', () => {
+        fm.filterModule = { closeDialog: jasmine.createSpy('closeDialog') };
+
+        const args = {
+            col: gridObj.getColumnByField('OrderID'),
+            target: document.createElement('div'),
+            isClose: true,
+            id: 'random-id-that-does-not-exist'
+        };
+
+        fm.columnMenuFilter(args);
+    });
+
+    it('getOperator - multipleOp branch (>=, <= etc.)', () => {
+        fm.operator = '';
+        fm.value = '';
+        fm.getOperator('>=100');
+    });
+
+    it('validateFilterValue - default case (unknown column type)', () => {
+        fm.column = { type: 'customUnknownType', filter: { operator: undefined } };
+        fm.validateFilterValue('test123');
+    });
+
+    it('clickHandler - e-list-item + grid-column popup branch', () => {
+        const listItem = document.createElement('div');
+        listItem.classList.add('e-list-item');
+        const popup = document.createElement('div');
+        popup.classList.add('e-popup-open');
+        popup.id = 'grid-column_popup';
+        const innerDiv = document.createElement('div');
+        const filterText = document.createElement('input');
+        filterText.classList.add('e-filtertext');
+        innerDiv.appendChild(filterText);
+        document.body.appendChild(listItem);
+        document.body.appendChild(popup);
+        document.body.appendChild(innerDiv);
+        const originalGetElementById = document.getElementById;
+        document.getElementById = (id: string) => id === 'grid-column' ? innerDiv : originalGetElementById.call(document, id);
+        fm.filterModule = { closeDialog: jasmine.createSpy('closeDialog') };
+        const e: any = { target: listItem };
+        fm.clickHandler(e);
+        document.body.removeChild(listItem);
+        document.body.removeChild(popup);
+        document.body.removeChild(innerDiv);
+        document.getElementById = originalGetElementById;
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = fm = null;
+    });
+});
+
+describe('Filter Coverage - 2', () => {
+    let gridObj: Grid;
+    let fm: any;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: filterData.slice(0, 5),
+                allowFiltering: true,
+                filterSettings: { type: 'FilterBar', mode: 'Immediate' },
+                columns: [
+                    { field: 'OrderID', type: 'number' },
+                    { field: 'CustomerID', type: 'string' }
+                ]
+            }, done);
+        fm = (gridObj as any).filterModule;
+    });
+
+    it('clickHandler - should enter hasDialog && (!e-filter-popup) && (!e-popup-flmenu) block', () => {
+        const target = document.createElement('div');
+        const dialog = document.createElement('div');
+        dialog.classList.add('e-dialog');
+        dialog.id = 'test-dialog';
+        const popup = document.createElement('div');
+        popup.classList.add('e-popup');
+        popup.id = 'test-popup';
+        const filterPopup = document.createElement('div');
+        filterPopup.classList.add('e-filter-popup');
+        document.body.appendChild(dialog);
+        document.body.appendChild(popup);
+        document.body.appendChild(filterPopup);
+        fm.filterModule = { closeDialog: jasmine.createSpy('closeDialog') };
+        gridObj.element.classList.add('e-device');
+        const e: any = { target: target };
+        fm.clickHandler(e);
+        document.body.removeChild(dialog);
+        document.body.removeChild(popup);
+        document.body.removeChild(filterPopup);
+        gridObj.element.classList.remove('e-device');
+    });
+
+    it('onTimerTick - should execute templateRead when it is a string (getValue + window)', () => {
+        const col = gridObj.getColumnByField('OrderID');
+        col.filterBarTemplate = { read: 'customTemplateReadFn' };
+        (window as any).customTemplateReadFn = function () { return 'returned-from-template'; };
+        fm.column = col;
+        fm.value = 'test';
+        spyOn(fm, 'filterByColumn').and.callFake(() => {});
+        spyOn(gridObj, 'dataBind').and.callFake(() => {});
+        const input = document.createElement('input');
+        input.id = 'OrderID_filterBarcell';
+        input.value = '123';
+        fm.element = { querySelector: () => input } as any;
+        fm.onTimerTick();
+        delete (window as any).customTemplateReadFn;
+        input.remove();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = fm = null;
+    });
+});

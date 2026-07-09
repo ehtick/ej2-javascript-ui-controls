@@ -6,7 +6,8 @@ import { ButtonModel, CheckBoxModel, SwitchModel } from '@syncfusion/ej2-buttons
 import { Column, ColumnModel } from '../models/column';
 import {
     SortSettingsModel, TextWrapSettingsModel, SelectionSettingsModel,
-    FilterSettingsModel, SearchSettingsModel, InfiniteScrollSettingsModel, ResizeSettingsModel
+    FilterSettingsModel, SearchSettingsModel, InfiniteScrollSettingsModel, ResizeSettingsModel,
+    DomVirtualizationSettingsModel
 } from './grid-model';
 import { PageSettingsModel, AggregateRowModel, ColumnChooserSettingsModel } from '../models/models';
 import { RowDropSettingsModel, GroupSettingsModel, GridModel, EditSettingsModel, LoadingIndicatorModel } from './grid-model';
@@ -15,7 +16,7 @@ import { Row } from '../models/row';
 import { GridLine, Action, CellType, SortDirection, PrintMode, ToolbarItems, CommandButtonType, ContextMenuItem, ExcelBorderLineStyle, FocusType, ChartType } from './enum';
 import { MultipleExportType, MultiplePdfExportType, ExportType, ExcelHAlign, ExcelVAlign, BorderLineStyle, ToolbarItem, AggregateTemplateType } from './enum';
 import { PredicateModel } from './grid-model';
-import { SentinelType, Offsets, RowSelectable, PinRow } from './type';
+import { SentinelType, Offsets, RowSelectable, PinRow, SetRowHeight } from './type';
 import { CheckState, ColumnQueryModeType, HierarchyGridPrintMode, ClipMode, freezeMode } from './enum';
 import { ResponsiveDialogAction, RowRenderingDirection } from './enum';
 import { Edit } from '../actions/edit';
@@ -194,6 +195,19 @@ export interface IGrid extends Component<HTMLElement> {
     enableInfiniteScrolling: boolean;
 
     /**
+     * Specifies whether the DOM Virtualization is enable or not.
+     *
+     */
+    enableDomVirtualization?: boolean;
+
+    /**
+     * Specifies the callback function to get the height of each row.
+     *
+     * @default null
+     */
+    setRowHeight?: SetRowHeight | Function;
+
+    /**
      * Specifies whether the sorting is enable or not.
      *
      * @default null
@@ -238,6 +252,13 @@ export interface IGrid extends Component<HTMLElement> {
      * @default []
      */
     infiniteScrollSettings?: InfiniteScrollSettingsModel;
+
+    /**
+     * Specifies the DOM virtualization settings for Grid.
+     *
+     * @default []
+     */
+    domVirtualizationSettings?: DomVirtualizationSettingsModel;
 
     /**
      * Specifies whether the Excel exporting is enable or not.
@@ -422,6 +443,13 @@ export interface IGrid extends Component<HTMLElement> {
     detailTemplate?: string | Function;
 
     /**
+     * Specifies the height of an expanded detail template row.
+     *
+     * @default 500
+     */
+    detailTemplateHeight: number | string;
+
+    /**
      * Specifies pin rows to top across all pages.
      * @default null
      */
@@ -458,6 +486,13 @@ export interface IGrid extends Component<HTMLElement> {
      * @default null
      */
     rowHeight?: number;
+
+    /**
+     * Defines the height of Grid footer rows.
+     *
+     * @default null
+     */
+    footerRowHeight?: number;
 
     /**
      * Specifies the query for Grid.
@@ -704,8 +739,6 @@ export interface IGrid extends Component<HTMLElement> {
 
     columnChooserModule?: ColumnChooser;
 
-    requestTypeAction?: string;
-
     expandedRows?: { [index: number]: IExpandedRow };
     registeredTemplate?: Object;
     lockcolPositionCount?: number;
@@ -730,6 +763,8 @@ export interface IGrid extends Component<HTMLElement> {
     printGridParent?: IGrid;
     defaultChartLocale?: Object;
     enableSeamlessScrolling?: boolean;
+    domRowObj?: Map<number, Row<Column>>;
+    domVirtualClearActions?: string[];
 
     /**
      * @hidden
@@ -779,6 +814,7 @@ export interface IGrid extends Component<HTMLElement> {
     getColumnFieldNames?(): string[];
     getSelectedRows?(): Element[];
     getSelectedRecords?(): Object[];
+    getSelectedCellRecords?(): Object[];
     getSelectedRowIndexes?(): number[];
     getSelectedRowCellIndexes(): ISelectedCell[];
     getCurrentViewRecords(): Object[];
@@ -871,7 +907,24 @@ export interface IGrid extends Component<HTMLElement> {
     startEdit?(): void;
     endEdit?(): void;
     closeEdit?(): void;
+    clearFiltering?(fields?: string[]): void;
     addRecord?(data?: Object): void;
+    /**
+     * Undo the last edit action and restore the grid to its previous state.
+     */
+    undoEdit?(): void;
+    /**
+     * Redo the last undone edit action and reapply the changes to the grid.
+     */
+    redoEdit?(): void;
+    /**
+     * Defines whether an undo action is available.
+     */
+    isUndoStackAvailable?(): boolean;
+    /**
+     * Defines whether an redo action is available.
+     */
+    isRedoStackAvailable?(): boolean;
     deleteRow?(tr: HTMLTableRowElement): void;
     getRowObjectFromUID?(uid: string, isMovable?: boolean, isFrozenRight?: boolean): Row<Column>;
     getPinnedRowObjectByKey?(value: string | Object | number): Row<Column>;
@@ -920,6 +973,8 @@ export interface IGrid extends Component<HTMLElement> {
     serverExcelExport?(url: string): void;
     serverPdfExport?(url: string): void;
     getCurrentVisibleColumns?(isColVirtualization?: boolean): Column[];
+    isRowDomVirtualization?(): boolean;
+    clearDomVirtualRowCache?(): void;
     recalcIndentWidth?(): void;
     // public Events
     dataStateChange?: EmitType<DataStateChangeEventArgs>;
@@ -1372,6 +1427,7 @@ export interface IRow<T> {
     foreignKeyData?: Object;
     parentUid?: string;
     isSelectable?: boolean;
+    rowHeight?: number;
 }
 /**
  * @hidden
@@ -1700,6 +1756,15 @@ export interface ExportGroupCaptionEventArgs {
     data?: Object;
     /** Defines the style of the grouped cell. */
     style?: PdfStyle;
+}
+
+/**
+ * Arguments for the `setRowHeight` callback used in DOM Virtualization mode.
+ * The callback receives the row object and returns the height of that row in pixels.
+ */
+export interface SetRowHeightEventArgs {
+    /** The row object for the rendered row. */
+    row?: Row<Column>;
 }
 
 export interface QueryCellInfoEventArgs {
@@ -2259,6 +2324,7 @@ export interface InterSection {
     prevLeft?: number;
     verticalScrollbar?: HTMLElement;
     horizontalScrollbar?: HTMLElement;
+    scrollThrottle?: number;
 }
 
 /**
@@ -2319,6 +2385,41 @@ export interface BeforeBatchSaveArgs extends ICancel {
     batchChanges?: Object;
 }
 
+/**
+ * @hidden
+ */
+export interface IUndoRedoAction {
+    /** Defines the type of action. */
+    type?: 'cell-edit' | 'row-add' | 'row-delete' | 'paste' | 'auto-fill';
+    /** Define the unique identifier of the row. */
+    rowUid?: string;
+    /** Defines the row index. */
+    rowIndex?: number;
+    /** Define the field name. */
+    field?: string;
+    /** Defines the previous value of the cell. */
+    previousValue?: string | number | boolean | Date;
+    /** Defines the new value of the cell */
+    newValue?: string | number | boolean | Date;
+    /** Define the row data object. */
+    rowData?: Object;
+}
+
+/**
+ * @hidden
+ */
+export interface IAutoFill extends IUndoRedoAction {
+    /** Specifies the cells involved in the AutoFill operation. */
+    cells: IUndoRedoAction[];
+}
+
+/**
+ * @hidden
+ */
+export interface IDeleteAction extends IUndoRedoAction {
+    /** Defines the deleted rows. */
+    deletedRows: IUndoRedoAction[]
+}
 
 export interface ResizeArgs extends ICancel {
     /** Event argument of point or touch action.
@@ -2489,6 +2590,10 @@ export interface CellEditSameArgs extends ICancel {
     isForeignKey?: boolean;
     /** Defines the Column Object */
     column?: Column;
+    /** Defines the current action. */
+    action?: 'undo' | 'redo';
+    /** Defines the request type. */
+    requestType?: string;
 
 }
 
@@ -2588,6 +2693,26 @@ export interface IEdit {
     saveCell?(isForceSave?: boolean): void;
     escapeCellEdit?() : void;
     addCancelWhilePaging?(): void;
+    /**
+     * Undo the last batch edit action and restore the grid to its previous state.
+     */
+    undoBatchEdit?(): void;
+    /**
+     * Redo the last undone batch edit action and reapply the changes to the grid.
+     */
+    redoBatchEdit?(): void;
+    /**
+     * Defines whether an undo action is available.
+     */
+    isUndoStackAvailable?(): boolean;
+    /**
+     * Defines whether an redo action is available.
+     */
+    isRedoStackAvailable?(): boolean;
+    pushToStack?(stack: IUndoRedoAction[], action: IUndoRedoAction): void;
+    undoStack? : IUndoRedoAction[];
+    redoStack? : IUndoRedoAction[];
+    clearStacks?(): void;
     args?: { requestType?: string };
     isAdded?: boolean;
     previousData?: object;
@@ -3382,4 +3507,26 @@ export interface BeforeCustomFilterOpenEventArgs {
     cancel?: boolean;
     /** Specifies the target element for the custom filter menu items. */
     target?: Element;
+}
+
+/**
+ * @hidden
+ */
+export interface ISelectedCellDetails {
+    rowElements: Element[];
+    rowData: Object[];
+    rowIndexes: number[];
+}
+
+export interface CellFocusEventArgs {
+    /** Defines the focused cell element. */
+    cell?: Element;
+    /** Defines the row index of the focused cell. */
+    rowIndex?: number;
+    /** Defines the column index of the focused cell. */
+    cellIndex?: number;
+    /** Defines the cell type: 'header' | 'content' | 'aggregate' | 'caption'. */
+    cellType?: string;
+    /** Defines the original triggering event. */
+    event?: Event | KeyboardEvent;
 }

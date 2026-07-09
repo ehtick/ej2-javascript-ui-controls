@@ -7,7 +7,8 @@ import { CellType, Action } from '../base/enum';
 import { Cell } from '../models/cell';
 import { RowModelGenerator } from '../services/row-model-generator';
 import { GroupSummaryModelGenerator, CaptionSummaryModelGenerator } from '../services/summary-model-generator';
-import { getForeignData, getUid } from '../../grid/base/util';
+import { getForeignData, getUid, getCollapsedRowsCount } from '../../grid/base/util';
+import * as events from '../base/constant';
 /**
  * GroupModelGenerator is used to generate group caption rows and data rows.
  *
@@ -32,9 +33,12 @@ export class GroupModelGenerator extends RowModelGenerator implements IModelGene
         this.captionModelGen = new CaptionSummaryModelGenerator(parent);
     }
 
-    public generateRows(data: { length: number }, args?: { startIndex?: number, requestType?: Action }): Row<Column>[] {
+    public generateRows(data: { length: number }, args?: { startIndex?: number, endIndex?: number, requestType?: Action }): Row<Column>[] {
         if (this.parent.groupSettings.columns.length === 0) {
             return super.generateRows(data, args);
+        }
+        if (this.parent.enableDomVirtualization && args) {
+            return this.generateDomVirtualGroupRows(data, args);
         }
         this.isInfiniteScroll = (args.requestType === 'infiniteScroll');
         this.rows = [];
@@ -48,6 +52,65 @@ export class GroupModelGenerator extends RowModelGenerator implements IModelGene
             this.ensureRowVisibility();
         }
         return this.rows;
+    }
+
+    public buildGroupRowObj(data: { length: number }, requestType?: string): void {
+        if (requestType && this.parent.domVirtualClearActions.indexOf(requestType) !== -1) {
+            this.parent.clearDomVirtualRowCache();
+        }
+        if (this.parent.domRowObj.size === 0) {
+            this.isInfiniteScroll = false;
+            this.rows = [];
+            this.index = this.parent.pinnedTopRowModels.length;
+            for (let i: number = 0, len: number = data.length; i < len; i++) {
+                this.infiniteChildCount = 0;
+                this.renderInfiniteAgg = true;
+                this.getGroupedRecords(0, data[parseInt(i.toString(), 10)], (<Group>data).level, i, undefined, this.rows.length);
+            }
+            this.index = 0;
+            if (this.parent.isCollapseStateEnabled()) {
+                this.ensureRowVisibility();
+            }
+            this.parent.domRowObj.clear();
+            this.rows.forEach((row: Row<Column>, idx: number) => {
+                this.parent.domRowObj.set(idx, row);
+                this.parent.notify(events.applyDomVirtualRowHeight, { row: row });
+            });
+        }
+    }
+
+    private generateDomVirtualGroupRows(
+        data: { length: number },
+        args: { startIndex?: number, endIndex?: number, requestType?: Action }
+    ): Row<Column>[] {
+        this.buildGroupRowObj(data, args.requestType as string);
+        const visibleRows: Row<Column>[] = this.getVisibleGroupRows();
+        const startIndex: number = args.startIndex || 0;
+        const endIndex: number = args.endIndex !== undefined ? Math.min(args.endIndex, visibleRows.length) : visibleRows.length;
+        return visibleRows.slice(startIndex, endIndex);
+    }
+
+    /**
+     * Derives the visible rows from the grouped row cache by skipping children
+     *
+     * @returns {Row<Column>[]} flat list of visible rows
+     * @hidden
+     */
+    public getVisibleGroupRows(): Row<Column>[] {
+        const totalRows: Row<Column>[] = [];
+        const actualRows: Row<Column>[] = [];
+        this.parent.domRowObj.forEach((row: Row<Column>) => { actualRows.push(row); });
+        for (let i: number = 0; i < actualRows.length; i++) {
+            totalRows.push(actualRows[parseInt(i.toString(), 10)]);
+            if (!actualRows[parseInt(i.toString(), 10)].isExpand && actualRows[parseInt(i.toString(), 10)].isCaptionRow) {
+                i += getCollapsedRowsCount(actualRows[parseInt(i.toString(), 10)], this.parent);
+            }
+        }
+        return totalRows;
+    }
+
+    public cleardomGroupRowObj(): void {
+        this.parent.clearDomVirtualRowCache();
     }
 
     private getGroupedRecords(

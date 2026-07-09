@@ -9,6 +9,7 @@ import { Revision } from '../track-changes/track-changes';
 import { CharacterFormatInfo, CharacterFormatProperties } from '../editor';
 import { DocumentHelper } from '../viewer';
 import { DocumentEditor } from '../../document-editor';
+import { WListFormat } from './list-format';
 /* eslint-disable */
 /**
  * @private
@@ -936,6 +937,21 @@ export class WCharacterFormat {
         if (this.revisions.indexOf(revision) === -1) {
             this.revisions.push(revision);
         }
+        if (this.ownerBase instanceof ParagraphWidget && !isNullOrUndefined(this.ownerBase.paragraphFormat)
+            && !isNullOrUndefined(this.ownerBase.paragraphFormat.listFormat)) {
+            const listFormat: WListFormat = this.ownerBase.paragraphFormat.listFormat;
+            const bodyWidget: BlockContainer = this.ownerBase.bodyWidget;
+            let documentHelper: DocumentHelper;
+            if (!isNullOrUndefined(bodyWidget) && !isNullOrUndefined(bodyWidget.page) && !isNullOrUndefined(bodyWidget.page.documentHelper)) {
+                documentHelper = bodyWidget.page.documentHelper;
+            } else if (!isNullOrUndefined(this.owner) && !isNullOrUndefined(this.owner.documentHelper)) {
+                documentHelper = this.owner.documentHelper;
+            }
+            if (!isNullOrUndefined(documentHelper) && !isNullOrUndefined((documentHelper as DocumentHelper).getListById(listFormat.listId)) &&
+                listFormat.listLevel.listLevelPattern !== 'Bullet') {
+                (documentHelper as DocumentHelper).isFollowedListLayoutRequired = true;
+            }
+        }
         revision.hasChanges = true;
     }
     /**
@@ -943,6 +959,21 @@ export class WCharacterFormat {
      */
     public insertRevisionAt(index: number, revision: Revision): void {
         this.revisions.splice(index, 0, revision)
+        if (this.ownerBase instanceof ParagraphWidget && !isNullOrUndefined(this.ownerBase.paragraphFormat)
+            && !isNullOrUndefined(this.ownerBase.paragraphFormat.listFormat)) {
+            const listFormat: WListFormat = this.ownerBase.paragraphFormat.listFormat;
+            const bodyWidget: BlockContainer = this.ownerBase.bodyWidget;
+            let documentHelper: DocumentHelper;
+            if (!isNullOrUndefined(bodyWidget) && !isNullOrUndefined(bodyWidget.page) && !isNullOrUndefined(bodyWidget.page.documentHelper)) {
+                documentHelper = bodyWidget.page.documentHelper;
+            } else if (!isNullOrUndefined(this.owner) && !isNullOrUndefined(this.owner.documentHelper)) {
+                documentHelper = this.owner.documentHelper;
+            }
+            if (!isNullOrUndefined(documentHelper) && !isNullOrUndefined((documentHelper as DocumentHelper).getListById(listFormat.listId)) &&
+                listFormat.listLevel.listLevelPattern !== 'Bullet') {
+                (documentHelper as DocumentHelper).isFollowedListLayoutRequired = true;
+            }
+        }
         revision.hasChanges = true;
     }
     /**
@@ -950,6 +981,21 @@ export class WCharacterFormat {
      */
     public removeRevision(index: number): Revision {
         let revision: Revision = this.revisions.splice(index, 1)[0];
+        if (this.ownerBase instanceof ParagraphWidget && !isNullOrUndefined(this.ownerBase.paragraphFormat)
+            && !isNullOrUndefined(this.ownerBase.paragraphFormat.listFormat)) {
+            const listFormat: WListFormat = this.ownerBase.paragraphFormat.listFormat;
+            const bodyWidget: BlockContainer = this.ownerBase.bodyWidget;
+            let documentHelper: DocumentHelper;
+            if (!isNullOrUndefined(bodyWidget) && !isNullOrUndefined(bodyWidget.page) && !isNullOrUndefined(bodyWidget.page.documentHelper)) {
+                documentHelper = bodyWidget.page.documentHelper;
+            } else if (!isNullOrUndefined(this.owner) && !isNullOrUndefined(this.owner.documentHelper)) {
+                documentHelper = this.owner.documentHelper;
+            }
+            if (!isNullOrUndefined(documentHelper) && !isNullOrUndefined((documentHelper as DocumentHelper).getListById(listFormat.listId)) &&
+                listFormat.listLevel.listLevelPattern !== 'Bullet') {
+                (documentHelper as DocumentHelper).isFollowedListLayoutRequired = true;
+            }
+        }
         revision.hasChanges = true;
         return revision;
     }

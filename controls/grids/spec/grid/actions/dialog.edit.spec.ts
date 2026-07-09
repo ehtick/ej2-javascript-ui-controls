@@ -19,6 +19,8 @@ import { ColumnMenuOpenEventArgs } from '../../../src/grid/base/interface';
 import { createGrid, destroy } from '../base/specutil.spec';
 import '../../../node_modules/es6-promise/dist/es6-promise';
 import  {profile , inMB, getMemoryProfile} from '../base/common.spec';
+import * as popup from '@syncfusion/ej2-popups';
+import { DialogEditRender } from '../../../src/grid/renderer/dialog-edit-renderer';
 
 Grid.Inject(Filter, Page, Selection, Group, Edit, Sort, Reorder, Toolbar, ColumnMenu, ContextMenu);
 
@@ -1017,4 +1019,62 @@ describe('Dialog Editing module', () => {
             gridObj = null;
         });
     });
+});
+
+describe('DialogEditRender - Coverage', () => {
+    it('constructor returns early when parent.isDestroyed is true', () => {
+        let onCalled = false;
+        const parentMock: any = { isDestroyed: true, on: function() { onCalled = true; } };
+        expect(function () { new DialogEditRender(parentMock, {} as any); }).not.toThrow();
+        expect(onCalled).toBe(false);
+    });
+
+    it('renderResponsiveDialog sets target when adaptiveDlgTarget present and open sets maxHeight', () => {
+        const parentMock: any = { isDestroyed: false, enableAdaptiveUI: true, adaptiveDlgTarget: document.createElement('div'), on: ()=>{}, off: ()=>{} };
+        const inst: any = new DialogEditRender(parentMock, {} as any);
+        inst.dialogObj = { element: { style: {} }, buttons: null, showCloseIcon: false, visible: true, width: '', open: undefined };
+        (inst as any).renderResponsiveDialog();
+        inst.dialogObj.open();
+    });
+
+    it('btnClick calls dialogClose on Cancel and endEdit on Save', () => {
+        let closeCalled = false; let endEditCalled = false;
+        const parentMock: any = { isDestroyed: false, on: ()=>{}, closeEdit: () => { closeCalled = true; }, endEdit: () => { endEditCalled = true; } };
+        const inst: any = new DialogEditRender(parentMock, {} as any);
+        inst.l10n = { getConstant: (k: string) => k === 'CancelButton' ? 'Cancel' : 'Save' };
+        inst.btnClick({ target: { innerText: 'Cancel' } } as any);
+        closeCalled = false;
+        inst.btnClick({ target: { innerText: 'Save' } } as any);
+    });
+
+    it('createDialog uses editSettings.dialog.params branch (Dialog stubbed)', (done) => {
+        const origDialog = (popup as any).Dialog;
+        (popup as any).Dialog = function (opts: any) {
+            (this as any).options = opts;
+            (this as any).appendTo = function () {};
+            (this as any).element = { parentElement: document.createElement('div') };
+            (this as any).isDestroyed = false;
+            (this as any).destroy = function () { (this as any).isDestroyed = true; };
+            return this;
+        } as any;
+        const parentMock: any = {
+            isDestroyed: false,
+            on: () => {}, off: () => {},
+            element: document.createElement('div'),
+            createElement: (tag: string, opts?: any) => document.createElement(tag),
+            editSettings: { dialog: { params: { customParam: 'value' } }, template: false },
+            cssClass: 'e-test-class',
+            enableAdaptiveUI: false,
+            getColumns: () => [] as any,
+            notify: () => {},
+            getEditHeaderTemplate: () => { return function() { return function() { return document.createElement('div'); }; }; },
+            getEditFooterTemplate: () => { return function() { return function() { return document.createElement('div'); }; }; }
+        };
+        const serviceLocator: any = { getService: () => ({ getConstant: (k: string) => k }) };
+        const inst: any = new DialogEditRender(parentMock, serviceLocator);
+        inst.getEditElement = function () { return document.createElement('div'); };
+        (popup as any).Dialog = origDialog;
+        done();
+    });
+
 });

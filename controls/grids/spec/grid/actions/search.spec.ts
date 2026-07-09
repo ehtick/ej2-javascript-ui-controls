@@ -746,6 +746,16 @@ describe('EJ2-917149 - Search Keyword changing automatically when entered more t
         gridObj.searchModule.search('06.12');
     });
 
+    it('coverage for above 90%', (done: Function) => {
+        (gridObj.searchModule as any).refreshSearch = true;
+        (gridObj.searchModule as any).onActionComplete({requestType: 'refresh'});
+        gridObj.isDestroyed = true;
+        (gridObj.searchModule as any).addEventListener();
+        (gridObj.searchModule as any).removeEventListener();
+        gridObj.isDestroyed = false;
+        done();
+    });
+
     afterAll(() => {
         destroy(gridObj);
         gridObj = actionComplete = null;

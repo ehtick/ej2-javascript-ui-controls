@@ -56,7 +56,7 @@ describe('_FdfDocument coverage (FDF form export)', () => {
 		//Act 
 		const result = fdf._getFormattedString('()');
 
-		expect(result).toEqual(`'(')`);
+		expect(result).toEqual('\\(\\)');
 	});
 
 

@@ -962,16 +962,11 @@ export class _JsonDocument extends _ExportHelper {
         let j: number = 0;
         let json: string = '{';
         table.forEach((value: string, key: string) => {
-            if (value.startsWith('{') || value.startsWith('[')) {
-                if (key === 'AllowedInteractions') {
-                    json += `"${key}":${value}`;
-                } else {
-                    json += '"' + key + '":' + value;
-                }
+            const isJsonObject: boolean = value.startsWith('{') && value.endsWith('}');
+            const isJsonArray: boolean = value.startsWith('[') && value.endsWith(']') && this._isValidJsonArray(value);
+            if (isJsonObject || isJsonArray) {
+                json += '"' + key + '":' + value;
             } else {
-                if (value.startsWith(' ') && value.length > 1 && (value[1] === '[' || value[1] === '{')) {
-                    value = value.substring(1);
-                }
                 json += '"' + key + '":"' + value + '"';
             }
             if (j < table.size - 1) {
@@ -980,6 +975,21 @@ export class _JsonDocument extends _ExportHelper {
             j++;
         });
         return json + '}';
+    }
+    /**
+     * Validates whether a string value is a well formed JSON array.
+     *
+     * @private
+     * @param {string} value The string to validate as a JSON array.
+     * @returns {boolean} True when the value is a valid JSON array, otherwise false.
+     */
+    private _isValidJsonArray(value: string): boolean {
+        try {
+            JSON.parse('{"test":' + value + '}');
+            return true;
+        } catch {
+            return false;
+        }
     }
     /**
      * Converts an array of tables into a JSON array string.
@@ -2052,33 +2062,19 @@ export class _JsonDocument extends _ExportHelper {
      * @returns {string} Sanitized string with escapes applied.
      */
     _getValidString(value: string): string {
-        if (value.indexOf('\\') !== -1) {
-            value = value.replace(/\\/g, '\\\\');
+        if (value === null) {
+            return value;
         }
-        if (value.indexOf('"') !== -1) {
-            value = value.replace(/"/g, '\\"');
-        }
-        if (value.indexOf('[') !== -1) {
-            value = value.replace(/\[/g, '\\[');
-        }
-        if (value.indexOf(']') !== -1) {
-            value = value.replace(/\[/g, '\\]');
-        }
-        if (value.indexOf('{') !== -1) {
-            value = value.replace(/\[/g, '\\{');
-        }
-        if (value.indexOf('}') !== -1) {
-            value = value.replace(/\}/g, '\\}');
-        }
-        if (value.indexOf('\n') !== -1) {
-            value = value.replace(/\n/g, '\\n');
-        }
-        if (value.indexOf('\r') !== -1) {
-            value = value.replace(/\r/g, '\\r');
-        }
-        if (value.indexOf('\u0000') !== -1) {
-            value = value.replace(/\u0000/g, ''); // eslint-disable-line
-        }
+        value = value.replace(/\\/g, '\\\\');
+        value = value.replace(/"/g, '\\"');
+        value = value.replace(/\n/g, '\\n');
+        value = value.replace(/\r/g, '\\r');
+        value = value.replace(/\t/g, '\\t');
+        value = value.replace(/\u0008/g, '\\b'); // eslint-disable-line
+        value = value.replace(/\f/g, '\\f');
+        value = value.replace(/[\u0000-\u0007\u000B\u000E-\u001F\u007F]/g, (ch: string) => { // eslint-disable-line
+            return '\\u' + ('0000' + ch.charCodeAt(0).toString(16)).slice(-4);
+        });
         return value;
     }
 }

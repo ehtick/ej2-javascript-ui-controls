@@ -60,7 +60,8 @@ export type Action =
     'batchDelete' |
     'batchCancel' |
     'pin-row' |
-    'unpin-row';
+    'unpin-row' |
+    'dom-virtualscroll';
 
 
 
@@ -277,6 +278,19 @@ export type FilterBarMode =
     'Immediate';
 
 /**
+ * Defines the filter modes for FilterBar, Excel, and Checkbox filters.
+ * ```props
+ * * onEnter :- Initiate filter operation after Enter key is pressed (default for FilterBar).
+ * * Default :- Initiate filter operation only after clicking OK/Filter button (default for Excel and Checkbox filters).
+ * * Immediate :- Initiate filter operation immediately on value change with debouncing. Hides OK button and shows Clear button.
+ * ```
+ */
+export type FilterMode =
+    'OnEnter' |
+    'Default' |
+    'Immediate';
+
+/**
  * Defines the aggregate types.
  * ```props
  * * Sum :- Specifies sum aggregate type.
@@ -364,7 +378,11 @@ export type ToolbarItems =
     /** Export the Grid to CSV format */
     'CsvExport' |
     /** Export the Grid to word fromat */
-    'WordExport';
+    'WordExport' |
+    /** Undo the latest action */
+    'Undo' |
+    /** Redo the latest undone action */
+    'Redo';
 
 /**
  * Defines the cell content's overflow mode. The available modes are
@@ -776,7 +794,8 @@ export type CellSelectionMode =
 export type EditMode =
     'Normal' |
     'Dialog' |
-    'Batch';
+    'Batch' |
+    'Cell';
 
 /**
  * Defines adding new row position.

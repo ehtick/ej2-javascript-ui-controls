@@ -21,8 +21,9 @@ import { Freeze } from '../../../src/grid/actions/freeze';
 import { DataManager, RemoteSaveAdaptor } from '@syncfusion/ej2-data';
 import  {profile , inMB, getMemoryProfile} from '../base/common.spec';
 import { Page } from '../../../src/grid/actions/page';
+import { InfiniteScroll } from '../../../src/grid/actions/infinite-scroll';
 
-Grid.Inject(Aggregate, Edit, Group, Toolbar, Selection, Freeze, Sort, Page);
+Grid.Inject(Aggregate, Edit, Group, Toolbar, Selection, Freeze, Sort, Page, InfiniteScroll);
 
 
 let createGrid: Function = (options: GridModel, done: Function): Grid => {
@@ -2182,6 +2183,55 @@ describe('Aggregates Functionality testing', () => {
     });
 });
 
+describe('EJ2-983342 - Aggregates not updated correctly while edit and save action in Grouping with Infinitescrolling', () => {
+    let grid: Grid;
+    let inputValue: number;
+    beforeAll((done: Function) => {
+        grid = createGrid(
+            {
+                dataSource: data.slice(0, 50),
+                editSettings: { allowEditing: true, mode: 'Normal' },
+                toolbar: ['Edit', 'Update', 'Cancel'],
+                enableInfiniteScrolling: true,
+                allowGrouping: true,
+                height:300,
+                groupSettings: { columns: ['ShipCountry'] },
+                columns: [
+                    { field: 'OrderID', headerText: 'Order ID', isPrimaryKey: true },
+                    { field: 'CustomerID', headerText: 'Customer ID' },
+                    { field: 'Freight', format: 'C2' },
+                    { field: 'ShipCountry', headerText: 'Ship Country' }
+                ],
+                aggregates:[{
+                    columns: [{ type: 'Sum', field: 'Freight', groupCaptionTemplate: '${Sum}' }]
+                }]
+            }, done);
+    });
+
+    it('should refresh group caption after normal edit save', (done: Function) => {
+        grid.selectRow(0, true);
+        (<any>grid.toolbarModule).toolbarClickHandler({ item: { id: grid.element.id + '_edit' } });
+        const input: any = select('#' + grid.element.id + 'Freight', grid.element);
+        const prevVal: number = parseFloat(input.value || '0');
+        input.value = (prevVal + 1).toString();
+        inputValue = parseFloat(input.value);
+        grid.actionComplete = (args?: any) => {
+            if (args.requestType === 'save') {
+                const groupItems = (<any>grid).currentViewData && (<any>grid).currentViewData[0] && (<any>grid).currentViewData[0].items;
+                const expectedSum = DataUtil.aggregates.sum(groupItems || [], 'Freight');
+                expect(expectedSum).toBe(inputValue);
+                done();
+            }
+        };
+        grid.keyboardModule.keyAction({ action: 'enter', preventDefault: new Function(), target: grid.getContent().querySelector('.e-row') } as any);
+    });
+
+    afterAll(() => {
+        destroy(grid);
+        grid = null;
+    });
+});
+
 describe('EJ2-1018894 - Aggregate Height incorrect when rowHeight Is used with Virtualization enabled', () => {
     let grid: Grid;
     beforeAll((done: Function) => {
@@ -2214,7 +2264,7 @@ describe('EJ2-1018894 - Aggregate Height incorrect when rowHeight Is used with V
     });
 
     it('should the aggregates rowheight not be 100px', (done: Function) => {
-        expect((grid as any).element.querySelector('.e-summaryrow').getBoundingClientRect().height).not.toBe(100);
+        expect((grid as any).element.querySelector('.e-summaryrow').getBoundingClientRect().height).toBe(100);
         done();
     });
 
@@ -2223,3 +2273,5 @@ describe('EJ2-1018894 - Aggregate Height incorrect when rowHeight Is used with V
         grid = null;
     });
 });
+
+

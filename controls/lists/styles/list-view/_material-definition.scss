@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/material' as *;
-@forward 'ej2-base/styles/definition/material';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $listview-font-family: $font-family !default;
 $listview-text-color: rgba($grey-light-font, .87) !default;
 $listview-text-disabled: $grey-light-font !default;

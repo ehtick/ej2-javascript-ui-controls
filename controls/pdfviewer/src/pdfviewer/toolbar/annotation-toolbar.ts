@@ -1913,7 +1913,8 @@ export class AnnotationToolbar {
         this.stampMenu = [
             {
                 iconCss: 'e-pv-stamp-icon e-pv-icon',
-                items: items
+                items: items,
+                id: this.pdfViewer.element.id + '-add-stamp-menu-item'
             }
         ];
         const menuOptions: MenuModel = {
@@ -2189,14 +2190,17 @@ export class AnnotationToolbar {
             this.fontColorPalette = this.createColorPicker(this.fontColorElement.id);
             this.fontColorPalette.change = this.onFontColorChange.bind(this);
             this.fontColorDropDown = this.createDropDownButton(this.fontColorElement, 'e-pv-annotation-textcolor-icon', this.fontColorPalette.element.parentElement, this.pdfViewer.localeObj.getConstant('Font color'));
+            this.fontColorDropDown.open = this.textColorDropDownOpen.bind(this);
             this.textAlignElement = this.pdfViewerBase.getElement('_annotation_textalign');
             this.alignmentToolbar = this.createShapeOptions(this.textAlignElement.id, undefined, true);
             this.textAlignDropDown = this.createDropDownButton(this.textAlignElement, 'e-pv-annotation-textalign-icon', this.alignmentToolbar.element, this.pdfViewer.localeObj.getConstant('Text Align'));
             this.textAlignDropDown.beforeOpen = this.textAlignDropDownBeforeOpen.bind(this);
+            this.textAlignDropDown.open = this.textAlignDropDownOpen.bind(this);
             this.textPropElement = this.pdfViewerBase.getElement('_annotation_textproperties');
             this.propertiesToolbar = this.createShapeOptions(this.textPropElement.id, undefined, false, true);
             this.textPropertiesDropDown = this.createPropDropDownButton(this.textPropElement, 'e-pv-annotation-textprop-icon', this.propertiesToolbar.element, this.pdfViewer.localeObj.getConstant('Text Properties'));
             this.textPropertiesDropDown.beforeOpen = this.textPropertiesDropDownBeforeOpen.bind(this);
+            this.textPropertiesDropDown.open = this.textPropertiesDropDownOpen.bind(this);
         }
     }
 
@@ -2302,6 +2306,8 @@ export class AnnotationToolbar {
         } else {
             this.calculateToolbarPosition(args);
         }
+        const handle: HTMLElement = this.opacitySlider.element && this.opacitySlider.element.querySelector('.e-handle.e-handle-first');
+        if (handle) { handle.focus(); }
     }
 
     private onColorPickerCancelClick(event: MouseEvent): void {
@@ -2388,6 +2394,8 @@ export class AnnotationToolbar {
         }
         this.popupPosition(args, this.colorDropDownElement);
         this.colorPalette.refresh();
+        const palette: HTMLElement = this.colorPalette.element && this.colorPalette.element.parentElement && this.colorPalette.element.parentElement.querySelector('.e-palette');
+        if (palette) { palette.focus(); }
     }
 
     private strokeDropDownBeforeOpen(args: BeforeOpenCloseMenuEventArgs): void {
@@ -2432,6 +2440,29 @@ export class AnnotationToolbar {
         }
         this.popupPosition(args, this.strokeDropDownElement);
         this.strokeColorPicker.refresh();
+        const palette: HTMLElement = this.strokeColorPicker.element && this.strokeColorPicker.element.parentElement && this.strokeColorPicker.element.parentElement.querySelector('.e-palette');
+        if (palette) { palette.focus(); }
+    }
+
+    private textColorDropDownOpen(args: any): void {
+        const palette: HTMLElement = this.fontColorPalette.element && this.fontColorPalette.element.parentElement && this.fontColorPalette.element.parentElement.querySelector('.e-palette');
+        if (palette) { palette.focus(); }
+    }
+
+    private textAlignDropDownOpen(args: any): void {
+        const textAlign: HTMLElement = document.getElementById(this.pdfViewer.element.id + '_annotation_textalign_target') as HTMLElement;
+        if (textAlign) {
+            textAlign.setAttribute('tabindex', '0');
+            textAlign.focus();
+        }
+    }
+
+    private textPropertiesDropDownOpen(args: any): void {
+        const ele: HTMLElement = this.propertiesToolbar.element;
+        const btn: any = ele.querySelectorAll('.e-tbar-btn');
+        if (btn.length > 0) {
+            btn[0].focus();
+        }
     }
 
     private popupPosition: any = function (colorElement: any, buttonElement: any): void {
@@ -2838,6 +2869,8 @@ export class AnnotationToolbar {
         } else {
             this.calculateToolbarPosition(args);
         }
+        const handle: HTMLElement = this.thicknessSlider.element && this.thicknessSlider.element.querySelector('.e-handle.e-handle-first');
+        if (handle) { handle.focus(); }
     }
 
     private calculateToolbarPosition(args: OpenCloseMenuEventArgs): void {
@@ -2896,6 +2929,8 @@ export class AnnotationToolbar {
             this.pdfViewerBase.pdfViewer.tool = 'Ink';
             this.pdfViewerBase.pdfViewer.clearSelection(pageIndex);
         }
+        const slider: HTMLElement = this.eraserSlider.element && this.eraserSlider.element.querySelector('.e-handle-first');
+        if (slider) { slider.focus(); }
     }
 
     private eraserDropDownOpen(args: OpenCloseMenuEventArgs): void {
@@ -4288,6 +4323,9 @@ export class AnnotationToolbar {
             if (Browser.isDevice && !this.pdfViewer.enableDesktopMode) {
                 this.shapeToolMobile(args);
             }
+            if (this.lineElement) {
+                this.lineElement.focus();
+            }
             break;
         case this.pdfViewer.element.id + '_annotation_calibrateIcon':
         case this.pdfViewer.element.id + '_annotation_calibrate':
@@ -4296,6 +4334,9 @@ export class AnnotationToolbar {
             }
             if (Browser.isDevice && !this.pdfViewer.enableDesktopMode) {
                 this.calibrateToolMobile(args);
+            }
+            if (this.calibrateDistance) {
+                this.calibrateDistance.focus();
             }
             break;
         case this.pdfViewer.element.id + '_commentIcon':
@@ -6839,10 +6880,15 @@ export class AnnotationToolbar {
     }
 
     private enableItems(element: HTMLElement, isEnable: boolean): void {
+        const inputElement: HTMLElement = element.querySelector('input');
         this.toolbar.enableItems(element, isEnable);
         if (element.firstElementChild) {
             element.firstElementChild.setAttribute('tabindex', isEnable ? '0' : '-1');
             element.firstElementChild.setAttribute('data-tabindex', isEnable ? '0' : '-1');
+        }
+        if (inputElement) {
+            inputElement.setAttribute('tabindex', isEnable ? '0' : '-1');
+            inputElement.setAttribute('data-tabindex', isEnable ? '0' : '-1');
         }
     }
 }

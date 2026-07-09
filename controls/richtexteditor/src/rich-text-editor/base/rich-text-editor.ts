@@ -443,7 +443,7 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
      * deniedAttrs: null,
      * allowedStyleProps: ['background', 'background-color', 'border', 'border-bottom', 'border-left', 'border-radius',
      * 'border-right', 'border-style', 'border-top', 'border-width', 'clear', 'color', 'cursor',
-     * 'direction', 'display', 'float', 'font', 'font-family', 'font-size', 'font-weight', 'font-style',
+     * 'direction', 'display', 'font', 'font-family', 'font-size', 'font-weight', 'font-style',
      * 'height', 'left', 'line-height', 'list-style-type', 'margin', 'margin-top', 'margin-left',
      * 'margin-right', 'margin-bottom', 'max-height', 'max-width', 'min-height', 'min-width',
      * 'overflow', 'overflow-x', 'overflow-y', 'padding', 'padding-bottom', 'padding-left', 'padding-right',
@@ -3846,6 +3846,7 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
         this.setProperties({ value: this.replaceEntities(this.value) }, true);
         let value: string = this.editorMode === 'HTML' && !isNOU(this.value) ? this.listOrderCorrection(this.value) : this.value;
         value = (this.enableHtmlEncode && this.value) ? decode(value) : value;
+        let isInnerHtmlChanged: boolean = false;
         const getTextArea: HTMLInputElement = this.element.querySelector('.' + classes.CLS_RTE_SOURCE_CODE_TXTAREA);
         if (value) {
             if (!isNOU(getTextArea) && this.rootContainer.classList.contains('e-source-code-enabled')) {
@@ -3856,6 +3857,7 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
             }
             if (this.editorMode === 'HTML' && this.inputElement && this.inputElement.innerHTML.trim() !== value.trim()) {
                 this.inputElement.innerHTML = resetContentEditableElements(value, this.editorMode);
+                isInnerHtmlChanged = true;
             } else if (this.editorMode === 'Markdown' && this.inputElement
                 && (this.inputElement as HTMLTextAreaElement).value.trim() !== value.trim()) {
                 (this.inputElement as HTMLTextAreaElement).value = value;
@@ -3872,6 +3874,7 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
                 } else {
                     this.inputElement.innerHTML = '<p><br/></p>';
                 }
+                isInnerHtmlChanged = true;
             } else {
                 (this.inputElement as HTMLTextAreaElement).value = '';
             }
@@ -3879,8 +3882,41 @@ export class RichTextEditor extends Component<HTMLElement> implements INotifyPro
                 this.valueContainer.value = '';
             }
         }
+        if (isInnerHtmlChanged && this.editorMode === 'HTML' && getTextArea) {
+            this.resetCursorPositionToStart();
+        }
         if (this.showCharCount) {
             this.countModule.refresh();
+        }
+    }
+
+    /**
+     * Resets the cursor position to the beginning of the editor content.
+     * This method is called when the HTML content within the editor changes,
+     * ensuring proper cursor placement at the start of the content.
+     *
+     * @returns {void}
+     * @private
+     */
+    private resetCursorPositionToStart(): void {
+        // Skip if source code mode is enabled
+        if (this.rootContainer.classList.contains('e-source-code-enabled')) {
+            return;
+        }
+
+        const editPanel: HTMLElement = this.contentModule.getEditPanel() as HTMLElement;
+        const selection: Selection = editPanel.ownerDocument.getSelection();
+        const range: Range = editPanel.ownerDocument.createRange();
+
+        // Try to position cursor at the first text node
+        const firstTextNode: Node = this.formatter.editorManager.domTree.getFirstTextNode(editPanel);
+        const targetNode: Node = firstTextNode || editPanel.firstChild;
+
+        if (targetNode) {
+            range.setStart(targetNode, 0);
+            range.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(range);
         }
     }
 

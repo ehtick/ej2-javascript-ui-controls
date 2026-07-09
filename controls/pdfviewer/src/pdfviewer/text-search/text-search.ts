@@ -630,7 +630,9 @@ export class TextSearch {
         if ((!isNullOrUndefined(isPageChange) && !isPageChange) || isNullOrUndefined(isPageChange)) {
             const element: HTMLElement = this.pdfViewerBase.getElement('_searchtext_' + this.searchPageIndex + '_' + elementIdCount);
             const scrollPoint: any = { y: -100, x: -100 };
-            this.scrollToSearchStr(element, scrollPoint);
+            if (element) {
+                this.scrollToSearchStr(element, scrollPoint);
+            }
         }
     }
 

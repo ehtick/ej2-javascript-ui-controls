@@ -326,9 +326,10 @@ export class LinkCommand {
 
         const blockNodes: Node[] = this.parent.domNode.blockNodes();
         if (blockNodes.length < 2) {
-            this.parent.domNode.setMarker(e.item.selection);
             const closestAnchor: Node = closest(e.item.selectParent[0], 'a');
             const selectParent: Node = closestAnchor ? closestAnchor : e.item.selectParent[0];
+            if (selectParent.nodeName !== 'A') { return; }
+            this.parent.domNode.setMarker(e.item.selection);
             const parent: Node = selectParent.parentNode;
             const child: Node[] = [];
             for (; selectParent.firstChild; null) {

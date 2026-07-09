@@ -413,7 +413,7 @@ export class Print {
 
                             }
                             inputField.style.backgroundColor = 'transparent';
-                            if (!currentData.IsSignatureField) {
+                            if (!currentData.IsSignatureField && currentData.borderWidth === 0) {
                                 inputField.style.borderColor = 'transparent';
                             }
                             targetField.appendChild(inputField);

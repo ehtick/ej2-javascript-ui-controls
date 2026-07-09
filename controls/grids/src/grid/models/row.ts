@@ -74,6 +74,8 @@ export class Row<T> {
 
     public isSelectable?: boolean;
 
+    public rowHeight?: number;
+
     constructor(options: { [x: string]: Object }, parent?: IGrid) {
         merge(this, options);
         this.parent = parent;

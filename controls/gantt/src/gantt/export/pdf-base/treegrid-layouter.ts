@@ -178,23 +178,7 @@ export class PdfTreeGridLayouter extends ElementLayouter {
                 if (!rowResult.isFinish && startPage !== null && format.layout !== PdfLayoutType.OnePage && repeatRow) {
                     this.startLocation.x = this.currentBounds.x;
                     this.currentPage = this.getNextPageFormat(format);
-                    if (this.treegrid.enableHeader) {
-                        this.drawHeader();
-                    }
-                    this.startLocation.y = this.currentBounds.y;
-                    if (format.paginateBounds === new RectangleF(0, 0, 0, 0)) {
-                        this.currentBounds.x += this.startLocation.x;
-                    } else {
-                        const currentBoundsx: any = this.currentBounds.x;
-                        this.currentBounds.x = currentBoundsx;
-                    }
-                    if (this.currentBounds.x === PdfBorders.default.left.width / 2) {
-                        this.currentBounds.y += this.startLocation.x;
-                    }
-                    this.drawRow(row);
-                    if (this.currentPage !== null && !layoutedPages.containsKey(this.currentPage)) {
-                        layoutedPages.add(this.currentPage, range);
-                    }
+                    this.layoutOnPageHelper(format, layoutedPages, range, row);
                     this.updateCollection(this.currentPage, totalDetail, rowDetails, j, row.height, pageNumber, 0);
                 }
             }
@@ -211,7 +195,9 @@ export class PdfTreeGridLayouter extends ElementLayouter {
         }
         totalDetail.push({ height: totalHeight, pageNumber: pageNumber });
         const groupedHeights: Record<number, number[]> = {};
-        this.headerHeight = rowDetails[0].height;
+        if (rowDetails.length > 0) {
+            this.headerHeight = rowDetails[0].height;
+        }
         rowDetails.forEach((row: any) => {
             if (!groupedHeights[row.pageNumber]) {
                 groupedHeights[row.pageNumber] = [];
@@ -229,6 +215,27 @@ export class PdfTreeGridLayouter extends ElementLayouter {
         });
         this.pageHeightCollection = pageHeightSummary;
         return result;
+    }
+
+    private layoutOnPageHelper(format: PdfTreeGridLayoutFormat, layoutedPages: TemporaryDictionary<PdfPage, number[]>,
+                               range: number[] , row: PdfTreeGridRow ): void {
+        if (this.treegrid.enableHeader) {
+            this.drawHeader();
+        }
+        this.startLocation.y = this.currentBounds.y;
+        if (format.paginateBounds === new RectangleF(0, 0, 0, 0)) {
+            this.currentBounds.x += this.startLocation.x;
+        } else {
+            const currentBoundsx: any = this.currentBounds.x;
+            this.currentBounds.x = currentBoundsx;
+        }
+        if (this.currentBounds.x === PdfBorders.default.left.width / 2) {
+            this.currentBounds.y += this.startLocation.x;
+        }
+        this.drawRow(row);
+        if (this.currentPage !== null && !layoutedPages.containsKey(this.currentPage)) {
+            layoutedPages.add(this.currentPage, range);
+        }
     }
 
     private checkBounds(format: PdfTreeGridLayoutFormat): void {

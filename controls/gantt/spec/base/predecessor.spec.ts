@@ -2103,7 +2103,7 @@ describe('Parent predecessor validation without edit settings', () => {
             }, done);
     });
     it('Checking parent to parent predecessor validation during load time without editSettings', () => {
-        expect(ganttObj.currentViewData[1].ganttProperties.predecessorsName).toBe('');
+        expect(ganttObj.currentViewData[1].ganttProperties.predecessorsName).toBe(null);
     });
     afterAll(() => {
         if (ganttObj) {
@@ -2683,6 +2683,308 @@ describe('Dynamically empty Gantt when parent predecessor pressent', () => {
     afterAll(() => {
         if (ganttObj) {
             destroyGantt(ganttObj);
+        }
+    });
+});
+
+describe('Improve coverage', () => {
+    let ganttObj: Gantt;
+    beforeAll((done) => {
+        ganttObj = createGantt(
+            {
+                dataSource: emptyDataSource,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    endDate: 'EndDate',
+                    duration: 'Duration',
+                    progress: 'Progress',
+                    child: 'subtasks',
+                    dependency: 'Predecessor'
+                },
+            }, done);
+    });
+        it('checkIsParent method', () => {
+            ganttObj.predecessorModule['checkIsParent']('2'); 
+                });
+        it('getRootParent method', () => {
+            
+            const data: any = []
+        ganttObj.predecessorModule['getRootParent'](data); 
+        });
+        it('getConstraintDate method', function () {
+            (ganttObj as any).predecessorModule['getConstraintDate'](2,'', '', '');
+        });
+        it('getConstraintDate method', function () {
+            (ganttObj as any).predecessorModule['getConstraintDate'](7,'', '', '');
+        });
+        it('getConstraintDate method', function () {
+            (ganttObj as any).predecessorModule['getConstraintDate'](10,'', '', '');
+        });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+
+describe('Dependency.handleUndoRedoParentRecords - coverage tests', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: columnTemplateData,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    endDate: 'EndDate',
+                    duration: 'Duration',
+                    progress: 'Progress',
+                    child: 'Children',
+                    dependency: 'Predecessor'
+                },
+            }, done);
+    });
+
+    it('invoke handleUndoRedoParentRecords when undoRedoModule and cellEditModule.isCellEdit are present', () => {
+        // prepare undo collection with lastUndo present and cell edit active
+        (ganttObj as any).undoRedoModule = { getUndoCollection: [{}, { some: 'last' }] };
+        (ganttObj as any).editModule = { cellEditModule: { isCellEdit: true } };
+        const parentRecords = [{ TaskID: 100 }];
+        (ganttObj.predecessorModule as any)['handleUndoRedoParentRecords'](parentRecords);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+
+describe('ensurePredecessorCollectionHelper coverage', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: columnTemplateData,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    endDate: 'EndDate',
+                    duration: 'Duration',
+                    progress: 'Progress',
+                    child: 'Children',
+                    dependency: 'Predecessor'
+                },
+                durationUnit: 'Day'
+            }, done);
+    });
+
+    it('number predecessor - cover typeof number branch', () => {
+        const ganttData: any = ganttObj.flatData[0];
+        const ganttProp: any = {
+            predecessorsName: 2,
+            rowUniqueID: ganttData.ganttProperties.rowUniqueID
+        };
+        ganttObj.predecessorModule['ensurePredecessorCollectionHelper'](ganttData, ganttProp);
+    });
+
+    it('object predecessor - offset null (offsetUnits is null) branch', () => {
+        ganttObj.durationUnit = 'Day';
+        const ganttData: any = ganttObj.flatData[0];
+        const ganttProp: any = {
+            predecessorsName: [{ from: 2, type: 'FS', /* offset omitted => null */ }],
+            rowUniqueID: ganttData.ganttProperties.rowUniqueID
+        };
+        ganttObj.predecessorModule['ensurePredecessorCollectionHelper'](ganttData, ganttProp);
+    });
+
+    it('object predecessor - offset as string branch', () => {
+        const ganttData: any = ganttObj.flatData[0];
+        const ganttProp: any = {
+            predecessorsName: [{ from: 2, type: 'FS', offset: '3d' }],
+            rowUniqueID: ganttData.ganttProperties.rowUniqueID
+        };
+        ganttObj.predecessorModule['ensurePredecessorCollectionHelper'](ganttData, ganttProp);
+    });
+
+    it('object predecessor - offset as number branch', () => {
+        const ganttData: any = ganttObj.flatData[0];
+        const ganttProp: any = {
+            predecessorsName: [{ from: 2, type: 'FS', offset: 5 }],
+            rowUniqueID: ganttData.ganttProperties.rowUniqueID
+        };
+        ganttObj.predecessorModule['ensurePredecessorCollectionHelper'](ganttData, ganttProp);
+    });
+
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+
+describe('Dependency.getRecord coverage', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: columnTemplateData,
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                endDate: 'EndDate',
+                duration: 'Duration',
+                progress: 'Progress',
+                child: 'Children',
+                dependency: 'Predecessor'
+            },
+        }, done);
+    });
+
+    it('getRecord - branch when record is null (uses predecessor.to)', () => {
+        (ganttObj as any).editModule = {
+            taskbarEditModule: {
+                previousIds: [10, 20, 30],
+                previousFlatData: [{ TaskID: 10 }, { TaskID: 20 }, { TaskID: 30 }]
+            }
+        };
+        const predecessor: any = { to: 20 };
+        const result = (ganttObj.predecessorModule as any).getRecord({}, null, predecessor);
+    });
+
+    it('getRecord - branch when parentGanttRecord is null (uses predecessor.from)', () => {
+        (ganttObj as any).editModule = {
+            taskbarEditModule: {
+                previousIds: ['A', 'B', 'C'],
+                previousFlatData: [{ TaskID: 'A' }, { TaskID: 'B' }, { TaskID: 'C' }]
+            }
+        };
+        const predecessor: any = { from: 'B' };
+        const result = (ganttObj.predecessorModule as any).getRecord(null, {}, predecessor);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+
+describe('generatePredecessorValue - direct invocation coverage', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    dependency: 'Predecessor'
+                },
+            }, done);
+    });
+
+    it('day unit - plural and singular', () => {
+        const depModule: any = (ganttObj as any).predecessorModule;
+        // plural
+        depModule.generatePredecessorValue({ offset: 3, offsetUnit: 'day' }, '1FS');
+        // singular
+        depModule.generatePredecessorValue({ offset: 1, offsetUnit: 'day' }, '1FS');
+    });
+
+    it('hour and minute units', () => {
+        const depModule: any = (ganttObj as any).predecessorModule;
+        depModule.generatePredecessorValue({ offset: 2, offsetUnit: 'hour' }, '1FS');
+        depModule.generatePredecessorValue({ offset: 1, offsetUnit: 'hour' }, '1FS');
+        depModule.generatePredecessorValue({ offset: 5, offsetUnit: 'minute' }, '1FS');
+        depModule.generatePredecessorValue({ offset: 1, offsetUnit: 'minute' }, '1FS');
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            ganttObj.destroy();
+        }
+    });
+});
+describe('Dialog-edit offset duration unit handling', () => {
+    let ganttObj: Gantt;
+    let datasource: any = [
+        {
+            TaskID: 1,
+            TaskName: 'Project Initiation',
+            StartDate: new Date('04/02/2019'),
+            Duration: 4,
+            Progress: 50,
+            child: 'subtasks',
+            subtasks: [
+                {
+                    TaskID: 2,
+                    TaskName: 'Identify Site location',
+                    StartDate: new Date('04/02/2019'),
+                    Duration: 2,
+                    Progress: 50,
+                    Predecessor: '1FS+5Days'
+                }
+            ]
+        }
+    ];
+
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: datasource,
+                durationUnit: 'Day',
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration',
+                    progress: 'Progress',
+                    dependency: 'Predecessor',
+                    child: 'subtasks'
+                },
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true,
+                    showDeleteConfirmDialog: true
+                },
+                columns: [
+                    { field: 'TaskID', headerText: 'Task ID' },
+                    { field: 'TaskName', headerText: 'Task Name' },
+                    { field: 'StartDate', headerText: 'Start Date' },
+                    { field: 'Duration', headerText: 'Duration' },
+                    { field: 'Progress', headerText: 'Progress' },
+                    { field: 'Predecessor', headerText: 'Predecessor' }
+                ],
+                toolbar: ['Add', 'Edit', 'Update', 'Delete', 'Cancel'],
+                gridLines: 'Both',
+                highlightWeekends: true,
+                timelineSettings: {
+                    topTier: {
+                        unit: 'Week',
+                        format: 'dd/MM/yyyy'
+                    },
+                    bottomTier: {
+                        unit: 'Day'
+                    }
+                },
+                height: '550px',
+                allowUnscheduledTasks: true,
+                projectStartDate: new Date('03/25/2019'),
+                projectEndDate: new Date('05/30/2019'),
+            }, done);
+    });
+
+    it('Offset with numeric value when durationUnit is defined', () => {
+        (ganttObj as any).predecessorModule['getOffsetDurationUnit'](undefined);
+    });
+
+    afterAll(() => {
+        if (ganttObj) {
+            ganttObj.destroy();
         }
     });
 });

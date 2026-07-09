@@ -349,6 +349,7 @@ export class ContentRender implements IRenderer {
         this.tempFreezeRows = [];
         let tbdy: Element;
         let tableName: freezeTable;
+        let currentGroupFrozen: boolean = false;
         let isGroupFrozenHdr: boolean = this.parent.frozenRows && this.parent.groupSettings.columns.length ? true : false;
         if (isGroupAdaptive(gObj)) {
             if (['sorting', 'filtering', 'searching', 'grouping', 'ungrouping', 'reorder', 'save', 'delete', 'refresh-aggregate-on-save']
@@ -511,33 +512,39 @@ export class ContentRender implements IRenderer {
                 break;
             }
             if (!gObj.rowTemplate) {
-                tr = row.render(modelData[parseInt(i.toString(), 10)], columns);
+                const rowObj: Row<Column> = modelData[parseInt(i.toString(), 10)];
+                if (rowObj.isCaptionRow) {
+                    currentGroupFrozen = (i < gObj.frozenRows || isGroupFrozenHdr);
+                }
+                tr = row.render(rowObj, columns);
                 addFixedColumnBorder(tr);
                 const isVFreorder: boolean = this.ensureFrozenHeaderRender(args);
-                if (gObj.frozenRows && (i < gObj.frozenRows || isGroupFrozenHdr) && !isInfiniteScroll && args.requestType !== 'virtualscroll' && isVFreorder
+                if (gObj.frozenRows && (i < gObj.frozenRows || currentGroupFrozen) && !isInfiniteScroll && args.requestType !== 'virtualscroll' && args.requestType !== 'dom-virtualscroll' && isVFreorder
                     && this.ensureVirtualFrozenHeaderRender(args)) {
                     hdrfrag.appendChild(tr);
                 } else {
                     const primarykey: string = gObj.getPrimaryKeyFieldNames()[0];
-                    const rowData: object = modelData[parseInt(i.toString(), 10)].data;
+                    const rowData: object = rowObj.data;
                     if (!isNullOrUndefined(primarykey) && !isNullOrUndefined(rowData) && gObj.pinnedTopRowKeys[rowData[`${primarykey}`]]) {
                         tr.classList.add('e-grid-pin-row');
                     }
                     frag.appendChild(tr);
                 }
                 const rowIdx: number = parseInt(tr.getAttribute('aria-rowindex'), 10) - 1;
-                if (rowIdx + 1 === gObj.frozenRows) {
+                if (rowIdx + 1 === gObj.frozenRows && !rowObj.isCaptionRow && !rowObj.isAggregateRow) {
                     isGroupFrozenHdr = false;
                 }
-                if (modelData[parseInt(i.toString(), 10)].isExpand) {
+                if (rowObj.isExpand) {
                     gObj.notify(events.expandChildGrid, (<HTMLTableRowElement>tr).cells[gObj.groupSettings.columns.length]);
                 }
             } else {
                 const rowTemplateID: string = gObj.element.id + 'rowTemplate';
                 let elements: NodeList;
+                const rowData: Object = this.parent.isRowDomVirtualization()
+                    ? modelData[parseInt(i.toString(), 10)].data : dataSource[parseInt(i.toString(), 10)];
                 if (gObj.isReact || isReactPrintGrid) {
                     const isHeader: boolean = gObj.frozenRows && i < gObj.frozenRows;
-                    const copied: Object = extend({ index: i }, dataSource[parseInt(i.toString(), 10)]);
+                    const copied: Object = extend({ index: i }, rowData);
                     gObj.getRowTemplate()(copied, gObj, 'rowTemplate', rowTemplateID, null, null, isHeader ? hdrfrag : frag);
                     if (gObj.requireTemplateRef) {
                         // eslint-disable-next-line @typescript-eslint/no-this-alias
@@ -565,7 +572,7 @@ export class ContentRender implements IRenderer {
                         continue;
                     }
                 } else {
-                    elements = gObj.getRowTemplate()(extend({ index: i }, dataSource[parseInt(i.toString(), 10)]), gObj, 'rowTemplate', rowTemplateID,
+                    elements = gObj.getRowTemplate()(extend({ index: i }, rowData), gObj, 'rowTemplate', rowTemplateID,
                                                      undefined, undefined, undefined, this.parent['root']);
                 }
                 if (!gObj.isReact && (elements[0] as Element).tagName ===  'TBODY') {
@@ -621,7 +628,7 @@ export class ContentRender implements IRenderer {
         }
         gObj.removeMaskRow();
         this.parent.notify('removeGanttShimmer', { requestType: 'hideShimmer'});
-        if (((gObj.frozenRows || gObj.isRowPinned) && args.requestType !== 'virtualscroll' && !isInfiniteScroll && this.ensureVirtualFrozenHeaderRender(args))
+        if (((gObj.frozenRows || gObj.isRowPinned) && args.requestType !== 'virtualscroll' && args.requestType !== 'dom-virtualscroll'  && !isInfiniteScroll && this.ensureVirtualFrozenHeaderRender(args))
             || (args.requestType === 'virtualscroll' && args.virtualInfo.sentinelInfo && args.virtualInfo.sentinelInfo.axis === 'X')
             || ((args.requestType === 'virtualscroll' || isInfiniteScroll || args.requestType === 'delete') && gObj.isRowPinned)) {
             hdrTbody = gObj.getHeaderTable().querySelector( literals.tbody);
@@ -644,8 +651,8 @@ export class ContentRender implements IRenderer {
         getUpdateUsingRaf<HTMLElement>(
             () => {
                 this.parent.notify(events.beforeFragAppend, args);
-                if (!this.parent.enableVirtualization && (!this.parent.enableColumnVirtualization || isColumnVirtualInfiniteProcess)
-                    && !isInfiniteScroll) {
+                if ((!this.parent.enableVirtualization || this.parent.isRowDomVirtualization())
+                    && (!this.parent.enableColumnVirtualization || isColumnVirtualInfiniteProcess) && !isInfiniteScroll) {
                     if (!gObj.isReact) {
                         this.tbody.innerHTML = '';
                     }
@@ -839,7 +846,7 @@ export class ContentRender implements IRenderer {
                 tr = row.render(fhdrData[parseInt(i.toString(), 10)], columns);
                 hdrfrag.appendChild(tr);
             }
-            if (args.virtualInfo.page === 1) {
+            if (args.virtualInfo && args.virtualInfo.page === 1) {
                 modelData.splice(0, this.parent.frozenRows);
             }
         }
@@ -912,6 +919,11 @@ export class ContentRender implements IRenderer {
      */
     public getRows(): Row<Column>[] | HTMLCollectionOf<HTMLTableRowElement> {
         const infiniteRows: Row<Column>[] = this.getInfiniteRows();
+        if (this.parent.isRowDomVirtualization()) {
+            const domRows: Row<Column>[] = [];
+            this.parent.domRowObj.forEach((row: Row<Column>) => { domRows.push(row); });
+            return domRows;
+        }
         return infiniteRows.length ? infiniteRows : this.rows;
     }
 
@@ -921,7 +933,7 @@ export class ContentRender implements IRenderer {
      * @returns {Element} returns the element
      */
     public getRowElements(): Element[] {
-        return this.rowElements;
+        return this.rowElements || [];
     }
 
     /**
@@ -1095,6 +1107,10 @@ export class ContentRender implements IRenderer {
     }
 
     public getRowByIndex(index: number): Element {
+        if (this.parent.isRowDomVirtualization()) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            index = index - (this as any).currentStartIndex;
+        }
         index = this.getInfiniteRowIndex(index);
         return !isNullOrUndefined(index) ? this.parent.getDataRows()[parseInt(index.toString(), 10)] : undefined;
     }

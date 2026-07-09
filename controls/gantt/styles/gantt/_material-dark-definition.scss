@@ -1,6 +1,5 @@
 @use 'sass:color';
-@use 'ej2-base/styles/definition/material-dark' as *;
-@forward 'ej2-base/styles/definition/material-dark';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 
 $gantt-header-bg-color: $grey-dark !default;
 $gantt-header-border-color: $grey-700 !default;

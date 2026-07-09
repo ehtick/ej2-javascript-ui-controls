@@ -316,14 +316,7 @@ export class PdfTreeGridCell {
             result = graphics.stringLayoutResult;
         }
         else if (this.value instanceof PdfImage || this.value instanceof PdfBitmap) {
-            let imageBounds: RectangleF;
-            if (this.value.width <= innerLayoutArea.width) {
-                imageBounds = new RectangleF(innerLayoutArea.x, innerLayoutArea.y, this.value.width, innerLayoutArea.height);
-            }
-            else {
-                imageBounds = innerLayoutArea;
-            }
-            graphics.drawImage(this.value, imageBounds.x, imageBounds.y - 10, imageBounds.width, imageBounds.height);
+            this.drawImageBound(innerLayoutArea, graphics, this.value as PdfImage | PdfBitmap);
         }
         else if (this.value instanceof PdfTextWebLink) {
             this.value.draw(graphics.currentPage, innerLayoutArea);
@@ -332,6 +325,17 @@ export class PdfTreeGridCell {
             this.drawCellBorder(graphics, bounds);
         }
         return result;
+    }
+
+    private drawImageBound(innerLayoutArea: RectangleF, graphics: PdfGraphics, image: PdfImage | PdfBitmap): void {
+        let imageBounds: RectangleF;
+        if (image.width <= innerLayoutArea.width) {
+            imageBounds = new RectangleF(innerLayoutArea.x, innerLayoutArea.y, image.width, innerLayoutArea.height);
+        }
+        else {
+            imageBounds = innerLayoutArea;
+        }
+        graphics.drawImage(image, imageBounds.x, imageBounds.y - 10, imageBounds.width, imageBounds.height);
     }
 
     /**

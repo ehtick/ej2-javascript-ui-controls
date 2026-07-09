@@ -3,7 +3,7 @@
  */
 import { Gantt, Edit, CriticalPath, ContextMenu, ContextMenuClickEventArgs, RowDD, Selection, Toolbar, DayMarkers, Filter, Reorder, Resize, ColumnMenu, VirtualScroll, Sort, ExcelExport, PdfExport, ITaskbarEditedEventArgs } from '../../src/index';
 import * as cls from '../../src/gantt/base/css-constants';
-import { multiTaskbarData, projectData1, resources, normalResourceData, resourceCollection, criticalPathData, taskModeData1, taskModeData2, criticalPathData1, criticalPathData2, bwData1, bwData2, bwData3, bwData4, criticalData2, unscheduleCriticalTask,cr918186, CR933826, CR977218, CR979664, splitTasksDataSource } from '../base/data-source.spec';
+import { multiTaskbarData, projectData1, resources, normalResourceData, resourceCollection, criticalPathData, taskModeData1, taskModeData2, criticalPathData1, criticalPathData2, bwData1, bwData2, bwData3, bwData4, criticalData2, unscheduleCriticalTask,cr918186, CR933826, CR977218, CR979664, splitTasksDataSource, selfDataSource } from '../base/data-source.spec';
 import { createGantt, destroyGantt, triggerMouseEvent } from '../base/gantt-util.spec';
 import { isNullOrUndefined } from '@syncfusion/ej2-base';
 Gantt.Inject(Edit, CriticalPath, ContextMenu, RowDD, Selection, Toolbar, DayMarkers, Filter, Reorder, Resize, ColumnMenu, VirtualScroll, Sort, ExcelExport, PdfExport);
@@ -3569,6 +3569,172 @@ describe('critical path rendering after split', () => {
     });
     afterAll(() => {
         if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+
+describe('critical path coverage', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: selfDataSource,
+            allowSorting: true,
+            allowReordering: true,
+            enableContextMenu: true,
+            resources: resourceCollection,
+            enableCriticalPath: true,
+            taskFields: {
+                id: 'TaskId',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                endDate: 'EndDate',
+                duration: 'Duration',
+                progress: 'Progress',
+                dependency: 'Predecessor',
+                baselineStartDate: "BaselineStartDate",
+                baselineEndDate: 'BaselineEndDate',
+                segments: "Segments",
+                resourceInfo: 'resources',
+                parentID: "ParentId"
+            },
+            viewType: "ProjectView",
+            baselineColor: 'red',
+            editSettings: {
+                allowAdding: true,
+                allowEditing: true,
+                allowDeleting: true,
+                allowTaskbarEditing: true,
+                showDeleteConfirmDialog: true
+            },
+            resourceFields: {
+                id: 'resourceId',
+                name: 'resourceName',
+                unit: 'resourceUnit',
+                group: 'resourceGroup'
+            },
+            columns: [
+                { field: 'TaskId', headerText: 'Task ID' },
+                { field: 'TaskName', headerText: 'Task Name' },
+                { field: 'StartDate', headerText: 'Start Date' },
+                { field: 'EndDate', headerText: 'End Date' },
+                { field: 'Duration', headerText: 'Duration' },
+                { field: 'Predecessor', headerText: 'Dependency' },
+                { field: 'Progress', headerText: 'Progress' }
+            ],
+            toolbar: ['Add', 'Edit', 'Update', 'Delete', 'Cancel', 'ExpandAll', 'CollapseAll', 'Search', 'ZoomIn', 'ZoomOut', 'ZoomToFit',
+                'PrevTimeSpan', 'NextTimeSpan', 'CriticalPath', 'Indent', 'Outdent'],
+            allowSelection: true,
+            splitterSettings: {
+                position: "40%",
+            },
+            tooltipSettings: {
+                showTooltip: true
+            },
+            allowFiltering: true,
+            gridLines: "Both",
+            showColumnMenu: true,
+            highlightWeekends: true,
+            labelSettings: {
+                leftLabel: 'TaskName',
+            },
+            allowResizing: true,
+            height: '450px'
+        }, done);
+    });
+    it('check coverage', () => {
+        expect(ganttObj.flatData[17].isCritical).toBe(true);
+    });
+    it('for SS connection - coverage', () => {
+        let dependency: HTMLElement = ganttObj.element.querySelector('#treeGrid' + ganttObj.element.id + '_gridcontrol_content_table > tbody > tr:nth-child(9) > td:nth-child(6)') as HTMLElement;
+        triggerMouseEvent(dependency, 'dblclick');
+        let input: any = (document.querySelector('#treeGrid' + ganttObj.element.id + '_gridcontrolPredecessor') as any).ej2_instances[0];
+        input.value = '4SS';
+        input.dataBind();
+        let element: HTMLElement = ganttObj.element.querySelector('#treeGrid' + ganttObj.element.id + '_gridcontrol_content_table > tbody > tr:nth-child(10) > td:nth-child(6)') as HTMLElement;
+        triggerMouseEvent(element, 'click');
+        expect(ganttObj.flatData[8].isCritical).toBe(false);
+    });
+    afterAll(() => {
+        if(ganttObj){
+            destroyGantt(ganttObj);
+        }
+    });
+});
+
+describe('critical path coverage - resource view', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: selfDataSource,
+            allowSorting: true,
+            allowReordering: true,
+            enableContextMenu: true,
+            resources: resourceCollection,
+            enableCriticalPath: true,
+            taskFields: {
+                id: 'TaskId',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                endDate: 'EndDate',
+                duration: 'Duration',
+                progress: 'Progress',
+                dependency: 'Predecessor',
+                baselineStartDate: "BaselineStartDate",
+                baselineEndDate: 'BaselineEndDate',
+                segments: "Segments",
+                resourceInfo: 'resources',
+                parentID: "ParentId"
+            },
+            viewType: "ResourceView",
+            baselineColor: 'red',
+            editSettings: {
+                allowAdding: true,
+                allowEditing: true,
+                allowDeleting: true,
+                allowTaskbarEditing: true,
+                showDeleteConfirmDialog: true
+            },
+            resourceFields: {
+                id: 'resourceId',
+                name: 'resourceName',
+                unit: 'resourceUnit',
+                group: 'resourceGroup'
+            },
+            columns: [
+                { field: 'TaskId', headerText: 'Task ID' },
+                { field: 'TaskName', headerText: 'Task Name' },
+                { field: 'StartDate', headerText: 'Start Date' },
+                { field: 'EndDate', headerText: 'End Date' },
+                { field: 'Duration', headerText: 'Duration' },
+                { field: 'Predecessor', headerText: 'Dependency' },
+                { field: 'Progress', headerText: 'Progress' }
+            ],
+            toolbar: ['Add', 'Edit', 'Update', 'Delete', 'Cancel', 'ExpandAll', 'CollapseAll', 'Search', 'ZoomIn', 'ZoomOut', 'ZoomToFit',
+                'PrevTimeSpan', 'NextTimeSpan', 'CriticalPath', 'Indent', 'Outdent'],
+            allowSelection: true,
+            splitterSettings: {
+                position: "40%",
+            },
+            tooltipSettings: {
+                showTooltip: true
+            },
+            allowFiltering: true,
+            gridLines: "Both",
+            showColumnMenu: true,
+            highlightWeekends: true,
+            labelSettings: {
+                leftLabel: 'TaskName',
+            },
+            allowResizing: true,
+            height: '450px'
+        }, done);
+    });
+    it('check coverage', () => {
+        expect(ganttObj.flatData[7].isCritical).toBe(false);
+    });
+    afterAll(() => {
+        if(ganttObj){
             destroyGantt(ganttObj);
         }
     });

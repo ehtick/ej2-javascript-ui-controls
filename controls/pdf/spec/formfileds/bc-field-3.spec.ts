@@ -861,11 +861,8 @@ describe('PdfTextBoxField._drawTextBox - rotation coverage', () => {
 
     field._drawTextBox.call(field, graphics, parameter, 'Text', font, format, false, false);
 
-    expect(graphics.translateTransform).toHaveBeenCalledWith({
-      x: graphics._size.width,
-      y: 0
-    });
-    expect(graphics.rotateTransform).toHaveBeenCalledWith(-270);
+    expect(graphics.translateTransform).not.toHaveBeenCalled();
+	expect(graphics.rotateTransform).not.toHaveBeenCalled();
     expect(graphics.drawString).toHaveBeenCalled();
   });
 

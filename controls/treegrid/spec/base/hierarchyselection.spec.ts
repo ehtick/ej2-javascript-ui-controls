@@ -1014,3 +1014,79 @@ describe('Code coverage', () => {
         destroy(gridObj);
     });
 });
+
+describe('Test case for header checkbox state', () => {
+    let gridObj: TreeGrid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: sampleData,
+                childMapping: 'subtasks',
+                treeColumnIndex: 1,
+
+                autoCheckHierarchy: true,
+                columns: [
+                    { field: 'taskID', headerText: 'Task ID', isPrimaryKey: true, width: 120 },
+                    { field: 'taskName', headerText: 'Task Name', width: 150, showCheckbox: true },
+                    { field: 'duration', headerText: 'Duration', type: 'number', width: 150 },
+                    { field: 'progress', headerText: 'Progress', width: 150 },
+                    { field: 'startDate', headerText: 'Start Date', type: 'date', format: 'yMd', width: 150 }
+                ]
+            },
+            done
+        );
+    });
+    it('header checkbox should be e-check when clicking on intermediate state', () => {
+        gridObj.selectCheckboxes([0]);
+        (<HTMLElement>gridObj.getHeaderTable().querySelectorAll('th')[1].querySelector('.e-treeselectall')).click();
+        expect(gridObj.getHeaderTable().querySelectorAll('th')[1].querySelector('.e-frame').classList.contains('e-check')
+        ).toBeTruthy();
+    });
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});
+
+describe('select Checkboxes using selectCheckboxes method', () => {
+    let gridObj: TreeGrid;
+    let actionComplete: () => void;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: sampleData,
+                childMapping: 'subtasks',
+                treeColumnIndex: 1,
+                editSettings: { allowEditing: true, allowAdding: true, mode: 'Row' },
+                toolbar: ['Add', 'Edit', 'Update', 'Delete', 'Cancel'],
+                autoCheckHierarchy: true,
+                columns: [
+                    { field: 'taskID', headerText: 'Task ID', isPrimaryKey: true, width: 120 },
+                    { field: 'taskName', headerText: 'Task Name', width: 150, showCheckbox: true },
+                    { field: 'duration', headerText: 'Duration', type: 'number', width: 150 },
+                    { field: 'progress', headerText: 'Progress', width: 150 },
+                    { field: 'startDate', headerText: 'Start Date', type: 'date', format: 'yMd', width: 150 }
+                ]
+            },
+            done
+        );
+    });
+    it('select the checkBoxes', (done: Function) => {
+        gridObj.actionComplete = null;
+        gridObj.selectRow(0);
+        (<any>gridObj.grid.toolbarModule).toolbarClickHandler({ item: { id: gridObj.grid.element.id + '_edit' } });
+        let formEle: HTMLFormElement = gridObj.grid.editModule.formObj.element;
+        (select('#' + gridObj.grid.element.id + 'taskName', formEle) as any).value = 'test1';
+        actionComplete = (args?: any): void => {
+            if (args.requestType === 'save') {
+                gridObj.selectCheckboxes([0]);
+                expect(gridObj.getRows()[0].querySelector('.e-frame').classList.contains('e-check')).toBeTruthy();
+                done();
+            }
+        };
+        gridObj.actionComplete = actionComplete;
+        (<any>gridObj.grid.toolbarModule).toolbarClickHandler({ item: { id: gridObj.grid.element.id + '_update' } });
+    });
+    afterAll(() => {
+        destroy(gridObj);
+    });
+});

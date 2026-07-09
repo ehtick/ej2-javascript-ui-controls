@@ -13,9 +13,10 @@ import { GridModel } from '../../../src/grid/base/grid-model';
 import { VirtualScroll } from '../../../src/grid/actions/virtual-scroll';
 import { Page } from '../../../src/grid/actions/page';
 import { Edit } from '../../../src/grid/actions/edit';
+import { Group } from '../../../src/grid/actions/group';
 import { profile, inMB, getMemoryProfile } from '../base/common.spec';
 
-Grid.Inject(VirtualScroll, Page, Edit);
+Grid.Inject(VirtualScroll, Page, Edit, Group);
 
 describe('Cell Merge', () => {
 
@@ -100,8 +101,8 @@ describe('Cell Merge', () => {
         grid = new Grid(
             extend(
                 {}, {
-                    dataBound: dataBound,
-                },
+                dataBound: dataBound,
+            },
                 options
             ),
         );
@@ -119,7 +120,7 @@ describe('Cell Merge', () => {
     let count5000: string[] = Array.apply(null, Array(500)).map(() => 'Column' + ++ctr + '');
     let data1: Object[] = (() => {
         let arr: Object[] = [];
-        for (let i: number = 0, o: Object = {}, j: number = 0; i < 1000; i++ , j++ , o = {}) {
+        for (let i: number = 0, o: Object = {}, j: number = 0; i < 1000; i++, j++, o = {}) {
             count5000.forEach((lt: string) => o[lt] = 'Column' + lt + 'Row' + i);
             arr[j] = o;
         }
@@ -248,7 +249,7 @@ describe('Cell Merge', () => {
                         if (data.OrderID === 10258 && args.column.field === 'ShipName') {
                             args.rowSpan = 15;
                         }
-            
+
                     },
                 }, done);
         });
@@ -270,7 +271,7 @@ describe('Cell Merge', () => {
             expect(cells[2].classList.contains('e-columnselection')).toBeFalsy();
         });
 
-        
+
         it('Rowspan and Colspan with edting', (done: Function) => {
             actionComplete = (args?: any): void => {
                 if (args.requestType === 'beginEdit') {
@@ -283,7 +284,7 @@ describe('Cell Merge', () => {
             gridObj.selectRow(0, true);
             gridObj.keyboardModule.keyAction({ action: 'f2', preventDefault: preventDefault, target: gridObj.getContent().querySelector('.e-row') } as any);
         });
-        
+
         afterAll(() => {
             destroy(gridObj);
             gridObj = null;
@@ -292,7 +293,7 @@ describe('Cell Merge', () => {
 
     describe('EJ2-972292: Provide built-in support for rowspan and column span based on data source values.', () => {
         let gridObj: Grid;
-        
+
         beforeAll((done: Function) => {
             gridObj = createGrid(
                 {
@@ -354,7 +355,7 @@ describe('Cell Merge', () => {
             gridObj.dataBound = dataBound;
             gridObj.filterByColumn('Genre', 'contains', 'Kids');
         });
-        
+
         afterAll(() => {
             destroy(gridObj);
             gridObj = null;
@@ -363,13 +364,13 @@ describe('Cell Merge', () => {
 
     describe('EJ2-972292: Provide built-in support for rowspan and column span based on data source values - 1', () => {
         let gridObj: Grid;
-        
+
         beforeAll((done: Function) => {
             gridObj = createGrid(
                 {
                     dataSource: spanData,
                     allowGrouping: true,
-                    groupSettings: {columns: ['Genre']},
+                    groupSettings: { columns: ['Genre'] },
                     enableRowSpan: true,
                     enableColumnSpan: true,
                     columns: [
@@ -392,11 +393,134 @@ describe('Cell Merge', () => {
             expect(row[5].getAttribute('colspan')).toBe('2');
             done();
         });
-        
+
         afterAll(() => {
             destroy(gridObj);
             gridObj = null;
         });
     });
 
+    describe('Dom Virtualization with rowspan and colspan coverage', () => {
+        let gridObj: Grid;
+
+        beforeAll((done: Function) => {
+            gridObj = createGrid(
+                {
+                    dataSource: spanData,
+                    allowGrouping: true,
+                    groupSettings: { columns: ['Genre'] },
+                    enableRowSpan: true,
+                    enableColumnSpan: true,
+                    enableDomVirtualization: true,
+                    domVirtualizationSettings: { rowBuffer: 5, maxPoolSize: 500, autoRowHeight: false, virtualDomType: 'Row' },
+                    columns: [
+                        { field: 'Channel', headerText: 'Channel', width: 200 },
+                        { field: 'Genre', headerText: 'Genre', width: 100, },
+                        { field: 'Prgm6AM', headerText: '6AM', width: 120, },
+                        { field: 'Prgm7AM', headerText: '7AM', width: 120, visible: false },
+                        { field: 'Prgm8AM', headerText: '8AM', width: 120, },
+                        { field: 'Prgm9AM', headerText: '9AM', width: 120, },
+                        { field: 'Prgm10AM', headerText: '10AM', width: 120, enableRowSpan: false, enableColumnSpan: false },
+                    ],
+                }, done);
+        });
+
+        it('Test for Grouping', (done: Function) => {
+            let tr = gridObj.getContentTable().querySelectorAll('tr');
+            let row = tr[9].querySelectorAll('td');
+            expect(row.length).toBe(7);
+            expect(row[5].getAttribute('rowspan')).toBe('2');
+            expect(row[5].getAttribute('colspan')).toBe('2');
+            done();
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    describe('CellMergeRender unit tests', () => {
+        let cMerge: any;
+        let serviceLocator: any;
+        let parent: any;
+
+        beforeEach(() => {
+            serviceLocator = {
+                getService: (name: string) => {
+                    if (name === 'cellRendererFactory') {
+                        return {
+                            getCellRenderer: () => ({
+                                render: (cell: any, data: any, opts: any) => {
+                                    const td = document.createElement('td');
+                                    td.textContent = 'rendered';
+                                    return td;
+                                }
+                            })
+                        };
+                    }
+                    return null;
+                }
+            };
+
+            parent = {
+                pinnedTopRecords: [],
+                getRowsObject: () => [{ isDataRow: true, cells: [{ column: { uid: 'u1' }, colSpanRange: 1, rowSpanRange: 1 }] }],
+                groupSettings: { columns: [] },
+                enableColumnVirtualization: false,
+                mergeCells: {},
+                getColumnIndexesInView: () => [0],
+                getVisibleColumns: () => [{ field: 'col1' }]
+            };
+
+            cMerge = new CellMergeRender(serviceLocator, parent);
+        });
+
+        it('should use spanText and renderer when cellSpan is true', () => {
+            const cellArgs: any = { column: { field: 'col1' }, colSpan: 1, rowSpan: 0, data: { col1: 'orig' } };
+            const row: any = { index: 1, data: { col1: 'orig' }, cells: [{ cellSpan: true, spanText: 'SPAN', visible: true, column: { uid: 'u1' } }] };
+            const td = document.createElement('td');
+            const res = cMerge.render(cellArgs, row, 0, td);
+            expect(row.data.col1).toBe('SPAN');
+            expect(res.textContent).toBe('rendered');
+        });
+
+        it('should backup merge cells when column virtualization enabled', () => {
+            parent.enableColumnVirtualization = true;
+            parent.mergeCells = {};
+            const cellArgs: any = { column: { field: 'colV' }, colSpan: 4, rowSpan: 0, data: { colV: 'VAL' } };
+            const row: any = { index: 0, data: { colV: 'VAL' }, cells: [{ visible: true, cellSpan: false }] };
+            const td = document.createElement('td');
+            cMerge.render(cellArgs, row, 0, td);
+            const key = 'colV__VAL';
+            expect(parent.mergeCells.hasOwnProperty(key)).toBe(true);
+            expect(parent.mergeCells[key]).toBe(4);
+        });
+
+        it('updateVirtualCells should set cellSpan when span > 1', () => {
+            parent.mergeCells = { 'col1__v1': 4 };
+            parent.getColumnIndexesInView = () => [2];
+            parent.getVisibleColumns = () => [{ field: 'col1' }, { field: 'x' }];
+            const rows: any[] = [{ data: { col1: 'v1' }, cells: [{ cellSpan: 0 }] }, { data: { col1: 'no' }, cells: [{ cellSpan: 0 }] }];
+            const out = cMerge.updateVirtualCells(rows);
+            expect(out[0].cells[0].cellSpan).toBeGreaterThan(1);
+            expect(out[0].cells[0].spanText).toBe('v1');
+        });
+
+        it('updateVirtualCells should not modify rows when span <= 1', () => {
+            parent.mergeCells = { 'col1__v1': 2 };
+            parent.getColumnIndexesInView = () => [3];
+            parent.getVisibleColumns = () => [{ field: 'col1' }];
+            const rows: any[] = [{ data: { col1: 'other' }, cells: [{ cellSpan: 0 }] }];
+            const before = JSON.stringify(rows);
+            const out = cMerge.updateVirtualCells(rows);
+            expect(JSON.stringify(out)).toBe(before);
+        });
+
+        it('getIndexFromAllColumns returns undefined when missing', () => {
+            parent.getVisibleColumns = () => [{ field: 'a' }];
+            const idx = cMerge.getIndexFromAllColumns('missing');
+            expect(idx).toBeUndefined();
+        });
+    });
 });

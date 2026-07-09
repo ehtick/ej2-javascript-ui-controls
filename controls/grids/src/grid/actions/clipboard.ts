@@ -1,6 +1,7 @@
 import { Browser, KeyboardEventArgs, remove, EventHandler, isUndefined, closest, classList, L10n, isNullOrUndefined } from '@syncfusion/ej2-base';
-import { IGrid, IAction, BeforeCopyEventArgs, BeforePasteEventArgs } from '../base/interface';
+import { IGrid, IAction, BeforeCopyEventArgs, BeforePasteEventArgs, IUndoRedoAction, IEdit } from '../base/interface';
 import { Column } from '../models/column';
+import { Row } from '../models/row';
 import { parentsUntil, isGroupAdaptive } from '../base/util';
 import * as events from '../base/constant';
 import { ISelectedCell } from '../../index';
@@ -75,7 +76,8 @@ export class Clipboard implements IAction {
         }
         if (selectedRowCellIndexes.length && e.keyCode === 86 && ((!isMacLike && e.ctrlKey) || (isMacLike && e.metaKey)) && !grid.isEdit) {
             const target: HTMLElement = closest(document.activeElement, '.' + literals.rowCell) as HTMLElement;
-            if (!this.clipBoardTextArea || !target || !grid.editSettings.allowEditing || grid.editSettings.mode !== 'Batch' ||
+            if (!this.clipBoardTextArea || !target || !grid.editSettings.allowEditing || grid.editSettings.mode === 'Normal' ||
+                grid.editSettings.mode === 'Dialog' ||
                 grid.selectionSettings.mode !== 'Cell' || grid.selectionSettings.cellSelectionMode === 'Flow') {
                 return;
             }
@@ -143,6 +145,23 @@ export class Clipboard implements IAction {
                                 this.parent.editModule.updateCell(rIdx, col.field, parseFloat(args.data as string));
                             } else {
                                 grid.editModule.updateCell(rIdx, col.field, args.data);
+                            }
+                            if (grid.editSettings.mode === 'Batch' && grid.editSettings.enableUndoRedo) {
+                                const row: Row<Column> = grid.getRowObjectFromUID(grid.getRows()[parseInt(rIdx.toString(), 10)].getAttribute('data-uid'));
+                                const editModule: IEdit = grid.editModule.editModule;
+                                const action: IUndoRedoAction = {
+                                    type: 'paste',
+                                    rowUid: row ? row.uid : undefined,
+                                    rowIndex: rIdx,
+                                    field: col.field,
+                                    previousValue: (row.data as Object)[col.field],
+                                    newValue: args.data
+                                };
+                                if (action) {
+                                    editModule.pushToStack(editModule.undoStack, action);
+                                    editModule.redoStack = [];
+                                    grid.notify(events.toolbarRefresh, {});
+                                }
                             }
                         }
                     }

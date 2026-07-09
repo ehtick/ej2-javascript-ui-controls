@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## 34.1.30 (2026-07-09)
+
+### DocumentEditor
+
+#### Features
+
+`#I848904` - Implemented support for rendering the tracking revision list based on paragraph character formatting.
+
 ## 34.1.29 (2026-07-06)
 
 ### DocumentEditor

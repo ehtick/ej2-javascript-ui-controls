@@ -50,3 +50,13 @@ export type RowSelectable = (data: Object, columns: ColumnModel[]) => boolean;
  */
 export type PinRow = (data: Object, columns: ColumnModel[]) => boolean;
 
+/**
+ * A callback function invoked for each row rendered in DOM virtualization mode.
+ * Receives the row object and must return the height of that row in pixels.
+ * Takes priority over the static `rowHeight` property but is superseded by
+ * `domVirtualizationSettings.autoRowHeight: true` (DOM measurement).
+ * @param row - The row object for the rendered row.
+ * @returns The height of the row in pixels.
+ */
+export type SetRowHeight = (row: Object) => number;
+

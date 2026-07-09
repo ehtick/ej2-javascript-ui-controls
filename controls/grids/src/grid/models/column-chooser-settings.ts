@@ -64,4 +64,22 @@ export class ColumnChooserSettings extends ChildProperty<ColumnChooserSettings> 
      */
     @Property(null)
     public renderCustomColumnChooser: string | Function;
+
+    /**
+     * Specifies the mode of the Column Chooser.
+     * - `Default` (default): Changes are staged and applied only when the user clicks OK.
+     * - `Immediate`: Changes are applied immediately when a checkbox is toggled.
+     *
+     * @default 'Default'
+     */
+    @Property('Default')
+    public mode: 'Default' | 'Immediate';
+
+    /**
+     * Defines the delay in milliseconds for immediate mode operation.
+     *
+     * @default 0
+     */
+    @Property(0)
+    public immediateModeDelay ?: number;
 }

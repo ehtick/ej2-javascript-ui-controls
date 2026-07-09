@@ -338,7 +338,15 @@ export class _PdfStringLayouter {
                     const size: Size = result._actualSize;
                     size.width = Math.max(size.width, info._width);
                     result._size = size;
-                    height = expHeight;
+                    if (expHeight >= maxHeight && maxHeight > 0 && this._format && !this._format.noClip && !this._format.lineLimit) {
+                        const exceededHeight: number = expHeight - maxHeight;
+                        const fitHeight: number = lineResult._lineHeight - exceededHeight;
+                        height = height + fitHeight;
+                        success = false;
+                        break;
+                    } else {
+                        height = expHeight;
+                    }
                 } else {
                     success = false;
                     break;

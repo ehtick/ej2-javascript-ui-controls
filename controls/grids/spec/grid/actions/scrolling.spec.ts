@@ -17,8 +17,11 @@ import { Sort } from '../../../src/grid/actions/sort';
 import { Filter } from '../../../src/grid/actions/filter';
 import { Group } from '../../../src/grid/actions/group';
 import { Toolbar } from '../../../src/grid/actions/toolbar';
+import { VirtualScroll } from '../../../src/grid/actions/virtual-scroll';
+import { InfiniteScroll } from '../../../src/grid/actions/infinite-scroll';
+import { Page } from '../../../src/grid/actions/page';
 
-Grid.Inject(Scroll, Group, Filter, Sort, Toolbar);
+Grid.Inject(Scroll, Group, Filter, Sort, Toolbar, VirtualScroll, InfiniteScroll, Page);
 
 const ieUa: string = 'Mozilla/5.0 (Windows NT 6.3; WOW64; Trident/7.0; Touch; .NET4.0E; .NET4.0C; ' +
     'Tablet PC 2.0; .NET CLR 3.5.30729; .NET CLR 2.0.50727; .NET CLR 3.0.30729; InfoPath.3; rv:11.0) like Gecko';
@@ -499,6 +502,131 @@ describe('Scrolling module', () => {
         afterAll(() => {
             destroy(grid);
             grid = null;
+        });
+    });
+
+    describe('Virtual scrolling with vh height support', () => {
+        let gridObj: Grid;
+        beforeAll((done: Function) => {
+            gridObj = createGrid(
+                {
+                    dataSource: filterData,
+                    enableVirtualization: true,
+                    height: '70vh',
+                    columns: [
+                        { field: 'OrderID', headerText: 'Order ID', isPrimaryKey: true, width: 90 },
+                        { field: 'CustomerID', headerText: 'Customer ID', width: 100 },
+                        { field: 'Freight', headerText: 'Freight', width: 100, format: 'C2' },
+                        { field: 'ShipCity', headerText: 'Ship City', width: 120 }
+                    ]
+                },
+                done
+            );
+        });
+
+        it('should have height set to 70vh', () => {
+            expect(gridObj.height).toBe('70vh');
+        });
+
+        it('should have virtual scroll module defined', () => {
+            const vscrollModule = (gridObj as any).virtualscrollModule;
+            expect(vscrollModule).toBeDefined();
+        });
+
+        it('should render rows based on viewport', () => {
+            const contentRows = gridObj.getContent().querySelectorAll('.e-row');
+            expect(contentRows.length).toBeGreaterThan(0);
+        });
+
+        it('should have block size calculated correctly', () => {
+            const vscrollModule = (gridObj as any).virtualscrollModule;
+            expect(vscrollModule.blockSize).toBeGreaterThan(0);
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    describe('Infinite scrolling with vh height support', () => {
+        let gridObj: Grid;
+        beforeAll((done: Function) => {
+            gridObj = createGrid(
+                {
+                    dataSource: filterData,
+                    enableInfiniteScrolling: true,
+                    infiniteScrollSettings: { enableCache: true },
+                    height: '70vh',
+                    columns: [
+                        { field: 'OrderID', headerText: 'Order ID', isPrimaryKey: true, width: 90 },
+                        { field: 'CustomerID', headerText: 'Customer ID', width: 100 },
+                        { field: 'Freight', headerText: 'Freight', width: 100, format: 'C2' },
+                        { field: 'ShipCity', headerText: 'Ship City', width: 120 }
+                    ]
+                },
+                done
+            );
+        });
+
+        it('should have height set to 70vh', () => {
+            expect(gridObj.height).toBe('70vh');
+        });
+
+        it('should render initial set of rows', () => {
+            const contentRows = gridObj.getContent().querySelectorAll('.e-row');
+            expect(contentRows.length).toBeGreaterThan(0);
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    describe('Paging enabled with vh height support', () => {
+        let gridObj: Grid;
+        beforeAll((done: Function) => {
+            gridObj = createGrid(
+                {
+                    dataSource: filterData,
+                    allowPaging: true,
+                    pageSettings: { pageSize: 12 },
+                    height: '70vh',
+                    columns: [
+                        { field: 'OrderID', headerText: 'Order ID', isPrimaryKey: true, width: 90 },
+                        { field: 'CustomerID', headerText: 'Customer ID', width: 100 },
+                        { field: 'Freight', headerText: 'Freight', width: 100, format: 'C2' },
+                        { field: 'ShipCity', headerText: 'Ship City', width: 120 }
+                    ]
+                },
+                done
+            );
+        });
+
+        it('should have height set to 70vh', () => {
+            expect(gridObj.height).toBe('70vh');
+        });
+
+        it('should render rows for current page', () => {
+            const contentRows = gridObj.getContent().querySelectorAll('.e-row');
+            expect(contentRows.length).toBeGreaterThan(0);
+            expect(contentRows.length).toBeLessThanOrEqual(gridObj.pageSettings.pageSize);
+        });
+
+        it('should display pager container', () => {
+            const pager = gridObj.element.querySelector('.e-pagercontainer') as HTMLElement;
+            expect(pager).toBeDefined();
+        });
+
+        it('should render correct content after page navigation', () => {
+            const contentRows = gridObj.getContent().querySelectorAll('.e-row');
+            expect(contentRows.length).toBeGreaterThan(0);
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
         });
     });
 

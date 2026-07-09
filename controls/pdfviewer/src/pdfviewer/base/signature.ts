@@ -1,6 +1,6 @@
 import { AnnotationStatus, PdfViewer } from '../index';
 import { PdfViewerBase, IPageAnnotations } from '../index';
-import { createElement, isNullOrUndefined, isBlazor, SanitizeHtmlHelper, Browser } from '@syncfusion/ej2-base';
+import { createElement, isNullOrUndefined, isBlazor, SanitizeHtmlHelper, Browser, enableRipple} from '@syncfusion/ej2-base';
 import { Dialog } from '@syncfusion/ej2-popups';
 import { PdfAnnotationBaseModel } from '../drawing/pdf-annotation-model';
 import { PdfAnnotationBase } from '../drawing/pdf-annotation';
@@ -13,6 +13,7 @@ import { Button } from '@syncfusion/ej2-buttons';
 import { PdfAnnotationType } from '../drawing';
 import { DisplayMode } from './types';
 import { AnnotationSettings, HandWrittenSignatureSettings, IPoint, AnnotationSelectorSettingsModel } from '../index';
+enableRipple(true);
 
 /**
  * @hidden
@@ -1353,6 +1354,7 @@ export class Signature {
             fontSignature[parseInt(i.toString(), 10)].classList.add('e-pv-font-sign');
             fontSignature[parseInt(i.toString(), 10)].classList.add('e-pv-signature-text');
             fontSignature[parseInt(i.toString(), 10)].style.lineHeight = '1.5';
+            fontSignature[parseInt(i.toString(), 10)].tabIndex = '-1';
             if (canvasHeight === 275) {
                 fontSignature[parseInt(i.toString(), 10)].style.fontSize = '13px';
                 fontSignature[parseInt(i.toString(), 10)].style.height = '78px';

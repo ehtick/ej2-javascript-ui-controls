@@ -408,12 +408,12 @@ export class ContextMenu {
             this.disableItems = [];
         }
         const target: Element = args.event ? args.event.target as Element :
-            !this.parent.focusModule ? this.parent.focusModule.getActiveElement() :
+            this.parent.focusModule ? this.parent.focusModule.getActiveElement() :
                 this.parent.ganttChartModule.targetElement;
         // Closed edited cell before opening context menu
         if (!isNullOrUndefined(this.parent.editModule) && this.parent.editModule.cellEditModule &&
             this.parent.editModule.cellEditModule.isCellEdit && (target.parentElement.classList.contains('e-row') ||
-                target.parentElement.classList.contains('e-treecolumn-container'))) {
+            target.parentElement.classList.contains('e-treecolumn-container'))) {
             this.parent.treeGrid.endEdit();
         }
         if (!isNullOrUndefined(args.element) && args.element.id === this.parent.element.id + '_contextmenu') {
@@ -454,7 +454,7 @@ export class ContextMenu {
         }
         if (!args.cancel) {
             let rowIndex: number = -1;
-            if (args.gridRow && !isEmptySpaceTarget) {
+            if (args.gridRow  && !isEmptySpaceTarget) {
                 // eslint-disable-next-line
                 rowIndex = parseInt(args.gridRow.getAttribute('aria-rowindex'), 0) - 1;
             } else if (args.chartRow && !isEmptySpaceTarget) {
@@ -663,10 +663,15 @@ export class ContextMenu {
                     const index: number = this.parent.selectedRowIndex;
                     const isSelected: boolean = this.parent.selectionModule ? this.parent.selectionModule.selectedRowIndexes.length === 1 ||
                         this.parent.selectionModule.getSelectedRowCellIndexes().length === 1 ? true : false : false;
-                    const prevRecord: IGanttData = this.parent.updatedRecords[this.parent.selectionModule.getSelectedRowIndexes()[0] - 1];
+                    const selectedRowIdx: number = this.parent.selectionModule ?
+                        this.parent.selectionModule.getSelectedRowIndexes()[0] : -1;
+                    const prevRecord: IGanttData = !isNullOrUndefined(selectedRowIdx) && selectedRowIdx > 0
+                        ? this.parent.updatedRecords[selectedRowIdx - 1] : null;
+                    const currentRecord: IGanttData = index >= 0 ? this.parent.updatedRecords[parseInt(index.toString(), 10)] : null;
                     if (!this.parent.editSettings.allowEditing || index === 0 || index === -1 || !isSelected ||
                         this.parent.viewType === 'ResourceView' ||
-                        this.parent.updatedRecords[parseInt(index.toString(), 10)].level - prevRecord.level === 1) {
+                        isNullOrUndefined(prevRecord) || isNullOrUndefined(currentRecord) ||
+                        currentRecord.level - prevRecord.level === 1) {
                         this.updateItemVisibility(item.text);
                     }
                 }
@@ -677,11 +682,13 @@ export class ContextMenu {
                 if (!this.parent.allowSelection || !this.parent.editModule || !this.parent.editSettings) {
                     this.hideItems.push(item.text);
                 } else {
-                    const ind: number = this.parent.selectionModule.getSelectedRowIndexes()[0];
+                    const ind: number = this.parent.selectionModule ? this.parent.selectionModule.getSelectedRowIndexes()[0] : undefined;
                     const isSelect: boolean = this.parent.selectionModule ? this.parent.selectionModule.selectedRowIndexes.length === 1 ||
                         this.parent.selectionModule.getSelectedRowCellIndexes().length === 1 ? true : false : false;
-                    if (!this.parent.editSettings.allowEditing || ind === -1 || ind === 0 || !isSelect ||
-                        this.parent.viewType === 'ResourceView' || this.parent.updatedRecords[parseInt(ind.toString(), 10)].level === 0) {
+                    const currentRec: IGanttData = !isNullOrUndefined(ind) && ind >= 0
+                        ? this.parent.updatedRecords[parseInt(ind.toString(), 10)] : null;
+                    if (!this.parent.editSettings.allowEditing || isNullOrUndefined(ind) || ind === -1 || ind === 0 || !isSelect ||
+                        this.parent.viewType === 'ResourceView' || isNullOrUndefined(currentRec) || currentRec.level === 0) {
                         this.updateItemVisibility(item.text);
                     }
                 }
@@ -722,7 +729,7 @@ export class ContextMenu {
         const segments: ITaskSegment[] = this.rowData.ganttProperties.segments;
         // Avoid to show the merge option for 1st segment
         if (!isNullOrUndefined(segments) && segments.length > 0 && this.segmentIndex !== 0) {
-            if (isNullOrUndefined(taskfields.segments) && this.segmentIndex === -1) {
+            if (this.segmentIndex === -1 && isNullOrUndefined(taskfields.segments)) {
                 this.updateItemVisibility(item.text);
             } else {
                 if (this.segmentIndex === 0) {

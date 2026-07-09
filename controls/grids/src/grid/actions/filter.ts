@@ -94,6 +94,8 @@ export class Filter implements IAction {
     public inputList: InputArgs[] = [];
     /** @hidden */
     public isFilterCleared: boolean = false;
+    /** @hidden */
+    public maintainFocusOnFilterDialog: boolean = false;
 
     /**
      * Constructor for Grid filtering module
@@ -719,7 +721,8 @@ export class Filter implements IAction {
             case 'type':
                 this.parent.refreshHeader();
                 this.refreshFilterSettings();
-                if (this.parent.height === '100%') {
+                if (this.parent.height === '100%' || (typeof this.parent.height === 'string' &&
+                    this.parent.height.toLowerCase().indexOf('vh') !== -1)) {
                     this.parent.scrollModule.refresh();
                 }
                 break;
@@ -863,10 +866,8 @@ export class Filter implements IAction {
                                  filterDate: string | number | boolean | Date | (string | number | boolean | Date)[]): boolean {
         if (isNullOrUndefined(colDate) && isNullOrUndefined(filterDate)) {
             return true;
-        } else if (colDate instanceof Date && filterDate instanceof Date) {
+        }  else if (colDate instanceof Date && filterDate instanceof Date) {
             return colDate.getTime() === filterDate.getTime();
-        } else if (typeof (colDate) === 'string' && typeof (filterDate) === 'string') {
-            return colDate === filterDate;
         }
         return false;
     }
@@ -1100,7 +1101,8 @@ export class Filter implements IAction {
             }
             if (gObj.allowPaging) {
                 gObj.updateExternalMessage(this.filterStatusMsg);
-                if (this.parent.height === '100%') {
+                if (this.parent.height === '100%' || (typeof this.parent.height === 'string' &&
+                    this.parent.height.toLowerCase().indexOf('vh') !== -1)) {
                     this.parent.scrollModule.refresh();
                 }
             }

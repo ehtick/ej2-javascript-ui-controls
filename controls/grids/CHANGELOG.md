@@ -6,87 +6,14 @@
 
 ### Grid
 
-#### Bugs
+#### Features
 
-- `I844550` - Resolved an issue where clipboard copy did not work when `virtualization` was enabled in the Grid.
+- `#FB71021` - The Grid now fully supports checkbox row selection when lazy-loaded grouping is enabled. Rows can be selected seamlessly across large grouped datasets, even beyond the visible viewport. This significantly improves usability and workflow efficiency when working with extensive grouped data.
+- The virtual scrolling has been significantly enhanced for smoothness. This ensures fluid vertical and horizontal transitions, providing a much smoother and more responsive experience during fast scrolling when `virtualization` is enabled.
 
-## 33.2.10 (2026-06-02)
+#### Breaking changes
 
-### Grid
-
-#### Bugs
-
-- `I838244` - The issue where editing a new row using a column template button caused a script error when another row was already in edit mode has been resolved.
-- `I835370` - The script error that occurred when clearing the persisted filter in Adaptive UI within the EJ2 Grid has been resolved.
-- `I839347` - The issue where the scrollbar jumped to the top during virtual scrolling when the data count was less than the page size has been resolved.
-
-## 33.2.7 (2026-05-19)
-
-### Grid
-
-#### Bugs
-
-- `I836076`  The issue where initial filtering with multiple predicates was not working for the Menu-type filter has been resolved.
-
-## 33.2.5 (2026-05-05)
-
-### Grid
-
-#### Bugs
-
-- `I833649` - Resolved a script error that occurred when reordering stacked header columns rendered using a header template.
-- `I827616` - Fixed an issue where the Excel filter dialog failed to load data after performing a grid search.
-
-## 33.2.4 (2026-04-28)
-
-### Grid
-
-#### Bugs
-
-- `I826547` - Resolved an issue where the custom format was not applied to date columns when the custom format type was not specified.
-
-## 33.2.3 (2026-04-21)
-
-### Grid
-
-#### Bugs
-
-- `I828282` - Resolved an issue where the shimmer effect was not removed when Immutable Mode was enabled in the Grid.
-
-## 33.1.49 (2026-04-14)
-
-### Grid
-
-#### Bug Fixes
-
-- `#I828949` -  Resolved an issue where a script error occurred while scrolling the grid when `ColumnChooser` was enabled along with `virtualization` and `AdaptiveUI`.
-
-## 33.1.47 (2026-04-07)
-
-### Grid
-
-#### Bug Fixes
-
-- `#I823122` - Resolved an issue where a duplicate filter query was added when grouping with `pageWiseAggregates` enabled.
-
-## 33.1.46 (2026-03-31)
-
-### Grid
-
-#### Bug Fixes
-
-- `#I823454` - The issue where the edit dialog did not close when `virtualization` and row height were enabled has been resolved.
-
-## 33.1.45 (2026-03-24)
-
-### Grid
-
-#### Bug Fixes
-
-- `#I821485` - Fixed an issue where the filter dialog displayed a continuous spinner when both the column chooser and `adaptiveUI` mode were enabled.
-- `#I817121` - Fixed an issue where the `applyPreRequestMiddlewares` did not execute while deleting multiple records from a remote data source.
-
-## 33.1.44 (2026-03-16)
+- Hover effects on selected rows are now consistent across all themes. The hover and selected colours are aligned, making hovered selected rows easier to recognize and improving visual feedback, usability, and consistency.
 
 ### Grid
 

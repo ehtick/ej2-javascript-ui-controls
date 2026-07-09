@@ -301,7 +301,7 @@ export class HeaderRender implements IRenderer {
         const findHeaderRow: { thead: Element, rows: Row<Column>[] } = this.createHeaderContent(tableName);
         const thead: Element = findHeaderRow.thead;
         const tbody: Element = this.parent.createElement( literals.tbody, { className: this.parent.frozenRows || this.parent.isRowPinned ||
-            ((this.parent.enableVirtualization || this.parent.enableInfiniteScrolling) && this.parent.editSettings.showAddNewRow) ? '' :
+            ((this.parent.enableVirtualization || this.parent.isRowDomVirtualization() || this.parent.enableInfiniteScrolling) && this.parent.editSettings.showAddNewRow) ? '' :
             'e-hide', attrs: { role: 'rowgroup' } });
         this.caption = this.parent.createElement('caption', { innerHTML: this.parent.element.id + '_header_table', className: 'e-hide' });
         const colGroup: Element = this.parent.createElement(literals.colGroup);

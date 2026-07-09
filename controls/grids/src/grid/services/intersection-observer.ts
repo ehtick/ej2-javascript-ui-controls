@@ -84,8 +84,10 @@ export class InterSectionObserver {
     }
 
     private virtualScrollHandler(callback: Function, onEnterCallback: Function): Function {
-        const delay: number = Browser.info.name === 'chrome' ? 200 : 100;
-        const debounced100: Function = debounce(callback, delay);
+        const browserDelay: number = Browser.info.name === 'chrome' ? 200 : 100;
+        const delay: number = !isNullOrUndefined(this.options.scrollThrottle)
+            ? this.options.scrollThrottle : browserDelay;
+        const debounced100: Function = delay > 0 ? debounce(callback, delay) : callback;
         const debounced50: Function = debounce(callback, 50);
         this.options.prevTop = this.options.prevLeft = 0;
         return (e: Event) => {

@@ -33,7 +33,7 @@ export class Toolbar {
     private serviceLocator: ServiceLocator;
     private l10n: L10n;
     private items: string[] = ['Add', 'Edit', 'Update', 'Delete', 'Cancel', 'Print', 'Search',
-        'ColumnChooser', 'PdfExport', 'ExcelExport', 'CsvExport', 'WordExport'];
+        'ColumnChooser', 'PdfExport', 'ExcelExport', 'CsvExport', 'WordExport', 'Undo', 'Redo'];
     private searchBoxObj: SearchBox;
     private evtHandlers: { event: string, handler: Function }[];
     private isRightToolbarMenu: boolean = false;
@@ -51,7 +51,7 @@ export class Toolbar {
     private render(): void {
         this.l10n = this.serviceLocator.getService<L10n>('localization');
         const preItems: ToolbarItems[] = ['Add', 'Edit', 'Update', 'Delete', 'Cancel', 'Print',
-            'PdfExport', 'ExcelExport', 'WordExport', 'CsvExport'];
+            'PdfExport', 'ExcelExport', 'WordExport', 'CsvExport', 'Undo' , 'Redo'];
         const isAdaptive: boolean = this.parent.enableAdaptiveUI;
         const excludingItems: string[] = ['Edit', 'Delete', 'Update', 'Cancel'];
         for (const item of preItems) {
@@ -189,6 +189,28 @@ export class Toolbar {
         }
     }
 
+    /**
+     * Determines whether the Vue3 toolbar template is being used.
+     *
+     * @returns {boolean} Returns true if Vue3 toolbar template is used.
+     *
+     * @hidden
+     */
+    public isVue3ToolbarTemplate(): boolean {
+        if (!(this.parent.isVue3 && this.toolbar && this.toolbar.items && this.toolbar.items.length)) {
+            return false;
+        }
+        const vueInstance: any = (this.parent as any).vueInstance;
+        const slots: any = vueInstance ? vueInstance.$slots : null;
+        for (const item of this.toolbar.items) {
+            const template: string | Object | Function | undefined = item.template;
+            if (typeof template === 'string' && slots && typeof slots[`${template}`] === 'function') {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private toolbarCreated(isNormal?: boolean): void {
         if (this.element.querySelector('.e-search-wrapper')) {
             if (!this.parent.enableAdaptiveUI || isNormal) {
@@ -234,6 +256,9 @@ export class Toolbar {
             cssClass: this.parent.cssClass ? this.parent.cssClass : ''
         });
         this.toolbar.isReact = this.parent.isReact;
+        if (this.isVue3ToolbarTemplate()) {
+            this.toolbar.root = this.parent['root'] ? this.parent['root'] : this.parent;
+        }
         this.toolbar.on('render-react-toolbar-template', this.addReactToolbarPortals, this);
         const isStringTemplate: string = 'isStringTemplate';
         this.toolbar[`${isStringTemplate}`] = true;
@@ -429,6 +454,18 @@ export class Toolbar {
                 disableItems.push(this.gridID + '_update');
                 disableItems.push(this.gridID + '_cancel');
             }
+            if (edit.enableUndoRedo) {
+                if (gObj.isUndoStackAvailable()) {
+                    enableItems.push(this.gridID + '_undo');
+                } else {
+                    disableItems.push(this.gridID + '_undo');
+                }
+                if (gObj.isRedoStackAvailable()) {
+                    enableItems.push(this.gridID + '_redo');
+                } else {
+                    disableItems.push(this.gridID + '_redo');
+                }
+            }
         } else {
             if ((gObj.isEdit || edit.showAddNewRow) && (edit.allowAdding || edit.allowEditing)) {
                 enableItems = addRow ? [this.gridID + '_update', this.gridID + '_cancel', this.gridID + '_edit', this.gridID + '_delete'] :
@@ -539,6 +576,16 @@ export class Toolbar {
                         break;
                     case gID + '_delete':
                         gObj.deleteRecord();
+                        break;
+                    case gID + '_undo':
+                        if (gObj.editSettings.mode === 'Batch') {
+                            gObj.undoEdit();
+                        }
+                        break;
+                    case gID + '_redo':
+                        if (gObj.editSettings.mode === 'Batch') {
+                            gObj.redoEdit();
+                        }
                         break;
                     case gID + '_search':
                         if ((<HTMLElement>toolbarargs.originalEvent.target).id === gID + '_searchbutton' && this.searchElement) {

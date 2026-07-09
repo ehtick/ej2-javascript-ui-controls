@@ -940,7 +940,7 @@ export class _FdfDocument extends _ExportHelper {
         for (let i: number = 0; i < value.length; i++) {
             const c: number = value.charCodeAt(i);
             if (c === 40 || c === 41) {
-                result += '\'';
+                result += '\\';
             }
             result += String.fromCharCode(c);
         }

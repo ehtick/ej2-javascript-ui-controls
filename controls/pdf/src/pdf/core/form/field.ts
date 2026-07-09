@@ -734,7 +734,7 @@ export abstract class PdfField {
      * ```
      */
     get color(): PdfColor {
-        let value: PdfColor;
+        let value: PdfColor = {r: 0, g: 0, b: 0};
         const widget: PdfWidgetAnnotation = this.itemAt(this._defaultIndex);
         if (widget && widget.color) {
             value = widget.color;
@@ -3639,12 +3639,15 @@ export class PdfTextBoxField extends PdfField {
      */
     _createAppearance(isFlatten: boolean, widget: PdfWidgetAnnotation | PdfTextBoxField): PdfTemplate {
         const bounds: {x: number, y: number, width: number, height: number} = widget.bounds;
-        const template: PdfTemplate = new PdfTemplate([0, 0, bounds.width, bounds.height], this._crossReference);
-        _setMatrix(template, null);
+        const isRotated270: boolean = widget.rotate === 270 && this.page.rotation === PdfRotationAngle.angle270;
+        const width: number = isRotated270 ? bounds.height : bounds.width;
+        const height: number = isRotated270 ? bounds.width : bounds.height;
+        const template: PdfTemplate = new PdfTemplate([0, 0, width, height], this._crossReference);
+        _setMatrix(template, isRotated270 ? widget.rotate : null);
         template._writeTransformation = false;
         const graphics: PdfGraphics = template.graphics;
         const parameter: _PaintParameter = new _PaintParameter();
-        parameter.bounds = {x: 0, y: 0, width: bounds.width, height: bounds.height};
+        parameter.bounds = {x: 0, y: 0, width: width, height: height};
         const backcolor: PdfColor = widget.backColor;
         if (backcolor && !backcolor.isTransparent) {
             parameter.backBrush = new PdfBrush(backcolor);
@@ -4045,10 +4048,7 @@ export class PdfTextBoxField extends PdfField {
                             }
                         }
                     } else if (parameter.rotationAngle === 270) {
-                        g.translateTransform({x: g._size.width, y: 0});
-                        g.rotateTransform(-270);
-                        rectangle = parameter.bounds;
-                        rectangle.y = (rectangle.width / 2) - (8 * parameter.borderWidth);
+                        rectangle = { x: rectangle.x, y: rectangle.y, width: rectangle.width - (4 * parameter.borderWidth), height: rectangle.height };
                     } else if (parameter.rotationAngle === 180) {
                         g.translateTransform({x: g._size.width, y: g._size.height});
                         g.rotateTransform(-180);

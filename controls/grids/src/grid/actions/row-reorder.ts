@@ -246,7 +246,7 @@ export class RowDD {
                     this.moveDragRows(e, this.startedRow, trElement);
                 } else {
                     let islastRowIndex: boolean;
-                    if (this.parent.enableVirtualization) {
+                    if (this.parent.enableVirtualization || this.parent.enableDomVirtualization) {
                         islastRowIndex = trElement && parseInt(trElement.getAttribute(literals.ariaRowIndex), 10) - 1 ===
                             this.parent.renderModule.data.dataManager.dataSource.json.length - 1;
                     } else {
@@ -265,7 +265,7 @@ export class RowDD {
                         const bottomborder: HTMLElement = this.parent.createElement('div', { className: 'e-lastrow-dragborder' });
                         const gridcontentEle: Element = this.parent.getContent();
                         bottomborder.style.width = (this.parent.element as HTMLElement).offsetWidth - this.getScrollWidth() + 'px';
-                        if (this.parent.enableVirtualization) {
+                        if (this.parent.enableVirtualization || this.parent.enableDomVirtualization) {
                             bottomborder.style.zIndex = '1';
                         }
                         if (!gridcontentEle.getElementsByClassName('e-lastrow-dragborder').length &&
@@ -351,11 +351,12 @@ export class RowDD {
         if (gObj.enableVirtualization && isNullOrUndefined(this.rows[0])) {
             return;
         }
+        const dragSourceRow: Element = this.rows[0] || this.startedRow;
         const args: RowDropEventArgs = {
             target: target, draggableType: 'rows',
             cancel: false,
-            fromIndex: parseInt(this.rows[0].getAttribute(literals.ariaRowIndex), 10) - 1,
-            dropIndex: this.dragTarget, rows: this.rows,
+            fromIndex: parseInt(dragSourceRow.getAttribute(literals.ariaRowIndex), 10) - 1,
+            dropIndex: this.dragTarget, rows: this.rows[0] ? this.rows : [this.startedRow],
             data: (Object.keys(this.dragStartData[0]).length > 0) ? this.dragStartData as Object[] : this.currentViewData()
         };
         gObj.trigger(events.rowDrop, args, () => {
@@ -385,6 +386,8 @@ export class RowDD {
                         (!this.parent.allowGrouping || !gObj.groupSettings.columns.length)) {
                         gObj.refresh();
                         (<{ startIndex?: number }>(<{ vgenerator?: Function }>gObj.contentModule).vgenerator).startIndex = null;
+                    } else if (gObj.enableDomVirtualization) {
+                        gObj.refresh();
                     } else {
                         this.rowOrder(args);
                     }
@@ -901,18 +904,24 @@ export class RowDD {
             this.removeLastRowBorder(element);
         }
         if (this.parent.allowGrouping && this.parent.groupSettings.columns.length) {
-            element = ([].slice.call(this.isDropGrid.getContentTable().querySelectorAll('tr'))).filter((row: Element) =>
-                row.querySelector('td.e-dragtop.e-dragbottom'))[0];
+            let rowsToClean: Element[] = [].slice.call(this.isDropGrid.getContentTable().querySelectorAll('tr')).filter((row: Element) =>
+                row.querySelector('td.e-dragtop.e-dragbottom'));
+            if (this.parent.frozenRows > 0) {
+                const headerRowsToClean: Element[] = [].slice.call(this.isDropGrid.getHeaderTable().querySelectorAll('tr')).filter((row: Element) =>
+                    row.querySelector('td.e-dragtop.e-dragbottom'));
+                rowsToClean = rowsToClean.concat(headerRowsToClean);
+            }
+            rowsToClean.forEach((row: Element) => {
+                const rowElement: HTMLElement[] = [].slice.call(row.querySelectorAll('.e-dragtop.e-dragbottom'));
+                if (rowElement.length > 0) {
+                    this.groupRowDDIndicator(rowElement, false);
+                }
+            });
         }
         else {
             element = (this.isDropGrid.getRows()).filter((row: Element) => row.querySelector('td.e-dragborder'))[0];
-        }
-        if (element) {
-            const rowElement: HTMLElement[] = this.parent.allowGrouping && this.parent.groupSettings.columns.length ? [].slice.call(element
-                .querySelectorAll('.e-dragtop.e-dragbottom')) : [].slice.call(element.getElementsByClassName('e-dragborder'));
-            if (this.parent.allowGrouping && this.parent.groupSettings.columns && this.parent.groupSettings.columns.length) {
-                this.groupRowDDIndicator(rowElement, false);
-            } else {
+            if (element) {
+                const rowElement: HTMLElement[] = [].slice.call(element.getElementsByClassName('e-dragborder'));
                 addRemoveActiveClasses(rowElement, false, 'e-dragborder');
             }
         }

@@ -28,8 +28,9 @@ export class InlineEditRender {
     public addNew(elements: Object, args: { row?: Element, rowData?: Object, isScroll?: boolean }): void {
         this.isEdit = false;
         let tbody: Element;
-        if ((this.parent.frozenRows || ((this.parent.enableVirtualization || this.parent.enableInfiniteScrolling) &&
-            this.parent.editSettings.showAddNewRow)) && this.parent.editSettings.newRowPosition === 'Top') {
+        if ((this.parent.frozenRows || ((this.parent.enableVirtualization || this.parent.isRowDomVirtualization()
+            || this.parent.enableInfiniteScrolling) && this.parent.editSettings.showAddNewRow))
+            && this.parent.editSettings.newRowPosition === 'Top') {
             tbody = this.parent.getHeaderTable().querySelector( literals.tbody);
         } else {
             tbody = this.parent.getContentTable().querySelector( literals.tbody);
@@ -186,15 +187,5 @@ export class InlineEditRender {
             appendChildren(form, this.parent.getEditTemplate()(
                 dummyData, this.parent, 'editSettingsTemplate', editTemplateID, null, null, null, this.parent.root));
         }
-        // eslint-disable-next-line
-        const setRules: Function = () => {
-            const cols: Column[] = this.parent.getColumns();
-            for (let i: number = 0; i < cols.length; i++) {
-                if ((cols[parseInt(i.toString(), 10)] as Column).validationRules) {
-                    this.parent.editModule.formObj.rules[(cols[parseInt(i.toString(), 10)] as Column).field] =
-                    (cols[parseInt(i.toString(), 10)] as Column).validationRules as {[rule: string]: Object};
-                }
-            }
-        };
     }
 }

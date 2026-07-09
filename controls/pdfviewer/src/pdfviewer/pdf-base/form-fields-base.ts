@@ -1,5 +1,5 @@
 import { isNullOrUndefined } from '@syncfusion/ej2-base';
-import { PdfDocument, PdfPage, PdfForm, PdfTextBoxField, PdfFormFieldVisibility, PdfTextAlignment, PdfSignatureField, PdfField, PdfFreeTextAnnotation, PdfFontFamily, PdfStandardFont, PdfAnnotationFlag, PdfRubberStampAnnotation, PdfImage, PdfBitmap, PdfGraphics, PdfGraphicsState, PdfFontStyle as FontStyle, PdfCheckBoxField, PdfComboBoxField, PdfListBoxField, PdfListFieldItem, PdfRadioButtonListField, PdfRadioButtonListItem, PdfRotationAngle, PdfFontStyle, PdfFont, PdfTemplate, PdfInkAnnotation, PdfTrueTypeFont, PdfAnnotationCollection, PdfAnnotation, _PdfReference, _PdfDictionary, PdfPath, Rectangle, Point, Size} from '@syncfusion/ej2-pdf';
+import { PdfDocument, PdfPage, PdfForm, PdfTextBoxField, PdfFormFieldVisibility, PdfTextAlignment, PdfSignatureField, PdfField, PdfFreeTextAnnotation, PdfFontFamily, PdfStandardFont, PdfAnnotationFlag, PdfRubberStampAnnotation, PdfImage, PdfBitmap, PdfGraphics, PdfGraphicsState, PdfFontStyle as FontStyle, PdfCheckBoxField, PdfComboBoxField, PdfListBoxField, PdfListFieldItem, PdfRadioButtonListField, PdfRadioButtonListItem, PdfRotationAngle, PdfFontStyle, PdfFont, PdfTemplate, PdfInkAnnotation, PdfTrueTypeFont, PdfAnnotationCollection, PdfAnnotation, _PdfReference, _PdfDictionary, PdfPath, Rectangle, Point, Size, PdfButtonField} from '@syncfusion/ej2-pdf';
 import { PdfViewer, PdfViewerBase, PageRenderer, PageRotation, AnnotationRenderer } from '../index';
 import { getArialFontData } from '../pdf-base/fontData';
 import { Rect } from './../ej2-drawings/index';
@@ -421,7 +421,7 @@ export class FormFieldsBase {
                                 const field: any = data[`${currentFieldName}`];
                                 if (!isNullOrUndefined(field) && Object.prototype.hasOwnProperty.call(field, 'isReadOnly')) {
                                     (currentField as PdfTextBoxField).text = field['fieldValue'];
-                                    (currentField as PdfTextBoxField).readOnly = field['isReadOnly'] === 'true' ? true : false;
+                                    (currentField as PdfTextBoxField).readOnly = field['isReadOnly'] === true ? true : false;
                                 }
                                 this.setFont(field, currentField);
                             }
@@ -433,7 +433,7 @@ export class FormFieldsBase {
                                 const field: any = data[`${currentFieldName}`];
                                 if (!isNullOrUndefined(field) && Object.prototype.hasOwnProperty.call(field, 'isReadOnly')) {
                                     (currentField as PdfTextBoxField).text = field['fieldValue'];
-                                    (currentField as PdfTextBoxField).readOnly = field['isReadOnly'] === 'true' ? true : false;
+                                    (currentField as PdfTextBoxField).readOnly = field['isReadOnly'] === true ? true : false;
                                 }
                                 this.setFont(field, currentField);
                             }
@@ -1665,6 +1665,14 @@ export class FormFieldsBase {
                                 this.addSignatureField(signatureField, pageNumber, signatureField.bounds);
                             }
                         }
+                    } else if (field instanceof PdfButtonField) {
+                        const buttonField: PdfButtonField = field;
+                        if (buttonField.itemsCount > 0) {
+                            this.addButtonFieldItems(buttonField);
+                        }
+                        else {
+                            this.addButtonField(buttonField, pageNumber, null);
+                        }
                     }
                 }
 
@@ -2065,6 +2073,80 @@ export class FormFieldsBase {
         formFields.RotationAngle = this.GetRotateAngle(item.page.rotation);
         if (parent._dictionary.has('CustomData')) {
             formFields.CustomData = JSON.parse(parent._dictionary.get('CustomData'));
+        }
+        this.PdfRenderedFormFields.push(formFields);
+    }
+
+    private addButtonFieldItems(field: PdfField): void {
+        if (field instanceof PdfButtonField) {
+            const btn: PdfButtonField = field as PdfButtonField;
+            if (btn.itemsCount > 0) {
+                for (let i: number = 0; i < btn.itemsCount; i++) {
+                    const item: PdfPage = btn.itemAt(i).page;
+                    if (!isNullOrUndefined(item)) {
+                        let j: number = 0;
+                        for (let k: number = 0; k < this.formFieldLoadedDocument.pageCount; k++) {
+                            if (item === this.formFieldLoadedDocument.getPage(j)) {
+                                break;
+                            }
+                            j++;
+                        }
+                        this.addButtonField(btn, j, btn.itemAt(i).font);
+                    }
+                }
+            }
+        }
+    }
+
+    private addButtonField(btnField: PdfButtonField, index: number, font?: PdfFont): void {
+        const formFields: PdfRenderedFields = new PdfRenderedFields();
+        const bounds: any = btnField.bounds;
+        formFields.Name = 'Button';
+        formFields.ToolTip = btnField.toolTip;
+        formFields.FieldName = btnField.name;
+        if (!bounds.IsEmpty) {
+            formFields.LineBounds = { X: bounds.x, Y: bounds.y, Width: bounds.width, Height: bounds.height };
+        }
+        else {
+            formFields.LineBounds = {
+                X: btnField.bounds.x, Y: btnField.bounds.y, Width: btnField.bounds.width,
+                Height: btnField.bounds.height
+            };
+        }
+        formFields.TabIndex = btnField.tabIndex;
+        formFields.GroupName = btnField.name.replace(/[^0-9a-zA-Z]+/g, '');
+        formFields.ActualFieldName = btnField.name;
+        formFields.PageIndex = index;
+        formFields.BorderWidth = btnField.border.width;
+        if (!isNullOrUndefined(font)) {
+            formFields.Font = this.fontConvert(btnField.font, btnField);
+        }
+        else {
+            formFields.Font = this.fontConvert(btnField.font, btnField);
+        }
+        if (!isNullOrUndefined(btnField.backColor)) {
+            formFields.BackColor = { R: btnField.backColor.r, G: btnField.backColor.g, B: btnField.backColor.b };
+        }
+        else {
+            formFields.IsTransparent = true;
+        }
+        formFields.BorderStyle = btnField.border.style;
+        if (!isNullOrUndefined(btnField.borderColor)) {
+            formFields.BorderColor = { R: btnField.borderColor.r, G: btnField.borderColor.g, B: btnField.borderColor.b };
+        }
+        else {
+            formFields.IsTransparent = true;
+        }
+        formFields.RotationAngle = this.GetRotateAngle(btnField.page.rotation);
+        formFields.Rotation = btnField.rotationAngle;
+        formFields.IsReadonly = btnField.readOnly;
+        formFields.IsRequired = btnField.required;
+        formFields.Visible = btnField.visibility;
+        formFields.Value = btnField.text;
+        formFields.RotationAngle = this.GetRotateAngle(btnField.page.rotation);
+        formFields.Text = btnField.text;
+        if (btnField._dictionary.has('CustomData')) {
+            formFields.CustomData = JSON.parse(btnField._dictionary.get('CustomData'));
         }
         this.PdfRenderedFormFields.push(formFields);
     }

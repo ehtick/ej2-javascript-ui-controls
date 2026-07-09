@@ -24,6 +24,7 @@ import { TemplateEditCell } from '../renderer/template-edit-cell';
 import { DataUtil } from '@syncfusion/ej2-data';
 import { Row } from '../models/row';
 import { addRemoveEventListener, padZero, getParentIns } from '../base/util';
+import { CellEdit } from './cell-edit';
 import { Matrix } from '../services/focus-strategy';
 import * as literals from '../base/string-literals';
 
@@ -47,7 +48,7 @@ export class Edit implements IAction {
         'booleanedit': BooleanEditCell, 'defaultedit': DefaultEditCell,
         'templateedit': TemplateEditCell
     };
-    private editType: Object = { 'Inline': InlineEdit, 'Normal': InlineEdit, 'Batch': BatchEdit, 'Dialog': DialogEdit };
+    private editType: Object = { 'Inline': InlineEdit, 'Normal': InlineEdit, 'Batch': BatchEdit, 'Dialog': DialogEdit, 'Cell': CellEdit };
     //Module declarations
     protected parent: IGrid;
     protected serviceLocator: ServiceLocator;
@@ -170,7 +171,7 @@ export class Edit implements IAction {
         const isTreeGrid: string = 'isTreeGrid';
         if (!gObj.editSettings.allowEditing || (gObj.isEdit && (!gObj.editSettings.showAddNewRow ||
             (gObj.editSettings.showAddNewRow && !isNullOrUndefined(gObj.element.querySelector('.' + literals.editedRow)))))
-            || gObj.editSettings.mode === 'Batch') {
+            || gObj.editSettings.mode === 'Batch' || gObj.editSettings.mode === 'Cell') {
             return;
         }
         this.parent.element.classList.add('e-editing');
@@ -299,12 +300,13 @@ export class Edit implements IAction {
             return;
         }
         if (!data) {
-            if (!gObj.getSelectedRecords().length && isNullOrUndefined(gObj.commandDelIndex)) {
+            if (!gObj.getSelectedRecords().length && !gObj.getSelectedCellRecords().length && isNullOrUndefined(gObj.commandDelIndex)) {
                 this.showDialog('DeleteOperationAlert', this.alertDObj);
                 return;
             }
         }
-        if (gObj.editSettings.showDeleteConfirmDialog) {
+        if (gObj.editSettings.showDeleteConfirmDialog && !(!isNullOrUndefined(this.parent.root) &&
+            this.parent.root.element.classList.contains('e-gantt'))) {
             this.fieldname = fieldname;
             this.data = data;
             this.showDialog('ConfirmDelete', this.dialogObj);
@@ -588,6 +590,9 @@ export class Edit implements IAction {
             }
             if (this.parent.pagerModule) {
                 this.parent.pagerModule.isForceCancel = false;
+            }
+            if (this.parent.editSettings.mode === 'Batch' && this.parent.editSettings.enableUndoRedo) {
+                this.editModule.clearStacks();
             }
             this.executeAction();
             break;
@@ -924,11 +929,61 @@ export class Edit implements IAction {
         }
     }
 
+    /**
+     * Undo the last batch edit action and restore the grid to its previous state.
+     *
+     * @returns {void}
+     */
+    public undoBatchEdit(): void {
+        if (this.editModule && this.editModule.undoBatchEdit) {
+            this.editModule.undoBatchEdit();
+        }
+    }
+
+    /**
+     * Redo the last undone batch edit action and reapply the changes to the grid.
+     *
+     * @returns {void}
+     */
+    public redoBatchEdit(): void {
+        if (this.editModule && this.editModule.redoBatchEdit) {
+            this.editModule.redoBatchEdit();
+        }
+    }
+
+    /**
+     * Defines whether an undo action is available.
+     *
+     * @returns {boolean} True if undo is available
+     * @hidden
+     */
+    public isUndoStackAvailable(): boolean {
+        if (this.editModule && this.editModule.isUndoStackAvailable) {
+            return this.editModule.isUndoStackAvailable();
+        }
+        return false;
+    }
+
+    /**
+     * Defines whether an redo action is available.
+     *
+     * @returns {boolean} True if redo is available
+     * @hidden
+     */
+    public isRedoStackAvailable(): boolean {
+        if (this.editModule && this.editModule.isRedoStackAvailable) {
+            return this.editModule.isRedoStackAvailable();
+        }
+        return false;
+    }
+
     private keyPressHandler(e: KeyboardEventArgs): void {
         const isMacLike: boolean = /(Mac)/i.test(navigator.platform);
         if (isMacLike && e.metaKey && e.action === 'ctrlEnter') {
             e.action = 'insert';
         }
+        const isCellEditMode: boolean = this.parent.editSettings.mode === 'Batch' || (this.parent.editSettings.mode === 'Cell' &&
+            isNullOrUndefined(parentsUntil(e.target as Element, literals.addedRow)));
         switch (e.action) {
         case 'insert':
             this.addRecord();
@@ -943,7 +998,7 @@ export class Edit implements IAction {
             this.startEdit();
             break;
         case 'enter':
-            if (!parentsUntil(e.target as HTMLElement, 'e-unboundcelldiv') && this.parent.editSettings.mode !== 'Batch' &&
+            if (!parentsUntil(e.target as HTMLElement, 'e-unboundcelldiv') && !isCellEditMode &&
                     (parentsUntil(e.target as HTMLElement, literals.gridContent)
                     || (((this.parent.frozenRows || this.parent.pinnedTopRowModels.length) ||
                     (this.parent.editSettings.showAddNewRow && (this.parent.enableVirtualization || this.parent.enableInfiniteScrolling)))
@@ -1016,7 +1071,9 @@ export class Edit implements IAction {
                         this.closeEdit();
                     } else {
                         this.isShowAddedRowValidate = true;
-                        this.parent.selectionModule.preventFocus = false;
+                        if (this.parent.selectionModule) {
+                            this.parent.selectionModule.preventFocus = false;
+                        }
                         this.parent.isFocusFirstCell = true;
                         this.endEdit();
                         this.isShowAddedRowValidate = false;
@@ -1277,6 +1334,21 @@ export class Edit implements IAction {
                     && this.editModule.args.requestType === 'add')) || (td.classList.contains('e-lastrowcell')
                         && !row.classList.contains(literals.addedRow)))) || isBatchModeLastRow) {
                 validationForBottomRowPos = true;
+            }
+            const lastRowValidationArgs: {
+                isBeginEdit: boolean;
+                isAddedRow: boolean;
+                isLastRow: boolean;
+                validationPositionResult: boolean;
+            } = {
+                isBeginEdit: this.editModule.args.requestType === 'beginEdit',
+                isAddedRow: row ? row.classList.contains(literals.addedRow) : false,
+                isLastRow: rows && rows.length > 0 && row && row === rows[rows.length - 1],
+                validationPositionResult: false
+            };
+            this.parent.notify('last-row-validation', lastRowValidationArgs);
+            if (lastRowValidationArgs.validationPositionResult) {
+                validationForBottomRowPos = lastRowValidationArgs.validationPositionResult;
             }
         }
         const table: Element = isInline ?

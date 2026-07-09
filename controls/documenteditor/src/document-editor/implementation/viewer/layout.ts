@@ -6,7 +6,7 @@ import {
     HeaderFooterType, HorizontalAlignment, VerticalAlignment, HorizontalOrigin, HeightType, LineSpacingType, ListLevelPattern,
     TextAlignment, VerticalOrigin, TextWrappingStyle, FootEndNoteNumberFormat, CharacterRangeType, FontScriptType
 } from '../../base/types';
-import { BodyWidgetInfo, HelperMethods, LineElementInfo, SubWidthInfo, Point, FootNoteWidgetsInfo, WrapPosition, BlockInfo, SizeInfo, BorderRenderInfo, LineCountInfo, ParagraphInfo } from '../editor/editor-helper';
+import { BodyWidgetInfo, HelperMethods, LineElementInfo, SubWidthInfo, Point, FootNoteWidgetsInfo, WrapPosition, BlockInfo, SizeInfo, BorderRenderInfo, LineCountInfo, ParagraphInfo, ListCounterInfo } from '../editor/editor-helper';
 import { WBorder, WBorders, WCharacterFormat, WListFormat, WParagraphFormat, WTabStop, WSectionFormat, WCellFormat, WColumnFormat, WRowFormat } from '../format/index';
 import { WAbstractList } from '../list/abstract-list';
 import { WLevelOverride } from '../list/level-override';
@@ -4895,7 +4895,7 @@ export class Layout {
             element.text = this.getListNumber(paragraph);
         }
         const isRenderList: boolean = currentListLevel.listLevelPattern !== 'None' && paragraph.paragraphFormat.firstLineIndent !== 0 && currentListLevel.followCharacter !== 'None';
-        if(currentListLevel.numberFormat === '' && !isRenderList) {
+        if (currentListLevel.numberFormat === '' && !isRenderList) {
             return;
         }
         this.viewer.updateClientWidth(-HelperMethods.convertPointToPixel(paragraph.paragraphFormat.firstLineIndent));
@@ -4907,6 +4907,21 @@ export class Layout {
             }
         }
         documentHelper.textHelper.updateTextSize(element, paragraph);
+        
+        // Calculate and cache dual widths for delimiter-separated list text (e.g., "2.|6.")
+        if (element.text && element.text.indexOf('\u001F') > -1) {
+            const parts: string[] = element.text.split('\u001F');
+            if (parts.length === 2) {
+                const w1: number = documentHelper.textHelper.getWidth(parts[0], paragraph.characterFormat);
+                const w2: number = documentHelper.textHelper.getWidth(parts[1], paragraph.characterFormat);
+                element.dualWidths = { w1, w2 };
+                element.width = w1 + w2;
+            }
+        } else {
+            // Clear dualWidths when converting from dual to single list
+            element.dualWidths = undefined;
+        }
+        
         let moveToNextPage: boolean;
         if (this.viewer instanceof PageLayoutViewer
             && this.viewer.clientActiveArea.height < element.height && this.viewer.clientActiveArea.y !== this.viewer.clientArea.y) {
@@ -6991,7 +7006,7 @@ export class Layout {
             this.documentHelper.renderedLevelOverrides.push(list);
             let abstractList: WAbstractList = this.documentHelper.getAbstractListById(list.abstractListId);
             if (this.documentHelper.renderedLists.containsKey(abstractList)) {
-                let levels: Dictionary<number, number> = this.documentHelper.renderedLists.get(abstractList);
+                let levels: Dictionary<number, ListCounterInfo> = this.documentHelper.renderedLists.get(abstractList);
                 if (levels.containsKey(levelNumber)) {
                     levels.remove(levelNumber);
                     this.ClearSubListLevelValues(list, abstractList, levelNumber);
@@ -6999,13 +7014,13 @@ export class Layout {
             }
         }
         if (isNullOrUndefined(isAutoList)) {
-            this.updateListValues(list, levelNumber);
+            this.updateListValues(list, levelNumber, paragraph.characterFormat.getAllRevision());
         }
-        return this.getListText(list, levelNumber, listLevel, paragraph.characterFormat.localeIdAscii);
+        return this.getListText(list, levelNumber, listLevel, paragraph.characterFormat.localeIdAscii, paragraph.characterFormat.getAllRevision());
     }
 
     private ClearSubListLevelValues(list: WList, abstractList: WAbstractList, levelNumber: number): void {
-        let levels: Dictionary<number, number> = this.documentHelper.renderedLists.get(abstractList);
+        let levels: Dictionary<number, ListCounterInfo> = this.documentHelper.renderedLists.get(abstractList);
         let levelNumberTemp: number = levelNumber + 1;
         while (levelNumberTemp < abstractList.levels.length) {
             let listLevel: WListLevel = this.getListLevel(list, levelNumberTemp);
@@ -7029,21 +7044,75 @@ export class Layout {
         }
     }
 
-    private updateListValues(list: WList, listLevelNumber: number): void {
+    private getListValues(initValue: number, hasInsertion: boolean, hasDeletion: boolean): number[] {
+        let firstValue: number = initValue;
+        let secondValue: number = initValue;
+        // Update counters based on revision status
+        // NO-revision : decrement neither counter
+        // INSERT-revision: decrement only first counter
+        // DELETE-revision: decrement only second counter
+        // BOTH insert AND delete: decrement both counters
+        if (hasInsertion && hasDeletion) {
+            // BOTH insert AND delete
+            firstValue--;
+            secondValue--;
+        }
+        else if (hasInsertion && !hasDeletion) {
+            // INSERT-revision case
+            firstValue--;
+        } else if (!hasInsertion && hasDeletion) {
+            // DELETE-revision case
+            secondValue--;
+        }
+        return [firstValue, secondValue];
+    }
+    private updateListValues(list: WList, listLevelNumber: number, revision?: Revision[]): void {
         let abstractList: WAbstractList = this.documentHelper.getAbstractListById(list.abstractListId);
         let currentListLevel: WListLevel = this.getListLevel(list, listLevelNumber);
+        let hasInsertion: boolean = false;
+        let hasDeletion: boolean = false;
+        // Check revision types
+        if (!isNullOrUndefined(revision) && revision.length > 0) {
+            for (let rev of revision) {
+                if (rev.revisionType === 'Insertion') {
+                    hasInsertion = true;
+                } else if (rev.revisionType === 'Deletion') {
+                    hasDeletion = true;
+                }
+            }
+        }
         if (!this.documentHelper.renderedLists.containsKey(abstractList)) {
-            let startVal: Dictionary<number, number> = new Dictionary<number, number>();
+            let startVal: Dictionary<number, ListCounterInfo> = new Dictionary<number, ListCounterInfo>();
             this.documentHelper.renderedLists.add(abstractList, startVal);
             let listLevel: WListLevel = this.getListLevel(list, listLevelNumber);
             for (let i: number = 0; i <= listLevelNumber; i++) {
-                startVal.add(i, this.getListStartValue(i, list));
+                let initValue: number = this.getListStartValue(i, list);
+                const listValues: number[] = this.getListValues(initValue, hasInsertion, hasDeletion);
+                startVal.add(i, { first: listValues[0], second: listValues[1] });
             }
         } else {
-            let levels: Dictionary<number, number> = this.documentHelper.renderedLists.get(abstractList);
+            let levels: Dictionary<number, ListCounterInfo> = this.documentHelper.renderedLists.get(abstractList);
             if (levels.containsKey(listLevelNumber)) {
-                let startAt: number = levels.get(listLevelNumber);
-                levels.set(listLevelNumber, startAt + 1);
+                let counterInfo: ListCounterInfo = levels.get(listLevelNumber);
+                // Update counters based on revision status
+                // NO-revision: increment both counters
+                // INSERT-revision: increment only second counter
+                // DELETE-revision: increment only first counter
+                // BOTH insert AND delete: increment neither counter
+                if (!hasInsertion && !hasDeletion) {
+                    // NO-revision case
+                    counterInfo.first++;
+                    counterInfo.second++;
+                } else if (hasInsertion && !hasDeletion) {
+                    // INSERT-revision case
+                    counterInfo.second++;
+                } else if (!hasInsertion && hasDeletion) {
+                    // DELETE-revision case
+                    counterInfo.first++;
+                }
+                // else: BOTH insert AND delete - no change
+                
+                levels.set(listLevelNumber, counterInfo);
                 let levelNumber: number = listLevelNumber + 1;
                 while (levelNumber < this.documentHelper.getAbstractListById(list.abstractListId).levels.length) {
                     let listLevel: WListLevel = this.getListLevel(list, levelNumber);
@@ -7062,7 +7131,8 @@ export class Layout {
                 while (!levels.containsKey(levelNumber - 1) && levelNumber > 0) {
                     let listLevel: WListLevel = this.getListLevel(list, levelNumber - 1);
                     // if (!isNullOrUndefined(listLevel)) {
-                    levels.add(levelNumber - 1, this.getListStartValue(levelNumber - 1, list));
+                    let initValue: number = this.getListStartValue(levelNumber - 1, list);
+                    levels.add(levelNumber - 1, { first: initValue, second: initValue });
                     // if (document.renderedListLevels.indexOf(listLevel) !== -1) {
                     //     document.renderedListLevels.push(listLevel);
                     // }
@@ -7070,34 +7140,88 @@ export class Layout {
                     levelNumber--;
                 }
                 let startAt: number = this.getListStartValue(listLevelNumber, list);
-                levels.add(listLevelNumber, startAt);
+                const listValues: number[] = this.getListValues(startAt, hasInsertion, hasDeletion);
+                levels.add(listLevelNumber, { first: listValues[0], second: listValues[1] });
             }
         }
     }
 
-    private getListText(listAdv: WList, listLevelNumber: number, currentListLevel: WListLevel, localeId: number): string {
+    private getListText(listAdv: WList, listLevelNumber: number, currentListLevel: WListLevel, localeId: number, revision: Revision[]): string {
+        // Detect revision type based on presence of Insert and Delete revisions
+        let hasInsertion: boolean = false;
+        let hasDeletion: boolean = false;
+
+        if (!isNullOrUndefined(revision) && revision.length > 0) {
+            for (let rev of revision) {
+                if (rev.revisionType === 'Insertion') {
+                    hasInsertion = true;
+                } else if (rev.revisionType === 'Deletion') {
+                    hasDeletion = true;
+                }
+            }
+        }
+
+        // Determine list text based on revision type
         let listText: string = currentListLevel.numberFormat;
+        
+        // If both insert and delete revisions exist, return empty
+        if (hasInsertion && hasDeletion) {
+            return '';
+        }
+        let firstListText: string = listText;
+        let secondListText: string = listText;
+        let isDualList: boolean = false;
         if (this.documentHelper.renderedLists.containsKey(this.documentHelper.getAbstractListById(listAdv.abstractListId))) {
-            let levels: Dictionary<number, number> = this.documentHelper.renderedLists.get(this.documentHelper.getAbstractListById(listAdv.abstractListId));
+            let levels: Dictionary<number, ListCounterInfo> = this.documentHelper.renderedLists.get(this.documentHelper.getAbstractListById(listAdv.abstractListId));
             let keys: number[] = levels.keys;
             for (let i: number = 0; i < keys.length; i++) {
                 let levelNumber: number = keys[i];
                 let levelKey: string = '%' + (levelNumber + 1).toString();
                 // if isLegalStyleNumber boolean is true, consider the currentlistlevel for getting the replace text else use the levels from starting.
                 let listLevel: WListLevel = this.getListLevel(listAdv, levelNumber);
-                let pattern: ListLevelPattern = i < listLevelNumber ? listLevel.listLevelPattern !== 'LeadingZero' ? 'Arabic' : listLevel.listLevelPattern : undefined;
-                if (listText.match(levelKey)) {
+                let pattern: ListLevelPattern = i < listLevelNumber ? (listLevel.listLevelPattern !== 'LeadingZero' ? 'Arabic' : listLevel.listLevelPattern): undefined;
+                if (firstListText.match(levelKey)) {
                     if (levelNumber > listLevelNumber) {
                         return '';
-                    } else if (levels.containsKey(levelNumber) && !isNullOrUndefined(listLevel)) {
-                        listText = listText.replace(levelKey, this.getListTextListLevel(listLevel, levels.get(levelNumber), localeId, currentListLevel.isLegalStyleNumbering ? pattern : undefined));
+                    }
+                    if (levels.containsKey(levelNumber) && !isNullOrUndefined(listLevel)) {
+                        let counterInfo: ListCounterInfo = levels.get(levelNumber);
+                        let counterValue: number;
+                        // Select counter value based on revision type
+                        if (hasInsertion && !hasDeletion) {
+                            // INSERT revision: use second counter
+                            counterValue = counterInfo.second;
+                            let value: string = this.getListTextListLevel(listLevel, counterValue, localeId, currentListLevel.isLegalStyleNumbering ? pattern : undefined);
+                            firstListText = firstListText.replace(levelKey, value);
+                            secondListText = secondListText.replace(levelKey, value);
+                        } else if (!hasInsertion && hasDeletion) {
+                            // DELETE revision: use first counter
+                            counterValue = counterInfo.first;
+                            let value: string = this.getListTextListLevel(listLevel, counterValue, localeId, currentListLevel.isLegalStyleNumbering ? pattern : undefined);
+                            firstListText = firstListText.replace(levelKey, value);
+                            secondListText = secondListText.replace(levelKey, value);
+                        } else {
+                            // NO revision: combine both counters with delimiter "2.|6."
+                            // If both counters are same, show only one without delimiter
+                            if (counterInfo.first === counterInfo.second) {
+                                counterValue = counterInfo.first;
+                                let value: string = this.getListTextListLevel(listLevel, counterValue, localeId, currentListLevel.isLegalStyleNumbering ? pattern : undefined);
+                                firstListText = firstListText.replace(levelKey, value);
+                                secondListText = secondListText.replace(levelKey, value);
+                            } else {
+                                isDualList = true;
+                                firstListText = firstListText.replace(levelKey, this.getListTextListLevel(listLevel, counterInfo.first, localeId, currentListLevel.isLegalStyleNumbering ? pattern : undefined));
+                                secondListText = secondListText.replace(levelKey, this.getListTextListLevel(listLevel, counterInfo.second, localeId, currentListLevel.isLegalStyleNumbering ? pattern : undefined));
+                            }
+                        }
                     } else {
-                        listText = listText.replace(levelKey, '0');
+                        firstListText = firstListText.replace(levelKey, '0');
+                        secondListText = secondListText.replace(levelKey, '0');
                     }
                 }
             }
         }
-        return listText;
+        return isDualList ? firstListText + '\u001F' + secondListText : firstListText;
     }
 
     public getAsLetter(number: number): string {
@@ -10611,8 +10735,8 @@ export class Layout {
             let nextWidget: Widget = undefined;
             nextWidget = block.getSplitWidgets()[0] as ParagraphWidget;
             /* eslint-disable-next-line max-len */
-            if (this.documentHelper.fieldStacks.length === 0 && !isNullOrUndefined(nextWidget) && currentWidget.containerWidget === nextWidget.containerWidget
-                && (HelperMethods.round(nextWidget.y, 2) === HelperMethods.round(currentWidget.y + currentWidget.height, 2))) {
+            if (this.documentHelper.fieldStacks.length === 0 && !isNullOrUndefined(nextWidget) && currentWidget.containerWidget === nextWidget.containerWidget 
+                && !this.documentHelper.isFollowedListLayoutRequired && (HelperMethods.round(nextWidget.y, 2) === HelperMethods.round(currentWidget.y + currentWidget.height, 2))) {
                 if (!isNullOrUndefined(this.documentHelper.blockToShift) || this.documentHelper.owner.editorModule.isFootnoteElementRemoved) {
                     this.documentHelper.blockToShift = block;
                 } else if ((nextWidget as BlockWidget).bodyWidget) {
@@ -10628,7 +10752,7 @@ export class Layout {
                 break;
             }
             updateNextBlockList = true;
-            if ((viewer.owner.isShiftingEnabled && (this.documentHelper.fieldStacks.length === 0 || this.viewer.owner.editorModule.isInsertingTOC)) || (this.isIFfield && !this.checkBlockHasField(block))) {
+            if ((viewer.owner.isShiftingEnabled && !this.documentHelper.isFollowedListLayoutRequired && (this.documentHelper.fieldStacks.length === 0 || this.viewer.owner.editorModule.isInsertingTOC)) || (this.isIFfield && !this.checkBlockHasField(block))) {
                 if (!block.isFieldCodeBlock) {
                     this.documentHelper.blockToShift = block;
                     break;
@@ -10663,9 +10787,10 @@ export class Layout {
             splittedWidget = nextBlock.getSplitWidgets() as BlockWidget[];
             nextBlock = splittedWidget[splittedWidget.length - 1].nextRenderedWidget as BlockWidget;
         }
-        if ((!viewer.owner.isShiftingEnabled || (this.documentHelper.blockToShift !== block)) && !this.isPastingContent) {
+        if ((!viewer.owner.isShiftingEnabled || (this.documentHelper.blockToShift !== block)) && !this.isPastingContent && !this.documentHelper.isFollowedListLayoutRequired) {
             this.viewer.owner.editorModule.updateListItemsTillEnd(block, updateNextBlockList);
         }
+        this.documentHelper.isFollowedListLayoutRequired = false;
     }
     /**
      * Update the client area for the line widget. 

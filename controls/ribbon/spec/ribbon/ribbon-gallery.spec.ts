@@ -768,6 +768,7 @@ describe('Ribbon', () => {
                     header: "Tab",
                     groups: [{
                         id: "groupGallery",
+                        enableGroupOverflow: true,
                         header: "Gallery",
                         collections: [{
                             items: [{
@@ -792,7 +793,7 @@ describe('Ribbon', () => {
             containerEle.style.width = '200px';
             ribbon.refreshLayout();
 
-            const overflowBtn = ribbon.element.querySelector('#ribbon_tab_sim_ovrl_overflow') as HTMLElement;
+            const overflowBtn = ribbon.element.querySelector('#groupGallery_sim_grp_overflow') as HTMLElement;
             overflowBtn.click();
 
             const dropdown = document.querySelector('.e-ribbon-gallery-dropdown') as HTMLElement;

@@ -1261,6 +1261,47 @@ describe('RTE CR issues ', () => {
         });
     });
 
+    describe('Bug 1026350: Cursor Moves Incorrectly and Clears Mention Chip on Backspace in iOS', () => {
+        let rteObj: RichTextEditor;
+        let iosUA: string = 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Mobile/15E148 Safari/604.1';
+        let defaultUA: string = navigator.userAgent;
+        const mentionHtml: string = '<p><span contenteditable="false" class="e-mention-chip"><a href="mailto:camden@gmail.com" title="camden@gmail.com">@Camden Kate</a></span>\u00A0</p>';
+        beforeAll(() => {
+            Browser.userAgent = iosUA;
+            rteObj = renderRTE({
+                value: mentionHtml
+            });
+        });
+        afterAll(() => {
+            destroy(rteObj);
+            Browser.userAgent = defaultUA;
+        });
+        it('should replace the trailing nbsp with a zero-width space when backspace is pressed at the end of the mention element', (done: DoneFn) => {
+            (rteObj.contentModule.getEditPanel() as HTMLElement).focus();
+            rteObj.dataBind();
+            const paragraph: HTMLElement = rteObj.inputElement.querySelector('p');
+            rteObj.formatter.editorManager.nodeSelection.setCursorPoint(
+                document, paragraph.childNodes[1] as Element, 1);
+            expect(rteObj.userAgentData.getPlatform()).toBe('iOS');
+            const range: Range = rteObj.formatter.editorManager.nodeSelection.getRange(document);
+            const backSpaceKeyDown: KeyboardEvent = new KeyboardEvent('keydown', BACKSPACE_EVENT_INIT);
+            const backSpaceKeyUp: KeyboardEvent = new KeyboardEvent('keyup', BACKSPACE_EVENT_INIT);
+            rteObj.inputElement.dispatchEvent(backSpaceKeyDown);
+            rteObj.inputElement.dispatchEvent(backSpaceKeyUp);
+            setTimeout(() => {
+                const mentionChip: HTMLElement = rteObj.inputElement.querySelector('span.e-mention-chip');
+                expect(mentionChip).not.toBeNull();
+                // The trailing nbsp should have been replaced with a zero-width space (\u200B)
+                const paragraphAfter: HTMLElement = rteObj.inputElement.querySelector('p');
+                const lastChild: Node = paragraphAfter.lastChild;
+                expect(lastChild.nodeType).toBe(Node.TEXT_NODE);
+                expect(lastChild.nodeValue).toBe('\u200B');
+                expect(lastChild.textContent.length).toBe(1);
+                done();
+            }, 100);
+        });
+    });
+
     describe('883222 - Tab key press on selected paragraph deletes the entire line in RichTextEditor', () => {
         let rteObj: RichTextEditor;
         let keyBoardEvent: any = { type: 'keydown', preventDefault: () => { }, stopPropagation: () => { }, shiftKey: false, which: 9, key: 'Tab', keyCode: 9, target: document.body };
@@ -4365,6 +4406,44 @@ describe('RTE CR issues ', () => {
                 expect(editPanel.querySelector('#root')).toBeNull();
                 expect(editPanel.textContent.trim()).toBe('');
                 done();
+            }, 100);
+        });
+    });
+    describe('Bug 1032432: Insert-Link Dialog Disappears When Scrolling Using Scrollbar in Rich Text Editor', () => {
+        let rteObj: RichTextEditor;
+        beforeAll(() => {
+            rteObj = renderRTE({
+                toolbarSettings: {
+                    items: ['CreateLink']
+                }
+            });
+        });
+        afterAll(() => {
+            destroy(rteObj);
+        });
+        it('Link dialog should remain in DOM when scrollbar is clicked and scrolled', (done: Function) => {
+            (<HTMLElement>rteObj.element.querySelectorAll(".e-toolbar-item")[0] as HTMLElement).click();
+            setTimeout(() => {
+                const dialogElement = document.querySelector('.e-rte-link-dialog') as HTMLElement;
+                expect(dialogElement).not.toBeNull();
+                expect(dialogElement.style.display).not.toBe('none');
+                const scrollbarClickEvent = new MouseEvent('click', {
+                    bubbles: true,
+                    cancelable: true,
+                    view: window,
+                    clientX: window.innerWidth - 10, // Click near the right edge (scrollbar area)
+                    clientY: 100
+                });
+                const scrollEvent = new Event('scroll', {
+                    bubbles: true
+                });
+                document.dispatchEvent(scrollbarClickEvent);
+                window.dispatchEvent(scrollEvent);
+                setTimeout(() => {
+                    const dialogElementAfterScroll = document.querySelector('.e-rte-link-dialog') as HTMLElement;
+                    expect(dialogElementAfterScroll).not.toBeNull();
+                    done();
+                }, 100);
             }, 100);
         });
     });

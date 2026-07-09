@@ -707,8 +707,8 @@ describe('_FdfDocument - highlighted branch coverage', () => {
             // Act
             const result: string = (fdf as any)._getFormattedString(input);
 
-            // Assert
-            expect(result).toBe("A'(B')C");
+            // Assert — implementation prefixes '(' (char 40) and ')' (char 41) with '\'
+            expect(result).toBe('A\\(B\\)C');
         });
     });
 

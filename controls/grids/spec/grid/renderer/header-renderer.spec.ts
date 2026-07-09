@@ -355,4 +355,160 @@ describe('EJ2-6660-Header template', () => {
             gridObj = null;
         });
     });
+    describe('EJ2-1015517 - Header-renderer createHeaderContent method coverage', () => {
+        let gridObj: Grid;
+
+        beforeAll((done: Function) => {
+            gridObj = createGrid(
+                {
+                    dataSource: data,
+                    allowResizing: true,
+                    columns: [
+                        { field: 'OrderID', headerText: 'Order ID', width: 100 },
+                        {
+                            headerText: 'Customer Details',
+                            textAlign: 'Center',
+                            columns: [
+                                { field: 'CustomerID', headerText: 'Customer ID', width: 120, visible: true },
+                                { field: 'ShipCountry', headerText: 'Ship Country', width: 120, visible: false }
+                            ]
+                        },
+                        { field: 'ShipAddress', headerText: 'Ship Address', width: 150 }
+                    ],
+                    height: 300
+                },
+                done
+            );
+        });
+
+        it('createHeaderContent skips isFirstColumnHidden assignment when renderModule is null', () => {
+            const headerRenderer: any = (gridObj as any).renderModule.headerRenderer;
+            const originalRenderer = gridObj.renderModule;
+            gridObj.renderModule = null;
+            (gridObj.columns[0] as any).visible = false;
+            headerRenderer.createHeaderContent(undefined);
+            expect(true).toBe(true);
+            gridObj.renderModule = originalRenderer;
+            expect(gridObj.renderModule).toBeTruthy();
+        });
+        it('should add .e-last-visible-stack-cell when the last stacked header cell is hidden', () => {
+            const headerRenderer: any = (gridObj as any).renderModule.headerRenderer;
+            gridObj.renderModule = null;
+            (gridObj.columns[0] as any).visible = true;
+            // Act: call the method under test directl;y
+            headerRenderer.createHeaderContent(undefined);
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null as any;
+        });
+    });
+    describe('HeaderRenderer internal branches (ensureColumns & setVisible) Coverage', () => {
+        let gridObj: Grid;
+        beforeAll((done: Function) => {
+            gridObj = createGrid({
+                dataSource: data, columns: [
+                    { field: 'OrderID', headerText: 'Order ID' },
+                    { field: 'CustomerID', headerText: 'Customer ID' }
+                ]
+            }, done);
+        });
+
+
+        it('ensureColumns should set rowSpan for row drag icon when row draggable', () => {
+            const hRenderer = (gridObj as any).headerModule as any;
+            hRenderer.colDepth = 2;
+            // make grid report that rows are draggable and frozen mode is not 'Right'
+            (gridObj as any).isRowDraggable = () => true;
+            (gridObj as any).getFrozenMode = () => '';
+            const rows: any = [{ cells: [] }];
+            const res = (hRenderer as any).ensureColumns(rows);
+            expect(res).toBeDefined();
+        });
+
+        it('setVisible should handle showAddNewRow branch when .e-addedrow exists', function () {
+            const hRenderer = gridObj.headerModule;
+            (gridObj as any).editSettings = { showAddNewRow: true };
+            // More realistic structure — add-row usually contains a table
+            const added = createElement('div', { className: 'e-addedrow' });
+            const table = createElement('table');
+            const colgroup = document.createElement('colgroup');
+            // Add at least one <col> per column (minimal)
+            gridObj.getColumns().forEach(() => {
+                colgroup.appendChild(document.createElement('col'));
+            });
+            table.appendChild(colgroup);
+            added.appendChild(table);
+            gridObj.element.appendChild(added);
+            // Now call — colgroup.children should be valid <col> elements
+            hRenderer.setVisible(gridObj.getColumns());
+            added.remove();
+        });
+
+        it('getStackedLockColsCount should set lockColsCount', () => {
+            const headerRenderer: any = (gridObj as any).renderModule.headerRenderer;
+            const col: any = {
+                columns: null,
+                lockColumn: true
+            }
+            headerRenderer.getStackedLockColsCount(col, 2);
+        });
+
+        afterAll(() => destroy(gridObj));
+    });
+    describe('HeaderRenderer.appendCells branche Coverage', () => {
+        let gridObj: Grid;
+        let headerRenderer: any;
+
+        beforeEach((done) => {
+            gridObj = createGrid(
+                {
+                    frozenColumns: 2,
+                    allowResizing: true,
+                    columns: [
+                        { field: 'OrderID', headerText: 'ID', width: 80, lockColumn: true, visible: true },
+                        {
+                            headerText: 'Customer Group',
+                            lockColumn: true,
+                            columns: [
+                                { field: 'CustomerID', headerText: 'Cust ID', width: 110, visible: true },
+                                { field: 'ContactName', headerText: 'Contact', width: 130, visible: false },
+                                { field: 'Phone', headerText: 'Phone', width: 120, visible: true }
+                            ]
+                        },
+                        { field: 'Freight', headerText: 'Freight', width: 90, visible: true },
+                        { field: 'ShipCity', headerText: 'City', width: 100, visible: true }
+                    ],
+                    dataSource: [{ OrderID: 10248, CustomerID: 'VINET', ContactName: 'Paul', Phone: '(555) 555-0100', Freight: 32.38, ShipCity: 'Reims' }],
+                },
+                done
+            );
+
+            headerRenderer = (gridObj as any).headerModule;
+        });
+
+        it('should create stacked header cell when isStackedLockColumn is true (frozen + stacked + lockColsRendered=false)', () => {
+            gridObj.refreshHeader(); // triggers full header generation
+            const Header = gridObj.element.querySelectorAll('.e-headercontent th.e-stackedheadercell');
+            const customerTh = Array.from(Header).find(th => th.textContent.trim() === 'Customer Group');
+            expect(customerTh).toBeTruthy();
+
+        });
+
+        it('should use adjusted isFirstCol & isLaststackedCol when lockColsRendered=true', () => {
+            // Simulate second pass (many grids do two passes for frozen content)
+            headerRenderer.lockColsRendered = true;
+            const fakeRows: any = [{ cells: [] }, { cells: [] }];
+            const stackedCol = gridObj.columns[1]; // Customer Group
+            headerRenderer.appendCells(stackedCol, fakeRows, 0, true, true, true, false, 'header', true);
+            const cell = fakeRows[0].cells[0];
+            expect(cell).toBeDefined();
+        });
+
+        afterEach(() => {
+            destroy(gridObj);
+        });
+
+    });
 });

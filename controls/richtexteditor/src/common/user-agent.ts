@@ -29,13 +29,13 @@ export class CustomUserAgentData {
         if (/windows/i.test(this.userAgent)) {
             return 'Windows';
         }
-        if (/macintosh|mac os/i.test(this.userAgent) && !(/iphone|ipad|ipod/i.test(this.userAgent))) {
+        if (/macintosh|mac os/i.test(this.userAgent) && !(/iphone|ipad|ipod|crios/i.test(this.userAgent))) {
             return 'macOS';
         }
         if (/linux/i.test(this.userAgent) && !(/android/i.test(this.userAgent))) {
             return 'Linux';
         }
-        if (/iphone|ipad|ipod/i.test(this.userAgent)) {
+        if (/iphone|ipad|ipod|crios/i.test(this.userAgent)) {
             return 'iOS';
         }
         if (/android/i.test(this.userAgent)) {

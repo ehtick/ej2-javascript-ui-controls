@@ -259,8 +259,8 @@ export namespace ListBase {
         const curOpt: ListBaseOptions = extend({}, defaultListBaseOptions, options);
         cssClass = getModuleClass(curOpt.moduleName);
         const fields: FieldsMapping = (componentInstance &&
-            (componentInstance.getModuleName() === 'listview' || componentInstance.getModuleName() === 'multiselect'))
-            ? curOpt.fields : extend({}, defaultMappedFields, curOpt.fields);
+            ['listview', 'multiselect', 'dropdownlist', 'autocomplete', 'combobox', 'listbox', 'mention']
+                .indexOf(componentInstance.getModuleName()) !== -1) ? curOpt.fields : extend({}, defaultMappedFields, curOpt.fields);
         const ariaAttributes: AriaAttributesMapping = extend({}, defaultAriaAttributes, curOpt.ariaAttributes);
         let id: string;
         let checkboxElement: HTMLElement[] = [];

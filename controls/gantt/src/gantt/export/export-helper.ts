@@ -46,6 +46,17 @@ export class ExportHelper {
     public constructor(parent: Gantt) {
         this.parent = parent;
     }
+    private resolveCondition<T>(condition: boolean, ifTrue: T, ifFalse: T): T {
+        return condition ? ifTrue : ifFalse;
+    }
+    private evaluateConditions<T>(
+        condition1: PdfHeader,
+        condition2: number,
+        ifTrue: T,
+        ifFalse: T
+    ): T {
+        return (condition1 && condition2) ? ifTrue : ifFalse;
+    }
 
     private shouldProcessChart(): boolean {
         let chartWidth: number;
@@ -53,11 +64,19 @@ export class ExportHelper {
         if (this.exportProps && this.exportProps.fitToWidthSettings && this.exportProps.fitToWidthSettings.isFitToWidth) {
             if (this.exportProps.fitToWidthSettings.chartWidth) {
                 chartWidth = parseInt(this.exportProps.fitToWidthSettings.chartWidth.split('%')[0], 10);
-                chartWidth = chartWidth > 100 ? 100 : chartWidth;
+                chartWidth = this.resolveCondition(
+                    chartWidth > 100,
+                    100,
+                    chartWidth
+                );
             }
             if (this.exportProps.fitToWidthSettings.gridWidth) {
                 gridWidth = parseInt(this.exportProps.fitToWidthSettings.gridWidth.split('%')[0], 10);
-                gridWidth = gridWidth > 100 ? 100 : gridWidth;
+                gridWidth = this.resolveCondition(
+                    gridWidth > 100,
+                    100,
+                    gridWidth
+                );
             }
         }
         const isFitToWidth: boolean = this.exportProps.fitToWidthSettings && this.exportProps.fitToWidthSettings.isFitToWidth;
@@ -91,24 +110,27 @@ export class ExportHelper {
             this.parent.zoomingProjectStartDate = this.parent.cloneProjectStartDate;
             this.parent.zoomingProjectEndDate = this.parent.cloneProjectEndDate;
         }
-        if (this.parent.zoomingProjectStartDate > this.parent.cloneProjectStartDate) {
-            this.parent.cloneProjectStartDate = new Date(this.parent.allowUnscheduledTasks ?
-                this.parent.zoomingProjectStartDate : this.parent.cloneProjectStartDate);
-        }
-        if (isNullOrUndefined(this.parent.projectStartDate) && isNullOrUndefined(this.parent.projectEndDate)) {
-            this.parent.dataOperation.calculateProjectDates();
-        }
-        const timeDifference: number = (this.parent.cloneProjectEndDate.getTime() - this.parent.cloneProjectStartDate.getTime());
+        this.parent.cloneTimelineStartDate = new Date(this.parent.cloneProjectStartDate);
+        this.parent.cloneTimelineEndDate = new Date(this.parent.cloneProjectEndDate);
+        const timeDifference: number = (this.parent.cloneTimelineEndDate.getTime() - this.parent.cloneTimelineStartDate.getTime());
         const totalDays: number = (timeDifference / (1000 * 3600 * 24));
         let chartsideWidth: number;
         let gridWidth: number;
         if (this.exportProps.fitToWidthSettings.gridWidth) {
             gridWidth = parseInt(this.exportProps.fitToWidthSettings.gridWidth.split('%')[0], 10);
-            gridWidth = gridWidth > 100 ? 100 : gridWidth;
+            gridWidth = this.resolveCondition(
+                gridWidth > 100,
+                100,
+                gridWidth
+            );
         }
         if (this.exportProps.fitToWidthSettings.chartWidth) {
             chartsideWidth = parseInt(this.exportProps.fitToWidthSettings.chartWidth.split('%')[0], 10);
-            chartsideWidth = chartsideWidth > 100 ? 100 : chartsideWidth;
+            chartsideWidth = this.resolveCondition(
+                chartsideWidth > 100,
+                100,
+                chartsideWidth
+            );
         }
         else {
             if (this.exportProps.fitToWidthSettings.gridWidth) {
@@ -124,7 +146,7 @@ export class ExportHelper {
         let zoomingLevel: ZoomTimelineSettings;
         let firstValue: ZoomTimelineSettings;
         let secondValue: ZoomTimelineSettings;
-        const zoomingCollections: ZoomTimelineSettings[] = [...this.parent.zoomingLevels];
+        const zoomingCollections: ZoomTimelineSettings[] = Object.assign([], this.parent.zoomingLevels);
         const sortedCollectons: ZoomTimelineSettings[] = zoomingCollections.sort((a: ZoomTimelineSettings, b: ZoomTimelineSettings) =>
             (!a.perDayWidth && !b.perDayWidth ? 0 : (a.perDayWidth < b.perDayWidth) ? 1 : -1));
         if (perDayWidth === 0) { // return when the Gantt chart is not in viewable state.
@@ -149,14 +171,18 @@ export class ExportHelper {
         }
         const newTimeline: ZoomTimelineSettings = extend({}, {}, zoomingLevel, true);
         if (isNullOrUndefined(this.parent.projectStartDate)) {
-            this.parent.timelineModule['roundOffDateToZoom'](this.parent.cloneProjectStartDate, true, perDayWidth, newTimeline.bottomTier.unit, zoomingLevel);
+            this.parent.timelineModule['roundOffDateToZoom'](this.parent.cloneTimelineStartDate, true, perDayWidth, newTimeline.bottomTier.unit, zoomingLevel);
         }
         if (isNullOrUndefined(this.parent.projectEndDate)) {
-            this.parent.timelineModule['roundOffDateToZoom'](this.parent.cloneProjectEndDate, false, perDayWidth, newTimeline.bottomTier.unit, zoomingLevel);
+            this.parent.timelineModule['roundOffDateToZoom'](this.parent.cloneTimelineEndDate, false, perDayWidth, newTimeline.bottomTier.unit, zoomingLevel);
         }
         const numberOfCells: number = this.parent.timelineModule['calculateNumberOfTimelineCells'](newTimeline);
         const scrollHeight: number = this.parent.pdfExportModule['pdfPageDimensions'].height; //17 is horizontal scrollbar width
-        const emptySpace: number = scrollHeight <= 0 ? 0 : 17;
+        const emptySpace: number = this.resolveCondition(
+            scrollHeight <= 0,
+            0,
+            17
+        );
         newTimeline.timelineUnitSize = Math.abs((chartWidth - emptySpace)) / numberOfCells;
         this.parent.timelineModule['changeTimelineSettings'](newTimeline);
         this.parent.timelineModule.isZoomToFit = false;
@@ -390,7 +416,11 @@ export class ExportHelper {
         }
         const cellValueString: string | number = !isNullOrUndefined(cell.value) ? (column.type === 'number'  ? (cell.value as number) : cell.value.toString()) : '';
         const cellValue: string | number = cellValueString;
-        const value: string | number = !isNullOrUndefined(cellValue) ? cellValue : '';
+        const value: string | number = this.resolveCondition(
+            !isNullOrUndefined(cellValue),
+            cellValue,
+            ''
+        );
         cell.isHeaderCell = false;
         cell.style.padding = new PdfPaddings();
         this.copyStyles(this.ganttStyle.cell, cell, row.isParentRow);
@@ -527,7 +557,7 @@ export class ExportHelper {
             taskbar.segment = ganttProp.segments;
             taskbar.isSpliterTask = (isNullOrUndefined(ganttProp.segments) || ganttProp.segments.length === 0) ? false : true;
             if (taskbar.isSpliterTask) {
-                taskbar.segmentCollection = taskbar.segment.map((obj: ITaskData ) => ({ ...obj })); }
+                taskbar.segmentCollection = taskbar.segment.map((obj: ITaskData) => Object.assign({}, obj)); }
             taskbar.baselineTop = this.parent.chartRowsModule.baselineTop;
             taskbar.isMilestone = ganttProp.isMilestone;
             taskbar.baselineStartDate = ganttProp.baselineStartDate;
@@ -882,7 +912,11 @@ export class ExportHelper {
         let padding: number = 0;
         if (cell.isHeaderCell) {
             padding = this.parent.timelineModule.isSingleTier ? 45 / 2 : 60 / 2;
-            cell.style.padding.top = (padding - style.fontSize > 0) ? padding - style.fontSize : padding;
+            cell.style.padding.top = this.resolveCondition(
+                (padding - style.fontSize > 0),
+                padding - style.fontSize,
+                padding
+            );
         } else {
             padding = this.parent.rowHeight / 2;
             cell.style.padding.top = padding;
@@ -959,12 +993,21 @@ export class ExportHelper {
         }
         /* eslint-disable-next-line */
         const pageSize: any = PdfPage.size;
-        const clientSize: SizeF = !isNullOrUndefined(pageSize) ?  pageSize : this.pdfDoc.pageSettings.size;
+        const clientSize: SizeF = this.resolveCondition(
+            !isNullOrUndefined(pageSize),
+            pageSize,
+            this.pdfDoc.pageSettings.size
+        );
         // code for draw header content
         if (!isNullOrUndefined(this.exportProps.header)) {
             const headerProp: PdfHeader = this.exportProps.header;
             const position: PointF = new PointF(0, headerProp.fromTop);
-            const size: SizeF = new SizeF((clientSize.width * 1.1), ((headerProp && headerProp.height) ? headerProp.height * 0.75 : 50));
+            const size: SizeF = new SizeF((clientSize.width * 1.1), (this.evaluateConditions(
+                headerProp,
+                headerProp.height,
+                headerProp.height * 0.75,
+                50
+            ) as number));
             const bounds: RectangleF = new RectangleF(position, size);
             pdfDoc.template.top = this.drawPageTemplate(new PdfPageTemplateElement(bounds), headerProp);
 
@@ -972,9 +1015,10 @@ export class ExportHelper {
         // code for customization of footer
         if (!this.exportProps.enableFooter && !isNullOrUndefined(this.exportProps.footer)) {
             const footer: PdfFooter = this.exportProps.footer;
-            const position: PointF = new PointF(0, ((clientSize.width - 80) - ((footer && footer.fromBottom) ?
-                footer.fromBottom * 0.75 : 0)));
-            const size: SizeF = new SizeF((clientSize.width * 1.1), ((footer && footer.height) ? footer.height * 0.75 : 50));
+            const position: PointF = new PointF(0, ((clientSize.width - 80) -
+                (this.evaluateConditions(footer, footer.fromBottom, footer.fromBottom * 0.75, 0))));
+            const size: SizeF = new SizeF((clientSize.width * 1.1),
+                                          (this.evaluateConditions(footer, footer.height, footer.height * 0.75, 50)));
             const bounds: RectangleF = new RectangleF(position, size);
             this.pdfDoc.template.bottom = this.drawPageTemplate(new PdfPageTemplateElement(bounds), footer);
         }

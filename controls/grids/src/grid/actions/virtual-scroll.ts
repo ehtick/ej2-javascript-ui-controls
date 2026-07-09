@@ -9,7 +9,7 @@ import { Column } from '../models/column';
 import { RowRenderer } from '../renderer/row-renderer';
 import { extend, getValue, isNullOrUndefined, remove } from '@syncfusion/ej2-base';
 import { Row } from '../models/row';
-import { setComplexFieldID, setValidationRuels, getColumnModelByUid, getComplexFieldID } from '../base/util';
+import { setComplexFieldID, setValidationRuels, getColumnModelByUid, getComplexFieldID, parseViewportHeight } from '../base/util';
 import { EditRender } from '../renderer/edit-renderer';
 import { ComboBox } from '@syncfusion/ej2-dropdowns';
 
@@ -36,7 +36,9 @@ export class VirtualScroll implements IAction {
         if (this.parent.enableColumnVirtualization) {
             renderer.addRenderer(RenderType.Header, new VirtualHeaderRenderer(this.parent, this.locator));
         }
-        renderer.addRenderer(RenderType.Content, new VirtualContentRenderer(this.parent, this.locator));
+        if (!this.parent.enableDomVirtualization) {
+            renderer.addRenderer(RenderType.Content, new VirtualContentRenderer(this.parent, this.locator));
+        }
         if (!(!this.parent.enableVirtualization && this.parent.enableColumnVirtualization)) {
             this.ensurePageSize();
         }
@@ -44,9 +46,12 @@ export class VirtualScroll implements IAction {
 
     public ensurePageSize(): void {
         const rowHeight: number = this.parent.getRowHeight();
-        const vHeight: string | number = this.parent.height.toString().indexOf('%') < 0 ? this.parent.height :
+        let availableHeight: string | number = this.parent.height.toString().indexOf('%') < 0 ? this.parent.height :
             this.parent.element.getBoundingClientRect().height;
-        this.blockSize = ~~(parseFloat(vHeight.toString()) / rowHeight);
+        if (typeof this.parent.height === 'string' && this.parent.height.toLowerCase().indexOf('vh') !== -1) {
+            availableHeight = parseViewportHeight(this.parent.height);
+        }
+        this.blockSize = ~~(parseFloat(availableHeight.toString()) / rowHeight);
         const height: number =  this.blockSize * 2;
         const size: number = this.parent.pageSettings.pageSize;
         this.parent.setProperties({ pageSettings: { pageSize: size < height ? height : size }}, true);

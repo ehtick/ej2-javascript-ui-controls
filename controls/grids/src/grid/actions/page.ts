@@ -262,7 +262,6 @@ export class Page implements IAction {
             return;
         }
         this.isCancel = false;
-        this.parent.requestTypeAction = 'paging';
     }
 
     private keyPressHandler(e: KeyboardEventArgs): void {

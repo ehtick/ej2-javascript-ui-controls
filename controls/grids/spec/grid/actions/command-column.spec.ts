@@ -19,9 +19,10 @@ import  {profile , inMB, getMemoryProfile} from '../base/common.spec';
 import { VirtualScroll } from '../../../src/grid/actions/virtual-scroll';
 import { Page } from '../../../src/grid/actions/page';
 import { Toolbar } from '../../../src/grid/actions/toolbar';
+import { Freeze } from '../../../src/grid/actions/freeze';
+import { InfiniteScroll } from '../../../src/grid/actions/infinite-scroll';
 
-
-Grid.Inject(Group, Sort, DetailRow, Filter, Reorder, Toolbar, CommandColumn, Edit, VirtualScroll, Page);
+Grid.Inject(Group, Sort, DetailRow, Filter, Reorder, Toolbar, CommandColumn, Edit, VirtualScroll, Page,Freeze,InfiniteScroll);
 
 describe('Command Column ', () => {
 
@@ -479,6 +480,36 @@ describe('Command Column ', () => {
             expect((<any>gridObj).dataSource.length).toBe(7);            
            });
   
+        afterAll(function () {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    describe('EJ2-995701 - Command column Edit should not open dialog in Batch mode', () => {
+        let gridObj: Grid;
+        beforeAll(function (done: Function) {
+            gridObj = createGrid({
+                dataSource: data.slice(0, 8),
+                editSettings: { allowEditing: true, allowAdding: true, allowDeleting: true, mode: 'Batch', showConfirmDialog: false },
+                toolbar: ['Add', 'Delete', 'Update', 'Cancel'],
+                allowPaging: true,
+                columns: [
+                    { field: 'OrderID', isPrimaryKey: true, headerText: 'Order ID', width: 120, textAlign: 'Right' },
+                    { headerText: 'Manage Records', width: 160,
+                        commands: [{ type: 'Edit', buttonOption: { iconCss: ' e-icons e-edit', cssClass: 'e-flat' } },
+                            { type: 'Delete', buttonOption: { iconCss: 'e-icons e-delete', cssClass: 'e-flat' } }]
+                    }
+                ]
+            }, done);
+        });
+
+        it('Edit button does not open dialog in Batch mode', () => {
+            (<any>gridObj).getContent().querySelector('.e-unboundcelldiv').children[0].click();
+            const dlg: any = select('#' + gridObj.element.id + '_dialogEdit_wrapper', gridObj.element);
+            expect(dlg).toBeNull();
+        });
+
         afterAll(function () {
             destroy(gridObj);
             gridObj = null;
@@ -1126,4 +1157,123 @@ describe('Command Column ', () => {
             grid = actionBegin = actionComplete = null;
         });
     });
+
+    describe('EJ2-992389: Border is not applied properly for the command column when using frozenRows', () => {
+        let gridObj: Grid;
+        beforeAll((done: Function) => {
+            gridObj = createGrid({
+                dataSource: data.slice(0, 3),
+                editSettings: { allowEditing: true, allowAdding: true, allowDeleting: true },
+                pageSettings: { pageCount: 5 },
+                frozenRows: 2,
+                columns: [
+                    { field: 'OrderID', isPrimaryKey: true, headerText: 'Order ID', textAlign: 'Right', width: 120 },
+                    { field: 'ShipCountry', headerText: 'Ship Country', editType: 'dropdownedit', width: 150, edit: { params: { popupHeight: '300px' } } },
+                    {
+                        headerText: 'Manage Records', width: 160,
+                        commands: [{ type: 'Edit', buttonOption: { iconCss: ' e-icons e-edit', cssClass: 'e-flat' } },
+                        { type: 'Delete', buttonOption: { iconCss: 'e-icons e-delete', cssClass: 'e-flat' } },
+                        { type: 'Save', buttonOption: { iconCss: 'e-icons e-update', cssClass: 'e-flat' } },
+                        { type: 'Cancel', buttonOption: { iconCss: 'e-icons e-cancel-icon', cssClass: 'e-flat' } }]
+                    }
+                ],
+            }, done);
+        });
+
+        it('Tab navigation reaches command column and td has e-focused class', (done: Function) => {
+            const preventDefault = function () { };
+            const row = <HTMLTableRowElement>gridObj.getRows()[0];
+            const cells = row.querySelectorAll('.e-rowcell');
+            (cells[1] as HTMLElement).click();
+            (gridObj.keyboardModule as any).keyAction({ action: 'tab', preventDefault: preventDefault, target: cells[1] });
+            expect((row.children[2] as HTMLElement).classList.contains('e-focused')).toBeFalsy();
+            done();
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    describe('CommandColumnRenderer - React function template branch', () => {
+        let gridObj: Grid;
+        beforeAll((done: Function) => {
+            gridObj = createGrid({
+                dataSource: [{ OrderID: 10248 }],
+                columns: [
+                    { field: 'OrderID', headerText: 'Order ID', width: 120 },
+                    {
+                        headerText: 'Commands',
+                        // use a command column so the unboundcelldiv is rendered
+                        commands: [{ buttonOption: { content: 'cmd' } }]
+                    }
+                ],
+                allowPaging: false
+            }, done);
+        });
+
+        it('should execute react template function branch when isReact is true', (done: Function) => {
+            gridObj.isReact = true;
+            const cmdCol = <any>gridObj.columns[1];
+            // ensure commandsTemplate is a function and prototype.CSPTemplate is undefined
+            cmdCol.commandsTemplate = function () { };
+            if (cmdCol.commandsTemplate.prototype) {
+                delete cmdCol.commandsTemplate.prototype.CSPTemplate;
+            }
+            // override getColumnTemplate to append into node.firstElementChild
+            cmdCol.getColumnTemplate = () => {
+                return (data: Object, parent: any, name: string, tempID: string, a: any, b: any, target: Element) => {
+                    if (target) {
+                        target.appendChild(parent.createElement('span', { innerHTML: 'react-applied' }));
+                    }
+                };
+            };
+            gridObj.dataBound = () => {
+                const row = <HTMLTableRowElement>gridObj.getRows()[0];
+                const span = row.querySelector('.e-unboundcelldiv span') as HTMLElement;
+                expect(span).toBeDefined();
+                expect(span.innerHTML).toBe('react-applied');
+                done();
+            };
+            gridObj.refresh();
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    describe('CommandColumnRenderer - renderButton title fallback to content', () => {
+        let gridObj: Grid;
+        let rows: HTMLTableRowElement;
+        beforeAll((done: Function) => {
+            gridObj = createGrid({
+                dataSource: [{ OrderID: 10248 }],
+                columns: [
+                    { field: 'OrderID', headerText: 'Order ID', width: 120 },
+                    {
+                        headerText: 'Commands',
+                        commands: [
+                            { buttonOption: { content: 'OnlyContent' } }
+                        ]
+                    }
+                ],
+                allowPaging: false
+            }, done);
+        });
+
+        it('should set button title from content when type is undefined', () => {
+            rows = <HTMLTableRowElement>gridObj.getRows()[0];
+            const btn = rows.querySelector('.e-unboundcelldiv button') as HTMLButtonElement;
+            expect(btn.title).toBe('OnlyContent');
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = rows = null;
+        });
+    });
+
 });

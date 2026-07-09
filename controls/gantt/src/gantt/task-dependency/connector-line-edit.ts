@@ -1242,7 +1242,7 @@ export class ConnectorLineEdit {
      * @private
      */
     public removePredecessorByIndex(childRecord: IGanttData, index: number): void {
-        if (this.parent.undoRedoModule && !this.parent.undoRedoModule['isUndoRedoPerformed']) {
+        if (this.parent.undoRedoModule && !this.parent.undoRedoModule['isUndoRedoPerformed'] && this.parent['isUndoRedoItemPresent']('Edit')) {
             if (this.parent.undoRedoModule['redoEnabled']) {
                 this.parent.undoRedoModule['disableRedo']();
             }

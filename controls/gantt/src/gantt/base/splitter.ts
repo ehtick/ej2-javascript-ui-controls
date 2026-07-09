@@ -89,11 +89,8 @@ export class Splitter {
                         this.splitterObject.paneSettings[1].size = null;
                         this.splitterObject.paneSettings[1].size = this.getSpliterPositionInPercentage(this.splitterPreviousPositionChart);
                     }
-                    if (isNullOrUndefined(this.parent.projectEndDate) && this.parent.timelineSettings.viewEndDate === 'auto') {
+                    if (this.parent.timelineSettings.viewEndDate === 'auto') {
                         this.parent.timelineModule.updateTimelineAfterZooming(this.parent.timelineModule.timelineEndDate, true);
-                    }
-                    else if (this.parent.timelineSettings.viewStartDate !== 'auto' && this.parent.timelineSettings.viewEndDate === 'auto') {
-                        this.parent.timelineModule.adjustEndDateToFillChart(true);
                     }
                     callBackPromise.resolve(splitterResizedArgs);
                 });
@@ -200,11 +197,8 @@ export class Splitter {
             this.splitterObject.paneSettings[0].size = splitterPosition;
         }
         this.isSplitterResized = false;
-        if (isNullOrUndefined(this.parent.projectEndDate) && this.parent.timelineSettings.viewEndDate === 'auto') {
+        if (this.parent.timelineSettings.viewEndDate === 'auto') {
             this.parent.timelineModule.updateTimelineAfterZooming(this.parent.timelineModule.timelineEndDate, true);
-        }
-        else if (this.parent.timelineSettings.viewStartDate !== 'auto' && this.parent.timelineSettings.viewEndDate === 'auto') {
-            this.parent.timelineModule.adjustEndDateToFillChart(true);
         }
     }
     /**

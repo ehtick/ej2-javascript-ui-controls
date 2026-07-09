@@ -596,7 +596,7 @@ describe('LazyLoadGroup module', () => {
                     editSettings: {allowAdding: true, allowDeleting: true, allowEditing: true},
                     toolbar: ['Add', 'Edit', 'Delete', 'Update', 'Cancel', 'Search'],
                     groupSettings: { enableLazyLoading: true, columns: ['ProductName', 'CustomerName'] },
-                    height: 400,
+                    height: 200,
                     columns: [
                         { field: 'OrderID', headerText: 'Order ID', textAlign: 'Right', width: 120, isPrimaryKey: true, validationRules: {required: true}, },
                         { field: 'ProductName', headerText: 'Product Name', width: 160 },

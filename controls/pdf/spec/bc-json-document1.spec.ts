@@ -681,9 +681,10 @@ describe('_JsonDocument highlighted lines from 2 images', () => {
 
         const result: string = (jsonDocument as any)._convertToJson(table);
 
-        // This branch trims the leading space, but still keeps the value inside quotes
-        expect(result).toContain('"dictEntry":"{"x":"10"}"');
-        expect(result).toContain('"arrayEntry":"[1,2,3]"');
+        // Values with a leading space do NOT satisfy startsWith('{') / startsWith('['),
+        // so _convertToJson wraps them as plain quoted strings (no trimming in implementation).
+        expect(result).toContain('"dictEntry":" {"x":"10"}"');
+        expect(result).toContain('"arrayEntry":" [1,2,3]"');
     });
 
     it('should cover _importAnnotations() comments reset branch', () => {

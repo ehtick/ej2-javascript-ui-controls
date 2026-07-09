@@ -34,12 +34,25 @@ export class CellMergeRender<T> {
         if (row.index > this.parent.pinnedTopRecords.length) {
             const index: number = row.index - this.parent.pinnedTopRecords.length;
             const rowsObject: Row<Column>[] = this.parent.getRowsObject().filter((row: Row<Column>) => row.isDataRow);
-            const cells: Cell<Column>[] = this.parent.groupSettings.columns.length > 0
-                && !rowsObject[parseInt(index.toString(), 10) - 1].isDataRow
-                ? rowsObject[parseInt(index.toString(), 10)].cells : rowsObject[parseInt(index.toString(), 10) - 1].cells;
-            const targetCell: Cell<T> = row.cells[parseInt(i.toString(), 10)];
-            const uid: string = 'uid';
-            spannedCell = cells.filter((cell: Cell<Column>) => cell.column.uid === targetCell.column[`${uid}`])[0];
+            let prevRow: Row<Column>;
+            if (this.parent.enableDomVirtualization) {
+                prevRow = rowsObject.filter((r: Row<Column>) => r.index === row.index - 1)[0];
+            } else {
+                prevRow = rowsObject[parseInt(index.toString(), 10) - 1];
+            }
+            if (prevRow) {
+                const cells: Cell<Column>[] = this.parent.groupSettings.columns.length > 0
+                    && !prevRow.isDataRow
+                    ? (rowsObject[this.parent.enableDomVirtualization
+                        ? rowsObject.indexOf(prevRow) + 1 : parseInt(index.toString(), 10)]
+                        ? rowsObject[this.parent.enableDomVirtualization
+                            ? rowsObject.indexOf(prevRow) + 1 : parseInt(index.toString(), 10)].cells
+                        : prevRow.cells)
+                    : prevRow.cells;
+                const targetCell: Cell<T> = row.cells[parseInt(i.toString(), 10)];
+                const uid: string = 'uid';
+                spannedCell = cells.filter((cell: Cell<Column>) => cell.column.uid === targetCell.column[`${uid}`])[0];
+            }
         }
         const colSpanLen: number = spannedCell && spannedCell.colSpanRange > 1 && spannedCell.rowSpanRange > 1 ?
             spannedCell.colSpanRange : colSpan;
@@ -75,7 +88,7 @@ export class CellMergeRender<T> {
             row.cells[parseInt(i.toString(), 10)].rowSpanRange = Number(rowSpan);
             if (colSpan > 1) { row.cells[parseInt(i.toString(), 10)].colSpanRange = Number(colSpan); }
         }
-        if (row.index > this.parent.pinnedTopRecords.length && (spannedCell.rowSpanRange > 1)) {
+        if (row.index > this.parent.pinnedTopRecords.length && spannedCell && (spannedCell.rowSpanRange > 1)) {
             row.cells[parseInt(i.toString(), 10)].isSpanned = true;
             row.cells[parseInt(i.toString(), 10)].rowSpanRange = Number(spannedCell.rowSpanRange - 1);
             row.cells[parseInt(i.toString(), 10)].colSpanRange = spannedCell.rowSpanRange > 0 ? spannedCell.colSpanRange : 1;

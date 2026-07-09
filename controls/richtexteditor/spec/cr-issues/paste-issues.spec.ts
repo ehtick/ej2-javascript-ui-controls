@@ -533,7 +533,7 @@ describe('Paste CR issues ', ()=> {
                     let pasteOK: any = document.getElementById(rteObject.getID() + '_pasteCleanupDialog').getElementsByClassName('e-rte-pasteok');
                     pasteOK[0].click();
                 }
-                expect(rteObject.inputElement.innerHTML === `<p><img alt="Logo" src="https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png" class="e-rte-image e-img-inline" style=" border: 0px; vertical-align: bottom; cursor: pointer; display: inline-block; float: none; margin: auto 5px; max-width: 100%; position: relative; padding: 1px; color: rgb(28, 27, 31); font-family: Roboto, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, &quot;Helvetica Neue&quot;, sans-serif; font-size: 14px; font-style: normal; font-weight: 400; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; background-color: rgb(255, 255, 255); width: 300px;">&nbsp;</p>`).toEqual(true);
+                expect(rteObject.inputElement.innerHTML === `<p><img alt="Logo" src="https://ej2.syncfusion.com/demos/src/rich-text-editor/images/RTEImage-Feather.png" class="e-rte-image e-img-inline" style=" border: 0px; vertical-align: bottom; cursor: pointer; display: inline-block; margin: auto 5px; max-width: 100%; position: relative; padding: 1px; color: rgb(28, 27, 31); font-family: Roboto, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, &quot;Helvetica Neue&quot;, sans-serif; font-size: 14px; font-style: normal; font-weight: 400; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; background-color: rgb(255, 255, 255); width: 300px;">&nbsp;</p>`).toEqual(true);
                 done();
             }, 100);
         });
@@ -899,7 +899,7 @@ describe('Paste CR issues ', ()=> {
                     let pasteOK: any = document.getElementById(rteObject.getID() + '_pasteCleanupDialog').getElementsByClassName('e-rte-pasteok');
                     pasteOK[0].click();
                 }
-                expect(rteObject.inputElement.innerHTML === `<p style="text-align: center;"><span style="color: rgb(28, 27, 31); font-family: Roboto, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, &quot;Helvetica Neue&quot;, sans-serif; font-size: 14px; font-style: normal; font-weight: 400; text-align: center; text-indent: 0px; text-transform: none; white-space: normal; background-color: rgb(255, 255, 255); display: inline !important; float: none;">hello world this is a sample made for editor to check that alignment is working&nbsp; properly or not for the feature that is checking to work that how it is working in real time sb sample to check that it is working properly or not so that it could be working effectively. this has to be the sample for that it should be working proeperly or not formagt option denied tags denied attributes , allowed style propertied</span></p>`).toEqual(true);
+                expect(rteObject.inputElement.innerHTML === `<p style="text-align: center;"><span style="color: rgb(28, 27, 31); font-family: Roboto, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, &quot;Helvetica Neue&quot;, sans-serif; font-size: 14px; font-style: normal; font-weight: 400; text-align: center; text-indent: 0px; text-transform: none; white-space: normal; background-color: rgb(255, 255, 255); display: inline !important;">hello world this is a sample made for editor to check that alignment is working&nbsp; properly or not for the feature that is checking to work that how it is working in real time sb sample to check that it is working properly or not so that it could be working effectively. this has to be the sample for that it should be working proeperly or not formagt option denied tags denied attributes , allowed style propertied</span></p>`).toEqual(true);
                 done();
             }, 100);
         });
@@ -1467,6 +1467,42 @@ describe('Paste CR issues ', ()=> {
             rteObj.inputElement.dispatchEvent(pasteEvent);
             setTimeout(() => {
                 expect(rteObj.inputElement.textContent).toContain('mutated by event');
+                done();
+            }, 100);
+        });
+    });
+    describe('Bug 1033700: Bullet List Formatting Not Preserved When Pasting into Rich Text Editor', () => {
+        let editor: RichTextEditor;
+        const innerHTML: string = `\r\n\x3C!--StartFragment-->\r\n\r\n<p class=MsoListParagraphCxSpFirst style='margin-top:0in;margin-right:0in;margin-bottom:\r\n0in;margin-left:.25in;mso-add-space:auto;text-indent:-.25in;line-height:normal;\r\nmso-list:l0 level1 lfo1'><![if !supportLists]><span style='mso-list:Ignore'>1.<span\r\nstyle='font:7.0pt "Times New Roman"'>\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\r\n</span></span></span><![endif]>List item 1<o:p></o:p></p>\r\n\r\n<p class=MsoListParagraphCxSpMiddle style='margin-top:0in;margin-right:0in;margin-bottom:\r\n0in;margin-left:.25in;mso-add-space:auto;text-indent:-.25in;line-height:normal;\r\nmso-list:l0 level1 lfo1'><![if !supportLists]><span style='mso-list:Ignore'>2.<span\r\nstyle='font:7.0pt "Times New Roman"'>\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\r\n</span></span></span><![endif]>List item 2<o:p></o:p></p>\r\n\r\n<p class=MsoListParagraphCxSpLast style='margin-top:0in;margin-right:0in;margin-bottom:\r\n0in;margin-left:.25in;mso-add-space:auto;text-indent:-.25in;line-height:normal;\r\nmso-list:l0 level1 lfo1'><![if !supportLists]><span style='mso-list:Ignore'>3.<span\r\nstyle='font:7.0pt "Times New Roman"'>\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\r\n</span></span></span><![endif]>List item 3<o:p></o:p></p>\r\n\r\n<p class=MsoNormal><o:p>\u00a0</o:p></p>\r\n\r\n\x3C!--EndFragment-->\r\n`;
+        beforeAll(() => {
+            editor = renderRTE({
+                pasteCleanupSettings: {
+                    prompt: false,
+                    plainText: false,
+                    keepFormat: true
+                }
+            });
+        });
+        afterAll(() => {
+            destroy(editor);
+        });
+        it('Test for margin-left and the compensating negative text-indent being cleared on list items with hanging indent', (done: Function) => {
+            editor.focusIn();
+            setCursorPoint((editor as any).inputElement.firstElementChild, 0);
+            const dataTransfer: DataTransfer = new DataTransfer();
+            dataTransfer.setData('text/html', innerHTML);
+            const pasteEvent: ClipboardEvent = new ClipboardEvent('paste', { clipboardData: dataTransfer } as ClipboardEventInit);
+            editor.inputElement.dispatchEvent(pasteEvent);
+            setTimeout(() => {
+                const listItems: NodeListOf<HTMLLIElement> = editor.inputElement.querySelectorAll('li');
+                expect(listItems.length).toBe(3);
+                for (let i: number = 0; i < listItems.length; i++) {
+                    // margin-left is cleared for list items without 'marginLeftIgnore' parent.
+                    expect(listItems[i as number].style.marginLeft).toBe('');
+                    // The compensating negative text-indent must also be cleared so the
+                    // list text does not overlap with the marker.
+                    expect(listItems[i as number].style.textIndent).toBe('');
+                }
                 done();
             }, 100);
         });

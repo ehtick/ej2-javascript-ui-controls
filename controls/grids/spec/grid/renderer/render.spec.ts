@@ -205,6 +205,197 @@ describe('EJ2-920242 : Excel Filter Not Displaying Given Filter Values When No D
     });
 });
 
+describe('Additional Render coverage', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid({ dataSource: data.slice(0, 5), allowPaging: false,
+            columns: [ { headerText: 'OrderID', field: 'OrderID' }, { headerText: 'CustomerID', field: 'CustomerID' }, {headerText: 'Freight', field: 'Freight'}]
+        }, done);
+    });
+
+    it('resetTemplates covers template branches safely', (done: Function) => {
+        gridObj.detailTemplate = '<div>detail</div>' as any;
+        gridObj.groupSettings = { captionTemplate: '<span>g</span>', columns: [] } as any;
+        gridObj.rowTemplate = '<div>row</div>' as any;
+        gridObj.toolbarTemplate = '<div>tb</div>' as any;
+        gridObj.pageSettings = { template: '<div>p</div>' } as any;
+        (gridObj as any).columns[0].template = '<span>ID: ${OrderID}</span>';
+        (gridObj as any).columns[0].headerTemplate = '<b>Order</b>';
+        (gridObj as any).columns[0].filterTemplate = '<input type="text" />';
+        gridObj.aggregates = [{ columns: [{type: 'Sum', field: 'Freight', footerTemplate: 'Total: ${Sum}', groupFooterTemplate: 'Grp: ${Sum}', groupCaptionTemplate: 'Caption ${Sum}'}] } as any];
+        (<any>gridObj.renderModule).resetTemplates();
+        done();
+    });
+
+    it ('resetPartialRecords coverage', (done: Function) => {
+        gridObj.isRowSelectable = () => true;
+        gridObj.isRemote = () => true;
+        gridObj.renderModule.resetPartialRecords();
+        done();
+    });
+
+    it('dataManagerSuccess - returns early when parent isDestroyed', (done: Function) => {
+        const rm = (<any>gridObj.renderModule);
+        gridObj.isDestroyed = true;
+        spyOn(gridObj, 'trigger').and.callFake((name: string, e: any, cb: Function) => { cb({ result: [], count: 0 }); });
+        rm.dataManagerSuccess({ result: [] , count: 0}, { requestType: 'refresh' });
+        gridObj.isDestroyed = false;
+        done();
+    });
+
+    it('dataManagerSuccess - hides spinner and returns when no columns and empty result', (done: Function) => {
+        const rm = (<any>gridObj.renderModule);
+        gridObj.setProperties({ columns: [] }, true);
+        rm.dataManagerSuccess({ result: [], count: 0 }, { requestType: 'refresh' });
+        done();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('Render → sendBulkRequest coverage (batchsave)', () => {
+    let grid: Grid;
+    beforeAll((done: Function) => {
+        grid = createGrid(
+            {
+                dataSource: data,
+                allowPaging: true,
+                pageSettings: { pageSize: 12, pageSizes: [10, 12, 20, 'All'] },
+                editSettings: { allowAdding: true, mode: 'Batch', allowEditing: true },
+                columns: [{ field: 'OrderID', isPrimaryKey: true }, {field:'CustomerID'}]
+            }, done);
+    });
+
+    it('should reset isAllPage when batch changes exist in remote paging with pageSizes', (done: Function) => {
+        grid.pagerModule.pagerObj.isAllPage = true;
+        grid.pagerModule.pagerObj.checkAll = true;
+        const args = {
+            changes: {
+                addedRecords: [],
+                changedRecords: [],
+                deletedRecords: []
+            }
+        } as any;
+        (grid as any).renderModule.sendBulkRequest(args);
+        done();
+    });
+
+    it('should chain to getData → dmSuccess on promise resolve (online)', (done: Function) => {
+        (grid as any).renderModule.data.dataManager.dataSource.offline = false;
+        const args: any = {
+            changes: {
+                addedRecords: [{ OrderID: 100001 }],
+                changedRecords: [],
+                deletedRecords: []
+            }
+        } as any;
+        const fakePromise = Promise.resolve({ result: [], count: 0 });
+        spyOn((grid as any).renderModule.data, 'saveChanges').and.returnValue(fakePromise);
+        spyOn((grid as any).renderModule.data, 'getData').and.returnValue(Promise.resolve({ result: [], count: 0 }));
+        spyOn((grid as any).renderModule, 'dataManagerSuccess');
+        (grid as any).renderModule.sendBulkRequest(args);
+        done();
+    });
+
+    it('should call dmFailure on saveChanges reject', (done: Function) => {
+        const fakeReject = Promise.reject({ message: 'error' });
+        const args: any = {
+            changes: {
+                addedRecords: [],
+                changedRecords: [],
+                deletedRecords: []
+            }
+        } as any;
+        spyOn((grid as any).renderModule.data, 'saveChanges').and.returnValue(fakeReject);
+        spyOn((grid as any).renderModule, 'dataManagerFailure');
+        (grid as any).renderModule.sendBulkRequest(args);
+        done();
+    });
+
+    afterAll(() => {
+        destroy(grid);
+        grid = null;
+    });
+});
+
+describe('extendDataManagerSuccess coverage', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid({ dataSource: data.slice(0, 5), allowPaging: false,
+            columns: [ { headerText: 'OrderID', field: 'OrderID' }, { headerText: 'CustomerID', field: 'CustomerID' }, {headerText: 'Freight', field: 'Freight'}]
+        }, done);
+    });
+
+    it('extendDataManagerSuccess - infinite end with no len calls infiniteEditHandler', (done: Function) => {
+        const rm = (<any>gridObj.renderModule);
+        const args: any = { requestType: 'refresh' };
+        const e: any = { result: [], count: 0 };
+        spyOn(rm, 'isInfiniteEnd').and.returnValue(true);
+        rm.extendDataManagerSuccess(e, args, 0, { result: [], count: 0 }, true);
+        done();
+    });
+
+    it('extendDataManagerSuccess - destroys widgets when showAddNewRow + delete', (done: Function) => {
+        const rm = (<any>gridObj.renderModule);
+        const args: any = { requestType: 'delete' };
+        const e: any = { result: [], count: 0 };
+        gridObj.editSettings = { showAddNewRow: true } as any;
+        gridObj.groupSettings = {enableLazyLoading: true};
+        gridObj.editModule = { destroyWidgets: jasmine.createSpy('destroyWidgets'), destroyForm: jasmine.createSpy('destroyForm') } as any;
+        rm.extendDataManagerSuccess(e, args, 1, { result: [{}], count: 1, actual: { lazyLoadRecordsCount: 5 }}, false);
+        done();
+    });
+
+    it('extendDataManagerSuccess - paging branch sets prevPageMoving and pageSettings', (done: Function) => {
+        const rm = (<any>gridObj.renderModule);
+        const args: any = { requestType: 'grouping' };
+        const e: any = { result: [{}, {}], count: 7 };
+        gridObj.allowPaging = true;
+        rm.extendDataManagerSuccess(e, args, 0, { result: [], count: 7 }, false);
+        done();
+    });
+    it('extendDataManagerSuccess - isCaptionCollapse is true', (done: Function) => {
+        const rm = (<any>gridObj.renderModule);
+        gridObj.allowPaging = false;
+        const args: any = { isCaptionCollapse: true };
+        const e: any = { result: [{}, {}], count: 7 };
+        rm.extendDataManagerSuccess(e, args, 0, { result: [], count: 7 }, false);
+        done();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('EJ2_1021756 Script error throws when using only skeleton without type in format property in date column', ()=> {
+    let gridObj: Grid;
+    beforeAll( (done: Function)=> {
+        gridObj = createGrid(
+            {
+                dataSource: data,
+                columns: [
+                    { headerText: 'OrderID', field: 'OrderID' },
+                    { headerText: 'CustomerID', field: 'CustomerID' },
+                    { headerText: 'OrderDate', field: 'OrderDate', format: {skeleton: 'GyMMMEd'} }
+                ]
+        }, done);
+    });
+    it('Expect date column should load data without type in the format', ()=> {
+        let record: any = gridObj.getRows()[0];
+        let cells = record.cells;
+        expect(cells[2].innerText).not.toBe('');
+    });
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });    
+});
+
 });
 interface Customer {
     CustomerID: string;

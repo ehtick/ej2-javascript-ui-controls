@@ -1309,4 +1309,69 @@ describe('Grid checkbox selection functionality', () => {
             gridObj = null;
         });
     });
+
+    describe('1018613 : Select All Checkbox Cannot Be Unchecked After Row Deletion', () => {
+        let gridObj: any;
+        beforeAll((done: Function) => {
+            gridObj = createGrid(
+                {
+                    dataSource: [
+                        { OrderID: 10248, CustomerID: 'VINET', ShipCountry: 'France' },
+                        { OrderID: 10249, CustomerID: 'TOMSP', ShipCountry: 'Germany' },
+                        { OrderID: 10250, CustomerID: 'HANAR', ShipCountry: 'Brazil' },
+                        { OrderID: 10251, CustomerID: 'VICTE', ShipCountry: 'France' }
+                    ],
+                    selectionSettings: {
+                        mode: 'Row',
+                        type: 'Multiple',
+                        checkboxOnly: true,
+                        persistSelection: true
+                    },
+                    allowSorting: true,
+                    toolbar: ['Add', 'Edit', 'Delete', 'Update', 'Cancel'],
+                    editSettings: {
+                        allowEditing: true,
+                        allowAdding: true,
+                        allowDeleting: true,
+                        mode: 'Normal',
+                        showAddNewRow: true,
+                        newRowPosition: 'Bottom'
+                    },
+                    columns: [
+                        { type: 'checkbox', width: 50 },
+                        { field: 'OrderID', textAlign: 'Right', width: 100, isPrimaryKey: true, validationRules: { required: true }, headerText: "Order ID" },
+                        { field: 'CustomerID', width: 120, headerText: "Customer ID" },
+                        { field: 'ShipCountry', width: 130, headerText: "Ship Country" },
+                        {
+                            headerText: 'Commands', width: 120,
+                            commands: [
+                                { type: 'Edit', buttonOption: { cssClass: 'e-flat', iconCss: 'e-edit e-icons' } },
+                                { type: 'Delete', buttonOption: { cssClass: 'e-flat', iconCss: 'e-delete e-icons' } },
+                                { type: 'Save', buttonOption: { cssClass: 'e-flat', iconCss: 'e-update e-icons' } },
+                                { type: 'Cancel', buttonOption: { cssClass: 'e-flat', iconCss: 'e-cancel-icon e-icons' }}
+                            ]
+                        }
+                    ],
+                }, done);
+        });
+
+        it('Select the Rows', (done: Function) => {
+            gridObj.selectRows([1, 2]);
+            const row = <HTMLTableRowElement>gridObj.getRows()[1];
+            (<HTMLElement>row.querySelector('.e-delete')).click();
+            done();
+        });
+
+        it('Select the Rows', (done: Function) => {
+            let headerChkBox: any = (<HTMLElement>gridObj.element.querySelector('.e-checkselectall'));
+            headerChkBox.click();
+            expect(headerChkBox.nextElementSibling.classList.contains('e-check')).toBeTruthy();
+            done();
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
 });

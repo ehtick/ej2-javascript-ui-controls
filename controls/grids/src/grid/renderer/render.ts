@@ -126,6 +126,9 @@ export class Render {
         gObj.trigger(events.actionBegin, e, (args: NotifyArgs = { requestType: 'refresh' }) => {
             if (args.cancel) {
                 gObj.notify(events.cancelBegin, args);
+                if (gObj.filterModule && gObj.filterModule.maintainFocusOnFilterDialog) {
+                    gObj.filterModule.maintainFocusOnFilterDialog = false;
+                }
                 if (args.action === 'clearFilter' && this.parent.filterSettings.type === 'Menu') {
                     this.parent.filterSettings.columns[this.parent.filterModule.filterObjIndex] = this.parent.filterModule.prevFilterObject;
                     const iconClass: string = this.parent.showColumnMenu && this.parent.filterModule['column'].showColumnMenu ? '.e-columnmenu' : '.e-icon-filter';
@@ -279,7 +282,7 @@ export class Render {
         const maskRow: boolean = (gObj.loadingIndicator.indicatorType === 'Shimmer' && args.requestType !== 'virtualscroll'
             && args.requestType !== 'infiniteScroll') || ((args.requestType === 'virtualscroll' || args.requestType === 'infiniteScroll')
             && gObj.enableVirtualMaskRow);
-        if (args.requestType !== 'virtualscroll' && !(<{ isCaptionCollapse?: boolean }>args).isCaptionCollapse && !maskRow) {
+        if (args.requestType !== 'virtualscroll' && args.requestType !== 'dom-virtualscroll' && !(<{ isCaptionCollapse?: boolean }>args).isCaptionCollapse && !maskRow) {
             this.parent.showSpinner();
         }
         if (maskRow) {
@@ -796,6 +799,9 @@ export class Render {
             this.parent.hideSpinner();
         }
         this.parent.notify(events.toolbarRefresh, {});
+        if ((this.parent as Grid).toolbarModule && (this.parent as Grid).toolbarModule.isVue3ToolbarTemplate()) {
+            (this.parent as Grid).toolbarModule.toolbar.refresh();
+        }
         this.setRowCount(this.parent.getCurrentViewRecords().length);
         if ('query' in e) {
             this.parent.getDataModule().isQueryInvokedFromData = false;

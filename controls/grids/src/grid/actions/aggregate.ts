@@ -2,7 +2,7 @@ import { remove, extend, getValue } from '@syncfusion/ej2-base';
 import { isNullOrUndefined, addClass } from '@syncfusion/ej2-base';
 import { NumberFormatOptions, DateFormatOptions } from '@syncfusion/ej2-base';
 import { IAction, IGrid, NotifyArgs, ICellRenderer, IValueFormatter } from '../base/interface';
-import { CellType } from '../base/enum';
+import { CellType, RenderType } from '../base/enum';
 import { ServiceLocator } from '../services/service-locator';
 import { ValueFormatter } from '../services/value-formatter';
 import { CellRendererFactory } from '../services/cell-render-factory';
@@ -14,6 +14,8 @@ import { AggregateColumn } from '../models/aggregate';
 import { GroupSummaryModelGenerator, CaptionSummaryModelGenerator } from '../services/summary-model-generator';
 import { Grid } from '../base/grid';
 import * as literals from '../base/string-literals';
+import { RendererFactory } from '../services/renderer-factory';
+import { VirtualFooterRenderer } from '../renderer/virtual-footer-renderer';
 
 /**
  * Summary Action controller.
@@ -40,7 +42,13 @@ export class Aggregate implements IAction {
         for (let i: number = 0; i < type.length; i++) {
             cellFac.addCellRenderer(type[parseInt(i.toString(), 10)], instance);
         }
-        this.footerRenderer = new FooterRenderer(this.parent, this.locator);
+        const rendererFactory: RendererFactory = this.locator.getService<RendererFactory>('rendererFactory');
+        if (this.parent.enableColumnVirtualization) {
+            this.footerRenderer = new VirtualFooterRenderer(this.parent, this.locator);
+        } else {
+            this.footerRenderer = new FooterRenderer(this.parent, this.locator);
+        }
+        rendererFactory.addRenderer(RenderType.Summary, this.footerRenderer);
         this.footerRenderer.renderPanel();
         this.footerRenderer.renderTable();
 

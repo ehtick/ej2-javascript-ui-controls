@@ -18,6 +18,11 @@ export class ChartScroll {
     private nonworkingDayRender: NonWorkingDay;
     private isSetScrollLeft: boolean = false;
     public previousScroll: { top: number, left: number } = { top: 0, left: 0 };
+    // Scroll arrow handling properties
+    private isScrollArrowPressed: boolean = false;
+    private scrollArrowDirection: 'left' | 'right' | null = null;
+    private scrollArrowInterval: number = 0;
+    private lastScrollLeft: number = 0;
     /**
      * Constructor for the scrolling.
      *
@@ -37,6 +42,12 @@ export class ChartScroll {
     private addEventListeners(): void {
         this.parent.on('grid-scroll', this.gridScrollHandler, this);
         EventHandler.add(this.element, 'scroll' , this.onScroll, this);
+        // Use pointerdown for consistent mouse + touch handling
+        EventHandler.add(this.element, 'pointerdown', this.startHold, this);
+        // Use pointerup (not mouseup) to handle both mouse and touch releases consistently
+        EventHandler.add(this.element, 'pointerup', this.stopHold, this);
+        // Also listen for pointercancel to handle cases where touch is interrupted (swipe, system gesture)
+        EventHandler.add(this.element, 'pointercancel', this.stopHold, this);
         this.parent.treeGrid.grid.on('showGanttShimmer', this.updateShimmer, this);
         this.parent.treeGrid.grid.on('removeGanttShimmer', this.removeShimmer, this);
         this.parent.treeGrid.grid.on('virtualTransform', this.transformChange, this);
@@ -48,6 +59,9 @@ export class ChartScroll {
      */
     private removeEventListeners(): void {
         EventHandler.remove(this.element, 'scroll', this.onScroll);
+        EventHandler.remove(this.element, 'pointerdown', this.startHold);
+        EventHandler.remove(this.element, 'pointerup', this.stopHold);
+        EventHandler.remove(this.element, 'pointercancel', this.stopHold);
         this.parent.off('grid-scroll', this.gridScrollHandler);
         this.parent.treeGrid.grid.off('showGanttShimmer', this.updateShimmer);
         this.parent.treeGrid.grid.off('removeGanttShimmer', this.removeShimmer);
@@ -78,6 +92,9 @@ export class ChartScroll {
             if (!this.parent.isLoad && this.parent.isReact && !isNullOrUndefined(this.parent.timelineTemplate)) {
                 this.parent.renderTemplates();
             }
+            else {
+                void 0;
+            }
             if (this.parent.gridLines === 'Vertical' || this.parent.gridLines === 'Both') {
                 this.parent['renderChartVerticalLines']();
             }
@@ -94,6 +111,9 @@ export class ChartScroll {
             if (this.isSetScrollLeft) {
                 this.parent.ganttChartModule.chartTimelineContainer.scrollLeft = this.element.scrollLeft;
             }
+        }
+        else {
+            void 0;
         }
     }
 
@@ -237,7 +257,11 @@ export class ChartScroll {
             this.updateTopPosition();
         }
         if (this.element.scrollLeft !== this.previousScroll.left) {
-            this.isBackwardScrolled = (this.element.scrollLeft < this.previousScroll.left && !this.parent.enableRtl);
+            // In RTL, the visual scroll direction is opposite for `scrollLeft` comparison
+            // (browser-specific behavior). Flip the comparison when RTL is enabled.
+            this.isBackwardScrolled = this.parent.enableRtl ?
+                (this.element.scrollLeft > this.previousScroll.left) :
+                (this.element.scrollLeft < this.previousScroll.left);
             this.parent.ganttChartModule.chartTimelineContainer.scrollLeft = this.element.scrollLeft;
             scrollArgs.previousScrollLeft = this.previousScroll.left;
             this.previousScroll.left = this.element.scrollLeft;
@@ -261,6 +285,14 @@ export class ChartScroll {
             else if (this.parent.enableTimelineVirtualization && this.parent.timelineModule.wholeTimelineWidth <
                 this.parent.element.offsetWidth * 3) {
                 this.parent.connectorLineModule.svgObject.setAttribute('width', '100%');
+            }
+            if (this.parent.enableInfiniteTimelineScroll && !this.parent.timelineModule.isZoomedToFit &&
+                !this.parent.ganttChartModule.scrollObject.isBackwardScrolled) {
+                this.parent.timelineModule.handleInfiniteTimelineScroll('right');
+            }
+            if (!isNullOrUndefined(document.body.className) && document.body.className.includes('e-bigger') &&
+                this.parent.enableInfiniteTimelineScroll) {
+                this.trimTimelines();
             }
         }
         this.parent.timelineModule['performedTimeSpanAction'] = false;
@@ -292,6 +324,119 @@ export class ChartScroll {
         scrollArgs.requestType = 'scroll';
         this.parent.trigger('actionComplete', scrollArgs);
         this.parent.isVirtualScroll = false;
+        this.parent.timelineModule.isZoomOut = false;
+    }
+    /**
+     * Handle mouse down on scroll element to detect scroll arrow clicks
+     * This method detects when user clicks and holds scroll arrows (left or right)
+     * and triggers continuous infinite timeline scrolling
+     *
+     * @param {MouseEvent} e - Mouse event
+     * @returns {void}
+     */
+    private startHold(e: MouseEvent): void {
+        if (!this.parent.enableInfiniteTimelineScroll || this.parent.timelineModule.isZoomedToFit) {
+            return;
+        }
+        const scrollElement: HTMLElement = this.element;
+        // Get scrollbar metrics for horizontal scrollbar
+        const scrollbarHeight: number = 16; // Standard scrollbar height
+        // Check if click is in the horizontal scrollbar area (bottom of element)
+        const scrollbarTop: number = scrollElement.offsetHeight - scrollbarHeight;
+        const isOnHorizontalScrollbar: boolean = e.clientY >= scrollElement.getBoundingClientRect().top + scrollbarTop;
+        // Check if a horizontal scrollbar exists
+        if (scrollElement.scrollWidth <= scrollElement.clientWidth) {
+            // No horizontal scrollbar present
+            return;
+        }
+        this.extendStartHold(isOnHorizontalScrollbar, e, scrollElement);
+    }
+    private extendStartHold(isOnHorizontalScrollbar: boolean, e: MouseEvent, scrollElement: HTMLElement): void {
+        if (isOnHorizontalScrollbar) {
+            this.isScrollArrowPressed = true;
+            const rect: DOMRect = scrollElement.getBoundingClientRect() as DOMRect;
+            if (e.clientX < rect.left + 30) {
+                this.scrollArrowDirection = 'left';
+                this.startContinuousScroll('left');
+            } else if (e.clientX > rect.right - 30) {
+                this.scrollArrowDirection = 'right';
+                this.startContinuousScroll('right');
+            }
+        }
+    }
+    /**
+     * Start continuous scrolling when scroll arrow is held
+     * Triggers infinite timeline scroll methods at intervals
+     *
+     * @param {string} direction - Direction to scroll ('left' or 'right')
+     * @returns {void}
+     */
+    private startContinuousScroll(direction: 'left' | 'right'): void {
+        // Clear any existing interval
+        if (this.scrollArrowInterval) {
+            clearInterval(this.scrollArrowInterval);
+        }
+        // Start interval for continuous scrolling
+        this.scrollArrowInterval = window.setInterval(() => {
+            if (!this.isScrollArrowPressed) {
+                clearInterval(this.scrollArrowInterval);
+                this.scrollArrowInterval = 0;
+                return;
+            }
+            this.extendContinuousScrolling(direction);
+        }, 100); // Update every 100ms for smooth continuous scrolling
+    }
+    private extendContinuousScrolling(direction: 'left' | 'right'): void {
+        if (direction === 'left') {
+            // Trigger reverse infinite timeline scroll
+            if (this.parent.enableInfiniteTimelineScroll && this.parent.timelineModule) {
+                if (!this.parent.enableRtl) {
+                    this.parent.timelineModule.handleInfiniteTimelineScroll('left');
+                } else {
+                    this.parent.timelineModule.handleInfiniteTimelineScroll('right');
+                }
+            }
+        } else if (direction === 'right') {
+            // Trigger forward infinite timeline scroll
+            if (this.parent.enableInfiniteTimelineScroll && this.parent.timelineModule) {
+                if (!this.parent.enableRtl) {
+                    this.parent.timelineModule.handleInfiniteTimelineScroll('right');
+                } else {
+                    this.parent.timelineModule.handleInfiniteTimelineScroll('left');
+                }
+            }
+        }
+    }
+    /**
+     * Handle mouse up to stop scroll arrow continuous scrolling
+     * This method is called when user releases the mouse button
+     *
+     * @param {MouseEvent} e - Mouse event
+     * @returns {void}
+     */
+    private stopHold(e: MouseEvent): void {
+        // Only perform infinite timeline trimming after a continuous scroll-arrow hold.
+        if (!this.isScrollArrowPressed) {
+            return;
+        }
+        this.isScrollArrowPressed = false;
+        this.scrollArrowDirection = null;
+        // Clear the continuous scroll interval
+        if (this.scrollArrowInterval) {
+            clearInterval(this.scrollArrowInterval);
+            this.scrollArrowInterval = 0;
+        }
+        // Handle reverse (backward) infinite timeline trimming
+        this.trimTimelines();
+    }
+    private trimTimelines(): void {
+        if (this.parent.enableInfiniteTimelineScroll && !this.parent.timelineModule.isZoomedToFit &&
+            this.parent.ganttChartModule.scrollObject.isBackwardScrolled) {
+            this.parent.timelineModule.trimInfiniteTimelineRightCells();
+        } else if (this.parent.enableInfiniteTimelineScroll && !this.parent.timelineModule.isZoomedToFit &&
+            !this.parent.ganttChartModule.scrollObject.isBackwardScrolled) {
+            this.parent.timelineModule.trimInfiniteTimelineLeftCells();
+        }
     }
     /**
      * To set height for chart scroll container
@@ -321,6 +466,9 @@ export class ChartScroll {
      * @private
      */
     public setScrollTop(scrollTop: number): void {
+        if (this.parent.enableVirtualization) {
+            this.parent['isVirtualScrollAction'] = true;
+        }
         this.element.scrollTop = scrollTop;
         this.parent.treeGrid.element.querySelector('.e-content').scrollTop = scrollTop;
     }

@@ -1184,6 +1184,10 @@ export class Ribbon extends Component<HTMLElement> implements INotifyPropertyCha
         if (dropDownPopup) {
             dropDownPopup.setProperties({ position: { X: isLeft ? 'left' : 'right', Y: isMenu ? 'top' : 'bottom' } }, true);
             if (isMenu) {
+                const target: HTMLElement = this.getAppendToElement();
+                if (dropdown && dropdown.dropDown && !target.contains(dropdown.dropDown.element)) {
+                    target.appendChild(dropdown.dropDown.element);
+                }
                 dropdown.beforeOpen = (e: BeforeOpenCloseMenuEventArgs): void => {
                     if (isLeft) {
                         if (item.type === RibbonItemType.Gallery && this.ribbonGalleryModule) {

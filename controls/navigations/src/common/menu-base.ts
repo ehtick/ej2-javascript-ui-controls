@@ -720,8 +720,15 @@ export abstract class MenuBase extends Component<HTMLUListElement> implements IN
             this.leftEscKeyHandler(e);
         }
         const isDown: boolean = e.key ? (e.key === 'ArrowDown') : e.keyCode === 40;
+        const isUp: boolean = e.key ? (e.key === 'ArrowUp') : e.keyCode === 38;
+        if (isDown || isUp){
+            const activeEl: Element = document.activeElement as Element;
+            if (activeEl && (closest(activeEl, '.e-' + this.getModuleName() + '-wrapper') === this.getWrapper()
+                || closest(activeEl, '.e-menu-item') || closest(activeEl, '.e-menu-parent'))) {
+                e.preventDefault();
+            }
+        }
         if (!isDown) { return; }
-
         const hostPopup: Element = closest(this.element, '.e-popup-open');
         if (!hostPopup) { return; }
 

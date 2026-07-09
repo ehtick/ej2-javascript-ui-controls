@@ -7829,6 +7829,13 @@ export class ListTextElementBox extends ElementBox {
      */
     public text: string;
     /**
+    * @private
+    */
+    public dualWidths?: {
+        w1: number;
+        w2: number;
+    } | undefined;
+    /**
      * @private
      */
     public trimEndWidth: number = 0;

@@ -496,10 +496,10 @@ export class Dependency {
      * Get predecessor value as string with offset values
      *
      * @param {IGanttData} data .
-     * @returns {string} .
+     * @returns {string | null} .
      * @private
      */
-    public getPredecessorStringValue(data: IGanttData): string {
+    public getPredecessorStringValue(data: IGanttData): string | null {
         const predecessors: IPredecessor[] = data.ganttProperties.predecessor;
         let resultString: string = '';
         let temp1: string;
@@ -539,6 +539,9 @@ export class Dependency {
                     }
                 }
             }
+        }
+        if (resultString === '') {
+            resultString = null;
         }
         return resultString;
     }

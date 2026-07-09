@@ -99,7 +99,8 @@ export class Scroll implements IAction {
             }
         }
         if (!this.parent.enableVirtualization && this.parent.frozenRows && this.parent.height !== 'auto' &&
-            this.parent.height !== '100%') {
+            this.parent.height !== '100%' && !isNullOrUndefined(this.parent.height) &&
+            this.parent.height.toString().toLowerCase().indexOf('vh') === -1) {
             const tbody: HTMLElement = (this.parent.getHeaderContent()
                 .querySelector( literals.tbody + ':not(.e-masked-tbody)') as HTMLElement);
             mHdrHeight = tbody ? tbody.offsetHeight : 0;
@@ -112,6 +113,8 @@ export class Scroll implements IAction {
                 height = parseInt(height as string, 10) - (this.parent.frozenRows * this.parent.getRowHeight());
             }
             content.style.height = formatUnit(parseInt(height as string, 10) - mHdrHeight);
+        } else if (this.parent.height && this.parent.height.toString().toLowerCase().indexOf('vh') !== -1) {
+            content.style.height = '100%';
         } else {
             content.style.height = formatUnit(height);
         }
@@ -157,13 +160,19 @@ export class Scroll implements IAction {
      * @returns {void}
      */
     public refresh(): void {
-        if (this.parent.height !== '100%') {
-            return;
+        if (this.parent.height === '100%' || (typeof this.parent.height === 'string' &&
+            this.parent.height.toLowerCase().indexOf('vh') !== -1)) {
+            const content: HTMLElement = <HTMLElement>this.parent.getContent();
+            this.parent.element.style.height = this.parent.height;
+            let height: number = this.widthService.getSiblingsHeight(content);
+            if (this.parent.frozenRows) {
+                height += 2; // frozen row border height
+            }
+            if (this.parent.groupSettings && this.parent.groupSettings.columns.length === this.parent.columns.length) {
+                height += 1; // group row border height
+            }
+            content.style.height = 'calc(100% - ' + height + 'px)'; //Set the height to the  '.' + literals.gridContent;
         }
-        const content: HTMLElement = <HTMLElement>this.parent.getContent();
-        this.parent.element.style.height = '100%';
-        const height: number = this.widthService.getSiblingsHeight(content);
-        content.style.height = 'calc(100% - ' + height + 'px)'; //Set the height to the  '.' + literals.gridContent;
     }
 
     private getThreshold(): number {
@@ -322,6 +331,9 @@ export class Scroll implements IAction {
             }
             this.parent.notify(closeFilterDialog, e);
             element.scrollLeft = left;
+            if (this.parent.aggregates.length && this.parent.enableColumnVirtualization) {
+                this.parent.getFooterContent().querySelector('.e-summarycontent').scrollLeft = left;
+            }
             if (isFooter) { this.header.scrollLeft = left; }
             this.previousValues.left = left;
             this.parent.notify(scroll, { left: left });
@@ -342,6 +354,9 @@ export class Scroll implements IAction {
             }
             content.scrollLeft = left;
             header.scrollLeft = left;
+            if (this.parent.aggregates.length && this.parent.enableColumnVirtualization) {
+                this.parent.getFooterContent().querySelector('.e-summarycontent').scrollLeft = left;
+            }
             this.previousValues.left = left;
             this.parent.notify(scroll, { left: left });
             if (this.parent.isDestroyed) { return; }
@@ -581,7 +596,7 @@ export class Scroll implements IAction {
      */
     public makeStickyHeader(): Function {
         return () => {
-            if (this.parent.enableStickyHeader && this.parent.element && this.parent.getContent()) {
+            if (this.parent.enableStickyHeader && this.parent.element && this.parent.getContent() && this.parentElement) {
                 const contentRect: ClientRect = this.parent.getContent().getClientRects()[0];
                 if (contentRect) {
                     const windowScale: number = window.devicePixelRatio;

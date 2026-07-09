@@ -4,6 +4,7 @@ import { Column } from '../models/column';
 import { InlineEditRender } from './inline-edit-renderer';
 import { BatchEditRender } from './batch-edit-renderer';
 import { DialogEditRender } from './dialog-edit-renderer';
+import { CellEditRenderer } from './cell-edit-renderer';
 import { attributes, classList, select } from '@syncfusion/ej2-base';
 import { ServiceLocator } from '../services/service-locator';
 import { CellType } from '../base/enum';
@@ -26,7 +27,7 @@ export class EditRender {
     //Internal variables
     private editType: Object = {
         'Inline': InlineEditRender,
-        'Normal': InlineEditRender, 'Batch': BatchEditRender, 'Dialog': DialogEditRender
+        'Normal': InlineEditRender, 'Batch': BatchEditRender, 'Dialog': DialogEditRender, 'Cell': CellEditRenderer
     };
     //Module declarations
     protected parent: IGrid;
@@ -73,7 +74,8 @@ export class EditRender {
             select('#' + gObj.element.id + '_dialogEdit_wrapper .e-gridform', document) : gObj.editSettings.showAddNewRow &&
             gObj.element.querySelector('.e-editedrow') ? gObj.element.querySelector('.e-editedrow').getElementsByClassName('e-gridform')[0]
                 : gObj.element.getElementsByClassName('e-gridform')[0];
-        const cols: Column[] = gObj.editSettings.mode !== 'Batch' ? gObj.getColumns() as Column[] : [gObj.getColumnByField(args.columnName)];
+        const isCellMode: boolean = gObj.editSettings.mode === 'Batch' || (gObj.editSettings.mode  === 'Cell' && args.requestType === 'beginEdit');
+        const cols: Column[] = isCellMode ? [gObj.getColumnByField(args.columnName)] : gObj.getColumns() as Column[] ;
         for (const col of cols) {
             if (this.parent.editSettings.template && !isNullOrUndefined(col.field)) {
                 const cellArgs: Object = extend({}, args);
@@ -129,10 +131,11 @@ export class EditRender {
         if (!isNullOrUndefined(chkBox) && chkBox.nextElementSibling) {
             chkBox.nextElementSibling.classList.add('e-focus');
         }
-        if (this.parent.editSettings.mode === 'Batch') {
+        if (this.parent.editSettings.mode === 'Batch' || (this.parent.editSettings.mode === 'Cell' &&
+            !isNullOrUndefined(parentsUntil(elem, literals.editedRow)))) {
             this.focus.onClick({ target: closest(elem, 'td') }, true);
         } else {
-            const isFocus: boolean = (this.parent.enableVirtualization || this.parent.enableColumnVirtualization) && this.parent.editSettings.mode === 'Normal' ? false : true;
+            const isFocus: boolean = (this.parent.enableVirtualization || this.parent.isRowDomVirtualization() || this.parent.enableColumnVirtualization) && this.parent.editSettings.mode === 'Normal' ? false : true;
             const focusElement: HTMLElement = elem.classList.contains('e-dropdownlist') ? elem.parentElement : elem;
             if ((isFocus || ((this.parent.enableVirtualization || this.parent.enableColumnVirtualization) && this.parent.editSettings.newRowPosition === 'Bottom'
                 && parentsUntil(elem, literals.addedRow))) && (!this.parent.editSettings.showAddNewRow ||
@@ -158,7 +161,9 @@ export class EditRender {
     }): Object {
         const gObj: IGrid = this.parent;
         const elements: Object = {};
-        let cols: Column[] = gObj.editSettings.mode !== 'Batch' ? gObj.getColumns() as Column[] : [gObj.getColumnByField(args.columnName)];
+        const isCellEditMode: boolean = gObj.editSettings.mode === 'Batch' || (gObj.editSettings.mode  === 'Cell' &&
+            args.requestType === 'beginEdit');
+        let cols: Column[] = isCellEditMode ? [gObj.getColumnByField(args.columnName)] : gObj.getColumns() as Column[];
         if (args.isCustomFormValidation) {
             cols = (<{ columnModel?: Column[] }>this.parent).columnModel;
         }

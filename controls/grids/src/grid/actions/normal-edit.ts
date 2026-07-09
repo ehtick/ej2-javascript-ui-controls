@@ -313,7 +313,7 @@ export class NormalEdit {
         return (isValid && validationArgs.isValid);
     }
 
-    protected endEdit(): void {
+    public endEdit(): void {
         const gObj: IGrid = this.parent;
         if (!this.parent.isEdit || !this.editFormValidate()) {
             return;
@@ -331,15 +331,15 @@ export class NormalEdit {
         const data: { virtualData: Object, isAdd: boolean, isScroll: boolean, endEdit?: boolean, isCancel?: boolean } = {
             virtualData: extend({}, {}, this.previousData, true), isAdd: false, isScroll: false, endEdit: true
         };
-        if (!(this.parent.enableVirtualization && this.parent.editSettings && this.parent.editSettings.mode === 'Normal')) {
+        if (!(this.parent.enableVirtualization && !this.parent.isRowDomVirtualization() && this.parent.editSettings && this.parent.editSettings.mode === 'Normal')) {
             this.parent.notify(events.getVirtualData, data);
         } else {
             data.virtualData = this.virtualEditValidationArgs.virtualData;
             data.isAdd = this.virtualEditValidationArgs.isAdd;
             data.isCancel = this.virtualEditValidationArgs.isCancel;
         }
-        if ((this.parent.enableVirtualization || this.parent.enableColumnVirtualization || this.parent.enableInfiniteScrolling)
-            && this.parent.editSettings.mode === 'Normal' && Object.keys(data.virtualData).length) {
+        if ((this.parent.enableVirtualization || this.parent.isRowDomVirtualization() || this.parent.enableColumnVirtualization
+        || this.parent.enableInfiniteScrolling) && this.parent.editSettings.mode === 'Normal' && Object.keys(data.virtualData).length) {
             if (this.parent.isEdit) {
                 this.currentVirtualData = editedData = args.data = data.virtualData;
             }
@@ -487,16 +487,18 @@ export class NormalEdit {
                 dragRowObject.parentUid !== dropRowObject.parentUid) {
                 (this.parent['groupModule'] as Group).groupedRowReorder(dragRowObject, dropRowObject);
             }
-            else if (!this.parent.groupSettings.enableLazyLoading && this.parent.aggregates.length && (this.parent.enableVirtualization ||
-            (this.parent.allowPaging && this.parent.groupSettings.disablePageWiseAggregates))) {
+            else if (!this.parent.groupSettings.enableLazyLoading && this.parent.aggregates.length &&
+                (this.parent.enableInfiniteScrolling || this.parent.enableVirtualization ||
+                (this.parent.allowPaging && this.parent.groupSettings.disablePageWiseAggregates))) {
                 this.parent.notify(events.modelChanged, {requestType: 'refresh-aggregate-on-save', action: 'update'});
             }
             else if (this.parent.aggregates.length) {
                 this.parent.aggregateModule.refresh(args.data, this.parent.groupSettings.enableLazyLoading ? args.row : undefined);
             }
         }
-        else if (!this.parent.groupSettings.enableLazyLoading && this.parent.aggregates.length && (this.parent.enableVirtualization ||
-        (this.parent.allowPaging && this.parent.groupSettings.disablePageWiseAggregates))) {
+        else if (!this.parent.groupSettings.enableLazyLoading && this.parent.aggregates.length &&
+            (this.parent.enableInfiniteScrolling || this.parent.enableVirtualization ||
+            (this.parent.allowPaging && this.parent.groupSettings.disablePageWiseAggregates))) {
             this.parent.notify(events.modelChanged, {requestType: 'refresh-aggregate-on-save', action: 'update'});
         }
         else if (this.parent.aggregates.length) {
@@ -559,7 +561,7 @@ export class NormalEdit {
     private needRefresh(): boolean {
         let refresh: boolean = true;
         const editedRow: Element = this.parent.element.querySelector('.e-normaledit');
-        if ((this.parent.enableVirtualization || this.parent.infiniteScrollSettings.enableCache)
+        if ((this.parent.enableVirtualization || this.parent.enableDomVirtualization || this.parent.infiniteScrollSettings.enableCache)
             && this.parent.editSettings.mode === 'Normal' && !editedRow) {
             refresh = false;
         }
@@ -621,7 +623,7 @@ export class NormalEdit {
         }
     }
 
-    protected closeEdit(): void {
+    public closeEdit(): void {
         if (!this.parent.isEdit || (this.parent.editSettings.showAddNewRow && this.parent.element.querySelector('.e-addedrow') &&
             isNullOrUndefined(this.parent.element.querySelector('.' + literals.editedRow)))) {
             if (this.parent.editSettings.showAddNewRow) {
@@ -673,7 +675,7 @@ export class NormalEdit {
             });
     }
 
-    protected addRecord(data?: Object, index?: number): void {
+    public addRecord(data?: Object, index?: number): void {
         const gObj: IGrid = this.parent;
         this.addedRowIndex = index = !isNullOrUndefined(index) ? index : 0;
         if (data) {
@@ -758,7 +760,7 @@ export class NormalEdit {
         this.args = addArgs as EditArgs;
     }
 
-    protected deleteRecord(fieldname?: string, data?: Object): void {
+    public deleteRecord(fieldname?: string, data?: Object): void {
         this.editRowIndex = this.parent.selectedRowIndex;
         const gObj: IGrid = this.parent;
         if (data) {
@@ -771,13 +773,17 @@ export class NormalEdit {
                     tmpRecord = record;
                     return data[parseInt(i.toString(), 10)] === getObject(fieldname, record) || data[parseInt(i.toString(), 10)] === record;
                 });
-                data[parseInt(i.toString(), 10)] = contained ? tmpRecord : data[parseInt(i.toString(), 10)][`${fieldname}`] ?
+                data[parseInt(i.toString(), 10)] = contained ? tmpRecord : !isNullOrUndefined(data[parseInt(i.toString(), 10)][`${fieldname}`]) ?
                     data[parseInt(i.toString(), 10)] : { [fieldname]: data[parseInt(i.toString(), 10)] };
             }
         }
+        let selectedRecords: Object[] = this.parent.getSelectedRecords();
+        if (this.parent.selectionSettings.mode === 'Cell' && this.parent.editSettings.mode === 'Cell') {
+            selectedRecords  = this.parent.getSelectedCellRecords();
+        }
         const args: object = {
             requestType: 'delete', type: events.actionBegin, foreignKeyData: {}, //foreign key support
-            data: data ? data : this.parent.getSelectedRecords(), tr: this.parent.getSelectedRows(), cancel: false
+            data: data ? data : selectedRecords, tr: this.parent.getSelectedRows(), cancel: false
         };
         if (!isNullOrUndefined(this.parent.commandDelIndex)) {
             (<{ data?: Object[] }>args).data[0] =
@@ -816,17 +822,19 @@ export class NormalEdit {
      */
     public addEventListener(): void {
         if (this.parent.isDestroyed) { return; }
-        this.evtHandlers = [{ event: events.crudAction, handler: this.editHandler },
-            { event: events.doubleTap, handler: this.dblClickHandler },
-            { event: events.click, handler: this.clickHandler },
-            { event: events.recordAdded, handler: this.requestSuccess },
-            { event: events.dblclick, handler: this.dblClickHandler },
-            { event: events.deleteComplete, handler: this.editComplete },
-            { event: events.saveComplete, handler: this.editComplete },
-            { event: events.rowModeChange, handler: this.closeEdit },
-            { event: events.closeInline, handler: this.closeForm },
-            { event: events.refreshAggregateComplete, handler: this.editComplete }];
-        addRemoveEventListener(this.parent, this.evtHandlers, true, this);
+        if (this.parent.editSettings.mode !== 'Cell') {
+            this.evtHandlers = [{ event: events.crudAction, handler: this.editHandler },
+                { event: events.doubleTap, handler: this.dblClickHandler },
+                { event: events.click, handler: this.clickHandler },
+                { event: events.recordAdded, handler: this.requestSuccess },
+                { event: events.dblclick, handler: this.dblClickHandler },
+                { event: events.deleteComplete, handler: this.editComplete },
+                { event: events.saveComplete, handler: this.editComplete },
+                { event: events.rowModeChange, handler: this.closeEdit },
+                { event: events.closeInline, handler: this.closeForm },
+                { event: events.refreshAggregateComplete, handler: this.editComplete }];
+            addRemoveEventListener(this.parent, this.evtHandlers, true, this);
+        }
     }
 
     /**

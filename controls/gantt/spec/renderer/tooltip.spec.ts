@@ -1849,3 +1849,340 @@ describe('Checking tooltip after filtering-816171', () => {
         }
     });
 });
+
+describe('Gantt tooltip module - coverage', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: data,
+            allowSorting: true,
+            taskFields: {
+                id: 'TaskId',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                endDate: 'EndDate',
+                duration: 'Duration',
+                progress: 'Progress',
+                dependency: 'Predecessor',
+                child: 'Children',
+                cssClass: 'cusClass',
+                baselineStartDate: 'BaselineStartDate',
+                baselineEndDate: 'BaselineEndDate',
+                resourceInfo: 'resourceInfo',
+                indicators: 'Indicators'
+            },
+            enableHtmlSanitizer:true,
+            renderBaseline: true,
+            timelineSettings: {
+                showTooltip: true,
+                topTier: {
+                    unit: 'Week',
+                    format: 'dd/MM/yyyy'
+                },
+                bottomTier: {
+                    unit: 'Day',
+                },
+                timelineUnitSize: 40
+            },
+            editSettings: {
+                allowEditing: true,
+                allowAdding: true,
+                allowTaskbarEditing: true
+            },
+            allowUnscheduledTasks: true,
+            highlightWeekends: true,
+            labelSettings: {
+                taskLabel: 'Progress'
+            },
+            rowHeight: 30,
+            taskbarHeight: 20,
+            projectStartDate: new Date('10/15/2017'),
+            projectEndDate: new Date('12/30/2017'),
+            resourceIDMapping: 'resourceId',
+            resourceNameMapping: 'resourceName',
+            resources: resourceData,
+            holidays: [
+                {
+                    from: '10/16/2017',
+                    cssClass: 'e-custom-holiday',
+                    label: 'Local Holiday'
+                },
+                {
+                    from: '10/19/2017',
+                    to: '10/20/2017',
+                    label: ' Public holiday',
+                    cssClass: 'e-custom-holiday'
+                }
+            ],
+            eventMarkers: [
+                {
+                    day: '10/18/2017',
+                    cssClass: 'e-custom-event-marker',
+                    label: 'Event Marker 1'
+                }, {
+                    day: '10/23/2017',
+                    cssClass: 'e-custom-event-marker'
+                }
+            ],
+        }, done);
+    });   
+    it('Predecessor Tooltip updateTooltipPosition coverage', () => {
+        const simulatedMouseMove = new PointerEvent("mousemove", {
+            pointerId: Math.floor(getRandom() * 1000),
+            pointerType: "mouse",
+            clientX: 0,
+            clientY: 0,
+            buttons: 0, // 0 usually means no buttons pressed
+            pressure: 0,
+            bubbles: true,
+            cancelable: true,
+            composed: true
+        });
+        ganttObj.tooltipModule['tooltipMouseEvent'] = simulatedMouseMove;
+        let taskbarElement: HTMLElement = ganttObj.element.querySelector('#' + ganttObj.element.id + 'GanttTaskTableBody > tr:nth-child(1) > td > div.e-taskbar-main-container > div.e-gantt-child-taskbar-inner-div.e-gantt-child-taskbar') as HTMLElement;
+        const args: any = {};
+        args.element = ganttObj.element.children[0];
+        args.type = 'mouseover';
+        args.target = taskbarElement;
+        args.cancel = false;
+        const simulatedMouse = new PointerEvent("mousemove", {
+            pointerId: Math.floor(getRandom() * 1000),
+            pointerType: "mouse",
+            clientX: 0,
+            clientY: 0,
+            buttons: 0, // 0 usually means no buttons pressed
+            pressure: 0,
+            bubbles: true,
+            cancelable: true,
+            composed: true
+        });
+        args.event = simulatedMouse;
+        ganttObj.tooltipModule['updateTooltipPosition'](args);
+    });
+    afterAll(function () {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+
+describe('before tooltip render coverage', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: [{
+                TaskID: 1,
+                TaskName: 'Task 1',
+                StartDate: '2020-01-01T00:00:00',
+                EndDate: '2020-01-02T00:00:00',
+                Duration: 1,
+                BaselineStartDate: '2020-01-01T00:00:00',
+                BaselineEndDate: '2020-01-03T00:00:00'
+            }],
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                endDate: 'EndDate',
+                duration: 'Duration',
+                baselineStartDate: 'BaselineStartDate',
+                baselineEndDate: 'BaselineEndDate'
+            },
+            timelineSettings: {
+                topTier: {
+                    unit: 'Day',
+                },
+            },
+            timelineTemplate: '<div class="e-header-cell-label e-gantt-top-cell-text">${date}</div>',
+            tooltipSettings: {
+                showTooltip: true,
+                timeline: '01-Jan-2020'
+            },
+            editSettings: { allowEditing: true }
+        }, done);
+    });
+
+    afterAll(() => {
+        destroyGantt(ganttObj);
+    });
+
+    it('tooltipsettings timeline template coverage', () => {
+        let timeline: HTMLElement = ganttObj.element.querySelector('.e-header-cell-label.e-gantt-top-cell-text') as HTMLElement;
+        triggerMouseEvent(timeline, 'mouseover', 50);
+    });
+    it('getPointorPosition coverage', () => {
+        const fakeEvent = {
+        //   clientX: 450,
+          clientY: 320,
+          bubbles: true,
+          cancelable: true,
+          view: window,
+        } as any;
+        ganttObj.tooltipModule['getPointorPosition'](fakeEvent);
+    });
+    it('getPointorPosition else part coverage', () => {
+        const fakeEvent = {
+          bubbles: true,
+          cancelable: true,
+          view: window,
+        } as any;
+        ganttObj.tooltipModule['getPointorPosition'](fakeEvent);
+    });
+    it('updateTooltipPosition coverage', () => {
+       let args: any= {element: ganttObj.element.querySelector('.e-rowcell')};
+       ganttObj.tooltipModule['updateTooltipPosition'](args);
+    });
+});
+
+describe('html sanitizer false coverage', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: [
+                {
+                    TaskID: 1,
+                    TaskName: 'Task 1',
+                    StartDate: '2020-01-01T00:00:00',
+                    EndDate: '2020-01-02T00:00:00',
+                    Duration: 1,
+                    BaselineStartDate: '2020-01-01T00:00:00',
+                    BaselineEndDate: '2020-01-03T00:00:00',
+                    Indicators: [
+                        {
+                            date: '2020-01-02T00:00:00',
+                            name: 'Risk',
+                            tooltip: 'Potential delay'
+                        }
+                    ]
+                },
+                {
+                    TaskID: 2,
+                    TaskName: 'Milestone 1',
+                    StartDate: '2020-01-03T00:00:00',
+                    EndDate: '2020-01-03T00:00:00',
+                    Duration: 0,
+                    isMilestone: true,
+                    isManual: true,
+                    Predecessor: '1FS',
+                    subtasks: [
+                        {
+                            TaskID: 6,
+                            TaskName: 'Subtask for Milestone 1',
+                            StartDate: '2020-01-02T00:00:00',
+                            EndDate: '2020-01-03T00:00:00',
+                            Duration: 1,
+                            isManual: true
+                        }
+                    ],
+                },
+                {
+                    TaskID: 3,
+                    TaskName: 'Manual Parent Task',
+                    StartDate: '2020-01-01T00:00:00',
+                    EndDate: '2020-01-05T00:00:00',
+                    isManual: true,
+                    subtasks: [
+                        {
+                            TaskID: 4,
+                            TaskName: 'Manual Child Task',
+                            StartDate: '2020-01-01T00:00:00',
+                            EndDate: '2020-01-04T00:00:00',
+                            Duration: 3,
+                            isManual: true
+                        }
+                    ]
+                },
+                {
+                    TaskID: 5,
+                    TaskName: 'Milestone 1',
+                    StartDate: '2020-01-03T00:00:00',
+                    EndDate: '2020-01-03T00:00:00',
+                    Duration: 0,
+                    isMilestone: true,
+                },
+            ],      
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                endDate: 'EndDate',
+                duration: 'Duration',
+                child: 'subtasks',
+                baselineStartDate: 'BaselineStartDate',
+                baselineEndDate: 'BaselineEndDate',
+                indicators: 'Indicators',
+                milestone: 'isMilestone',
+                dependency: 'Predecessor',
+                manual: 'isManual'
+            },
+            renderBaseline: true,       
+            eventMarkers: [
+                {
+                    day: '2020-01-03T00:00:00',
+                    label: 'Milestone Target'
+                }
+            ],      
+            highlightWeekends: true,        
+            timelineSettings: {
+                topTier: {
+                    unit: 'Day'
+                }
+            },
+            taskMode: 'Custom',
+            enableHtmlSanitizer: false,    
+            tooltipSettings: {
+                showTooltip: true
+            },      
+            editSettings: {
+                allowEditing: true,
+                allowTaskbarEditing: true,
+                allowAdding: true
+            }       
+
+        }, done);
+
+    });
+
+    afterAll(() => {
+        destroyGantt(ganttObj);
+    });
+    it('Taskbar Tooltip', () => {
+        let taskbarElement: HTMLElement = ganttObj.element.querySelector('#' + ganttObj.element.id + 'GanttTaskTableBody > tr:nth-child(1) > td > div.e-taskbar-main-container > div.e-gantt-child-taskbar-inner-div.e-gantt-child-taskbar') as HTMLElement;
+        triggerMouseEvent(taskbarElement, 'mouseover', 50);
+    });
+    it('manual Taskbar Tooltip', () => {
+        let taskbarElement: HTMLElement = ganttObj.element.querySelector('.e-gantt-manualparenttaskbar') as HTMLElement;
+        triggerMouseEvent(taskbarElement, 'mouseover', 50);
+    });
+    it('manual parent milestone Tooltip', () => {
+        let taskbarElement: HTMLElement = ganttObj.element.querySelector('.e-gantt-manualparent-milestone') as HTMLElement;
+        triggerMouseEvent(taskbarElement, 'mouseover', 50);
+    });
+    it('milestone Tooltip', () => {
+        let taskbarElement: HTMLElement = ganttObj.element.querySelector('.e-gantt-milestone') as HTMLElement;
+        triggerMouseEvent(taskbarElement, 'mouseover', 50);
+    });
+    it('Marker Tooltip', () => {
+        let marker: HTMLElement = ganttObj.element.querySelector('#stripline0 > div') as HTMLElement;
+        triggerMouseEvent(marker, 'mouseover', 50);
+    });
+    it('Baseline Tooltip', () => {
+        let baseline: HTMLElement = ganttObj.element.querySelector('#' + ganttObj.element.id + 'GanttTaskTableBody > tr:nth-child(1) > td > div.e-baseline-bar') as HTMLElement;
+        triggerMouseEvent(baseline, 'mouseover', 50);
+    });
+    it('Indicator Tooltip', () => {
+        let indicator: HTMLElement = ganttObj.element.querySelector('#' + ganttObj.element.id + 'GanttTaskTableBody > tr:nth-child(1) > td > label:nth-child(3)') as HTMLElement;
+        triggerMouseEvent(indicator, 'mouseover', 50);
+    });
+    it('timeline coverage', () => {
+        let timeline: HTMLElement = ganttObj.element.querySelector('.e-header-cell-label.e-gantt-top-cell-text') as HTMLElement;
+        triggerMouseEvent(timeline, 'mouseover', 50);
+    });
+    it('Predecessor Tooltip', () => {
+        const predecessor : HTMLElement = ganttObj.element.querySelector('#ConnectorLineparent1child2').childNodes[0] as HTMLElement;
+        triggerMouseEvent(predecessor, 'mouseover', 10);
+    });
+    it('getTooltipContent coverage', () => {
+        ganttObj.tooltipModule['getTooltipContent']('milestones', null, ganttObj, null);
+    });
+});

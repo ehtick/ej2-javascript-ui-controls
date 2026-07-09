@@ -69,6 +69,10 @@ export const detailExpand: string = 'detailExpand';
 /** @hidden */
 export const detailCollapse: string = 'detailCollapse';
 /** @hidden */
+export const detailExpanded: string = 'detailExpanded';
+/** @hidden */
+export const detailCollapsed: string = 'detailCollapsed';
+/** @hidden */
 export const toolbarClick: string = 'toolbarClick';
 /** @hidden */
 export const batchAdd: string = 'batchAdd';
@@ -136,6 +140,8 @@ export const exportGroupCaption: string = 'exportGroupCaption';
 export const lazyLoadGroupExpand: string = 'lazyLoadGroupExpand';
 /** @hidden */
 export const lazyLoadGroupCollapse: string = 'lazyLoadGroupCollapse';
+/** @hidden */
+export const cellFocus: string = 'cellFocus';
 
 /**
  * Specifies grid internal events
@@ -608,3 +614,5 @@ export const beforeDetailTemplateDetach: string = 'beforeDetailTemplateDetach';
 export const detachDetailTemplate: string = 'detach-detail-template';
 /** @hidden */
 export const beforeSetPartialRecords: string = 'beforeSetPartialRecords';
+/** @hidden */
+export const applyDomVirtualRowHeight: string = 'apply-dom-virtual-row-height';

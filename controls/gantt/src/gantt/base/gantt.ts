@@ -3,7 +3,7 @@ import { Internationalization, extend, getValue, isObjectArray, isObject, setVal
 import { Property, NotifyPropertyChanges, INotifyPropertyChanged, L10n, ModuleDeclaration, EventHandler } from '@syncfusion/ej2-base';
 import { isNullOrUndefined, KeyboardEvents, KeyboardEventArgs, Collection, append, remove } from '@syncfusion/ej2-base';
 import { createSpinner, showSpinner, hideSpinner, Dialog } from '@syncfusion/ej2-popups';
-import { RowDragEventArgs, GridColumn} from '@syncfusion/ej2-grids';
+import { RowDragEventArgs, GridColumn, DataSourceChangedEventArgs} from '@syncfusion/ej2-grids';
 import { GanttModel } from './gantt-model';
 import { TaskProcessor } from './task-processor';
 import { GanttChart } from './gantt-chart';
@@ -64,7 +64,7 @@ import { PdfExport } from '../actions/pdf-export';
 import { WorkUnit, TaskType } from './enum';
 import { FocusModule } from '../actions/keyboard';
 import { VirtualScroll } from '../actions/virtual-scroll';
-import { isCountRequired, parentsUntil } from './utils';
+import { isCountRequired, parentsUntil, isRemoteData } from './utils';
 import { TaskbarEdit } from '../actions/taskbar-edit';
 import { UndoRedo } from '../actions/undo-redo';
 import { WeekWorkingTimeModel } from '../models/week-working-time-model';
@@ -513,6 +513,15 @@ export class Gantt extends Component<HTMLElement>
     public enableVirtualMaskRow: boolean;
 
     /**
+     * Enables infinite horizontal scrolling for the Gantt timeline by dynamically
+     * extending the timeline when the scroll reaches the end.
+     *
+     * @default false
+     */
+    @Property(false)
+    public enableInfiniteTimelineScroll: boolean;
+
+    /**
      * Gets or sets whether to load child records on demand in remote data binding. When `loadChildOnDemand` set to true, child records are loaded only when expanded, and parent records are rendered in a collapsed state initially.
      *
      * @default true
@@ -731,6 +740,16 @@ export class Gantt extends Component<HTMLElement>
     @Property(false)
     public renderBaseline: boolean;
 
+    /**
+     * .
+     * Accepts an element ID selector, HTML string, or function returning `string` or `HTMLElement`.
+     * Defines a custom template for rendering baseline bars in the Gantt chart.
+     *
+     * @default null
+     * @aspType string
+     */
+    @Property(null)
+    public baselineTemplate: string | Function;
     /**
      * Defines the calendar configuration for the project, including working times, holidays, and task-specific calendars.
      *
@@ -1530,6 +1549,15 @@ export class Gantt extends Component<HTMLElement>
      */
     @Event()
     public dataStateChange: EmitType<DataStateChangeEventArgs>;
+
+    /**
+     * Triggers when data in the Gantt is added, deleted, or updated.
+     * Invoke the done method from the argument to start rendering after an edit operation.
+     *
+     * @event dataSourceChanged
+     */
+    @Event()
+    public dataSourceChanged: EmitType<DataSourceChangedEventArgs>;
 
     /**
      * Event triggered after a taskbar has been dragged and dropped to a new position.
@@ -2667,7 +2695,7 @@ export class Gantt extends Component<HTMLElement>
                     break;
                 }
             }
-            if (isGreater || !maxCode) {
+            if (!maxCode || isGreater) {
                 maxCode = current;
             }
         }
@@ -3804,7 +3832,7 @@ export class Gantt extends Component<HTMLElement>
                 if (actionDetail['afterDrop'].dropPosition === 'child') {
                     this.updateRecordByID(actionDetail['afterDrop'].dropRecord);
                 }
-            } else if (actionDetail['action'] === 'Indent' || actionDetail['action'] === 'Outdent') {
+            } else if (actionDetail['action'] === 'Outdent' || actionDetail['action'] === 'Indent') {
                 this.updateRecordByID(actionDetail['droppedRecord']);
             }
             this.undoRedoModule['undoActionDetails'] = {};
@@ -3815,7 +3843,6 @@ export class Gantt extends Component<HTMLElement>
         if (this.undoRedoModule && this.undoRedoModule['isUndoRedoPerformed']) {
             this.undoRedoModule['isUndoRedoPerformed'] = false;
         }
-        this.isOnAddOrDelete = false;
         this.trigger('dataBound', args);
     }
     /**
@@ -3906,7 +3933,7 @@ export class Gantt extends Component<HTMLElement>
                 break;
             case 'enableVirtualization':
                 if (this.enableVirtualization) {
-                    this.treeGrid.grid['enableSeamlessScrolling'] = false;
+                    this.treeGrid.grid.enableSeamlessScrolling = false;
                 }
                 refreshState.isRefresh = true;
                 break;
@@ -4123,7 +4150,7 @@ export class Gantt extends Component<HTMLElement>
             case 'dataSource':
                 this.isLoad = true;
                 if (this.isReact) {
-                    this['clearTemplate'](['TaskbarTemplate', 'ParentTaskbarTemplate', 'MilestoneTemplate', 'TaskLabelTemplate', 'RightLabelTemplate', 'LeftLabelTemplate']);
+                    this['clearTemplate'](['TaskbarTemplate', 'ParentTaskbarTemplate', 'MilestoneTemplate', 'BaselineTemplate', 'TaskLabelTemplate', 'RightLabelTemplate', 'LeftLabelTemplate']);
                 }
                 this.closeGanttActions();
                 if (this.dataSource instanceof Object && isCountRequired(this)) {
@@ -4517,7 +4544,7 @@ export class Gantt extends Component<HTMLElement>
         const chartRowsTD: NodeListOf<HTMLTableDataCellElement> =
             document.getElementById(this.element.id + 'GanttTaskTableBody').querySelectorAll('td');
         if (this.gridLines === 'Vertical') {
-            if (isNullOrUndefined(verticalLines)) {
+            if (isNullOrUndefined(verticalLines) || this.enableInfiniteTimelineScroll) {
                 this.renderChartVerticalLines();
             } else {
                 if (window.getComputedStyle(verticalLines).display === 'none') {
@@ -4539,7 +4566,7 @@ export class Gantt extends Component<HTMLElement>
                 }
             }
         } else if (this.gridLines === 'Both') {
-            if (isNullOrUndefined(verticalLines)) {
+            if (isNullOrUndefined(verticalLines) || this.enableInfiniteTimelineScroll) {
                 this.renderChartVerticalLines();
             } else {
                 if (window.getComputedStyle(verticalLines).display === 'none') {
@@ -5087,7 +5114,8 @@ export class Gantt extends Component<HTMLElement>
         }
         if (calendarContext) {
             const override: boolean = calendarContext.getExceptionForDate(args.date);
-            if (override || (ganttProp.isMilestone && args.isDisabled && ganttProp.startDate.getTime() === args.date.getTime())) {
+            if (override || (ganttProp.isMilestone && args.isDisabled &&
+                ganttProp.startDate && ganttProp.startDate.getTime() === args.date.getTime())) {
                 args.isDisabled = false;
             }
         }
@@ -5101,7 +5129,7 @@ export class Gantt extends Component<HTMLElement>
      */
     public previousTimeSpan(mode?: string): void {
         if (this.isReact) {
-            this['clearTemplate'](['TaskbarTemplate', 'ParentTaskbarTemplate', 'MilestoneTemplate', 'TaskLabelTemplate', 'RightLabelTemplate', 'LeftLabelTemplate']);
+            this['clearTemplate'](['TaskbarTemplate', 'ParentTaskbarTemplate', 'MilestoneTemplate', 'BaselineTemplate', 'TaskLabelTemplate', 'RightLabelTemplate', 'LeftLabelTemplate']);
         }
         if (this.undoRedoModule && this['isUndoRedoItemPresent']('PreviousTimeSpan')) {
             if (this.undoRedoModule['redoEnabled']) {
@@ -5127,7 +5155,7 @@ export class Gantt extends Component<HTMLElement>
      */
     public nextTimeSpan(mode?: string): void {
         if (this.isReact) {
-            this['clearTemplate'](['TaskbarTemplate', 'ParentTaskbarTemplate', 'MilestoneTemplate', 'TaskLabelTemplate', 'RightLabelTemplate', 'LeftLabelTemplate']);
+            this['clearTemplate'](['TaskbarTemplate', 'ParentTaskbarTemplate', 'MilestoneTemplate', 'BaselineTemplate', 'TaskLabelTemplate', 'RightLabelTemplate', 'LeftLabelTemplate']);
         }
         if (this.undoRedoModule && this['isUndoRedoItemPresent']('NextTimeSpan')) {
             if (this.undoRedoModule['redoEnabled']) {
@@ -5171,23 +5199,17 @@ export class Gantt extends Component<HTMLElement>
      */
     public updateProjectDates(startDate: Date, endDate: Date, isTimelineRoundOff: boolean, isFrom?: string): void {
         this.timelineModule.totalTimelineWidth = 0;
-        const viewStartAuto: boolean = this.timelineSettings.viewStartDate === 'auto';
-        const viewEndAuto: boolean = this.timelineSettings.viewEndDate === 'auto';
-        const projectEndUndefined: boolean = isNullOrUndefined(this.projectEndDate);
-        if (!viewStartAuto && (!viewEndAuto || (viewEndAuto && projectEndUndefined)) && !this.timelineModule.isZoomToFit) {
-            this.cloneTimelineStartDate = startDate;
-            this.cloneTimelineEndDate = endDate;
-        } else if (viewStartAuto && !this.timelineModule.isZoomToFit && projectEndUndefined) {
-            this.cloneProjectStartDate = startDate;
-            this.cloneTimelineEndDate = endDate;
-        } else if (!viewStartAuto && viewEndAuto && !this.timelineModule.isZoomToFit && !projectEndUndefined) {
-            this.cloneTimelineStartDate = startDate;
-            this.cloneProjectEndDate = endDate;
-        }
-        else {
-            this.cloneProjectStartDate = startDate;
-            this.cloneProjectEndDate = endDate;
-        }
+        this.cloneProjectStartDate = startDate;
+        this.cloneProjectEndDate = endDate;
+        this.isTimelineRoundOff = isTimelineRoundOff;
+        this.updateTimelineDates(this.cloneProjectStartDate, this.cloneProjectEndDate, isTimelineRoundOff, isFrom);
+    }
+
+    public updateTimelineDates(startDate: Date, endDate: Date, isTimelineRoundOff: boolean, isFrom?: string): void {
+        // Timeline-specific date updates (zoom / zoom-to-fit / timespan actions)
+        this.timelineModule.totalTimelineWidth = 0;
+        this.cloneTimelineStartDate = new Date(startDate);
+        this.cloneTimelineEndDate = new Date(endDate);
         this.isTimelineRoundOff = isTimelineRoundOff;
         this.timelineModule.refreshTimelineByTimeSpan();
         this.dataOperation.reUpdateGanttDataPosition();
@@ -6474,7 +6496,11 @@ export class Gantt extends Component<HTMLElement>
                 data[taskfields.parentID] = null;
             }
             if (!isNullOrUndefined(taskfields.segments)) {
-                data[taskfields.segments] = null;
+                if (isRemoteData(this.dataSource)) {
+                    data[taskfields.segments] = [];
+                } else {
+                    data[taskfields.segments] = null;
+                }
             }
             const taskType: TaskType = !isNullOrUndefined(rowData.ganttProperties.taskType) ? rowData.ganttProperties.taskType
                 : this.taskType;
@@ -6575,7 +6601,7 @@ export class Gantt extends Component<HTMLElement>
     public resetTemplates(): void {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if ((this as any).isReact) {
-            this.clearTemplate(['TaskbarTemplate', 'ParentTaskbarTemplate', 'MilestoneTemplate', 'TaskLabelTemplate', 'RightLabelTemplate', 'LeftLabelTemplate', 'TooltipTaskbarTemplate', 'TooltipBaselineTemplate', 'TooltipConnectorLineTemplate', 'TimelineTemplate']);
+            this.clearTemplate(['TaskbarTemplate', 'ParentTaskbarTemplate', 'MilestoneTemplate', 'BaselineTemplate', 'TaskLabelTemplate', 'RightLabelTemplate', 'LeftLabelTemplate', 'TooltipTaskbarTemplate', 'TooltipBaselineTemplate', 'TooltipConnectorLineTemplate', 'TimelineTemplate']);
         }
     }
 

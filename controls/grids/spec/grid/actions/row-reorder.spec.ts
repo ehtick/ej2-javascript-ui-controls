@@ -15,8 +15,10 @@ import { Group } from '../../../src/grid/actions/group';
 import { Aggregate } from '../../../src/grid/actions/aggregate';
 import { VirtualScroll } from '../../../src/grid/actions/virtual-scroll';
 import { RowDropEventArgs } from '../../../src/grid/base/interface';
+import * as util from '../../../src/grid/base/util';
+import { Freeze } from '../../../src/grid/actions/freeze';
 
-Grid.Inject(Page, Sort, Selection, RowDD, Group, Aggregate, VirtualScroll);
+Grid.Inject(Page, Sort, Selection, RowDD, Group, Aggregate, VirtualScroll,Freeze);
 
 function copyObject(source: Object, destiation: Object): Object {
     for (let prop in source) {
@@ -2364,4 +2366,47 @@ describe('Row Drag and Drop module', () => {
             gridObj = null;
         });
     });
+
+    describe('EJ2-995719: Dotted lines not removed when dropping on non droppable area', () => {
+        let gridObj: Grid;
+        let rows: any;
+        beforeAll((done: Function) => {
+            gridObj = createGrid(
+                {
+                    dataSource: data,
+                    allowPaging: true,
+                    allowGrouping: true, 
+                    allowRowDragAndDrop:true,
+                    frozenRows:1,
+                    gridLines: 'Both',
+                    columns: [
+                        { field: 'OrderID', headerText: 'Order ID', minWidth: 120, width: 200, maxWidth: 300, textAlign: 'Right',isPrimaryKey:true },
+                        { field: 'CustomerID', headerText: 'Customer Name', minWidth: 8, width: 200 },
+                        { field: 'ShipName', headerText: 'Ship Name', minWidth: 8, width: 300 },
+                        { field: 'ShipCountry', headerText: 'Ship Country', minWidth: 8, width: 300 }
+                    ],
+                    groupSettings: { showGroupedColumn: true, columns: ['CustomerID'] },
+                }, done);
+        });
+
+        it('Selection of row', () => {
+         rows = (gridObj.getHeaderTable() as any).rows[2];
+         const rowElement: HTMLElement[] = [].slice.call(rows
+                        .querySelectorAll(`.e-groupcaption,.e-summarycell,.e-rowcell:not(.e-hide),.e-rowdragdrop:not(.e-hide),
+                        .e-detailrowcollapse:not(.e-hide)`));
+          util.addRemoveActiveClasses([rowElement[0]], true, 'e-dragleft')
+          util.addRemoveActiveClasses(rowElement, true, 'e-dragtop', 'e-dragbottom');
+          util.addRemoveActiveClasses([rowElement[rowElement.length - 1]], true, 'e-dragright');
+          expect(rows.querySelector('td.e-dragtop.e-dragbottom')).toBeTruthy();
+          (gridObj.rowDragAndDropModule as any).isDropGrid=(gridObj.rowDragAndDropModule as any).parent;
+          (gridObj.rowDragAndDropModule as any).removeBorder(rows);
+          expect(rows.querySelector('td.e-dragtop.e-dragbottom')).toBeFalsy();
+        });
+        
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
 });

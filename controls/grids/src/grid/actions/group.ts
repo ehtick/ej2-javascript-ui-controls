@@ -598,7 +598,7 @@ export class Group implements IAction {
                 }
             }
             this.aria.setExpand(trgt, expand);
-            if (!isGroupAdaptive(gObj) && !this.parent.groupSettings.enableLazyLoading) {
+            if (!isGroupAdaptive(gObj) && !this.parent.groupSettings.enableLazyLoading  && !this.parent.enableDomVirtualization) {
                 const rowObjs: Row<Column>[] = gObj.getRowsObject();
                 const startIdx: number = rowObjs.indexOf(captionRow);
                 const rowsState: { [x: string]: boolean } = {};
@@ -651,6 +651,9 @@ export class Group implements IAction {
                     }
                 }
                 this.lastCaptionRowBorder();
+                this.parent.notify(events.refreshExpandandCollapse, { rows: this.parent.getRowsObject() });
+            }
+            if (this.parent.enableDomVirtualization) {
                 this.parent.notify(events.refreshExpandandCollapse, { rows: this.parent.getRowsObject() });
             }
             if (!this.parent.enableInfiniteScrolling || !this.parent.groupSettings.enableLazyLoading) {
@@ -965,7 +968,8 @@ export class Group implements IAction {
         } else {
             this.removeColFromGroupDrop(this.colName);
         }
-        if (this.groupSettings.showDropArea && this.parent.height === '100%') {
+        if (this.groupSettings.showDropArea && (this.parent.height === '100%' || (typeof this.parent.height === 'string' &&
+            this.parent.height.toLowerCase().indexOf('vh') !== -1))) {
             this.parent.scrollModule.refresh();
         }
         const args: Object = this.groupSettings.columns.indexOf(this.colName) > -1 ? {
@@ -1081,8 +1085,14 @@ export class Group implements IAction {
         }
         this.element.appendChild(groupedColumn);
         const focusModule: FocusStrategy = this.parent.focusModule;
-        focusModule.setActive(true);
         let firstContentCellIndex: number[] = [0, 0];
+        if (this.parent.frozenRows > 0) {
+            focusModule.setActive(false);
+            const rowIndex: number = (this.parent.element.querySelector('.e-gridheader tbody').firstChild as HTMLTableRowElement).rowIndex;
+            firstContentCellIndex = [rowIndex, 0];
+        } else {
+            focusModule.setActive(true);
+        }
         if (focusModule.active.matrix.matrix[firstContentCellIndex[0]][firstContentCellIndex[1]] === 0) {
             firstContentCellIndex = findCellIndex(focusModule.active.matrix.matrix, firstContentCellIndex, true);
         }
@@ -1201,7 +1211,8 @@ export class Group implements IAction {
                 } else {
                     this.element.style.display = 'none';
                 }
-                if (this.parent.height === '100%') {
+                if (this.parent.height === '100%' || (typeof this.parent.height === 'string' &&
+                    this.parent.height.toLowerCase().indexOf('vh') !== -1)) {
                     this.parent.scrollModule.refresh();
                 }
                 break;
@@ -1360,7 +1371,8 @@ export class Group implements IAction {
         const updatedData: Object = data[0];
         const editedRow: Element = (<{row?: Element}>data).row;
         const groupedCols: string[] = gObj.groupSettings.columns;
-        const groupLazyLoadRenderer: GroupLazyLoadRenderer = gObj.contentModule as GroupLazyLoadRenderer;
+        const groupLazyLoadRenderer: GroupLazyLoadRenderer = gObj.enableVirtualization
+            ? gObj.lazyLoadRender as GroupLazyLoadRenderer : gObj.contentModule as GroupLazyLoadRenderer;
         const groupCache: { [x: number]: Row<Column>[]; } = groupLazyLoadRenderer.getGroupCache();
         const currentPageGroupCache: Row<Column>[] = groupCache[gObj.pageSettings.currentPage];
         let result: Object[] = remoteResult ? remoteResult : [];

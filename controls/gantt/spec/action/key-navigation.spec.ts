@@ -1486,6 +1486,12 @@ describe('Collapse key', () => {
                 taskbarHeight: 30
             }, done);
     });
+    it('uparrow action for context menu', () => {
+        let $tr: HTMLElement = ganttObj.element.querySelector('#treeGrid' + ganttObj.element.id + '_gridcontrol_content_table > tbody > tr:nth-child(1) > td:nth-child(2)') as HTMLElement;
+        triggerMouseEvent($tr, 'contextmenu', 0, 0, false, false, 2);
+        let args1: any = {target: $tr, action: 'upArrow', preventDefault: preventDefault };
+        ganttObj.keyboardModule.keyAction(args1);
+    });
     it('Collapsed record', () => {
         ganttObj.collapsed = function (args: any): void {
             expect(args.data.expanded).toBe(false)
@@ -2756,6 +2762,211 @@ describe('Console error occurs after selecting Task information option for the n
         expect(ganttObj.currentViewData[0]['Segments'] instanceof Array).toBe(true);
     });
     afterAll(function () {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+
+describe('Expand collapse - virtualization', () => {
+    let ganttObj: Gantt;
+    let preventDefault: Function = new Function();
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    {
+                        taskId: 1, taskName: 'Parent Task', startDate: new Date('04/02/2025'), endDate: new Date('04/10/2025'), duration: 8, isParent: true
+                    },
+                    {
+                        taskId: 2, taskName: 'Child 1', startDate: new Date('04/02/2025'), duration: 3, ParentID: 1, isParent: false
+                    },
+                    {
+                        taskId: 3, taskName: 'Child 2', startDate: new Date('04/05/2025'), duration: 4, ParentID: 1, isParent: false
+                    },
+                ],
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true,
+                    allowDeleting: true
+                },
+                taskFields: {
+                    id: 'taskId',
+                    name: 'taskName',
+                    startDate: 'startDate',
+                    endDate: 'endDate',
+                    duration: 'duration',
+                    parentID: 'ParentID'
+                },
+                enableContextMenu: true,
+                enableVirtualization: true,
+                allowSelection: true,
+                selectionSettings: {
+                    mode: 'Row',
+                    type: 'Single'
+                }
+            }, done);
+    });
+    it('collapseRow key testing', () => {
+        ganttObj.selectionModule.selectRow(0);
+        let args: any = { action: 'collapseRow', preventDefault: preventDefault };
+        ganttObj.focusModule['onKeyPress'](args);
+        expect(ganttObj.currentViewData[0].expanded).toBe(false);
+    });
+    it('context menu testing', () => {
+        let $tr: HTMLElement = ganttObj.element.querySelector('#treeGrid' + ganttObj.element.id + '_gridcontrol_content_table > tbody > tr:nth-child(1) > td:nth-child(2)') as HTMLElement;
+        triggerMouseEvent($tr, 'contextmenu', 0, 0, false, false, 2);
+        let args: any = {target: $tr, action: 'contextMenu', preventDefault: preventDefault };
+        ganttObj.focusModule['onKeyPress'](args);
+    });
+    it('collapseRow key testing', () => {
+        ganttObj.isAdaptive = true;
+        ganttObj.selectionSettings.type = 'Multiple';
+        ganttObj.dataBind();
+        let args: any = { action: 'addRow', preventDefault: preventDefault };
+        ganttObj.keyboardModule.keyAction(args);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+
+describe('Key navigation - coverage', () => {
+    let ganttObj: Gantt;
+    let preventDefault: Function = new Function();
+    let stopPropagation: Function = new Function();
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    {
+                        taskId: 1, taskName: 'Parent Task', startDate: new Date('04/02/2025'), endDate: new Date('04/10/2025'), duration: 8, isParent: true
+                    },
+                    {
+                        taskId: 2, taskName: 'Child 1', startDate: new Date('04/02/2025'), duration: 3, ParentID: 1, isParent: false
+                    },
+                    {
+                        taskId: 3, taskName: 'Child 2', startDate: new Date('04/05/2025'), duration: 4, ParentID: 1, isParent: false
+                    },
+                ],
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true,
+                    allowDeleting: true
+                },
+                toolbar: ['Add', 'Edit', 'Update', 'Delete', 'Cancel', 'Search'],
+                taskFields: {
+                    id: 'taskId',
+                    name: 'taskName',
+                    startDate: 'startDate',
+                    endDate: 'endDate',
+                    duration: 'duration',
+                    parentID: 'ParentID'
+                },
+                rowHeight: 40,
+                taskbarHeight: 30,
+                allowSelection: true,
+                selectionSettings: {
+                    mode: 'Both',
+                }
+            }, done);
+    });
+    it('tab key header cell testing', () => {
+        let element: HTMLElement = ganttObj.element.querySelectorAll('.e-headercell')[4] as HTMLElement;
+        let args2: any = {target: element, action: 'tab', preventDefault: preventDefault };
+        ganttObj.focusModule['onKeyPress'](args2);
+    });
+    it('uparrow key testing', () => {
+        let element: HTMLElement = ganttObj.element.querySelector('.e-rowcell');
+        element.classList.add('e-cellselectionbackground');
+        let args2: any = {target:element, action: 'upArrow', preventDefault: preventDefault };
+        ganttObj.focusModule['onKeyPress'](args2);
+    });
+    it('up arrow key testing', () => {
+        ganttObj.element.querySelector('#' + ganttObj.element.id + '_searchbar').parentElement.classList.add('e-input-focus');
+        let args2: any = { action: 'upArrow', preventDefault: preventDefault };
+        ganttObj.focusModule['onKeyPress'](args2);
+    });
+    it('cell edit home key testing', () => {
+        ganttObj.editModule.cellEditModule.isCellEdit = true;
+        let args1: any = { action: 'home', preventDefault: preventDefault };
+        ganttObj.focusModule['onKeyPress'](args1);
+        let args2: any = { action: 'addRow', preventDefault: preventDefault, stopPropagation: stopPropagation };
+        ganttObj.focusModule['onKeyPress'](args2);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+
+describe('Key navigation - coverage', () => {
+    let ganttObj: Gantt;
+    let preventDefault: Function = new Function();
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    {
+                        taskId: 1, taskName: 'Parent Task', startDate: new Date('04/02/2025'), endDate: new Date('04/10/2025'), duration: 8, isParent: true
+                    },
+                    {
+                        taskId: 2, taskName: 'Child 1', startDate: new Date('04/02/2025'), duration: 3, ParentID: 1, isParent: false
+                    },
+                    {
+                        taskId: 3, taskName: 'Child 2', startDate: new Date('04/05/2025'), duration: 4, ParentID: 1, isParent: false
+                    },
+                ],
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true,
+                    allowDeleting: true
+                },
+                toolbar: ['Add', 'Edit', 'Update', 'Delete', 'Cancel', 'Search'],
+                taskFields: {
+                    id: 'taskId',
+                    name: 'taskName',
+                    startDate: 'startDate',
+                    endDate: 'endDate',
+                    duration: 'duration',
+                    parentID: 'ParentID'
+                },
+                rowHeight: 40,
+                taskbarHeight: 30,
+                allowSelection: true,
+                selectionSettings: {
+                    mode: 'Both',
+                }
+            }, done);
+    });
+    beforeEach(()=>{
+        ganttObj.openAddDialog();
+    })
+    // it('cell edit and dialog open', () => {
+    //     ganttObj.editModule.cellEditModule.isCellEdit = true;
+    //     ganttObj.editModule.cellEditModule.editedColumn = ganttObj.getColumnByField('taskName', ganttObj.getGanttColumns());
+    //     let args2: any = { action: 'saveRequest', preventDefault: preventDefault };
+    //     ganttObj.focusModule['onKeyPress'](args2);
+    // });
+    it('Dialog open covearage', () => {
+        let args: any = { action: 'addRowDialog', preventDefault: preventDefault };
+        ganttObj.focusModule['onKeyPress'](args);
+        let args1: any = { action: 'editRowDialog', preventDefault: preventDefault };
+        ganttObj.focusModule['onKeyPress'](args1);
+        let cancelRecord: HTMLElement = document.querySelectorAll('#' + ganttObj.element.id + '_dialog > div.e-footer-content > button.e-control')[1] as HTMLElement;
+        triggerMouseEvent(cancelRecord, 'click');
+    });
+    it('SelectionModule null', () => {
+        ganttObj.selectionModule = null;
+        let args: any = { action: 'home', preventDefault: preventDefault };
+        ganttObj.focusModule['onKeyPress'](args);
+        let args1: any = { action: 'upArrow', preventDefault: preventDefault };
+        ganttObj.focusModule['onKeyPress'](args1);
+    });
+    afterAll(() => {
         if (ganttObj) {
             destroyGantt(ganttObj);
         }

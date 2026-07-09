@@ -2,8 +2,8 @@ import { extend, addClass, removeClass, setValue, closest, select, EventHandler 
 import { remove, classList } from '@syncfusion/ej2-base';
 import { FormValidator } from '@syncfusion/ej2-inputs';
 import { isNullOrUndefined, KeyboardEventArgs, isUndefined } from '@syncfusion/ej2-base';
-import { IGrid, BeforeBatchAddArgs, BeforeBatchDeleteArgs, BeforeBatchSaveArgs } from '../base/interface';
-import { BatchAddArgs, CellEditArgs, CellSaveArgs, CellFocusArgs, BatchCancelArgs } from '../base/interface';
+import { IGrid, BeforeBatchAddArgs, BeforeBatchDeleteArgs, BeforeBatchSaveArgs, ISelectedCellDetails, IAutoFill, IDeleteAction, EditEventArgs } from '../base/interface';
+import { BatchAddArgs, CellEditArgs, CellSaveArgs, CellFocusArgs, BatchCancelArgs, IUndoRedoAction } from '../base/interface';
 import { CellType } from '../base/enum';
 import { parentsUntil, refreshForeignData, getObject, addRemoveEventListener, getCellFromRow } from '../base/util';
 import { getCellByColAndRowIndex, addFixedColumnBorder } from '../base/util';
@@ -27,38 +27,44 @@ import * as literals from '../base/string-literals';
  * @hidden
  */
 export class BatchEdit {
-    private parent: IGrid;
+    protected parent: IGrid;
     private serviceLocator: ServiceLocator;
-    private form: Element;
+    protected form: Element;
     public formObj: FormValidator;
-    private renderer: EditRender;
+    protected renderer: EditRender;
     private focus: FocusStrategy;
     private dataBoundFunction: Function;
     private batchCancelFunction: Function;
     private removeSelectedData: Object[];
-    private cellDetails: {
+    protected cellDetails: {
         rowData?: Object, field?: string, value?: string,
         isForeignKey?: boolean, column?: Column, rowIndex?: number, cellIndex?: number,
         foreignKeyData?: Object
     } = {};
     private isColored: boolean;
+    protected args: EditEventArgs = {};
     private isAdded: boolean;
     private originalCell: Object = {};
     private cloneCell: Object = {};
-    private editNext: boolean = false;
-    private preventSaveCell: boolean = false;
-    private index: number;
-    private crtRowIndex: number;
-    private field: string;
+    protected editNext: boolean = false;
+    protected preventSaveCell: boolean = false;
+    protected index: number;
+    protected crtRowIndex: number;
+    protected field: string;
     private initialRender: boolean = true;
     private validationColObj: { field: string, cellIdx: number }[] = [];
     private isAdd: boolean;
-    private newReactTd: Element;
-    private evtHandlers: { event: string, handler: Function }[];
+    protected newReactTd: Element;
+    protected evtHandlers: { event: string, handler: Function }[];
     /** @hidden */
     public addBatchRow: boolean = false;
-    private prevEditedBatchCell: boolean = false;
+    protected prevEditedBatchCell: boolean = false;
     private mouseDownElement: Element;
+    public undoStack: IUndoRedoAction[] = [];
+    public redoStack: IUndoRedoAction[] = [];
+    private storedRowUids: Set<string> = new Set();
+    private isUndoAction: boolean = false;
+    private isRedoAction: boolean = false;
 
     constructor(parent?: IGrid, serviceLocator?: ServiceLocator, renderer?: EditRender) {
         this.parent = parent;
@@ -103,6 +109,7 @@ export class BatchEdit {
     }
 
     private batchCancel(): void {
+        this.clearStacks();
         this.parent.focusModule.restoreFocus({ requestType: 'batchCancel' });
     }
 
@@ -116,6 +123,358 @@ export class BatchEdit {
      */
     public destroy(): void {
         this.removeEventListener();
+    }
+
+    /**
+     * Pushes an action to the specified stack with size management.
+     *
+     * @param {IUndoRedoAction[]} stack - The stack to push to (undo or redo)
+     * @param {IUndoRedoAction} action - The action to push
+     * @returns {void}
+     */
+    public pushToStack(stack: IUndoRedoAction[], action: IUndoRedoAction): void {
+        stack.push(action);
+        if (stack.length > this.parent.editSettings.undoRedoLimit) {
+            stack.shift();
+        }
+    }
+
+    /**
+     * Clears both undo and redo stacks.
+     *
+     * @returns {void}
+     * @hidden
+     */
+    public clearStacks(): void {
+        this.undoStack = [];
+        this.redoStack = [];
+        this.storedRowUids.clear();
+    }
+
+    private restoreCellSelection(args: IUndoRedoAction): void {
+        const gObj: IGrid = this.parent;
+        gObj.clearSelection();
+        const colIndex: number = gObj.getColumnIndexByField(args.field);
+        gObj.selectionModule.selectCell({ rowIndex: args.rowIndex, cellIndex: colIndex });
+    }
+
+    private storeDeleteAction(deleteArgs: BeforeBatchDeleteArgs): void {
+        if (!this.parent.editSettings.enableUndoRedo || !deleteArgs) {
+            return;
+        }
+        const gObj: IGrid = this.parent;
+        const deletedRowsData: IUndoRedoAction[] = [];
+        const deletedRowLength: number = (deleteArgs.row as Element[]).length;
+        if (Array.isArray(deleteArgs.row) && deletedRowLength) {
+            for (let i: number = 0; i < deletedRowLength; i++) {
+                const rowElement: Element = deleteArgs.row[parseInt(i.toString(), 10)];
+                const uid: string = rowElement.getAttribute('data-uid');
+                if (!rowElement.classList.contains('e-insertedrow')) {
+                    const rowIndex: number = (rowElement as HTMLTableRowElement).rowIndex;
+                    const rowObj: Row<Column> = gObj.getRowObjectFromUID(uid);
+                    if (rowObj) {
+                        deletedRowsData.push({
+                            rowUid: uid,
+                            rowIndex: rowIndex,
+                            rowData: rowObj.data
+                        });
+                    }
+                }
+            }
+        } else if (deleteArgs.row) {
+            const rowUid: string = (deleteArgs.row as Element).getAttribute('data-uid');
+            const row: Row<Column> = gObj.getRowObjectFromUID(rowUid);
+            if (row) {
+                const rowIndex: number = (deleteArgs.row as HTMLTableRowElement).rowIndex;
+                deletedRowsData.push({
+                    rowUid: row.uid,
+                    rowIndex: rowIndex,
+                    rowData: row.data
+                });
+            }
+        }
+        if (deletedRowsData.length > 0) {
+            const action: IDeleteAction = {
+                type: 'row-delete',
+                deletedRows: deletedRowsData
+            };
+            this.pushToStack(this.undoStack, action);
+            this.redoStack = [];
+        }
+    }
+
+    /**
+     * Stores the action in the undo stack after the cell is saved.
+     *
+     * @param {CellSaveArgs} args - The cell save arguments
+     * @returns {void}
+     */
+    private storeCellsInUndoStack(args: CellSaveArgs): void {
+        if (!this.parent.editSettings.enableUndoRedo || args.action) {
+            return;
+        }
+        const gObj: IGrid = this.parent;
+        let action: IUndoRedoAction;
+        const tr: Element = args.cell.parentElement;
+        const rowUid: string = tr.getAttribute('data-uid');
+        const row: Row<Column> = gObj.getRowObjectFromUID(rowUid);
+        const rowIndex: number = row.index;
+        if (!row) {
+            return;
+        }
+        if (row.edit === 'add') {
+            const rowData: Object = row.changes;
+            if (this.storedRowUids.has(row.uid)) {
+                const lastAction: IUndoRedoAction = this.undoStack[this.undoStack.length - 1];
+                if (lastAction && lastAction.type === 'row-add' && lastAction.rowUid === row.uid) {
+                    lastAction.rowData = rowData;
+                }
+                return;
+            }
+            this.storedRowUids.add(row.uid);
+            action = {
+                type: 'row-add',
+                rowUid: row.uid,
+                rowIndex: rowIndex,
+                rowData: rowData
+            };
+        } else if ((!isNullOrUndefined(args.previousValue) && !isNullOrUndefined(args.value)) ?
+            (args.previousValue.toString() !== args.value.toString()) : (args.previousValue !== args.value)) {
+            action = {
+                type: 'cell-edit',
+                rowUid: row.uid,
+                rowIndex: rowIndex,
+                field: args.columnName,
+                previousValue: args.previousValue,
+                newValue: args.value
+            };
+        }
+        if (action) {
+            this.pushToStack(this.undoStack, action);
+            this.redoStack = [];
+        }
+    }
+
+    /**
+     * Undo the last batch edit action and restore the grid to its previous state.
+     *
+     * @returns {void}
+     * @hidden
+     */
+    public undoBatchEdit(): void {
+        if (!this.parent.editSettings.enableUndoRedo || this.undoStack.length === 0) {
+            return;
+        }
+        const action: IUndoRedoAction = this.undoStack.pop();
+        if (!action) {
+            return;
+        }
+        this.isUndoAction = true;
+        this.parent.clearSelection();
+        this.parent.focusModule.clearIndicator();
+        this.undoAction(action);
+        this.isUndoAction = false;
+        if (this.parent.aggregates.length > 0) {
+            if (!(this.parent.isReact || this.parent.isVue)) {
+                this.parent.notify(events.refreshFooterRenderer, {});
+            }
+            if (this.parent.groupSettings.columns.length > 0) {
+                this.parent.notify(events.groupAggregates, {});
+            }
+            if (this.parent.isReact || this.parent.isVue) {
+                this.parent.notify(events.refreshFooterRenderer, {});
+            }
+        }
+        const cellSaveArgs: CellSaveArgs = {
+            cancel: false,
+            action: 'undo'
+        };
+        this.parent.trigger(events.cellSaved, cellSaveArgs);
+        this.pushToStack(this.redoStack, action);
+        this.parent.notify(events.toolbarRefresh, {});
+    }
+
+    /**
+     * Redo the last undone batch edit action and reapply the changes to the grid.
+     *
+     * @returns {void}
+     * @hidden
+     */
+    public redoBatchEdit(): void {
+        if (!this.parent.editSettings.enableUndoRedo || this.redoStack.length === 0) {
+            return;
+        }
+        const action: IUndoRedoAction = this.redoStack.pop();
+        if (!action) {
+            return;
+        }
+        this.isRedoAction = true;
+        this.redoAction(action);
+        this.isRedoAction = false;
+        if (this.parent.aggregates.length > 0) {
+            if (!(this.parent.isReact || this.parent.isVue)) {
+                this.parent.notify(events.refreshFooterRenderer, {});
+            }
+            if (this.parent.groupSettings.columns.length > 0) {
+                this.parent.notify(events.groupAggregates, {});
+            }
+            if (this.parent.isReact || this.parent.isVue) {
+                this.parent.notify(events.refreshFooterRenderer, {});
+            }
+        }
+        const cellSaveArgs: CellSaveArgs = {
+            cancel: false,
+            action: 'redo'
+        };
+        this.parent.trigger(events.cellSaved, cellSaveArgs);
+        this.pushToStack(this.undoStack, action);
+        this.parent.notify(events.toolbarRefresh, {});
+    }
+
+    /**
+     * Cleans up a restored cell if value matches original.
+     *
+     * @param {string} rowUid - specfies the rowUid
+     * @param {string} field - specfies the column field
+     * @param {string | number | boolean | Date } previousValue - specfies the pervious value
+     * @returns {void}
+     */
+    private restoreCellState(rowUid: string, field: string, previousValue: string | number | boolean | Date): void {
+        const gObj: IGrid = this.parent;
+        const rowObject: Row<Column> = gObj.getRowObjectFromUID(rowUid);
+        const currentValue: string | Date | number | boolean = getObject(field, rowObject.changes);
+        const isValueRestored: boolean = (previousValue instanceof Date && currentValue instanceof Date) ?
+            new Date(previousValue).toString() === new Date(currentValue).toString() :
+            previousValue === currentValue;
+        if (!rowObject || !rowObject.changes || !currentValue || !isValueRestored) {
+            return;
+        }
+        const col: Column = gObj.getColumnByField(field);
+        const colIndex: number = gObj.getColumnIndexByField(field);
+        if (col && colIndex >= 0) {
+            const td: Element = gObj.isSpan ? getCellFromRow(gObj, rowObject.index, colIndex) :
+                getCellByColAndRowIndex(this.parent, col, rowObject.index, colIndex);
+            if (td) {
+                if (isValueRestored) {
+                    td.classList.remove('e-updatedtd');
+                }
+            }
+        }
+    }
+
+    /**
+     * Handles undo and redo for the autofill operation.
+     *
+     * @param {IAutoFill} autoFillAction - autofill action from undo/redo stack
+     * @returns {void}
+     */
+    private autoFill(autoFillAction: IAutoFill): void {
+        if (!autoFillAction || !autoFillAction.cells) {
+            return;
+        }
+        for (const cell of autoFillAction.cells) {
+            const value: string | number | boolean | Date = this.isUndoAction ? cell.previousValue : cell.newValue;
+            this.updateCell(cell.rowIndex, cell.field, value);
+            this.restoreCellState(cell.rowUid, cell.field, cell.previousValue);
+            this.restoreCellSelection(cell);
+        }
+    }
+
+    /**
+     * Restores an action to its previous state.
+     *
+     * @param {IUndoRedoAction} action - The action to revert
+     * @returns {void}
+     */
+    private undoAction(action: IUndoRedoAction): void {
+        const gObj: IGrid = this.parent;
+        switch (action.type) {
+        case 'auto-fill':
+            if ((action as IAutoFill).cells) {
+                this.autoFill(action as IAutoFill);
+            }
+            break;
+        case 'cell-edit':
+        case 'paste':
+            if (action.field) {
+                this.updateCell(action.rowIndex, action.field, action.previousValue);
+                this.restoreCellState(action.rowUid, action.field, action.previousValue);
+                this.restoreCellSelection(action);
+            }
+            break;
+        case 'row-add':
+            if (action.rowUid) {
+                this.storedRowUids.delete(action.rowUid);
+                const rowElement: Element = gObj.getRowByIndex(action.rowIndex);
+                if (rowElement) {
+                    gObj.deleteRow(rowElement as HTMLTableRowElement);
+                }
+            }
+            break;
+        case 'row-delete':
+            if ((action as IDeleteAction).deletedRows) {
+                this.restoreDeletedRows((action as IDeleteAction).deletedRows);
+            }
+            break;
+        }
+    }
+
+    /**
+     * Reapplies a previously undone action.
+     *
+     * @param {IUndoRedoAction} action - The action to reapply
+     * @returns {void}
+     * @private
+     */
+    private redoAction(action: IUndoRedoAction): void {
+        const gObj: IGrid = this.parent;
+        switch (action.type) {
+        case 'auto-fill':
+            if ((action as IAutoFill).cells) {
+                this.autoFill(action as IAutoFill);
+            }
+            break;
+        case 'cell-edit':
+        case 'paste':
+            if (action.field) {
+                this.updateCell(action.rowIndex, action.field, action.newValue);
+                this.restoreCellSelection(action);
+            }
+            break;
+        case 'row-add':
+            if (action.rowData) {
+                gObj.addRecord(action.rowData);
+            }
+            break;
+        case 'row-delete':
+            if ((action as IDeleteAction).deletedRows) {
+                const deletedRowsData: IUndoRedoAction[] = (action as IDeleteAction).deletedRows;
+                for (let i: number = deletedRowsData.length - 1; i >= 0; i--) {
+                    gObj.deleteRecord(undefined, deletedRowsData[parseInt(i.toString(), 10)].rowData);
+                }
+            }
+            break;
+        }
+    }
+
+    /**
+     * Defines whether an undo action is available.
+     *
+     * @returns {boolean} - True if undo stack has actions
+     * @hidden
+     */
+    public isUndoStackAvailable(): boolean {
+        return this.parent.editSettings.enableUndoRedo && this.undoStack.length > 0;
+    }
+
+    /**
+     * Defines whether an redo action is available.
+     *
+     * @returns {boolean} - True if redo stack has actions
+     * @hidden
+     */
+    public isRedoStackAvailable(): boolean {
+        return this.parent.editSettings.enableUndoRedo && this.redoStack.length > 0;
     }
 
     protected mouseDownHandler(e: MouseEvent): void {
@@ -165,7 +524,7 @@ export class BatchEdit {
         }
     }
 
-    private onCellFocused(e: CellFocusArgs): void {
+    public onCellFocused(e: CellFocusArgs): void {
         const clear: boolean = (!e.container.isContent || !e.container.isDataCell)
             && !((this.parent.frozenRows || this.parent.pinnedTopRowModels.length) && e.container.isHeader);
         if (this.parent.focusModule.active) {
@@ -199,6 +558,10 @@ export class BatchEdit {
                     this.parent.isRowDragable() || this.parent.isDetail() ? 1 : 0;
                 // eslint-disable-next-line no-case-declarations
                 const col: Column = this.parent.getColumns()[cellIndex - indent];
+                if (this.parent.editSettings.mode === 'Cell' && this.parent.enableVirtualization) {
+                    const rowElement: Element | null = e.element.parentElement;
+                    rowIndex = rowElement && parseInt(rowElement.getAttribute(literals.ariaRowIndex), 10) - 1;
+                }
                 if (col && !this.parent.isEdit) {
                     this.editCell(rowIndex, col.field);
                 }
@@ -208,12 +571,21 @@ export class BatchEdit {
                 break;
             case 'enter':
             case 'shiftEnter':
-                e.keyArgs.preventDefault();
-                // eslint-disable-next-line no-case-declarations
-                const args: { cancel: boolean, keyArgs: object } = {cancel: false, keyArgs: e.keyArgs};
-                this.parent.notify('beforeFocusCellEdit', args);
-                if (!args.cancel && isEdit) {
-                    this.editCell(rowIndex, this.cellDetails.column.field);
+                if (this.parent.editSettings.mode === 'Cell') {
+                    if (isEdit) {
+                        this.saveCell();
+                        this.focus.focus(e as KeyboardEventArgs);
+                    } else {
+                        this.editCellFromIndex(rowIndex, cellIndex);
+                    }
+                } else {
+                    e.keyArgs.preventDefault();
+                    // eslint-disable-next-line no-case-declarations
+                    const args: { cancel: boolean, keyArgs: object } = {cancel: false, keyArgs: e.keyArgs};
+                    this.parent.notify('beforeFocusCellEdit', args);
+                    if (!args.cancel && isEdit) {
+                        this.editCell(rowIndex, this.cellDetails.column.field);
+                    }
                 }
                 break;
             case 'f2':
@@ -231,7 +603,11 @@ export class BatchEdit {
     private editCellFromIndex(rowIdx: number, cellIdx: number): void {
         this.cellDetails.rowIndex = rowIdx;
         this.cellDetails.cellIndex = cellIdx;
-        this.editCell(rowIdx, (this.parent.getColumns() as Column[])[parseInt(cellIdx.toString(), 10)].field, this.isAddRow(rowIdx));
+        if (this.parent.editSettings.mode === 'Cell') {
+            this.editCell(rowIdx, this.parent.getColumns()[parseInt(cellIdx.toString(), 10)].field);
+        } else {
+            this.editCell(rowIdx, this.parent.getColumns()[parseInt(cellIdx.toString(), 10)].field, this.isAddRow(rowIdx));
+        }
     }
 
     public closeEdit(): void {
@@ -255,14 +631,22 @@ export class BatchEdit {
             selectedIndexes = gObj.selectionModule.selectedRowIndexes;
         }
         gObj.clearSelection();
+        let hasDeletedRows: boolean = false;
         for (let i: number = 0; i < rows.length; i++) {
             let isInsert: boolean = false;
             const isDirty: boolean = rows[parseInt(i.toString(), 10)].isDirty;
+            const edit: string = rows[parseInt(i.toString(), 10)].edit;
+            if (isDirty && edit === 'delete') {
+                hasDeletedRows = true;
+            }
             isInsert = this.removeBatchElementChanges(rows[parseInt(i.toString(), 10)], isDirty);
             if (isInsert) { rows.splice(i, 1); }
             if (isInsert) {
                 i--;
             }
+        }
+        if (gObj.frozenRows && hasDeletedRows) {
+            this.restoreFrozenRow();
         }
         if (!gObj.getContentTable().querySelector('tr.e-row')) {
             gObj.renderModule.renderEmptyRow();
@@ -279,6 +663,9 @@ export class BatchEdit {
         } else {
             gObj.selectRow(this.cellDetails.rowIndex);
         }
+        if (this.parent.editSettings.enableUndoRedo && (gObj.isRedoStackAvailable() || gObj.isUndoStackAvailable())) {
+            this.clearStacks();
+        }
         this.refreshRowIdx();
         gObj.notify(events.toolbarRefresh, {});
         this.parent.notify(events.tooltipDestroy, {});
@@ -286,7 +673,7 @@ export class BatchEdit {
         gObj.trigger(events.batchCancel, args);
     }
 
-    private removeBatchElementChanges(row: Row<Column>, isDirty: boolean): boolean {
+    protected removeBatchElementChanges(row: Row<Column>, isDirty: boolean): boolean {
         const gObj: IGrid = this.parent;
         const rowRenderer: RowRenderer<Column> = new RowRenderer<Column>(this.serviceLocator, null, this.parent);
         let isInstertedRemoved: boolean = false;
@@ -303,6 +690,7 @@ export class BatchEdit {
                     delete row.edit;
                     row.isDirty = false;
                     classList(tr, [], ['e-hiddenrow', 'e-updatedtd']);
+                    this.refreshRowIdx();
                     rowRenderer.refresh(row, gObj.getColumns() as Column[], false);
                 }
                 if (this.parent.aggregates.length > 0) {
@@ -317,6 +705,25 @@ export class BatchEdit {
             }
         }
         return isInstertedRemoved;
+    }
+
+    /**
+     * Restores rows after batch cancel with frozen rows.
+     * @returns {void}
+     * @hidden
+     */
+    private restoreFrozenRow(): void {
+        const gObj: IGrid = this.parent;
+        if (!gObj.frozenRows) { return; }
+        const headerTbody: HTMLElement = gObj.getHeaderTable().querySelector(literals.tbody);
+        const contentTbody: HTMLElement = gObj.getContentTable().querySelector(literals.tbody);
+        const headerRows: HTMLElement[] = [].slice.call(headerTbody.querySelectorAll('tr.e-row:not(.e-hiddenrow)'));
+        if (headerRows.length > gObj.frozenRows) {
+            const rowElements: HTMLElement[] = headerRows.slice(gObj.frozenRows);
+            for (const rowElement of rowElements) {
+                contentTbody.insertBefore(rowElement, contentTbody.firstChild);
+            }
+        }
     }
 
     public deleteRecord(fieldname?: string, data?: Object): void {
@@ -343,6 +750,29 @@ export class BatchEdit {
         this.bulkAddRow(data);
     }
 
+    private restoreDeletedRows( deletedRows: IUndoRedoAction[]): void {
+        if (!deletedRows) {
+            return;
+        }
+        const gObj: IGrid = this.parent;
+        const deletedRecord: IUndoRedoAction[] = deletedRows;
+        for (let i: number = deletedRecord.length - 1; i >= 0; i--) {
+            const hiddenRows: Element = gObj.getRowElementByUID(deletedRecord[parseInt(i.toString(), 10)].rowUid);
+            const rowUid: string = hiddenRows.getAttribute('data-uid');
+            const rowObj: Row<Column> = gObj.getRowObjectFromUID(rowUid);
+            if (rowObj && rowObj.edit === 'delete') {
+                classList(hiddenRows as HTMLTableRowElement, [], ['e-hiddenrow', 'e-updatedtd']);
+                delete rowObj.edit;
+                rowObj.isDirty = false;
+            }
+        }
+        this.refreshRowIdx();
+        gObj.focusModule.restoreFocus({ requestType: 'batchDelete' });
+        gObj.notify(events.batchDelete, { rows: this.parent.getRowsObject() });
+        gObj.notify(events.toolbarRefresh, {});
+        this.parent.notify(events.tooltipDestroy, {});
+    }
+
     public endEdit(): void {
         if (this.parent.isEdit && this.validateFormObj()) {
             return;
@@ -350,7 +780,7 @@ export class BatchEdit {
         this.batchSave();
     }
 
-    private validateFormObj(): boolean {
+    protected validateFormObj(): boolean {
         return this.parent.editModule.formObj && !this.parent.editModule.formObj.validate();
     }
 
@@ -384,6 +814,7 @@ export class BatchEdit {
             if (beforeBatchSaveArgs.cancel) {
                 return;
             }
+            this.clearStacks();
             gObj.showSpinner();
             gObj.notify(events.bulkSave, { changes: changes, original: original });
         });
@@ -453,7 +884,9 @@ export class BatchEdit {
         this.removeSelectedData = [];
         const gObj: IGrid = this.parent;
         let index: number = gObj.selectedRowIndex;
-        const selectedRows: Element[] = gObj.getSelectedRows();
+        let selectedRows: Element[] = gObj.getSelectedRows();
+        const seletedCellDetails: ISelectedCellDetails = gObj.selectionModule.getSeletedCellDetails();
+        const selectedCellRecords: Object[] = gObj.getSelectedCellRecords();
         const args: BeforeBatchDeleteArgs = {
             primaryKey: this.parent.getPrimaryKeyFieldNames(),
             rowIndex: index,
@@ -463,7 +896,12 @@ export class BatchEdit {
         if (data) {
             args.row = gObj.editModule.deleteRowUid ? gObj.getRowElementByUID(gObj.editModule.deleteRowUid)
                 : gObj.getRows()[gObj.getCurrentViewRecords().indexOf(data)];
-        } else {
+        } else if ((gObj.selectionSettings.mode === 'Cell' || gObj.selectionSettings.mode === 'Both')) {
+            selectedRows = args.row = seletedCellDetails.rowElements;
+            args.rowData = selectedCellRecords;
+            args.rowIndex = index = seletedCellDetails.rowIndexes[seletedCellDetails.rowIndexes.length - 1];
+        }
+        else {
             args.row = selectedRows;
         }
         if (!args.row) {
@@ -474,7 +912,8 @@ export class BatchEdit {
             if (beforeBatchDeleteArgs.cancel) {
                 return;
             }
-            this.removeSelectedData = gObj.getSelectedRecords();
+            this.removeSelectedData = (gObj.selectionSettings.mode === 'Cell' || gObj.selectionSettings.mode === 'Both') &&
+                selectedCellRecords.length > 0 ? selectedCellRecords : gObj.getSelectedRecords();
             gObj.clearSelection();
             beforeBatchDeleteArgs.row = beforeBatchDeleteArgs.row ?
                 beforeBatchDeleteArgs.row as Element : data ? gObj.getRows()[parseInt(index.toString(), 10)] as Element :
@@ -497,6 +936,9 @@ export class BatchEdit {
                         gObj.getHeaderTable().querySelector(literals.tbody).appendChild(gObj.getRowByIndex(gObj.frozenRows - 1));
                     }
                 }
+                if (gObj.editSettings.enableUndoRedo && !this.isRedoAction && !this.isUndoAction){
+                    this.storeDeleteAction(beforeBatchDeleteArgs);
+                }
                 delete beforeBatchDeleteArgs.row;
             } else {
                 if (data) {
@@ -512,8 +954,24 @@ export class BatchEdit {
                         const selectedRow: Row<Column> = gObj.getRowObjectFromUID(uniqueid);
                         selectedRow.isDirty = true;
                         selectedRow.edit = 'delete';
-                        if (gObj.frozenRows && index < gObj.frozenRows && gObj.getDataRows().length >= gObj.frozenRows) {
-                            gObj.getHeaderTable().querySelector(literals.tbody).appendChild(gObj.getRowByIndex(gObj.frozenRows - 1));
+                    }
+                }
+                if (gObj.editSettings.enableUndoRedo && !this.isRedoAction && !this.isUndoAction) {
+                    this.storeDeleteAction(beforeBatchDeleteArgs);
+                }
+                if (gObj.frozenRows) {
+                    const frozenTbody: Element = gObj.getHeaderTable().querySelector(literals.tbody);
+                    const frozenRowElements: Element[] = frozenTbody ?
+                        [].slice.call(frozenTbody.querySelectorAll('tr.e-row:not(.e-hiddenrow)')) : [];
+                    const dataRows: Element[] = gObj.getDataRows();
+                    while (frozenRowElements.length < gObj.frozenRows && dataRows.length > frozenRowElements.length) {
+                        const rowElement: Element = frozenRowElements.length > 0 ?
+                            gObj.getRowByIndex(gObj.frozenRows - 1) : gObj.getRowByIndex(0);
+                        if (rowElement) {
+                            frozenTbody.appendChild(rowElement);
+                            frozenRowElements.push(rowElement);
+                        } else {
+                            break;
                         }
                     }
                 }
@@ -536,7 +994,7 @@ export class BatchEdit {
         });
     }
 
-    private refreshRowIdx(): void {
+    public refreshRowIdx(): void {
         const gObj: IGrid = this.parent;
         const rows: Element[] = gObj.getAllDataRows(true);
         const dataObjects: Row<Column>[] = gObj.getRowsObject().filter((row: Row<Column>) => !row.isDetailRow);
@@ -703,7 +1161,7 @@ export class BatchEdit {
         let visibleRows: Element[] = gObj.getDataRows();
         visibleRows = visibleRows.filter((row: HTMLElement) => row.style.display !== 'none' && !row.classList.contains('e-childrow-hidden'));
         const lastRowIndex: number = parseInt(visibleRows[visibleRows.length - 1].getAttribute('aria-rowindex'), 10) - 1;
-        const checkEdit: boolean = gObj.isEdit && !(this.cellDetails.column.field === field
+        const checkEdit: boolean = gObj.isEdit && !(this.cellDetails && this.cellDetails.column && this.cellDetails.column.field === field
             && (this.cellDetails.rowIndex === index && lastRowIndex !== index && this.prevEditedBatchCell));
         if (gObj.editSettings.allowEditing) {
             if (!checkEdit && (col.allowEditing || (!col.allowEditing && gObj.focusModule.active
@@ -772,6 +1230,7 @@ export class BatchEdit {
             this.renderer.update(cellEditArgs);
             this.parent.notify(events.batchEditFormRendered, cellEditArgs);
             this.form = select('#' + gObj.element.id + 'EditForm', gObj.element);
+            this.args = cellEditArgs;
             gObj.editModule.applyFormValidation([col]);
             (this.parent.element.querySelector('.e-gridpopup') as HTMLElement).style.display = 'none';
         });
@@ -853,7 +1312,7 @@ export class BatchEdit {
         }
     }
 
-    private getCellIdx(uid: string): number {
+    public getCellIdx(uid: string): number {
         let cIdx: number = this.parent.getColumnIndexByUid(uid) + this.parent.groupSettings.columns.length;
         if (!isNullOrUndefined(this.parent.detailTemplate) || !isNullOrUndefined(this.parent.childGrid)) {
             cIdx++;
@@ -862,7 +1321,7 @@ export class BatchEdit {
         return cIdx;
     }
 
-    private refreshTD(td: Element, column: Column, rowObj: Row<Column>, value: string | number | boolean | Date): void {
+    protected refreshTD(td: Element, column: Column, rowObj: Row<Column>, value: string | number | boolean | Date): void {
         const cell: CellRenderer = new CellRenderer(this.parent, this.serviceLocator);
         value = column.type === 'number' && !isNullOrUndefined(value) ? parseFloat(value as string) : value;
         if (rowObj) {
@@ -881,17 +1340,19 @@ export class BatchEdit {
             cell.refreshTD(
                 td, rowcell[this.getCellIdx(column.uid) - index] as Cell<Column>, rowObj.changes, { 'index': this.getCellIdx(column.uid) });
         }
-        if (this.parent.isReact) {
-            this.newReactTd = parentElement.cells[parseInt(cellIndex.toString(), 10)];
-            parentElement.cells[parseInt(cellIndex.toString(), 10)].classList.add('e-updatedtd');
-        } else {
+        if (this.parent.editSettings.mode === 'Batch') {
+            if (this.parent.isReact) {
+                this.newReactTd = parentElement.cells[parseInt(cellIndex.toString(), 10)];
+                parentElement.cells[parseInt(cellIndex.toString(), 10)].classList.add('e-updatedtd');
+            } else {
+                td.classList.add('e-updatedtd');
+            }
             td.classList.add('e-updatedtd');
         }
-        td.classList.add('e-updatedtd');
         this.parent.notify(events.toolbarRefresh, {});
     }
 
-    private getColIndex(cells: Element[], index: number): number {
+    protected getColIndex(cells: Element[], index: number): number {
         let cIdx: number = 0;
         if (this.parent.allowGrouping && this.parent.groupSettings.columns) {
             cIdx = this.parent.groupSettings.columns.length;
@@ -969,7 +1430,7 @@ export class BatchEdit {
         }
     }
 
-    private generateCellArgs(): Object {
+    protected generateCellArgs(): Object {
         const gObj: IGrid = this.parent;
         this.parent.element.classList.remove('e-editing');
         const column: Column = this.cellDetails.column;
@@ -1061,15 +1522,18 @@ export class BatchEdit {
                  && gObj.parentDetails.parentInstObj.isReact;
                 if (isReactCompiler || isReactChild) {
                     if (gObj.requireTemplateRef) {
-                        gObj.renderTemplates(function (): void {
+                        gObj.renderTemplates((): void => {
                             gObj.trigger(events.cellSaved, cellSaveArgs);
+                            this.storeCellsInUndoStack(cellSaveArgs);
                         });
                     } else {
                         gObj.renderTemplates();
                         gObj.trigger(events.cellSaved, cellSaveArgs);
+                        this.storeCellsInUndoStack(cellSaveArgs);
                     }
                 } else {
                     gObj.trigger(events.cellSaved, cellSaveArgs);
+                    this.storeCellsInUndoStack(cellSaveArgs);
                 }
             }
             gObj.notify(events.toolbarRefresh, {});
@@ -1107,7 +1571,8 @@ export class BatchEdit {
     private prevEditedBatchCellMatrix(): number[] {
         let editedBatchCellMatrix: number[] = [];
         const gObj: IGrid = this.parent;
-        const editedBatchCell: Element = gObj.focusModule.active.getTable().querySelector('.e-editedbatchcell');
+        const editedBatchCell: Element = gObj.editSettings.mode === 'Cell' ? gObj.focusModule.active.getTable().querySelector('.e-editedcell') :
+            gObj.focusModule.active.getTable().querySelector('.e-editedbatchcell');
         if (editedBatchCell) {
             const tr: Element = editedBatchCell.parentElement;
             const rowIndex: number = [].slice.call(this.parent.focusModule.active.getTable().rows).indexOf(tr);
@@ -1118,11 +1583,31 @@ export class BatchEdit {
     }
 
     protected getDataByIndex(index: number): Object {
-        const row: Row<Column> = this.parent.getRowObjectFromUID(this.parent.getDataRows()[parseInt(index.toString(), 10)].getAttribute('data-uid'));
+        let rowElement: Element;
+        if ((this.parent.enableVirtualization || this.parent.isRowDomVirtualization()) && this.parent.editSettings.mode === 'Cell') {
+            rowElement = this.parent.getRowByIndex(index);
+        } else {
+            rowElement = this.parent.getDataRows()[parseInt(index.toString(), 10)];
+        }
+        const row: Row<Column> = this.parent.getRowObjectFromUID(rowElement.getAttribute('data-uid'));
         return row.changes ? row.changes : row.data;
     }
 
     private keyDownHandler(e: KeyboardEventArgs): void {
+        if (this.parent.editSettings.enableUndoRedo && e) {
+            const isCtrlOrCmd: boolean = e.ctrlKey || e.metaKey;
+            if ((isCtrlOrCmd && e.key === 'z' && !e.shiftKey) || e.action === 'ctrlPlusZ') {
+                e.preventDefault();
+                this.undoBatchEdit();
+                return;
+            }
+            if ((isCtrlOrCmd && e.key === 'y' && !e.shiftKey) || (isCtrlOrCmd && e.key === 'z' && e.shiftKey)
+                || e.action === 'ctrlPlusY') {
+                e.preventDefault();
+                this.redoBatchEdit();
+                return;
+            }
+        }
         if (this.addBatchRow || ((e.action === 'tab' || e.action === 'shiftTab') && this.parent.isEdit)) {
             const gObj: IGrid = this.parent;
             const btmIdx: number = this.getBottomIndex();

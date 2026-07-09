@@ -1,5 +1,5 @@
-@use 'ej2-base/styles/definition/material3' as *;
-@forward 'ej2-base/styles/definition/material3';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
+
 $list-header-bg-color: $transparent !default;
 $list-header-text-color: rgba($content-text-color-alt1) !default;
 $list-header-icon-color: rgba($icon-color) !default;

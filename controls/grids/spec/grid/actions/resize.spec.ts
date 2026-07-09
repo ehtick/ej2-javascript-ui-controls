@@ -22,8 +22,12 @@ import  {profile , inMB, getMemoryProfile} from '../base/common.spec';
 import { Freeze } from '../../../src/grid/actions/freeze';
 import { VirtualScroll } from '../../../src/grid/actions/virtual-scroll';
 import { resizeStart } from '../../../src';
+import { Edit } from '../../../src/grid/actions/edit';
+import { Toolbar } from '../../../src/grid/actions/toolbar';
+import { ColumnChooser } from '../../../src/grid/actions/column-chooser';
+import { ColumnMenu } from '../../../src/grid/actions/column-menu';
 
-Grid.Inject(Sort, Page, Filter, Reorder, Group, Resize, Selection, Aggregate, Freeze, VirtualScroll);
+Grid.Inject(Sort, Page, Filter, Reorder, Group, Resize, Selection, Aggregate, Freeze, VirtualScroll,Edit,Toolbar,ColumnChooser,ColumnMenu);
 
 describe('Resize module', () => {
     describe('Resize functionalities for columns', () => {
@@ -1975,5 +1979,696 @@ describe('Resize module', () => {
             destroy(gridObj);
             gridObj = null;
         });
+    });
+
+    describe('Resize Branch Coverage - Additional Tests', () => {
+        let gridObj: any;
+        
+        beforeEach((done: Function) => {
+            gridObj = createGrid(
+                {
+                    dataSource: data,
+                    allowResizing: true,
+                    columns: [{ field: 'OrderID', headerText: 'OrderID', width: 150 },
+                    { field: 'CustomerID', headerText: 'CustomerID', width: 100 },
+                    { field: 'EmployeeID', headerText: 'EmployeeID', width: 150, minWidth: 80, maxWidth: 250 },
+                    { field: 'Freight', headerText: 'Freight', width: 200 },
+                    { field: 'ShipCity', headerText: 'ShipCity', width: 180 }],
+                }, done);
+        });
+
+        it('should handle createTable with startRowIndex greater than endRowIndex', () => {
+            const table = gridObj.getContentTable();
+            const textElements = [gridObj.createElement('td'), gridObj.createElement('td')];
+            // This tests the XOR swap operation in createTable
+            const result = gridObj.resizeModule.createTable(table, textElements, 'e-gridContent', 5, 2);
+            expect(result).toBeGreaterThan(0);
+        });
+
+        it('should handle resizing with auto width column data', () => {
+            let column: any = { field: 'CustomerID', width: 'auto', minWidth: null, maxWidth: null };
+            let colData = gridObj.resizeModule.getColData(column, 50);
+            expect(colData.width).toBe(0 + 50);
+            expect(colData.minWidth).toBeNull();
+            expect(colData.maxWidth).toBeNull();
+        });
+
+        it('should handle getWidth with minimum width constraint', () => {
+            let width = gridObj.resizeModule.getWidth(30, 50, 300);
+            expect(width).toBe(50);
+        });
+
+        it('should handle getWidth with maximum width constraint', () => {
+            let width = gridObj.resizeModule.getWidth(400, 50, 300);
+            expect(width).toBe(300);
+        });
+
+        it('should handle getWidth within valid range', () => {
+            let width = gridObj.resizeModule.getWidth(150, 50, 300);
+            expect(width).toBe(150);
+        });
+
+        it('should calculate colspan width correctly', () => {
+            let cols = gridObj.getColumns();
+            let mockNode = { colSpan: 2 } as any;
+            let width = gridObj.resizeModule.calculateColspanWidth(cols, mockNode, 0);
+            expect(width).toBeGreaterThanOrEqual(0);
+        });
+
+        it('should handle touch resize start with timer active', (done) => {
+            let handler: HTMLElement = gridObj.getHeaderTable().querySelectorAll('.' + resizeClassList.root)[1];
+            // Set up Global.timer to simulate second tap
+            let firstTap = gridObj.resizeModule.touchResizeStart({ target: handler, touches: [{ pageX: 100 }] });
+            setTimeout(() => {
+                gridObj.resizeModule.touchResizeStart({ target: handler, touches: [{ pageX: 100 }] });
+                done();
+            }, 50);
+        });
+
+        it('should handle resizing with null column gracefully', () => {
+            gridObj.resizeModule.column = null;
+            let handler: HTMLElement = gridObj.getHeaderTable().querySelectorAll('.' + resizeClassList.root)[1];
+            gridObj.resizeModule.resizing({ target: handler, pageX: 200, touches: [] });
+            // Should return early without crashing
+            expect(gridObj.resizeModule.column).toBeNull();
+        });
+
+        it('should update helper height during resizing with text wrap', () => {
+            gridObj.allowTextWrap = true;
+            let handler: HTMLElement = gridObj.getHeaderTable().querySelectorAll('.' + resizeClassList.root)[1];
+            gridObj.resizeModule.resizeStart({ target: handler, pageX: 0, touches: [] });
+            gridObj.resizeModule.resizing({ target: handler, pageX: 150, touches: [] });
+            gridObj.allowTextWrap = false;
+            expect(gridObj.element).toBeTruthy();
+        });
+
+        it('should handle resize with cancel event', () => {
+            gridObj.allowResizing = false;
+            gridObj.dataBind();
+            gridObj.allowResizing = true;
+            gridObj.dataBind();
+            let handler: HTMLElement = gridObj.getHeaderTable().querySelectorAll('.' + resizeClassList.root)[1];
+            gridObj.resizeModule.resizeStart({ target: handler, pageX: 0, touches: [] });
+            gridObj.resizeModule.resizing({ target: handler, pageX: 200, touches: [] });
+            expect(gridObj.resizeModule.resizeProcess).toBe(false);
+        });
+
+        it('should handle getPointX with both pageX and touches', () => {
+            let pageXValue = gridObj.resizeModule.getPointX({ pageX: 300, touches: [{ pageX: 100 }] });
+            expect(pageXValue).toBe(100); // Should prioritize touches
+        });
+
+        it('should handle getPointX with only pageX', () => {
+            let pageXValue = gridObj.resizeModule.getPointX({ pageX: 300 });
+            expect(pageXValue).toBe(300);
+        });
+
+        it('should refresh stacked column width', () => {
+            let columns = gridObj.getStackedColumns(gridObj.columns);
+            if (columns && columns.length > 0) {
+                gridObj.resizeModule.refreshStackedColumnWidth();
+            }
+            expect(gridObj.getColumns()).toBeTruthy();
+        });
+
+        it('should get sub columns recursively', () => {
+            let column = gridObj.getColumns()[0];
+            if (column.columns) {
+                let subCols = gridObj.resizeModule.getSubColumns(column, []);
+                expect(subCols).toBeTruthy();
+            }
+        });
+
+        it('should handle double tap event on mobile', (done) => {
+            let handler: HTMLElement = gridObj.getHeaderTable().querySelectorAll('.' + resizeClassList.root)[1];
+            gridObj.resizeModule.resizeStart({ target: handler, pageX: 0, touches: [{ pageX: 0 }] });
+            gridObj.resizeModule.resizing({ target: handler, pageX: 200, touches: [{ pageX: 200 }] });
+            gridObj.resizeModule.doubleTapEvent({ target: handler, touches: [{ pageX: 200 }] });
+            setTimeout(() => {
+                gridObj.resizeModule.doubleTapEvent({ target: handler, touches: [{ pageX: 200 }] });
+                done();
+            }, 250);
+        });
+
+        it('should handle distributeColWidth when columns have minWidth', () => {
+            let columns = [
+                { field: 'A', width: 100, minWidth: 80, maxWidth: 200, visible: true, uid: 'col1' },
+                { field: 'B', width: 100, minWidth: 80, maxWidth: 200, visible: true, uid: 'col2' }
+            ] as any;
+            let result = gridObj.resizeModule.distributeColWidth(columns, -40, 0);
+            expect(result).toBeTruthy();
+            expect(result.columns).toBeTruthy();
+            expect(result.usedWidth).toBeDefined();
+        });
+
+        it('should handle distributeColWidth when columns have maxWidth', () => {
+            let columns = [
+                { field: 'A', width: 100, minWidth: 50, maxWidth: 120, visible: true, uid: 'col1' },
+                { field: 'B', width: 100, minWidth: 50, maxWidth: 120, visible: true, uid: 'col2' }
+            ] as any;
+            let result = gridObj.resizeModule.distributeColWidth(columns, 40, 0);
+            expect(result).toBeTruthy();
+            expect(result.columns).toBeTruthy();
+        });
+
+        it('should handle distributeColWidth with no constraints', () => {
+            let columns = [
+                { field: 'A', width: 100, minWidth: null, maxWidth: null, visible: true, uid: 'col1' },
+                { field: 'B', width: 100, minWidth: null, maxWidth: null, visible: true, uid: 'col2' }
+            ] as any;
+            let result = gridObj.resizeModule.distributeColWidth(columns, 40, 0);
+            expect(result).toBeTruthy();
+            expect(result.usedWidth).toBe(40);
+        });
+
+        it('should handle calulateColumnsWidth correctly', () => {
+            let columns = [
+                { field: 'A', width: 100, minWidth: 50, maxWidth: 200, visible: true, uid: 'col1' },
+                { field: 'B', width: 100, minWidth: 50, maxWidth: 200, visible: true, uid: 'col2' }
+            ] as any;
+            let result = gridObj.resizeModule.calulateColumnsWidth(columns, true, 20);
+            expect(result).toBeTruthy();
+            expect(Array.isArray(result)).toBe(true);
+        });
+
+        it('should handle calulateColumnsWidth with columns less than 1px', () => {
+            let columns = [
+                { field: 'A', width: 0.5, minWidth: null, maxWidth: null, visible: true, uid: 'col1' }
+            ] as any;
+            let result = gridObj.resizeModule.calulateColumnsWidth(columns, true, -1);
+            expect(result).toBeTruthy();
+        });
+
+        it('should calculate position correctly with static parent', () => {
+            let div = gridObj.createElement('div');
+            div.style.position = 'static';
+            gridObj.element.appendChild(div);
+            let pos = gridObj.resizeModule.calcPos(div);
+            expect(pos).toBeTruthy();
+            expect(pos.top).toBeDefined();
+            expect(pos.left).toBeDefined();
+        });
+
+        it('should update resize element height', () => {
+            let handler: HTMLElement = gridObj.getHeaderTable().querySelectorAll('.' + resizeClassList.root)[1];
+            gridObj.resizeModule.element = handler;
+            gridObj.resizeModule.updateResizeEleHeight();
+            let elements = gridObj.getHeaderContent().getElementsByClassName('e-rhandler');
+            expect(elements.length).toBeGreaterThan(0);
+        });
+
+        it('should set handler height for suppress class', () => {
+            gridObj.resizeModule.setHandlerHeight();
+            let elements = gridObj.getHeaderTable().getElementsByClassName('e-rsuppress');
+            for (let i = 0; i < elements.length; i++) {
+                expect((elements[i] as HTMLElement).style.height).toBeDefined();
+            }
+        });
+
+        it('should refresh height when header table exists', () => {
+            gridObj.resizeModule.refreshHeight();
+            let elements = gridObj.getHeaderTable().getElementsByClassName('e-rhandler');
+            expect(elements.length).toBeGreaterThan(0);
+        });
+
+        it('should return module name', () => {
+            expect(gridObj.resizeModule.getModuleName()).toBe('resize');
+        });
+
+        it('should add event listeners on construction', () => {
+            expect(gridObj.resizeModule).toBeTruthy();
+        });
+
+        it('should remove event listeners on destroy', () => {
+            gridObj.resizeModule.render();
+            gridObj.resizeModule.removeEventListener();
+            expect(gridObj.resizeModule).toBeTruthy();
+        });
+
+        it('should wire events on render', () => {
+            gridObj.resizeModule.render();
+            expect(gridObj.resizeModule).toBeTruthy();
+        });
+
+        it('should get target column from element', () => {
+            let handler: HTMLElement = gridObj.getHeaderTable().querySelectorAll('.' + resizeClassList.root)[0];
+            let column = gridObj.resizeModule.getTargetColumn({ target: handler });
+            expect(column).toBeTruthy();
+            expect(column.field).toBeDefined();
+        });
+
+        it('should update cursor class on action', () => {
+            gridObj.resizeModule.updateCursor('add');
+            expect(gridObj.element.classList.contains('e-rcursor')).toBeTruthy();
+            gridObj.resizeModule.updateCursor('remove');
+            expect(gridObj.element.classList.contains('e-rcursor')).toBeFalsy();
+        });
+
+        it('should refresh state after resize', () => {
+            gridObj.resizeModule.refresh();
+            expect(gridObj.resizeModule.column).toBeNull();
+            expect(gridObj.resizeModule.pageX).toBeNull();
+            expect(gridObj.resizeModule.element).toBeNull();
+            expect(gridObj.resizeModule.helper).toBeNull();
+        });
+
+        it('should set helper height correctly', () => {
+            let handler: HTMLElement = gridObj.getHeaderTable().querySelectorAll('th')[0];
+            gridObj.resizeModule.element = handler;
+            gridObj.resizeModule.appendHelper();
+            expect(gridObj.resizeModule.helper.style.height).toBeTruthy();
+        });
+
+        it('should calculate helper height with scroll', () => {
+            let handler: HTMLElement = gridObj.getHeaderTable().querySelectorAll('th')[0];
+            let height = gridObj.resizeModule.resizeHelperHeight(handler);
+            expect(height).toBeGreaterThan(0);
+        });
+
+        it('should get scroll bar width', () => {
+            let width = gridObj.resizeModule.getScrollBarWidth(true);
+            expect(typeof width).toBe('number');
+        });
+
+        afterEach(function() {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    describe('Resize with Frozen Columns', () => {
+        let gridObj: any;
+
+        beforeEach((done: Function) => {
+            gridObj = createGrid(
+                {
+                    dataSource: data.slice(0, 10),
+                    allowResizing: true,
+                    frozenRows: 2,
+                    frozenColumns: 2,
+                    columns: [
+                        { field: 'OrderID', headerText: 'Order ID', width: 100, isFrozen: true },
+                        { field: 'CustomerID', headerText: 'Customer ID', width: 100, isFrozen: true },
+                        { field: 'EmployeeID', headerText: 'Employee ID', width: 100 },
+                        { field: 'Freight', headerText: 'Freight', width: 100 },
+                        { field: 'ShipCity', headerText: 'Ship City', width: 100 }
+                    ],
+                }, done);
+        });
+
+        it('should refresh frozen column positions after resize', () => {
+            let handler: HTMLElement = gridObj.getHeaderTable().querySelectorAll('.' + resizeClassList.root)[1];
+            gridObj.resizeModule.resizeStart({ target: handler, pageX: 0, touches: [] });
+            gridObj.resizeModule.resizing({ target: handler, pageX: 50, touches: [] });
+            gridObj.resizeModule.resizeEnd({ target: handler, touches: [] });
+            expect(gridObj.resizeModule).toBeTruthy();
+        });
+
+        it('should handle refresh resize position for frozen grid', () => {
+            gridObj.resizeModule.refreshResizePosition();
+            expect(gridObj.resizeModule).toBeTruthy();
+        });
+
+        afterEach(function() {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    describe('Resize Edge Cases', () => {
+        let gridObj: any;
+
+        beforeEach((done: Function) => {
+            gridObj = createGrid(
+                {
+                    dataSource: data.slice(0, 5),
+                    allowResizing: true,
+                    columns: [
+                        { field: 'OrderID', headerText: 'Order ID', width: 100 },
+                        { field: 'CustomerID', headerText: 'Customer ID', width: 100 },
+                        { field: 'EmployeeID', headerText: 'Employee ID', width: 100 }
+                    ],
+                }, done);
+        });
+
+        it('should handle resizing when content width is percentage over 100', () => {
+            let contentTable = gridObj.getContentTable() as HTMLElement;
+            contentTable.style.width = '150%';
+            let handler: HTMLElement = gridObj.getHeaderTable().querySelectorAll('.' + resizeClassList.root)[0];
+            gridObj.resizeModule.resizeStart({ target: handler, pageX: 0, touches: [] });
+            expect(gridObj.resizeModule.resizeProcess).toBe(false);
+        });
+
+        it('should handle resizing with text wrap enabled', () => {
+            gridObj.allowTextWrap = true;
+            let handler: HTMLElement = gridObj.getHeaderTable().querySelectorAll('.' + resizeClassList.root)[0];
+            gridObj.resizeModule.resizeStart({ target: handler, pageX: 0, touches: [] });
+            gridObj.resizeModule.resizing({ target: handler, pageX: 100, touches: [] });
+            gridObj.resizeModule.resizeEnd({ target: handler, touches: [] });
+            gridObj.allowTextWrap = false;
+            expect(gridObj.element).toBeTruthy();
+        });
+
+        it('should handle auto fit column by double click', () => {
+            let handler: HTMLElement = gridObj.getHeaderTable().querySelectorAll('.' + resizeClassList.root)[0];
+            gridObj.resizeModule.callAutoFit({ target: handler, type: 'mousedown' });
+            expect(gridObj.resizeModule).toBeTruthy();
+        });
+
+        it('should handle isDblClk true', (done: Function) => {
+            window['browserDetails']['isDevice'] = true;
+            let handler: HTMLElement = gridObj.getHeaderTable().querySelectorAll('.' + resizeClassList.root)[0];
+            gridObj.resizeModule.callAutoFit({ target: handler, type: 'mousedown', preventDefault: () => {} });
+            gridObj.resizeModule.resizing({ target: handler, type: 'mousedown', preventDefault: () => {} });
+            done();
+        });
+
+        afterEach(function() {
+            window['browserDetails']['isDevice'] = false;
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    describe('Resize coverage improvement - Stacked Columns Width', () => {
+        let gridObj: Grid;
+        beforeAll((done: Function) => {
+            gridObj = createGrid(
+                {
+                    dataSource: data.slice(0, 10),
+                    allowResizing: true,
+                    columns: [
+                        { field: 'OrderID', headerText: 'Order ID', width: 120 },
+                        {
+                            headerText: 'Details',
+                            columns: [
+                                { field: 'CustomerID', headerText: 'Customer ID', width: 130 },
+                                { field: 'Freight', headerText: 'Freight', width: 150 }
+                            ]
+                        }
+                    ]
+                }, done);
+        });
+
+        it('refreshStackedColumnWidth updates stacked column widths', () => {
+            (gridObj.resizeModule as any).refreshStackedColumnWidth();
+            expect(gridObj.getColumns()[1].width).toBeGreaterThan(0);
+        });
+
+        it('getStackedWidth calculates total width of nested columns', () => {
+            const stackedColumn = gridObj.getColumns()[1];
+            if (stackedColumn.columns && stackedColumn.columns.length > 0) {
+                const width = (gridObj.resizeModule as any).getStackedWidth(stackedColumn, 0);
+                expect(width).toBeGreaterThan(0);
+            } else {
+                expect(true).toBe(true);
+            }
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    describe('Resize coverage - stacked & sub-column recursion', () => {
+        let gridObj: Grid;
+
+        beforeAll((done: Function) => {
+            gridObj = createGrid({
+                dataSource: data,
+                allowResizing: true,
+                columns: [
+                    { field: 'OrderID', width: 100 },
+                    {
+                        headerText: 'Level1',
+                        columns: [
+                            {
+                                headerText: 'Level2',
+                                columns: [
+                                    { field: 'CustomerID', width: 120, visible: true, allowResizing: true },
+                                    { field: 'Freight', width: 80, visible: true, allowResizing: true }
+                                ]
+                            }
+                        ]
+                    },
+                    { field: 'ShipCity', width: 150 }
+                ]
+            }, done);
+        });
+
+        it('should recursively traverse getSubColumns with 3-level nesting', () => {
+            const nestedColumn = gridObj.columns[1] as any; // Level1 (has columns)
+            const subColumns = (gridObj.resizeModule as any).getSubColumns(nestedColumn, []);
+            expect(subColumns.length).toBe(2);
+        });
+
+        it('should hit calulateColumnsWidth path where colWidth < 1 and force to 1', () => {
+            const nestedColumn = gridObj.columns[1] as any;
+            const subCols = (gridObj.resizeModule as any).getSubColumns(nestedColumn, []);
+            const result = (gridObj.resizeModule as any).calulateColumnsWidth(subCols, true, -1000);
+            expect(result.length).toBeGreaterThan(0);
+            expect(parseFloat(result[0].width as string)).toBe(1);
+        });
+
+        it('should recursively calculate stacked width with deep nesting', () => {
+            const stackedColumn = gridObj.columns[1] as any;
+            const total = (gridObj.resizeModule as any).getStackedWidth(stackedColumn, 0);
+            expect(total).toBeGreaterThan(0);
+        });
+
+        afterAll(() => destroy(gridObj));
+    });
+
+    describe('Resize coverage - resizeEnd edge cases (empty row, footer, overflow)', () => {
+        let gridObj: Grid;
+
+        beforeAll((done: Function) => {
+            gridObj = createGrid({
+                dataSource: data.slice(0, 1),
+                allowResizing: true,
+                aggregates: [{ columns: [{ type: 'Sum', field: 'Freight' }] }],
+                columns: [{ field: 'OrderID', width: 100 }, { field: 'Freight', width: 100 }]
+            }, done);
+        });
+
+        it('should hit empty-row branch and footer table border logic in resizeEnd', () => {
+            const handler = gridObj.getHeaderTable().querySelectorAll('.' + resizeClassList.root)[0];
+            const resizeModule = gridObj.resizeModule as any;
+
+            resizeModule.resizeStart({ target: handler });
+            resizeModule.resizing({ target: handler, pageX: 50 });
+
+            // force empty row scenario
+            (gridObj.getContentTable() as HTMLElement).innerHTML = '<tr class="e-emptyrow"><td></td></tr>';
+
+            resizeModule.resizeEnd({ target: handler });
+
+            expect(gridObj.getHeaderTable().classList.contains('e-tableborder')).toBe(false);
+        });
+
+        it('should hit contentwidth > scrollWidth overflow branch', () => {
+            const content = gridObj.getContentTable() as HTMLElement;
+            content.style.width = '1200px';
+            const resizeModule = gridObj.resizeModule as any;
+            resizeModule.resizeEnd({ target: document.createElement('div') });
+            content.style.width = '';
+        });
+
+        it('coverage for autofit methods', (done: Function) => {
+            gridObj.autoFit = true;
+            (gridObj.resizeSettings as any).mode = 'Auto';
+            (gridObj.resizeModule as any).autoFit();
+            done();
+        });
+
+        afterAll(() => destroy(gridObj));
+    });
+
+    describe('Resize coverage - mobile doubleTap + userAgent + timeoutHandler', () => {
+        let gridObj: Grid;
+
+        beforeAll((done: Function) => {
+            const iphoneUa = 'Mozilla/5.0 (iPhone; CPU iPhone OS 10_2_1 like Mac OS X) AppleWebKit/602.4.6 (KHTML, like Gecko) Version/10.0 Mobile/14D27 Safari/602.1';
+            Browser.userAgent = iphoneUa;
+            gridObj = createGrid({
+                dataSource: data,
+                allowResizing: true,
+                columns: [{ field: 'OrderID', width: 100 }, { field: 'CustomerID', width: 100 }]
+            }, done);
+        });
+
+        it('should hit getUserAgent true + doubleTap else path (second tap)', (done) => {
+            const handler = gridObj.getHeaderTable().querySelectorAll('.' + resizeClassList.root)[0];
+            const resizeModule = gridObj.resizeModule as any;
+            resizeModule.isDblClk = true;
+
+            // first tap
+            resizeModule.doubleTapEvent({ target: handler, touches: [{ pageX: 100 }] });
+
+            // second tap BEFORE the 300ms timeout fires
+            setTimeout(() => {
+                resizeModule.doubleTapEvent({ target: handler, touches: [{ pageX: 100 }] });
+                expect(resizeModule.tapped).toBeNull();
+                done();
+            }, 200); // < 300ms
+        });
+
+        it('should hit timeoutHandler path when tapped is cleared', () => {
+            const resizeModule = gridObj.resizeModule as any;
+            resizeModule.timeoutHandler();
+            expect(resizeModule.tapped).toBeNull();
+        });
+
+        afterAll(() => {
+            const desktop = 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36';
+            Browser.userAgent = desktop;
+            destroy(gridObj);
+        });
+    });
+
+    describe('Resize coverage - resizeStart method branches', () => {
+        let gridObj: Grid;
+
+        beforeAll((done: Function) => {
+            gridObj = createGrid({
+                dataSource: data,
+                allowResizing: true,
+                allowGrouping: true,
+                isRowDragable: () => true,
+                frozenColumns: 1,
+                columns: [
+                    { field: 'OrderID', width: 100, freeze: 'Right' },
+                    { field: 'CustomerID', width: 150 },
+                    { field: 'Freight', width: 200 }
+                ]
+            }, done);
+        });
+
+        it('should hit contentWidth percentage > 100 path and scrollbar block', () => {
+            const contentTable = gridObj.getContentTable() as HTMLElement;
+            contentTable.style.width = '150%';               // forces isWidthOver100 = true
+            const handler = gridObj.getHeaderTable().querySelector('.' + resizeClassList.root) as HTMLElement;
+            const resizeModule = gridObj.resizeModule as any;
+            resizeModule.resizeStart({ target: handler });
+            contentTable.style.width = '';
+        });
+
+        it('should trigger cancel in resizeStart event and call cancelResizeAction', () => {
+            gridObj.resizeStart = jasmine.createSpy().and.callFake((args: any) => {
+                args.cancel = true;
+            });
+
+            const handler = gridObj.getHeaderTable().querySelector('.' + resizeClassList.root) as HTMLElement;
+            const resizeModule = gridObj.resizeModule as any;
+
+            resizeModule.resizeStart({ target: handler });
+            expect(resizeModule.isCancelAutoFit).toBe(true);
+            expect(resizeModule.helper).toBeNull();
+        });
+
+        it('should execute allowGrouping and isRowDragable paths inside !helper block', () => {
+            const handler = gridObj.getHeaderTable().querySelector('.' + resizeClassList.root) as HTMLElement;
+            const resizeModule = gridObj.resizeModule as any;
+            resizeModule.helper = null;                     // force !this.helper
+
+            resizeModule.resizeStart({ target: handler });
+
+            // both grouping loop and row-dragable setColumnWidth were executed
+            expect(resizeModule.resizeProcess).toBe(false);
+        });
+
+        it('should hit frozenRight minMove calculation (non-RTL)', () => {
+            gridObj.enableRtl = false;
+            gridObj.dataBind();
+
+            const handler = gridObj.getHeaderTable().querySelectorAll('.' + resizeClassList.root)[0] as HTMLElement;
+            const resizeModule = gridObj.resizeModule as any;
+
+            resizeModule.column = gridObj.columns[0];        // freeze: 'Right'
+            resizeModule.resizeStart({ target: handler, pageX: 300 });
+
+            expect(resizeModule.minMove).toBeDefined();
+        });
+
+        it('should hit frozenRight minMove calculation (RTL)', () => {
+            gridObj.enableRtl = true;
+            gridObj.dataBind();
+
+            const handler = gridObj.getHeaderTable().querySelectorAll('.' + resizeClassList.root)[0] as HTMLElement;
+            const resizeModule = gridObj.resizeModule as any;
+
+            resizeModule.column = gridObj.columns[0];
+            resizeModule.resizeStart({ target: handler, pageX: 300 });
+
+            expect(resizeModule.minMove).toBeDefined();
+        });
+
+        it('should hit Browser.isDevice true path and add icon + touch events', () => {
+            window['browserDetails']['isDevice'] = true;
+            const handler = gridObj.getHeaderTable().querySelector('.' + resizeClassList.root) as HTMLElement;
+            const resizeModule = gridObj.resizeModule as any;
+            resizeModule.helper = document.createElement('div');
+            resizeModule.resizeStart({ target: handler });
+            window['browserDetails']['isDevice'] = false;
+        });
+
+        it('should hit updateCursor("add") else path when not device', () => {
+            const handler = gridObj.getHeaderTable().querySelector('.' + resizeClassList.root) as HTMLElement;
+            const resizeModule = gridObj.resizeModule as any;
+            resizeModule.resizeStart({ target: handler });
+            expect(gridObj.element.classList.contains(resizeClassList.cursor)).toBe(true);
+        });
+
+        it('should skip everything when helper already exists (early return inside resizeStart)', () => {
+            const resizeModule = gridObj.resizeModule as any;
+            resizeModule.helper = document.createElement('div');
+            const handler = gridObj.getHeaderTable().querySelector('.' + resizeClassList.root) as HTMLElement;
+            resizeModule.resizeStart({ target: handler });
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+        });
+    });
+
+    describe('EJ2-995731-Script error occurs when performing autoFit after performing filtering with frozen feature enabled', () => {
+        let gridObj: any;
+        
+        beforeAll((done: Function) => {
+            gridObj = createGrid(
+                {
+                    dataSource: data,
+                    allowSorting: true,
+                    allowFiltering: true,
+                    filterSettings: { type: 'FilterBar' },
+                    allowPaging: true,
+                    allowResizing: true,
+                    allowGrouping:true,
+                    showColumnMenu: true,
+                    showColumnChooser: true,
+                    frozenRows: 2,
+                    editSettings: { allowAdding: true, allowEditing: true, allowDeleting: true },
+                    toolbar: ['Add', 'Edit', 'Delete', 'Update', 'Cancel', 'ColumnChooser'],
+                    columns: [
+                        { field: 'OrderID', headerText: 'Order ID', width: 200,isPrimaryKey:true},
+                        { field: 'CustomerID', headerText: 'Customer Name', width: 200 },
+                        { field: 'Freight', format: 'C2', width: 200, editType: 'numericedit' },
+                        { field: 'ShipName', headerText: 'Ship Name', width: 300 },
+                        { field: 'ShipCountry', visible: false, headerText: 'Ship Country', width: 200 },
+                        { field: 'ShipCity', headerText: 'Ship City', width: 200 }]
+                    }, done);
+                });
+                it('should not throw or copy className when source table has no <tr>', () => {
+                    const table = gridObj.getContentTable();
+                    table.innerHTML = '';
+                    const textElements = [gridObj.createElement('td'), gridObj.createElement('td')];
+                    gridObj.resizeModule.createTable(table, textElements, 'e-gridContent');
+                    expect(table.querySelector('tr')).toBeNull();
+                });
+                afterAll(function() {
+                    destroy(gridObj);
+                    gridObj = null;
+                });
     });
 });

@@ -69,9 +69,14 @@ export class CriticalPath {
                 totalRecords[j as number].isCritical = false;
                 totalRecords[j as number].ganttProperties.isCritical = false;
                 /* eslint-disable-next-line */
-                const calendarContext: CalendarContext = totalRecords[j as number].ganttProperties
-                    ? totalRecords[j as number].ganttProperties.calendarContext
-                    : this.parent.defaultCalendarContext;
+                const ganttProp: ITaskData = totalRecords[j as number].ganttProperties;
+                let calendarContext: CalendarContext;
+                if (!ganttProp) {
+                    calendarContext = this.parent.defaultCalendarContext;
+                }
+                else {
+                    calendarContext = ganttProp.calendarContext;
+                }
                 dateDifference = this.parent.dataOperation.getDuration(
                     totalRecords[j as number].ganttProperties.endDate,
                     checkEndDate, totalRecords[j as number].ganttProperties.durationUnit,
@@ -841,29 +846,6 @@ export class CriticalPath {
                                             flatRecords,
                                             toID
                                         );
-                                    }
-                                }
-                                else {
-                                    toID = this.parent.ids.indexOf(predecessorLength[i as number].from);
-                                    if (toID !== -1) {
-                                        dateDifference = this.parent.dataOperation.getDuration(
-                                            flatRecords[toID as number].ganttProperties.endDate, currentData.startDate,
-                                            currentData.durationUnit, currentData.isAutoSchedule, currentData.isMilestone,
-                                            undefined, flatRecords[toID as number].ganttProperties.calendarContext);
-                                        if (!updateOffset) {
-                                            dateDifference -= offsetValue;
-                                            dateDifference = this.adjustSlackByMaxEndDate(
-                                                dateDifference,
-                                                currentData,
-                                                this.maxEndDate,
-                                                flatRecords,
-                                                toID
-                                            );
-                                        }
-                                        if (dateDifference === 0 && index !== toID && flatRecords[index as number].slack === noSlackValue) {
-                                            flatRecords[toID as number].slack = flatRecords[index as number].slack;
-                                            flatRecords[toID as number].ganttProperties.slack = flatRecords[index as number].slack;
-                                        }
                                     }
                                 }
                                 this.updateSlackByDependency(index, toID, dateDifference, flatRecords, noSlackValue);

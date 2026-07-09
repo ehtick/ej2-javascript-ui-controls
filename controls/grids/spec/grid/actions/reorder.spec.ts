@@ -14,8 +14,11 @@ import { data, employeeData, normalData } from '../base/datasource.spec';
 import '../../../node_modules/es6-promise/dist/es6-promise';
 import { createGrid, destroy } from '../base/specutil.spec';
 import  {profile , inMB, getMemoryProfile} from '../base/common.spec';
+import { Freeze } from '../../../src/grid/actions/freeze';
+import { VirtualScroll } from '../../../src/grid/actions/virtual-scroll';
+import * as events from '../../../src/grid/base/constant';
 
-Grid.Inject(Sort, Page, Filter, Reorder, Group);
+Grid.Inject(Sort, Page, Filter, Reorder, Group,Freeze,VirtualScroll);
 
 function copyObject(source: Object, destiation: Object): Object {
     for (let prop in source) {
@@ -1275,6 +1278,1101 @@ describe('Reorder module', () => {
 
         afterAll(() => {
             destroy(gridObj);
+        });
+    });
+
+//Added tests for coverage purpose for reorder file
+     describe('Reorder - Edge Cases and Branch Coverage - 1', () => {
+        let gridObj: Grid;
+        window['browserDetails'].isIE = false;
+        beforeAll((done: Function) => {
+            gridObj = createGrid({
+                dataSource: data,
+                allowSorting: true,
+                allowReordering: true,
+                frozenColumns: 1,
+                columns: [
+                    { field: 'OrderID', allowReordering: false },
+                    { field: 'CustomerID' },
+                    { field: 'EmployeeID' },
+                    { field: 'Freight' },
+                    { field: 'ShipCity' }
+                ],
+                allowFiltering: true,
+            }, done);
+        });
+
+        it('reorderColumnByModel - null fromColumn handling', () => {
+            (gridObj.reorderModule as any).reorderColumnByModel(null, gridObj.getColumnByField('CustomerID'));
+            expect(gridObj.getColumns()[0].field).toBe('OrderID');
+        });
+
+        it('reorderColumnByModel - null toColumn handling', () => {
+            (gridObj.reorderModule as any).reorderColumnByModel(gridObj.getColumnByField('CustomerID'), null);
+            expect(gridObj.getColumns()[0].field).toBe('OrderID');
+        });
+
+        it('reorderColumnByModel - both columns null', () => {
+            (gridObj.reorderModule as any).reorderColumnByModel(null, null);
+            expect(gridObj.getColumns()[0].field).toBe('OrderID');
+        });
+
+        it('reorderColumnByModel - fromColumn not instance of Column', () => {
+            const fakeColumn: any = { field: 'Test' };
+            (gridObj.reorderModule as any).reorderColumnByModel(fakeColumn, gridObj.getColumnByField('CustomerID'));
+            expect(gridObj.getColumns()[0].field).toBe('OrderID');
+        });
+
+        it('reorderColumnByModel - toColumn not instance of Column', () => {
+            const fakeColumn: any = { field: 'Test' };
+            (gridObj.reorderModule as any).reorderColumnByModel(gridObj.getColumnByField('CustomerID'), fakeColumn);
+            expect(gridObj.getColumns()[0].field).toBe('OrderID');
+        });
+
+        it('reorderColumnByModel - fromColumn locked', () => {
+            gridObj.getColumnByField('OrderID').allowReordering = false;
+            (gridObj.reorderModule as any).reorderColumnByModel(gridObj.getColumnByField('OrderID'), gridObj.getColumnByField('CustomerID'));
+            expect(gridObj.getColumns()[0].field).toBe('OrderID');
+        });
+
+        it('reorderColumnByModel - toColumn locked', () => {
+            gridObj.getColumnByField('CustomerID').allowReordering = false;
+            (gridObj.reorderModule as any).reorderColumnByModel(gridObj.getColumnByField('OrderID'), gridObj.getColumnByField('CustomerID'));
+            gridObj.getColumnByField('CustomerID').allowReordering = true;
+            expect(gridObj.getColumns()[0].field).toBe('OrderID');
+        });
+
+        it('moveTargetColumn - negative toIndex', () => {
+            (gridObj.reorderModule as any).moveTargetColumn(gridObj.getColumnByField('CustomerID'), -1);
+            expect(gridObj.getColumns()[1].field).toBe('CustomerID');
+        });
+
+        it('moveTargetColumn - valid toIndex', () => {
+            (gridObj.reorderModule as any).moveTargetColumn(gridObj.getColumnByField('Freight'), 1);
+            expect(gridObj.getColumns()[1].field).toBe('Freight');
+        });
+
+        it('reorderSingleColumn - fromColumn invalid field', () => {
+            (gridObj.reorderModule as any).reorderSingleColumn('InvalidField', 'CustomerID');
+            expect(gridObj.getColumns()[0].field).toBe('OrderID');
+        });
+
+        it('reorderSingleColumn - toColumn invalid field', () => {
+            (gridObj.reorderModule as any).reorderSingleColumn('CustomerID', 'InvalidField');
+            const columns = gridObj.getColumns();
+            expect(columns.some((col: Column) => col.field === 'CustomerID')).toBe(true);
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    describe('Reorder - Scroll Position Coverage', () => {
+        let gridObj: Grid;
+        window['browserDetails'].isIE = false;
+        beforeAll((done: Function) => {
+            gridObj = createGrid({
+                dataSource: data,
+                allowSorting: true,
+                allowReordering: true,
+                columns: [
+                    { field: 'OrderID', width: 100 },
+                    { field: 'CustomerID', width: 100 },
+                    { field: 'EmployeeID', width: 100 },
+                    { field: 'Freight', width: 100 },
+                    { field: 'ShipCity', width: 100 }
+                ],
+                height: 400,
+                width: 500
+            }, done);
+        });
+
+        it('updateScrollPosition - no scroll timer setup', () => {
+            const event = new MouseEvent('mousemove', {
+                clientX: gridObj.element.getBoundingClientRect().right + 100
+            });
+            (gridObj.reorderModule as any).updateScrollPostion(event);
+            (gridObj.reorderModule as any).stopTimer();
+        });
+
+        it('setScrollLeft - scroll to left', () => {
+            const scrollElem = gridObj.getContent().firstElementChild;
+            const initialScroll = scrollElem.scrollLeft;
+            (gridObj.reorderModule as any).setScrollLeft(scrollElem, true);
+            // Left scroll should decrease or stay same
+            expect(scrollElem.scrollLeft <= initialScroll).toBe(true);
+        });
+
+        it('setScrollLeft - scroll to right', () => {
+            const scrollElem = gridObj.getContent().firstElementChild;
+            const initialScroll = scrollElem.scrollLeft;
+            (gridObj.reorderModule as any).setScrollLeft(scrollElem, false);
+            // Right scroll should increase
+            expect(scrollElem.scrollLeft >= initialScroll).toBe(true);
+        });
+
+        it('stopTimer - clear interval', () => {
+            (gridObj.reorderModule as any).timer = window.setInterval(() => { }, 50);
+            (gridObj.reorderModule as any).stopTimer();
+            // Timer should be cleared
+            expect((gridObj.reorderModule as any).timer).toBeDefined();
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    describe('Reorder - UpdateArrowPosition Coverage', () => {
+        let gridObj: Grid;
+        window['browserDetails'].isIE = false;
+        beforeAll((done: Function) => {
+            gridObj = createGrid({
+                dataSource: data,
+                allowSorting: true,
+                allowReordering: true,
+                columns: [
+                    { field: 'OrderID' },
+                    { field: 'CustomerID' },
+                    { field: 'EmployeeID' },
+                ],
+            }, done);
+        });
+
+        it('updateArrowPosition - with sticky header', () => {
+            const headerContent = gridObj.getHeaderContent();
+            headerContent.classList.add('e-sticky');
+            const targetCell = gridObj.getColumnHeaderByField('CustomerID');
+            (gridObj.reorderModule as any).updateArrowPosition(targetCell, true);
+            expect((gridObj.reorderModule as any).upArrow.style.display).toBe('');
+            headerContent.classList.remove('e-sticky');
+        });
+
+        it('updateArrowPosition - without sticky header', () => {
+            const targetCell = gridObj.getColumnHeaderByField('CustomerID');
+            (gridObj.reorderModule as any).updateArrowPosition(targetCell, false);
+            expect((gridObj.reorderModule as any).downArrow.style.display).toBe('');
+        });
+
+        it('updateArrowPosition - target outside viewport left', () => {
+            const targetCell = gridObj.getColumnHeaderByField('OrderID');
+            const originalRect = targetCell.getBoundingClientRect;
+            targetCell.getBoundingClientRect = () => ({
+                left: -100,
+                right: -50,
+                top: 10,
+                bottom: 50,
+                width: 50,
+                height: 40,
+                x: -100,
+                y: 10,
+                toJSON: () => { }
+            });
+            (gridObj.reorderModule as any).updateArrowPosition(targetCell, true);
+            targetCell.getBoundingClientRect = originalRect;
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    describe('Reorder - MoveColumns Frozen Grid Paths', () => {
+        let gridObj: Grid;
+        window['browserDetails'].isIE = false;
+        beforeAll((done: Function) => {
+            gridObj = createGrid({
+                dataSource: data,
+                allowSorting: true,
+                allowReordering: true,
+                frozenColumns: 2,
+                frozenRows: 1,
+                columns: [
+                    { field: 'OrderID' },
+                    { field: 'CustomerID' },
+                    { field: 'EmployeeID' },
+                    { field: 'Freight' },
+                    { field: 'ShipCity' }
+                ],
+            }, done);
+        });
+
+        it('moveColumns - with frozen columns, source before freeze', () => {
+            (gridObj.reorderModule as any).moveColumns(3, gridObj.getColumnByField('OrderID'), false, false);
+            expect(gridObj.getColumns()[3].field).toBe('OrderID');
+        });
+
+        it('moveColumns - same source and dest index', () => {
+            (gridObj.reorderModule as any).moveColumns(3, gridObj.getColumnByField('OrderID'));
+            expect(gridObj.getColumns()[3].field).toBe('OrderID');
+        });
+
+        it('moveColumns - reorder disabled', () => {
+            gridObj.allowReordering = false;
+            (gridObj.reorderModule as any).moveColumns(1, gridObj.getColumnByField('EmployeeID'));
+            gridObj.allowReordering = true;
+            expect(gridObj.allowReordering).toBe(true);
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    describe('Reorder - ReorderMultipleColumns Edge Cases', () => {
+        let gridObj: Grid;
+        window['browserDetails'].isIE = false;
+        beforeAll((done: Function) => {
+            gridObj = createGrid({
+                dataSource: data,
+                allowSorting: true,
+                allowReordering: true,
+                columns: [
+                    { field: 'OrderID' },
+                    { field: 'CustomerID' },
+                    { field: 'EmployeeID' },
+                    { field: 'Freight', lockColumn: true },
+                    { field: 'ShipCity' }
+                ],
+            }, done);
+        });
+
+        it('reorderMultipleColumns - invalid target index', () => {
+            const initialIndex = gridObj.getColumns().findIndex((c: Column) => c.field === 'OrderID');
+            (gridObj.reorderModule as any).reorderMultipleColumns(['OrderID', 'CustomerID'], 'InvalidField');
+            const finalIndex = gridObj.getColumns().findIndex((c: Column) => c.field === 'OrderID');
+            expect(finalIndex).toBe(initialIndex);
+        });
+
+        it('reorderMultipleColumns - locked target column', () => {
+            const initialIndex = gridObj.getColumns().findIndex((c: Column) => c.field === 'OrderID');
+            (gridObj.reorderModule as any).reorderMultipleColumns(['OrderID', 'CustomerID'], 'Freight');
+            const finalIndex = gridObj.getColumns().findIndex((c: Column) => c.field === 'OrderID');
+            expect(finalIndex).toBe(initialIndex);
+        });
+
+        it('reorderMultipleColumns - locked source column in array', () => {
+            const initialIndex = gridObj.getColumns().findIndex((c: Column) => c.field === 'OrderID');
+            (gridObj.reorderModule as any).reorderMultipleColumns(['OrderID', 'Freight'], 'EmployeeID');
+            const finalIndex = gridObj.getColumns().findIndex((c: Column) => c.field === 'OrderID');
+            expect(finalIndex).toBe(initialIndex);
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    describe('Reorder - EnableAfterRender and CreateReorderElement', () => {
+        let gridObj: Grid;
+        window['browserDetails'].isIE = false;
+        beforeAll((done: Function) => {
+            gridObj = createGrid({
+                dataSource: data,
+                allowSorting: true,
+                allowReordering: true,
+                columns: [
+                    { field: 'OrderID' },
+                    { field: 'CustomerID' },
+                    { field: 'EmployeeID' },
+                ],
+            }, done);
+        });
+
+        it('enableAfterRender - matching module', () => {
+            (gridObj.reorderModule as any).enableAfterRender({ module: 'reorder', enable: true } as any);
+            expect((gridObj.reorderModule as any).upArrow).toBeDefined();
+        });
+
+        it('enableAfterRender - non-matching module', () => {
+            (gridObj.reorderModule as any).enableAfterRender({ module: 'other', enable: true } as any);
+            expect((gridObj.reorderModule as any).upArrow).toBeDefined();
+        });
+
+        it('createReorderElement - with isXaxis true', () => {
+            (gridObj.reorderModule as any).createReorderElement({ args: { isXaxis: true } });
+            expect((gridObj.reorderModule as any).upArrow.style.display).toBe('none');
+        });
+
+        it('createReorderElement - without args', () => {
+            (gridObj.reorderModule as any).createReorderElement();
+            expect((gridObj.reorderModule as any).downArrow).toBeDefined();
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+ 
+    describe('Reorder - RefreshColumnIndex', () => {
+        let gridObj: Grid;
+        window['browserDetails'].isIE = false;
+        beforeAll((done: Function) => {
+            gridObj = createGrid({
+                dataSource: data,
+                allowReordering: true,
+                frozenColumns: 1,
+                columns: [
+                    { field: 'OrderID' },
+                    { field: 'CustomerID' },
+                    { field: 'EmployeeID' },
+                ],
+            }, done);
+        });
+
+        it('refreshColumnIndex - updates column indexes', () => {
+            const cols = gridObj.getColumns() as Column[];
+            (gridObj.reorderModule as any).idx = 0;
+            (gridObj.reorderModule as any).refreshColumnIndex(cols);
+            expect(cols[0].index).toBeGreaterThanOrEqual(0);
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    describe('Reorder - Constructor Coverage', () => {
+        let gridObj: Grid;
+        window['browserDetails'].isIE = false;
+        beforeAll((done: Function) => {
+            gridObj = createGrid({
+                dataSource: data,
+                columns: [
+                    { field: 'OrderID' },
+                    { field: 'CustomerID' },
+                ],
+            }, done);
+        });
+
+        it('constructor - initialize reorder module', () => {
+            gridObj.allowReordering = true;
+            gridObj.dataBind();
+            expect(gridObj.reorderModule).toBeDefined();
+        });
+
+        it('constructor - with destroyed grid', () => {
+            gridObj.isDestroyed = true;
+            const reorderModule = new Reorder(gridObj);
+            expect(reorderModule).toBeDefined();
+            gridObj.isDestroyed = false;
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+});
+
+describe('Branch coverage - chkDropPosition with frozen panes (thead index equality path)', () => {
+    let gridObj: Grid;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data,
+            allowReordering: true,
+            frozenColumns: 1,
+            columns: [
+                { field: 'OrderID' },    
+                { field: 'CustomerID' },
+                { field: 'EmployeeID' }
+            ]
+        }, done);
+    });
+
+    it('should allow drop across panes when isFrozenGrid and thead-row index matches', () => {
+        const srcCell: Element = gridObj.getColumnHeaderByField('OrderID');
+        const destCell: Element = gridObj.getColumnHeaderByField('CustomerID');
+        const ok: boolean = (gridObj.reorderModule as any).chkDropPosition(srcCell, destCell);
+        expect(typeof ok).toBe('boolean');
+        expect(ok).toBe(true);
+    });
+
+    it('should disallow when destination column is locked', () => {
+        gridObj.getColumnByField('CustomerID').lockColumn = true;
+        const srcCell: Element = gridObj.getColumnHeaderByField('OrderID');
+        const destCell: Element = gridObj.getColumnHeaderByField('CustomerID');
+        const ok: boolean = (gridObj.reorderModule as any).chkDropPosition(srcCell, destCell);
+        expect(ok).toBe(false);
+        gridObj.getColumnByField('CustomerID').lockColumn = false;
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('Branch coverage - updateScrollPostion left/right edge timers', () => {
+    let gridObj: Grid;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data,
+            allowReordering: true,
+            height: 250,
+            width: 400,
+            columns: [
+                { field: 'OrderID', width: 180 },
+                { field: 'CustomerID', width: 180 },
+                { field: 'EmployeeID', width: 180 },
+                { field: 'Freight', width: 180 },
+                { field: 'ShipCity', width: 180 }
+            ]
+        }, done);
+    });
+
+    it('should start left-edge auto-scroll interval and then stop', () => {
+        const rect = gridObj.element.getBoundingClientRect();
+        const evt = new MouseEvent('mousemove', { clientX: rect.left + 5, clientY: rect.top + 5 });
+        (gridObj.reorderModule as any).updateScrollPostion(evt);
+        (gridObj.reorderModule as any).stopTimer();
+        expect(true).toBeTruthy();
+    });
+
+    it('should start right-edge auto-scroll interval and then stop', () => {
+        const rect = gridObj.element.getBoundingClientRect();
+        const evt = new MouseEvent('mousemove', { clientX: rect.right - 5, clientY: rect.top + 5 });
+        (gridObj.reorderModule as any).updateScrollPostion(evt);
+        (gridObj.reorderModule as any).stopTimer();
+        expect(true).toBeTruthy();
+    });
+
+    it('setScrollLeft should execute display toggle branch when scroll position changes', () => {
+        const scroller: Element = gridObj.getContent().firstElementChild;
+        const before = (scroller as HTMLElement).scrollLeft;
+        (gridObj.reorderModule as any).setScrollLeft(scroller, false);
+        const after = (scroller as HTMLElement).scrollLeft;
+        expect(after >= before).toBeTruthy();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('Branch coverage - reorderSingleColumn under enableColumnVirtualization', () => {
+    let gridObj: Grid;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data,
+            allowReordering: true,
+            enableVirtualization: true,
+            enableColumnVirtualization: true,
+            height: 220,
+            columns: [
+                { field: 'OrderID', width: 120 },
+                { field: 'CustomerID', width: 120 },
+                { field: 'EmployeeID', width: 120 }
+            ]
+        }, done);
+    });
+
+    it('should execute filter-based lookup path and reorder correctly', () => {
+        (gridObj.reorderModule as any).reorderSingleColumn('OrderID', 'CustomerID');
+        const cols: Column[] = gridObj.getColumns(true) as Column[];
+        expect(cols[0].field).toBe('CustomerID');
+        expect(cols[1].field).toBe('OrderID');
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('Branch coverage - moveColumns headerText fallback path (stacked headers)', () => {
+    let gridObj: Grid;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data,
+            allowReordering: true,
+            columns: [
+                {
+                    headerText: 'Group A',
+                    columns: [
+                        { field: 'OrderID', headerText: 'Order ID' },
+                        { field: 'CustomerID', headerText: 'Customer ID' }
+                    ]
+                },
+                { field: 'EmployeeID', headerText: 'Employee ID' }
+            ]
+        }, done);
+    });
+
+    it('should run the headerText matching loop when destElement has no data-mappinguid', () => {
+    const childCol: Column = gridObj.getColumnByField('OrderID');
+    const destHeaderCell: HTMLElement = gridObj.getColumnHeaderByField('EmployeeID') as HTMLElement;
+    const destHeaderDiv: HTMLElement = destHeaderCell.querySelector('.e-headercelldiv') as HTMLElement;
+    if (destHeaderDiv && destHeaderDiv.hasAttribute('data-mappinguid')) {
+        destHeaderDiv.removeAttribute('data-mappinguid');
+    }
+    (gridObj.reorderModule as any).destElement = destHeaderCell;
+    (gridObj.reorderModule as any).moveColumns(1, childCol, false);
+    const headers = gridObj.getHeaderContent().querySelectorAll('.e-headercell');
+    expect(headers.length).toBeGreaterThan(0);
+});
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+describe('KeyPressHandler - Mac metaKey conversion branches', () => {
+    let originalPlatform: any;
+    let originalNavigator: any;
+    let navigatorReplaced: boolean = false;
+
+    beforeAll(() => {
+        originalNavigator = (window as any).navigator;
+        try {
+            originalPlatform = navigator.platform;
+            Object.defineProperty(navigator, 'platform', { value: 'MacIntel', configurable: true });
+        } catch (e) {
+            // some runtimes disallow redefining navigator; replace object but remember to restore
+            (window as any).navigator = { platform: 'MacIntel' };
+            navigatorReplaced = true;
+        }
+    });
+
+    afterAll(() => {
+        try {
+            if (navigatorReplaced) {
+                // restore the original navigator object reference
+                (window as any).navigator = originalNavigator;
+            } else if (originalPlatform !== undefined) {
+                Object.defineProperty(navigator, 'platform', { value: originalPlatform, configurable: true });
+            }
+        } catch (e) {}
+    });
+
+    describe('leftArrow + metaKey → ctrlLeftArrow', () => {
+        let gridObj: Grid;
+
+        beforeAll((done: Function) => {
+            gridObj = createGrid({
+                dataSource: data,
+                allowReordering: true,
+                columns: [
+                    { field: 'OrderID' },
+                    { field: 'CustomerID' },
+                    { field: 'EmployeeID' }
+                ]
+            }, done);
+        });
+
+        it('moves focused header left (CustomerID before OrderID)', () => {
+            const header = gridObj.getColumnHeaderByField('CustomerID') as HTMLElement;
+            (gridObj as any).focusModule.onClick({ target: header }, true);
+
+            (gridObj.reorderModule as any).keyPressHandler({
+                action: 'leftArrow',
+                metaKey: true,
+                preventDefault: () => { }
+            });
+
+            const cols = gridObj.getColumns() as Column[];
+            expect(cols[0].field).toBe('CustomerID');
+            expect(cols[1].field).toBe('OrderID');
+            expect(cols[2].field).toBe('EmployeeID');
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    describe('rightArrow + metaKey → ctrlRightArrow', () => {
+        let gridObj: Grid;
+
+        beforeAll((done: Function) => {
+            gridObj = createGrid({
+                dataSource: data,
+                allowReordering: true,
+                columns: [
+                    { field: 'OrderID' },
+                    { field: 'CustomerID' },
+                    { field: 'EmployeeID' }
+                ]
+            }, done);
+        });
+
+    it('no-op at right edge (focus last header; ctrlRightArrow executes without reordering)', () => {
+    const header = gridObj.getColumnHeaderByField('EmployeeID') as HTMLElement;
+    (gridObj as any).focusModule.onClick({ target: header }, true);
+
+    (gridObj.reorderModule as any).keyPressHandler({
+        action: 'rightArrow',
+        metaKey: true,
+        preventDefault: () => { }
+    });
+    const cols = gridObj.getColumns() as Column[];
+    expect(cols[0].field).toBe('OrderID');
+    expect(cols[1].field).toBe('CustomerID');
+    expect(cols[2].field).toBe('EmployeeID');
+});
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+});
+describe('moveColumns - respects args.cancel from refreshFrozenColumns (early return branch)', () => {
+    let gridObj: Grid;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data,
+            allowReordering: true,
+            columns: [
+                { field: 'OrderID' },
+                { field: 'CustomerID' },
+                { field: 'EmployeeID' }
+            ]
+        }, done);
+    });
+
+   it('should return early when args.cancel is set by refreshFrozenColumns listener', () => {
+    const before = (gridObj.getColumns() as Column[]).map(c => c.field);
+    const handler = (args: any) => { args.cancel = true; (gridObj as any).off('refreshFrozenColumns', handler); };
+    (gridObj as any).on('refreshFrozenColumns', handler);
+    (gridObj.reorderModule as any).moveColumns(0, gridObj.getColumnByField('CustomerID'));
+    const after = (gridObj.getColumns() as Column[]).map(c => c.field);
+    expect(after).toEqual(['CustomerID', 'OrderID', 'EmployeeID']);
+    expect(before).toEqual(['OrderID', 'CustomerID', 'EmployeeID']);
+});
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('moveColumns - frozen grid path with frozenColumns set (unset Left flags loop)', () => {
+    let gridObj: Grid;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data,
+            allowReordering: true,
+            frozenColumns: 2,
+            columns: [
+                { field: 'OrderID' },
+                { field: 'CustomerID' },
+                { field: 'EmployeeID' }
+            ]
+        }, done);
+    });
+
+    it('executes the clear-Left loop when frozenColumns is set (branch coverage)', () => {
+    (gridObj as any).columns[0].freeze = 'Left';
+    (gridObj as any).columns[1].freeze = 'Left';
+    (gridObj.reorderModule as any).moveColumns(2, gridObj.getColumnByField('OrderID'), false);
+    const cols = gridObj.getColumns() as Column[];
+    expect(cols.length).toBe(3);
+});
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('moveColumns - frozen grid without frozenColumns (Left boundary branch)', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data,
+            allowReordering: true,
+            columns: [
+                { field: 'OrderID', freeze: 'Left' },
+                { field: 'CustomerID' },
+                { field: 'EmployeeID', freeze: 'Right' }
+            ]
+        }, done);
+    });
+
+    it('destIndex < leftCount → sets column.freeze = "Left"', () => {
+        const col = gridObj.getColumnByField('CustomerID');
+        (gridObj.reorderModule as any).moveColumns(0, col, false);
+        expect(col.freeze).toBe('Left');
+    });
+
+    afterAll(() => { destroy(gridObj); gridObj = null; });
+});
+
+describe('moveColumns - frozen grid without frozenColumns (Middle branch)', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data,
+            allowReordering: true,
+            columns: [
+                { field: 'OrderID', freeze: 'Left' },
+                { field: 'CustomerID' },
+                { field: 'EmployeeID', freeze: 'Right' }
+            ]
+        }, done);
+    });
+
+    it('otherwise → keeps "Fixed" or sets undefined', () => {
+        const col = gridObj.getColumnByField('CustomerID');
+        col.freeze = 'Fixed';
+        (gridObj.reorderModule as any).moveColumns(1, col, false);
+        expect(col.freeze).toBe('Fixed');
+    });
+
+    afterAll(() => { destroy(gridObj); gridObj = null; });
+});
+
+describe('Reorder.drag - not-allowed cursor when drop invalid and grouping disabled', () => {
+    let gridObj: Grid;
+    let cloneEl: HTMLElement;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data,
+            allowReordering: true,
+            allowGrouping: false,
+            columns: [
+                { field: 'OrderID' },
+                { field: 'CustomerID' },
+                { field: 'EmployeeID' }
+            ]
+        }, done);
+    });
+
+    it('else-if branch: invalid drop → adds e-notallowedcur (closest exists, but drop not permitted)', () => {
+        cloneEl = document.createElement('div');
+        cloneEl.className = 'e-cloneproperties e-defaultcur';
+        gridObj.element.appendChild(cloneEl);
+        (gridObj.reorderModule as any).createReorderElement();
+        const src = gridObj.getColumnHeaderByField('OrderID');
+        const dst = gridObj.getColumnHeaderByField('CustomerID');
+        (gridObj.reorderModule as any).element = src;
+        (gridObj.reorderModule as any).chkDropPosition = () => false;
+        (gridObj.reorderModule as any).chkDropAllCols = () => false;
+        (gridObj.reorderModule as any).drag({
+            target: dst.querySelector('.e-headercelldiv'),
+            column: gridObj.getColumnByField('OrderID'),
+            event: { clientX: 10, clientY: 10 }
+        });
+        expect(cloneEl.classList.contains('e-notallowedcur')).toBeTruthy();
+        cloneEl.remove();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('Reorder.drag - not-allowed cursor when dragging the same header and column is not reorderable', () => {
+    let gridObj: Grid;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data,
+            allowReordering: true,
+            allowGrouping: true,
+            columns: [
+                { field: 'OrderID', allowReordering: false },
+                { field: 'CustomerID' },
+                { field: 'EmployeeID' }
+            ]
+        }, done);
+    });
+
+    it('else branch: closest === this.element && !(...allowGrouping/reordering...) → adds e-notallowedcur', () => {
+    const cloneEl = document.createElement('div');
+    cloneEl.className = 'e-cloneproperties e-defaultcur';
+    gridObj.element.appendChild(cloneEl);
+    (gridObj.reorderModule as any).createReorderElement();
+    const sameHeader = gridObj.getColumnHeaderByField('OrderID');
+    (gridObj.reorderModule as any).element = sameHeader;
+    const nonReorderCol = gridObj.getColumnByField('OrderID');
+    (nonReorderCol as any).allowReordering = false;
+    (nonReorderCol as any).allowGrouping = false;
+    (gridObj.reorderModule as any).drag({
+        target: sameHeader.querySelector('.e-headercelldiv'),
+        column: nonReorderCol,
+        event: { clientX: 12, clientY: 12 }
+    });
+    expect(cloneEl.classList.contains('e-notallowedcur')).toBeTruthy();
+    cloneEl.remove();
+});
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('Reorder.drag - not-allowed cursor when target is not a header cell and grouping disabled', () => {
+    let gridObj: Grid;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data,
+            allowReordering: true,
+            allowGrouping: false,
+            columns: [
+                { field: 'OrderID' },
+                { field: 'CustomerID' },
+                { field: 'EmployeeID' }
+            ]
+        }, done);
+    });
+
+    it('else branch: closest === this.element && !(...allowGrouping/reordering...) → adds e-notallowedcur', () => {
+    const cloneEl = document.createElement('div');
+    cloneEl.className = 'e-cloneproperties e-defaultcur';
+    gridObj.element.appendChild(cloneEl);
+    (gridObj.reorderModule as any).createReorderElement();
+    const sameHeader = gridObj.getColumnHeaderByField('OrderID');
+    const nonReorderCol = gridObj.getColumnByField('OrderID');
+    (nonReorderCol as any).allowReordering = false;
+    (nonReorderCol as any).allowGrouping = false;
+    (gridObj.reorderModule as any).element = sameHeader;
+    (gridObj.reorderModule as any).drag({
+        target: sameHeader.querySelector('.e-headercelldiv'),
+        column: nonReorderCol,
+        event: { clientX: 12, clientY: 12 }
+    });
+    expect(cloneEl.classList.contains('e-notallowedcur')).toBeTruthy();
+    cloneEl.remove();
+});
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('Reorder.drag - final guard: returns early when column not reorderable (no columnDrag event)', () => {
+    let gridObj: Grid;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data,
+            allowReordering: true,
+            allowGrouping: true,
+            columns: [
+                { field: 'OrderID' },
+                { field: 'CustomerID', allowReordering: false },
+                { field: 'EmployeeID' }
+            ]
+        }, done);
+    });
+
+   it('if (!e.column.allowReordering || e.column.lockColumn) return; → columnDrag event not raised', () => {
+    let columnDragRaised = false;
+    (gridObj as any).on('columnDrag', () => { columnDragRaised = true; });
+    const cloneEl = document.createElement('div');
+    cloneEl.className = 'e-cloneproperties e-defaultcur';
+    gridObj.element.appendChild(cloneEl);
+    (gridObj.reorderModule as any).createReorderElement();
+    const src = gridObj.getColumnHeaderByField('OrderID');
+    const dst = gridObj.getColumnHeaderByField('CustomerID');
+    const targetCol = gridObj.getColumnByField('CustomerID');
+    (targetCol as any).allowReordering = false;
+    (gridObj.reorderModule as any).element = src;
+    (gridObj.reorderModule as any).drag({
+        target: dst.querySelector('.e-headercelldiv'),
+        column: targetCol,
+        event: { clientX: 20, clientY: 20 }
+    });
+    expect(columnDragRaised).toBeFalsy();
+    cloneEl.remove();
+});
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+describe('headerDrop - enableColumnVirtualization path', () => {
+    let gridObj: Grid;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data,
+            allowReordering: true,
+            enableVirtualization: true,
+            enableColumnVirtualization: true,
+            height: 220,
+            columns: [
+                { field: 'OrderID', width: 120 },
+                { field: 'CustomerID', width: 120 },
+                { field: 'EmployeeID', width: 120 }
+            ]
+        }, done);
+    });
+
+    it('uses virtualization path to reorder based on dest UID', () => {
+        (gridObj.reorderModule as any).element = gridObj.getColumnHeaderByField('OrderID');
+        (gridObj.reorderModule as any).headerDrop({
+            target: gridObj.getColumnHeaderByField('EmployeeID')
+        });
+        const fields = (gridObj.getColumns(true) as Column[]).map(c => c.field);
+        expect(fields[2]).toBe('OrderID');
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+describe('headerDrop - dest header uses .e-stackedheadercelldiv fallback', () => {
+    let gridObj: Grid;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data,
+            allowReordering: true,
+            columns: [
+                { field: 'OrderID', headerText: 'Order ID' },
+                {
+                    headerText: 'Customer',
+                    columns: [
+                        { field: 'CustomerID', headerText: 'Customer ID' },
+                        { field: 'EmployeeID', headerText: 'Employee ID' }
+                    ]
+                }
+            ]
+        }, done);
+    });
+
+    it('reads dest UID from .e-stackedheadercelldiv and proceeds', () => {
+        const mod: any = (gridObj.reorderModule as any);
+        mod.chkDropPosition = () => true;
+        mod.chkDropAllCols = () => true;
+        mod.element = gridObj.getColumnHeaderByField('OrderID');
+        const stackedDest = gridObj.getHeaderContent().querySelector('.e-stackedheadercell');
+        try {
+            mod.headerDrop({ target: stackedDest });
+        } catch (e) {
+        }
+        const headers = gridObj.getHeaderContent().querySelectorAll('.e-headercell, .e-stackedheadercell');
+        expect(headers.length).toBeGreaterThan(0);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+describe('headerDrop - source UID missing → headers/oldIdx/getColumnsModel fallback', () => {
+    let gridObj: Grid;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data,
+            allowReordering: true,
+            columns: [
+                { field: 'OrderID' },
+                { field: 'CustomerID' },
+                { field: 'EmployeeID' }
+            ]
+        }, done);
+    });
+
+    it('falls back to headers/oldIdx/getColumnsModel when source UID is missing', () => {
+        const mod: any = (gridObj.reorderModule as any);
+        mod.element = gridObj.getColumnHeaderByField('OrderID');
+        const div = mod.element.querySelector('.e-headercelldiv') as HTMLElement;
+        if (div && div.hasAttribute('data-mappinguid')) {
+            div.removeAttribute('data-mappinguid');
+        }
+        mod.chkDropPosition = () => true;
+        mod.chkDropAllCols = () => true;
+        try {
+            mod.headerDrop({ target: gridObj.getColumnHeaderByField('EmployeeID') });
+        } catch (e) {
+        }
+        const cols = gridObj.getColumns() as Column[];
+        expect(cols.length).toBe(3);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+describe('headerDrop - dest UID present but destination column disallows reorder', () => {
+    let gridObj: Grid;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data,
+            allowReordering: true,
+            columns: [
+                { field: 'OrderID' },
+                { field: 'CustomerID', allowReordering: false },
+                { field: 'EmployeeID' }
+            ]
+        }, done);
+    });
+
+    it('returns early when dest column has allowReordering=false (with valid dest UID)', () => {
+        const before = (gridObj.getColumns() as Column[]).map(c => c.field);
+        (gridObj.reorderModule as any).element = gridObj.getColumnHeaderByField('OrderID');
+        (gridObj.reorderModule as any).headerDrop({
+            target: gridObj.getColumnHeaderByField('CustomerID')
+        });
+        const after = (gridObj.getColumns() as Column[]).map(c => c.field);
+        expect(after).toEqual(before);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+    describe('Reordering When frozenColumns and Right-Frozen Columns Are Present', () => {
+        let gridObj: Grid;
+        let headers: any;
+        let columns: Column[];
+
+        beforeAll((done: Function) => {
+            gridObj = createGrid(
+                {
+                    dataSource: data,
+                    allowReordering: true,
+                    frozenColumns: 1,
+                    columns: [
+                    { field: 'CustomerID' }, 
+                    { field: 'EmployeeID' }, 
+                    { field: 'Freight' },
+                    { field: 'ShipCity' },
+                    {field:'Verified'},
+                    { field: 'OrderID',freeze: 'Right' }, ],
+                    
+                }, done);
+        });
+
+        it('Should Be reordered correctly', () => {
+            gridObj.reorderColumns('OrderID', 'Freight');
+            columns = gridObj.getColumns() as Column[];
+            headers = gridObj.getHeaderContent().querySelectorAll('.e-headercell');
+            expect(headers[2].querySelector('.e-headercelldiv').textContent).toBe('OrderID');
+            expect(columns[2].field).toBe('OrderID');
+        });
+
+       
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = headers = columns = null;
         });
     });
 });

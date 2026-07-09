@@ -1818,8 +1818,10 @@ export class ResizeTool extends ToolBase {
                     this.commandHandler.annotation.addAction((this as any).pageIndex, null, this.prevSource, 'Resize', '', this.redoElement as any, newObject);
                 }
             }
-            if (args.target && (args.target as PdfAnnotationBaseModel).formFieldAnnotationType) {
-                const node: PdfAnnotationBaseModel = args.target;
+            const formField: any = this.commandHandler.selectedItems.annotations.length > 0 ?
+                this.commandHandler.selectedItems.annotations[0] : this.commandHandler.selectedItems.formFields[0];
+            if (formField && formField.formFieldAnnotationType) {
+                const node: PdfAnnotationBaseModel = formField;
                 const field: IFormField = { id: (args.source as any).id, value: (node as any).value, fontFamily: node.fontFamily,
                     fontSize: node.fontSize, fontStyle: (node as any).fontStyle,
                     color: (node as PdfFormFieldBaseModel).color, backgroundColor: (node as PdfFormFieldBaseModel).backgroundColor,

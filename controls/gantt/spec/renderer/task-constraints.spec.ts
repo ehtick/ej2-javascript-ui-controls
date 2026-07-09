@@ -2,7 +2,7 @@
   * Gantt base spec
   */
 import { Gantt, DayMarkers , Selection, Edit} from '../../src/index';
-import { constraintsData, dialogEditDataSB } from '../base/data-source.spec';
+import { constraintsData, dialogEditDataSB, projectNewData, MT1014886 } from '../base/data-source.spec';
 import { createGantt, destroyGantt, triggerMouseEvent } from '../base/gantt-util.spec';
 interface EJ2Instance extends HTMLElement {
     ej2_instances: Object[];
@@ -3255,6 +3255,886 @@ describe('Coverage for connectorline-edit', () => {
         let okButton: HTMLElement = document.querySelector('#' + ganttObj.element.id + '_dialogValidationRule > div.e-footer-content > button') as HTMLElement;
         triggerMouseEvent(okButton, 'click');
         expect(ganttObj.getFormatedDate(ganttObj.flatData[2].ganttProperties.startDate, 'M/d/yyyy')).toBe('4/8/2025');
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+
+describe('Improve Coverage for cell-edit', () => {
+    Gantt.Inject(DayMarkers, Selection, Edit);
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: [
+                {
+                    TaskID: 1,
+                    TaskName: 'Planning and Permits',
+                    StartDate: new Date('04/02/2025'),
+                    EndDate: new Date('04/10/2025'),
+                    Duration: 7,
+                    Progress: 100,
+                    ConstraintType: 5,
+                },
+                {
+                    TaskID: 2,
+                    TaskName: 'Site Evaluation',
+                    StartDate: new Date('04/02/2025'),
+                    EndDate: new Date('04/04/2025'),
+                    Duration: 2,
+                    Progress: 100,
+                    ParentID: 1,
+                    ConstraintType: 6,
+                    ConstraintDate: new Date('04/02/2025'),
+                },
+                {
+                    TaskID: 3,
+                    TaskName: 'Obtain Permits',
+                    StartDate: new Date('04/07/2025'),
+                    EndDate: new Date('04/09/2025'),
+                    Duration: 3,
+                    Progress: 100,
+                    ParentID: 1,
+                    Predecessor: '2FS+2days',
+                    ConstraintType: 7,
+                    ConstraintDate: new Date('04/14/2025'),
+                },
+                {
+                    TaskID: 4,
+                    TaskName: 'Obtain Permits',
+                    StartDate: new Date('04/07/2025'),
+                    EndDate: new Date('04/09/2025'),
+                    Duration: 3,
+                    Progress: 100,
+                    ParentID: 1,
+                    Predecessor: '2FS+2days',
+                    ConstraintType: 3,
+                    ConstraintDate: new Date('04/14/2025'),
+                },
+            ],
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                // startDate: 'StartDate',
+                endDate: 'EndDate',
+                duration: 'Duration',
+                progress: 'Progress',
+                constraintType: 'ConstraintType',
+                // constraintDate: 'ConstraintDate',
+                dependency: 'Predecessor',
+                parentID: 'parentID',
+                notes: 'info',
+            },
+            editSettings: {
+                allowAdding: true,
+                allowEditing: true,
+                allowDeleting: true,
+                allowTaskbarEditing: true,
+                showDeleteConfirmDialog: true
+            },
+            toolbar: ['Add', 'Edit', 'Update', 'Delete', 'Cancel', 'ExpandAll', 'CollapseAll', 'Indent', 'Outdent'],
+            allowSelection: true,
+            gridLines: 'Both',
+            height: '450px',
+            treeColumnIndex: 1,
+            highlightWeekends: true,
+            timelineSettings: {
+                topTier: {
+                    unit: 'Week',
+                    format: 'MMM dd, y',
+                },
+                bottomTier: {
+                    unit: 'Day',
+                }
+            },
+            eventMarkers: [
+                {
+                    day: new Date('03/25/2025'),
+                    label: 'Project StartDate'
+                }, {
+                    day: new Date('08/31/2025'),
+                    label: 'Project EndDate'
+                }
+            ],
+            columns: [
+                { field: 'TaskID', visible: false },
+                { field: 'TaskName', headerText: 'Job Name', width: '200', clipMode: 'EllipsisWithTooltip' },
+                { field: 'StartDate' },
+                { field: 'Duration' },
+                { field: 'ConstraintType', width: '180' },
+                { field: 'ConstraintDate' },
+                { field: 'EndDate' },
+                { field: 'Predecessor' },
+                { field: 'Progress' },
+            ],
+            labelSettings: {
+                leftLabel: 'TaskName',
+                rightLabel: '#rightLabel',
+            },
+            splitterSettings: {
+                columnIndex: 4
+            },
+            projectStartDate: new Date('03/25/2025'),
+            projectEndDate: new Date('09/01/2025')
+        }, done);
+    });
+    it('Cell editing Constraint type', () => {
+        let element: HTMLElement = ganttObj.element.querySelector('#treeGrid' + ganttObj.element.id + '_gridcontrol_content_table > tbody > tr:nth-child(4) > td:nth-child(5)') as HTMLElement;
+        triggerMouseEvent(element, 'dblclick');
+        let constraintType: any = document.getElementById('treeGrid' + ganttObj.element.id + '_gridcontrolConstraintType') as HTMLElement;
+        if (constraintType) {
+            let inputObj: any = constraintType.ej2_instances[0];
+            inputObj.value = 6;
+            inputObj.dataBind();
+            let element: HTMLElement = ganttObj.element.querySelector('#treeGrid' + ganttObj.element.id + '_gridcontrol_content_table > tbody > tr:nth-child(3) > td:nth-child(2)') as HTMLElement;
+            triggerMouseEvent(element, 'click');
+        }
+    });
+    it('Cell editing Constraint type', () => {
+        let element: HTMLElement = ganttObj.element.querySelector('#treeGrid' + ganttObj.element.id + '_gridcontrol_content_table > tbody > tr:nth-child(4) > td:nth-child(5)') as HTMLElement;
+        triggerMouseEvent(element, 'dblclick');
+        let constraintType: any = document.getElementById('treeGrid' + ganttObj.element.id + '_gridcontrolConstraintType') as HTMLElement;
+        if (constraintType) {
+            let inputObj: any = constraintType.ej2_instances[0];
+            inputObj.value = 3;
+            inputObj.dataBind();
+            let element: HTMLElement = ganttObj.element.querySelector('#treeGrid' + ganttObj.element.id + '_gridcontrol_content_table > tbody > tr:nth-child(3) > td:nth-child(2)') as HTMLElement;
+            triggerMouseEvent(element, 'click');
+        }
+    });
+    it('Cell editing Constraint type', () => {
+        let element: HTMLElement = ganttObj.element.querySelector('#treeGrid' + ganttObj.element.id + '_gridcontrol_content_table > tbody > tr:nth-child(4) > td:nth-child(5)') as HTMLElement;
+        triggerMouseEvent(element, 'dblclick');
+        let constraintType: any = document.getElementById('treeGrid' + ganttObj.element.id + '_gridcontrolConstraintType') as HTMLElement;
+        if (constraintType) {
+            let inputObj: any = constraintType.ej2_instances[0];
+            inputObj.value = 7;
+            inputObj.dataBind();
+        }
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+
+describe('Cell edit - cover specific uncovered branches', () => {
+    let ganttObj: Gantt;
+
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: [
+                { TaskID: 1, TaskName: 'Task 1', StartDate: new Date('04/01/2019'), Duration: 3, Predecessor: '2', ConstraintType: 0, ConstraintDate: null },
+                { TaskID: 2, TaskName: 'Task 2', StartDate: new Date('03/28/2019'), Duration: 2 }
+            ],
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                endDate: 'EndDate',
+                duration: 'Duration',
+                dependency: 'Predecessor',
+                constraintType: 'ConstraintType',
+                constraintDate: 'ConstraintDate',
+                child: 'subtasks'
+            },
+            editSettings: {
+                allowEditing: true,
+                allowAdding: true,
+                allowDeleting: true,
+                allowTaskbarEditing: true,
+                showDeleteConfirmDialog: true
+            },
+            toolbar: ['Add', 'Edit', 'Update', 'Delete', 'Cancel'],
+            columns: [
+                { field: 'TaskID' },
+                { field: 'TaskName' },
+                { field: 'ConstraintType' },
+                { field: 'ConstraintDate' },
+                { field: 'StartDate' },
+                { field: 'EndDate' },
+                { field: 'Duration' }
+            ],
+            projectStartDate: new Date('03/25/2019'),
+            projectEndDate: new Date('05/30/2019'),
+        }, done);
+    });
+
+    it('ConstraintEdited - predecessorDate branch via cell edit', () => {
+        // dblclick constraint date cell for row 1 (task with predecessor) to invoke constraintEdited flow
+        const constraintDateCell = ganttObj.element.querySelector(
+            '#treeGrid' + ganttObj.element.id + '_gridcontrol_content_table > tbody > tr:nth-child(1) > td:nth-child(4)'
+        ) as HTMLElement;
+        triggerMouseEvent(constraintDateCell, 'dblclick');
+        const editorInstance: any = (document.querySelector('#treeGrid' + ganttObj.element.id + '_gridcontrolConstraintDate') as any)
+            && (document.querySelector('#treeGrid' + ganttObj.element.id + '_gridcontrolConstraintDate') as any).ej2_instances
+            && (document.querySelector('#treeGrid' + ganttObj.element.id + '_gridcontrolConstraintDate') as any).ej2_instances[0];
+        if (editorInstance) {
+            // set a date to force validation path that computes predecessor date
+            editorInstance.value = new Date('04/10/2019');
+           editorInstance.dataBind();
+        }
+        // click elsewhere to commit cell edit (no async done callback; just drive code paths)
+        const commitTarget = ganttObj.element.querySelector(
+            '#treeGrid' + ganttObj.element.id + '_gridcontrol_content_table > tbody > tr:nth-child(2) > td:nth-child(2)'
+        ) as HTMLElement;
+        triggerMouseEvent(commitTarget, 'click');
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('T1014886: Coverage for date-processor', () => {
+    Gantt.Inject(DayMarkers, Selection, Edit);
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: projectNewData,
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                duration: 'Duration',
+                progress: 'Progress',
+                dependency:'Predecessor',
+                child: 'subtasks'
+            },
+            editSettings: {
+                allowEditing: true,
+                allowDeleting: true,
+                allowTaskbarEditing: true,
+                showDeleteConfirmDialog: true
+            },
+            toolbar:['Add', 'Edit', 'Update', 'Delete', 'Cancel', 'ExpandAll', 'CollapseAll', 'Search',
+            'PrevTimeSpan', 'NextTimeSpan'],
+            allowSelection: true,
+            gridLines: "Both",
+            showColumnMenu: false,
+            highlightWeekends: true,
+            timelineSettings: {
+                topTier: {
+                    unit: 'Week',
+                    format: 'dd/MM/yyyy'
+                },
+                bottomTier: {
+                    unit: 'Day',
+                    count: 1
+                }
+            },
+            labelSettings: {
+                leftLabel: 'TaskName',
+                taskLabel: 'Progress'
+            },
+            height: '550px',
+            allowUnscheduledTasks: true,
+            projectStartDate: new Date('03/25/2019'),
+            projectEndDate: new Date('05/30/2019')
+        }, done);
+    });
+    it('Covering constraint -getDateByConstraint default case', () => {
+        let ganttData = ganttObj.currentViewData[1];
+        let startDate = ganttData.ganttProperties.startDate;
+        ganttObj.dataOperation.getDateByConstraint(ganttData, startDate);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('T1014886: Coverage for date-processor', () => {
+    Gantt.Inject(DayMarkers, Selection, Edit);
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: projectNewData,
+            height: '650px',
+            highlightWeekends: true,
+            weekWorkingTime: [
+                { dayOfWeek: 'Monday', timeRange: [{ from: 10, to: 18 }] },
+                { dayOfWeek: 'Tuesday', timeRange: [{ from: 10, to: 18 }] }
+            ],
+            treeColumnIndex: 1,
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                endDate: 'EndDate',
+                duration: 'Duration',
+                progress: 'Progress',
+                dependency: 'Predecessor',
+                child: 'subtasks'
+            },
+            editSettings: {
+                allowEditing: true,
+                allowDeleting: true,
+                allowTaskbarEditing: true,
+                showDeleteConfirmDialog: true
+            },
+            columns: [
+                { field: 'TaskID', width: 80 },
+                { field: 'TaskName', width: 250 },
+                { field: 'StartDate' },
+                { field: 'EndDate' },
+                { field: 'Duration' },
+                { field: 'Predecessor' },
+                { field: 'Progress' },
+            ],
+            labelSettings: {
+                leftLabel: 'TaskName'
+            },
+            splitterSettings: {
+                columnIndex: 3
+            }
+        }, done);
+    });
+    it('Covering checkEndDate method', () => {
+        let dragElement: HTMLElement = ganttObj.element.querySelector('#' + ganttObj.element.id + 'GanttTaskTableBody > tr:nth-child(2) > td > div.e-taskbar-main-container > div.e-gantt-child-taskbar-inner-div.e-gantt-child-taskbar') as HTMLElement;
+        triggerMouseEvent(dragElement, 'mousedown', dragElement.offsetLeft, dragElement.offsetTop);
+        triggerMouseEvent(dragElement, 'mousemove', dragElement.offsetLeft - 80, 0);
+        triggerMouseEvent(dragElement, 'mouseup');
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('T1014886: Coverage for date-processor', () => {
+    Gantt.Inject(DayMarkers, Selection, Edit);
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: [
+                { TaskID: 1, TaskName: 'Defining the product and its usage', StartDate: new Date('04/02/2019'), Duration: 2, Progress: 30 }
+            ],
+            height: '650px',
+            highlightWeekends: true,
+            weekWorkingTime: [
+                { dayOfWeek: 'Monday', timeRange: [{ from: 10, to: 18 }] },
+                { dayOfWeek: 'Tuesday', timeRange: [{ from: 10, to: 18 }] }
+            ],
+            treeColumnIndex: 1,
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                endDate: 'EndDate',
+                duration: 'Duration',
+                progress: 'Progress',
+                dependency: 'Predecessor',
+                child: 'subtasks'
+            },
+            editSettings: {
+                allowEditing: true,
+                allowDeleting: true,
+                allowTaskbarEditing: true,
+                showDeleteConfirmDialog: true
+            },
+            columns: [
+                { field: 'TaskID', width: 80 },
+                { field: 'TaskName', width: 250 },
+                { field: 'StartDate' },
+                { field: 'EndDate' },
+                { field: 'Duration' },
+                { field: 'Predecessor' },
+                { field: 'Progress' },
+            ],
+            labelSettings: {
+                leftLabel: 'TaskName'
+            },
+            splitterSettings: {
+                columnIndex: 3
+            },
+            holidays: [{
+                from: "04/04/2019",
+                to: "04/05/2019",
+                label: " Public holidays",
+                cssClass: "e-custom-holiday"
+            },
+            {
+                from: "04/12/2019",
+                to: "04/12/2019",
+                label: " Public holiday",
+                cssClass: "e-custom-holiday"
+            }],
+        }, done);
+    });
+    it('Covering checkEndDate method weekworktime', () => {
+        // line 351 not covers.
+        let dragElement: HTMLElement = ganttObj.element.querySelector('#' + ganttObj.element.id + 'GanttTaskTableBody > tr:nth-child(1) > td > div.e-taskbar-main-container > div.e-gantt-child-taskbar-inner-div.e-gantt-child-taskbar') as HTMLElement;
+        triggerMouseEvent(dragElement, 'mousedown', dragElement.offsetLeft, dragElement.offsetTop);
+        triggerMouseEvent(dragElement, 'mousemove', dragElement.offsetLeft - 80, 0);
+        triggerMouseEvent(dragElement, 'mouseup');
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('T1014886: Coverage for date-processor', () => {
+    Gantt.Inject(DayMarkers, Selection, Edit);
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: [
+                { TaskID: 1, TaskName: 'Defining the product and its usage', StartDate: new Date('04/02/2019'), Duration: 1, Progress: 30 },
+            ],
+            height: '650px',
+            highlightWeekends: true,
+            weekWorkingTime: [
+                { dayOfWeek: 'Monday', timeRange: [{ from: 10, to: 18 }] },
+                { dayOfWeek: 'Tuesday', timeRange: [{ from: 10, to: 18 }] }
+            ],
+            treeColumnIndex: 1,
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                endDate: 'EndDate',
+                duration: 'Duration',
+                progress: 'Progress',
+                dependency: 'Predecessor',
+                child: 'subtasks'
+            },
+            editSettings: {
+                allowEditing: true,
+                allowDeleting: true,
+                allowTaskbarEditing: true,
+                showDeleteConfirmDialog: true
+            },
+            columns: [
+                { field: 'TaskID', width: 80 },
+                { field: 'TaskName', width: 250 },
+                { field: 'StartDate' },
+                { field: 'EndDate' },
+                { field: 'Duration' },
+                { field: 'Predecessor' },
+                { field: 'Progress' },
+            ],
+            toolbar: ['ZoomIn', 'ZoomOut', 'ZoomToFit'],
+            labelSettings: {
+                leftLabel: 'TaskName'
+            },
+            splitterSettings: {
+                columnIndex: 3
+            },
+            holidays: [{
+                from: "04/04/2019",
+                to: "04/05/2019",
+                label: " Public holidays",
+                cssClass: "e-custom-holiday"
+            },
+            {
+                from: "04/12/2019",
+                to: "04/12/2019",
+                label: " Public holiday",
+                cssClass: "e-custom-holiday"
+            }],
+        }, done);
+    });
+    it('Covering checkBaselineStartDate method weekworktime', () => {
+        let date: Date = new Date('04/02/2026 10:00:00');
+        let ganttProp = ganttObj.currentViewData[0].ganttProperties;
+        ganttObj.dataOperation.checkBaselineStartDate(date, ganttProp);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('T1014886: Coverage for date-processor', () => {
+    Gantt.Inject(DayMarkers, Selection, Edit);
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: [
+                { TaskID: 1, TaskName: 'Defining the product  and its usage', Work: 1, BaselineStartDate: new Date('04/02/2019'), BaselineEndDate: new Date('04/06/2019'), StartDate: new Date('04/02/2019'), Duration: 3, Progress: 30 }
+            ],
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                duration: 'Duration',
+                progress: 'Progress',
+                dependency: 'Predecessor',
+                baselineStartDate: "BaselineStartDate",
+                baselineEndDate: "BaselineEndDate",
+                baselineDuration: "BaselineDuration",
+                child: 'subtasks',
+                work: 'Work'
+            },
+            columns: [
+                { field: 'TaskID', headerText: 'Task ID' },
+                { field: 'TaskName', headerText: 'Task Name', allowReordering: false },
+                { field: 'StartDate', headerText: 'Start Date', allowSorting: false },
+                { field: 'Duration', headerText: 'Duration', allowEditing: false },
+                { field: 'Progress', headerText: 'Progress', allowFiltering: false },
+                { field: 'BaselineDuration', headerText: 'BaselineDuration',
+                    edit: {
+                        params: {
+                            decimals: 2,
+                        }
+                    }
+                },
+                { field: 'Work', headerText: 'Work'}
+            ],
+            renderBaseline: true,
+            editSettings: {
+                allowEditing: true,
+                allowDeleting: true,
+                allowTaskbarEditing: true,
+                showDeleteConfirmDialog: true
+            },
+            allowSelection: true,
+            gridLines: "Both",
+            showColumnMenu: false,
+            highlightWeekends: true,
+            timelineSettings: {
+                topTier: {
+                    unit: 'Week',
+                    format: 'dd/MM/yyyy'
+                },
+                bottomTier: {
+                    unit: 'Day',
+                    count: 1
+                }
+            },
+            labelSettings: {
+                leftLabel: 'TaskName',
+                taskLabel: 'Progress'
+            },
+            height: '550px',
+            allowUnscheduledTasks: true,
+            projectStartDate: new Date('03/25/2019'),
+            projectEndDate: new Date('05/30/2019')
+        }, done);
+    });
+    it('Covering getWorkString, calculateDuration method code', () => {
+        let ganttProp = ganttObj.currentViewData[0].ganttProperties;
+        let nonWork = ganttObj.dataOperation['getNonworkingTime'](ganttProp.startDate, ganttProp.endDate, ganttProp.isAutoSchedule, undefined, ganttProp.calendarContext, false, false);
+        ganttObj.dataOperation.getValidStartDate(ganttObj.currentViewData[0].ganttProperties, true, false);
+        ganttObj.dataOperation.getValidEndDate(ganttObj.currentViewData[0].ganttProperties, true, false);
+        ganttObj.dataOperation.calculateStartDate(ganttObj.currentViewData[0], true);
+        ganttObj.openEditDialog(1);
+        let baselineEnddateField: any = (<EJ2Instance>document.getElementById(ganttObj.element.id + 'BaselineEndDate')).ej2_instances[0];
+        baselineEnddateField.value = '04/02/2019';
+        baselineEnddateField.dataBind();
+        let saveRecord: HTMLElement = document.querySelectorAll('#' + ganttObj.element.id + '_dialog > div.e-footer-content > button.e-control')[0] as HTMLElement;
+        triggerMouseEvent(saveRecord, 'click');
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('T1014886: Coverage for date-processor', () => {
+    Gantt.Inject(DayMarkers, Selection, Edit);
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: [
+                { TaskID: 1, TaskName: 'Defining the product  and its usage', Work: 1, StartDate: new Date('04/02/2019'), Duration: 3, Progress: 30 }
+            ],
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                duration: 'Duration',
+                progress: 'Progress',
+                dependency: 'Predecessor',
+                child: 'subtasks',
+                work: 'Work'
+            },
+            workUnit: 'Day',
+            columns: [
+                { field: 'TaskID', headerText: 'Task ID' },
+                { field: 'TaskName', headerText: 'Task Name', allowReordering: false },
+                { field: 'StartDate', headerText: 'Start Date', allowSorting: false },
+                { field: 'Duration', headerText: 'Duration', allowEditing: false },
+                { field: 'Progress', headerText: 'Progress', allowFiltering: false },
+                { field: 'Work', headerText: 'Work'}
+            ],
+            editSettings: {
+                allowEditing: true,
+                allowDeleting: true,
+                allowTaskbarEditing: true,
+                showDeleteConfirmDialog: true
+            },
+            allowSelection: true,
+            gridLines: "Both",
+            showColumnMenu: false,
+            highlightWeekends: true,
+            timelineSettings: {
+                topTier: {
+                    unit: 'Week',
+                    format: 'dd/MM/yyyy'
+                },
+                bottomTier: {
+                    unit: 'Day',
+                    count: 1
+                }
+            },
+            labelSettings: {
+                leftLabel: 'TaskName',
+                taskLabel: 'Progress'
+            },
+            height: '550px',
+            allowUnscheduledTasks: true,
+            projectStartDate: new Date('03/25/2019'),
+            projectEndDate: new Date('05/30/2019')
+        }, done);
+    });
+    it('Covering getWorkString method for day work unit case', () => {
+        expect(ganttObj.currentViewData.length).toBe(1);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('T1014886: Coverage for date-processor', () => {
+    Gantt.Inject(DayMarkers, Selection, Edit);
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: [
+                { TaskID: 1, TaskName: 'Defining the product  and its usage', Work: 4, StartDate: new Date('04/02/2019'), Duration: 3, Progress: 30 }
+            ],
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                duration: 'Duration',
+                progress: 'Progress',
+                dependency: 'Predecessor',
+                child: 'subtasks',
+                work: 'Work'
+            },
+            workUnit: 'Day',
+            columns: [
+                { field: 'TaskID', headerText: 'Task ID' },
+                { field: 'TaskName', headerText: 'Task Name', allowReordering: false },
+                { field: 'StartDate', headerText: 'Start Date', allowSorting: false },
+                { field: 'Duration', headerText: 'Duration', allowEditing: false },
+                { field: 'Progress', headerText: 'Progress', allowFiltering: false },
+                { field: 'Work', headerText: 'Work'}
+            ],
+            editSettings: {
+                allowEditing: true,
+                allowDeleting: true,
+                allowTaskbarEditing: true,
+                showDeleteConfirmDialog: true
+            },
+            allowSelection: true,
+            gridLines: "Both",
+            showColumnMenu: false,
+            highlightWeekends: true,
+            timelineSettings: {
+                topTier: {
+                    unit: 'Week',
+                    format: 'dd/MM/yyyy'
+                },
+                bottomTier: {
+                    unit: 'Day',
+                    count: 1
+                }
+            },
+            labelSettings: {
+                leftLabel: 'TaskName',
+                taskLabel: 'Progress'
+            },
+            height: '550px',
+            allowUnscheduledTasks: true,
+            projectStartDate: new Date('03/25/2019'),
+            projectEndDate: new Date('05/30/2019')
+        }, done);
+    });
+    it('Covering getWorkString method for day work unit- plural case', () => {
+        expect(ganttObj.currentViewData.length).toBe(1);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('T1014886: Coverage for date-processor', () => {
+    Gantt.Inject(DayMarkers, Selection, Edit);
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: MT1014886,
+            taskFields: {
+            id: 'TaskID',
+            name: 'TaskName',
+            startDate: 'StartDate',
+            duration: 'Duration',
+            progress: 'Progress',
+            dependency: 'Predecessor',
+            constraintType: 'ConstraintType',
+            constraintDate: 'ConstraintDate',
+            child: 'subtasks'
+        },
+        editSettings: {
+            allowEditing: true,
+            allowDeleting: true,
+            allowTaskbarEditing: true,
+            showDeleteConfirmDialog: true
+        },
+        toolbar: ['Add', 'Edit', 'Update', 'Delete', 'Cancel', 'ExpandAll', 'CollapseAll', 'Search',
+            'PrevTimeSpan', 'NextTimeSpan'],
+        allowSelection: true,
+        gridLines: "Both",
+        showColumnMenu: false,
+        highlightWeekends: true,
+        timelineSettings: {
+            topTier: {
+                unit: 'Week',
+                format: 'dd/MM/yyyy'
+            },
+            bottomTier: {
+                unit: 'Day',
+                count: 1
+            }
+        },
+        columns: [
+            { field: 'TaskID', headerText: 'Task ID' },
+            { field: 'TaskName', headerText: 'Task Name', allowReordering: false },
+            { field: 'StartDate', headerText: 'Start Date', allowSorting: false },
+            { field: 'Duration', headerText: 'Duration', allowEditing: false },
+            { field: 'Progress', headerText: 'Progress', allowFiltering: false },
+            { field: 'ConstraintType'}
+        ],
+        labelSettings: {
+            leftLabel: 'TaskName',
+            taskLabel: 'Progress'
+        },
+        height: '550px',
+        allowUnscheduledTasks: true,
+        projectStartDate: new Date('03/25/2019'),
+        projectEndDate: new Date('05/30/2019')
+        }, done);
+    });
+    it('Covering startdate edit with constraint type-0', () => {
+        let startDate: HTMLElement = ganttObj.element.querySelector('#treeGrid' + ganttObj.element.id + '_gridcontrol_content_table > tbody > tr:nth-child(4) > td:nth-child(3)') as HTMLElement;
+        triggerMouseEvent(startDate, 'dblclick');
+        let input: any = (document.querySelector('#treeGrid' + ganttObj.element.id + '_gridcontrolStartDate')as any).ej2_instances[0];
+        input.value = new Date('04/08/2019');
+        let element: HTMLElement = ganttObj.element.querySelector('#treeGrid' + ganttObj.element.id + '_gridcontrol_content_table > tbody > tr:nth-child(3) > td:nth-child(2)') as HTMLElement;
+        triggerMouseEvent(element, 'click');
+        ganttObj.dataOperation['updateSoonAsPossibleParent'](ganttObj.currentViewData[3].parentItem);
+        ganttObj.dataOperation['updateSoonAsPossibleParent'](null);
+    });
+    it('Covering startdate edit with constraint type-1 for child task', () => {
+        let element: HTMLElement = ganttObj.element.querySelector('#treeGrid' + ganttObj.element.id + '_gridcontrol_content_table > tbody > tr:nth-child(3) > td:nth-child(6)') as HTMLElement;
+        triggerMouseEvent(element, 'dblclick');
+        let constraintType: any = document.getElementById('treeGrid' + ganttObj.element.id + '_gridcontrolConstraintType') as HTMLElement;
+        if (constraintType) {
+            let inputObj: any = constraintType.ej2_instances[0];
+            inputObj.value = 1;
+            inputObj.dataBind();
+            let element: HTMLElement = ganttObj.element.querySelector('#treeGrid' + ganttObj.element.id + '_gridcontrol_content_table > tbody > tr:nth-child(3) > td:nth-child(2)') as HTMLElement;
+            triggerMouseEvent(element, 'click');
+        }
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('T1014886: Coverage for date-processor', () => {
+    Gantt.Inject(DayMarkers, Selection, Edit);
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: MT1014886,
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                duration: 'Duration',
+                progress: 'Progress',
+                dependency: 'Predecessor',
+                constraintType: 'ConstraintType',
+                constraintDate: 'ConstraintDate',
+                child: 'subtasks'
+            },
+            editSettings: {
+                allowEditing: true,
+                allowDeleting: true,
+                allowTaskbarEditing: true,
+                showDeleteConfirmDialog: true
+            },
+            toolbar: ['Add', 'Edit', 'Update', 'Delete', 'Cancel', 'ExpandAll', 'CollapseAll', 'Search',
+                'PrevTimeSpan', 'NextTimeSpan'],
+            allowSelection: true,
+            gridLines: "Both",
+            showColumnMenu: false,
+            highlightWeekends: true,
+            timelineSettings: {
+                topTier: {
+                    unit: 'Week',
+                    format: 'dd/MM/yyyy'
+                },
+                bottomTier: {
+                    unit: 'Day',
+                    count: 1
+                }
+            },
+            columns: [
+                { field: 'TaskID', headerText: 'Task ID' },
+                { field: 'TaskName', headerText: 'Task Name', allowReordering: false },
+                { field: 'StartDate', headerText: 'Start Date', allowSorting: false },
+                { field: 'Duration', headerText: 'Duration', allowEditing: false },
+                { field: 'Progress', headerText: 'Progress', allowFiltering: false },
+                { field: 'ConstraintType'}
+            ],
+            labelSettings: {
+                leftLabel: 'TaskName',
+                taskLabel: 'Progress'
+            },
+            height: '550px',
+            allowUnscheduledTasks: true,
+            projectStartDate: new Date('03/25/2019'),
+            projectEndDate: new Date('05/30/2019')
+        }, done);
+    });
+    it('Covering startdate edit with constraint type-1 for without parent task', () => {
+        let element: HTMLElement = ganttObj.element.querySelector('#treeGrid' + ganttObj.element.id + '_gridcontrol_content_table > tbody > tr:nth-child(5) > td:nth-child(6)') as HTMLElement;
+        triggerMouseEvent(element, 'dblclick');
+        let constraintType: any = document.getElementById('treeGrid' + ganttObj.element.id + '_gridcontrolConstraintType') as HTMLElement;
+        if (constraintType) {
+            let inputObj: any = constraintType.ej2_instances[0];
+            inputObj.value = 1;
+            inputObj.dataBind();
+            let element: HTMLElement = ganttObj.element.querySelector('#treeGrid' + ganttObj.element.id + '_gridcontrol_content_table > tbody > tr:nth-child(3) > td:nth-child(2)') as HTMLElement;
+            triggerMouseEvent(element, 'click');
+        }
+        ganttObj.dataOperation.calculateProjectDatesForValidatedTasks();
+        ganttObj.projectStartDate = '04/01/2019';
+        ganttObj.projectEndDate = '07/01/2019';
+        // After project dates in string:
+        ganttObj.dataOperation.calculateProjectDatesForValidatedTasks(); 
+        // Flatdata length 0 case:
+        ganttObj.projectStartDate = undefined;
+        ganttObj.projectEndDate = undefined;
+        ganttObj.dataOperation.dataArray = [];
+        ganttObj.dataOperation.calculateProjectDatesForValidatedTasks();
+        ganttObj.enablePersistence = true;
+        ganttObj.isLoad = true;
+        ganttObj.cloneProjectStartDate = undefined;
+        ganttObj.dataOperation.calculateProjectDates();
     });
     afterAll(() => {
         if (ganttObj) {

@@ -15,9 +15,10 @@ import { profile, inMB, getMemoryProfile } from '../base/common.spec';
 import { getScrollBarWidth } from '../../../src/grid/base/util';
 import { QueryCellInfoEventArgs } from '../../../src/grid/base/interface';
 import { Resize } from '../../../src/grid/actions/resize';
+import { Selection } from '../../../src/grid/actions/selection';
 import { isRowPinned } from '../../../src';
 
-Grid.Inject(Freeze, Aggregate, Edit, VirtualScroll, Resize, InfiniteScroll);
+Grid.Inject(Freeze, Aggregate, Edit, VirtualScroll, Resize, InfiniteScroll,Selection);
 
 describe('Freeze render module', () => {
     describe('Freeze Row and Column', () => {
@@ -1207,6 +1208,52 @@ describe('Freeze render module', () => {
             gridObj.startEdit();
             done();
         })
+
+        afterAll(() => {
+            destroy(gridObj);
+        });
+    });
+
+    describe('EJ2-994021 - Ctrl+home and Alt+W navigation with frozen rows', () => {
+        let gridObj: Grid;
+        let selectionModule: Selection;
+        let rows: Element[];
+        let preventDefault: Function = new Function();
+        beforeAll((done: Function) => {
+            gridObj = createGrid(
+                {
+                    dataSource: data,
+                    frozenRows: 2,
+                    allowSelection: true,
+                    selectionSettings: { type: 'Single', mode: 'Both' },
+                    height: 400,
+                    columns: [
+                        { headerText: 'OrderID', field: 'OrderID', isPrimaryKey: true, },
+                        { headerText: 'CustomerID', field: 'CustomerID' },
+                        { headerText: 'EmployeeID', field: 'EmployeeID' },
+                        { headerText: 'ShipCountry', field: 'ShipCountry' },
+                    ]
+                }, done);
+        });
+
+        it('press ctrl+home', () => {
+            selectionModule = gridObj.selectionModule;
+            rows = gridObj.getRows();
+            selectionModule.selectRow(2);
+            expect(rows[2].hasAttribute('aria-selected')).toBeTruthy();
+            let args: any = { action: 'ctrlHome', preventDefault: preventDefault };
+            gridObj.keyboardModule.keyAction(args);
+            expect(gridObj.getHeaderContent().querySelector('tbody').childElementCount).toBe(2);
+            expect((rows[0] as HTMLTableRowElement).cells[0].classList.contains('e-focused')).toBeTruthy();
+        });
+
+        it('press Alt+W', () => {
+            rows = gridObj.getRows();
+            let args: any = { action: 'altW', preventDefault: preventDefault };
+            gridObj.keyboardModule.keyAction(args);
+            expect(gridObj.getHeaderContent().querySelector('tbody').childElementCount).toBe(2);
+            expect((rows[0] as HTMLTableRowElement).cells[0].classList.contains('e-focused')).toBeTruthy();
+        });
 
         afterAll(() => {
             destroy(gridObj);

@@ -411,6 +411,39 @@ describe('Toolbar - view html', () => {
             destroy(rteObj);
         });
     });
+    describe('1032932: After Switching from Code View to Preview editor is not focused to first child ', () => {
+        let rteObj: RichTextEditor;
+        let innerHTML: string = ``;
+        let controlId: string;
+        beforeAll(() => {
+            rteObj = renderRTE({
+                value: innerHTML,
+                toolbarSettings: {
+                    items: ['SourceCode']
+                }
+            });
+            controlId = rteObj.element.id;
+        });
+
+        it('Should focus to the first elment of editor', (done) => {
+            let item: HTMLElement = rteObj.element.querySelector('#' + controlId + '_toolbar_SourceCode');
+            item.click();
+            setTimeout(() => {
+                let textarea: HTMLTextAreaElement = rteObj.element.querySelector(".e-rte-srctextarea");
+                textarea.value = `<p><br></p>`;
+                let item = rteObj.element.querySelector('#' + controlId + '_toolbar_Preview') as HTMLElement;
+                item.click();
+                setTimeout(() => {
+                    expect(window.getSelection().getRangeAt(0).startContainer.nodeName === 'P').toBe(true);
+                    done();
+                });
+            });
+        });
+
+        afterAll(() => {
+            destroy(rteObj);
+        });
+    });
     describe(' SourceCode item changes - ', () => {
         let rteObj: RichTextEditor;
         let controlId: string;

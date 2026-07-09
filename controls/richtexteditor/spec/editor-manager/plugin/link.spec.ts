@@ -1,7 +1,7 @@
 import { NodeCutter } from "../../../src/editor-manager/plugin/nodecutter";
 import { RichTextEditor } from "../../../src";
 import { BASIC_MOUSE_EVENT_INIT, INSRT_LINK_EVENT_INIT } from "../../constant.spec";
-import { destroy, renderRTE } from "../../rich-text-editor/render.spec";
+import { destroy, renderRTE, setCursorPoint } from "../../rich-text-editor/render.spec";
 
 describe('Link testing', ()=>{
     describe('911799: Two anchor elements are created when inserting a link for two selected notes in the Rich Text Editor.', ()=>{
@@ -1464,6 +1464,33 @@ describe('Link testing', ()=>{
                     done();
                 }, 50);
             }, 50);
+        });
+    });
+
+    describe('Bug 1035590: Rich Text Editor breaks after clicking the Remove Link toolbar button repeatedly', () => {
+        let editor: RichTextEditor;
+        let controlId: string;
+        beforeEach(() => {
+            editor = renderRTE({
+                value: '<h1>Welcome to the Syncfusion Rich Text Editor</h1>',
+                toolbarSettings: {
+                    items: ['CreateLink', 'RemoveLink']
+                }
+            });
+            controlId = editor.element.id;
+        });
+        afterEach(() => {
+            destroy(editor);
+        });
+        it('should not make changes in the existing content', (done: DoneFn) => {
+            editor.focusIn();
+            setCursorPoint((editor.inputElement.querySelector('h1') as HTMLElement).firstChild, (editor.inputElement.querySelector('h1') as HTMLElement).textContent.length);
+            const item: HTMLElement = editor.element.querySelector('#' + controlId + '_toolbar_RemoveLink') as HTMLElement;
+            item.click();
+            setTimeout(() => {
+                expect(editor.inputElement.querySelector('h1')).not.toBe(null);
+                done();
+            }, 100);
         });
     });
 });

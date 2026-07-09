@@ -426,9 +426,9 @@ export interface IValidateArgs {
 
 export interface ITimeSpanEventArgs {
     /** Represents the start date of the project. */
-    projectStartDate?: Date;
+    timelineStartDate?: Date;
     /** Represents the end date of the project. */
-    projectEndDate?: Date;
+    timelineEndDate?: Date;
     /** Indicates whether the timeline should be rounded off. */
     isTimelineRoundOff?: boolean;
     /** Specifies the type of request triggering the event. */
@@ -1447,5 +1447,17 @@ export interface PdfSize {
     /** Defines the height */
     height: number;
     /** Defines the width */
+    width: number;
+}
+export interface BaselineTemplateContext {
+    /** Represents the Gantt task data associated with the taskbar and baseline. */
+    readonly taskData: IGanttData;
+    /** Defines the color used for rendering the baseline. */
+    baselineColor: string;
+    /** Specifies whether the baseline represents a milestone.*/
+    isMilestoneBaseline: boolean;
+    /** Specifies the baseline left position of the task.*/
+    left: number;
+    /** Specifies the baseline width of the task. */
     width: number;
 }

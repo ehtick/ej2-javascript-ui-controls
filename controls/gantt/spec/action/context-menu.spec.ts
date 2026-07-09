@@ -4629,7 +4629,6 @@ describe('CR:932689-When the context menu action is canceled, the added child re
     });
     it('Add record - Child', () => {
         ganttObj.actionBegin = function (args: any): void {
-            debugger;
             if(args.requestType == "beforeAdd"){
                 if (args.recordIndex != 1 && args.rowPosition == "Child") {
                     args.cancel = true;
@@ -5416,51 +5415,192 @@ describe('Content menu - Child', () => {
         });
     });
 
-    describe('Empty content context menu', () => {
-        let emptyGanttObj: Gantt;
+describe('ContextMenu - private branches coverage', () => {
+    let ganttObj: Gantt;
 
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: [{ TaskID: 1, TaskName: 'Task 1', StartDate: new Date('01/01/2020'), Duration: 1 }],
+            enableContextMenu: true,
+            allowSelection: true,
+            readOnly: true,
+            taskFields: { id: 'TaskID', name: 'TaskName', startDate: 'StartDate', duration: 'Duration' },
+            height: '400px'
+        }, done);
+    });
+
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+    it('should save cell and reset isCellEdit when cellEditModule.isCellEdit true and dialogObj.open is false', () => {
+        const cmModule: any = ganttObj.contextMenuModule;
+        const editModule: any = ganttObj.editModule;
+        // Simulate cell edit active state
+        if (!editModule) { (ganttObj as any).editModule = {}; }
+        // Ensure structures exist
+        (ganttObj as any).editModule.cellEditModule = ganttObj.editModule.cellEditModule || { isCellEdit: true };
+        // mark as currently in cell edit
+        ganttObj.editModule.cellEditModule.isCellEdit = true;
+        // ensure dialogModule.dialogObj exists and is closed
+        (ganttObj as any ).editModule.dialogModule = { dialogObj: { open: false } };
+        // build args with a target not inside edit form (so editForm is falsy)
+        const args: any = {
+            event: { target: ganttObj.element }, // not inside edit form
+            element: document.getElementById(ganttObj.element.id + '_contextmenu'),
+            items: [],
+            parentItem: null
+        };
+        // call the private method
+        (cmModule as any).contextMenuBeforeOpen(args);
+    });
+});
+
+describe('Context menu - ToTask branch coverage', () => {
+    describe('ToTask - else branch when taskFields.duration is undefined', () => {
+        let ganttObj: Gantt;
         beforeAll((done: Function) => {
-            emptyGanttObj = createGantt({
-                dataSource: [],
-                allowSelection: true,
+            ganttObj = createGantt({
+                dataSource: [
+                    {
+                        TaskID: 1,
+                        TaskName: 'No Duration Task',
+                        StartDate: new Date('01/01/2020'),
+                        EndDate: new Date('01/01/2020')
+                    }
+                ],
                 enableContextMenu: true,
-                contextMenuItems: contextMenuItems as ContextMenuItem[],
+                allowSelection: true,
+                editSettings: { allowAdding: true, allowEditing: true, allowDeleting: true, allowTaskbarEditing: true },
                 taskFields: {
                     id: 'TaskID',
                     name: 'TaskName',
                     startDate: 'StartDate',
                     endDate: 'EndDate'
+                    // duration intentionally omitted to exercise the else branch
                 }
             }, done);
         });
-
+        it('invoke ToTask when duration field mapping is missing', () => {
+            (ganttObj.contextMenuModule as any).rowData = ganttObj.currentViewData[0];
+            const e: ContextMenuClickEventArgs = {
+                item: { id: ganttObj.element.id + '_contextMenu_ToTask' },
+                element: null
+            } as any;
+            (ganttObj.contextMenuModule as any).contextMenuItemClick(e);
+        });
         afterAll(() => {
-            if (emptyGanttObj) {
-                destroyGantt(emptyGanttObj);
+            if (ganttObj) {
+                destroyGantt(ganttObj);
             }
         });
-
-        it('should render only custom items on empty content area', (done: Function) => {
-            const cmModule: any = emptyGanttObj.contextMenuModule;
-            const contentElement: HTMLElement = emptyGanttObj.treeGrid.element.querySelector('.e-content') as HTMLElement;
-            const args: any = {
-                event: { target: contentElement },
-                element: null,
-                items: cmModule.contextMenu.items,
-                parentItem: null
-            };
-
-            cmModule.contextMenuBeforeOpen(args);
-
-            setTimeout(() => {
-                const visibleItems: string[] = args.items.filter((item: any) => !item.separator &&
-                    args.hideItems.indexOf(item.text) === -1).map((item: any) => item.text);
-                expect(args.cancel).toBeFalsy();
-                expect(visibleItems).toEqual(['Collapse the Row', 'Expand the Row']);
-                expect(args.hideItems.indexOf('Add') > -1).toBe(true);
-                expect(args.hideItems.indexOf('Task Information') > -1).toBe(true);
-                expect(args.hideItems.indexOf('Delete Task') > -1).toBe(true);
-                done();
-            }, 0);
-        });
     });
+});
+
+describe('Context menu - coverage', () => {
+    let ganttObj: Gantt;
+    const sampleData: Object[] = [{
+        TaskID: 1, TaskName: 'Parent', StartDate: new Date('01/01/2020'), Duration: 5,
+        subtasks: [{ TaskID: 2, TaskName: 'Child', StartDate: new Date('01/02/2020'), Duration: 2 }]
+    }];
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: sampleData,
+            allowSelection: true,
+            enableContextMenu: true,
+            enableRtl: true,
+            timelineSettings: {
+                showWeekend: false
+            },
+            taskFields: { id: 'TaskID', name: 'TaskName', startDate: 'StartDate', duration: 'Duration', child: 'subtasks' }
+        }, done);
+    });
+    it('getClickedDate for coverage', (done: Function) => {
+        let ele: HTMLElement = ganttObj.element.querySelector('.e-gantt-child-taskbar');
+        ganttObj.contextMenuModule['clickedPosition'] = ganttObj.treeGrid.element.offsetWidth + ganttObj.flatData[1].ganttProperties.left + (ganttObj.flatData[1].ganttProperties.duration * 33);
+        ganttObj.contextMenuModule['rowData'] = ganttObj.flatData[1];
+        ganttObj.contextMenuModule['getClickedDate'](ele);
+        done();
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+
+describe('Context menu coverage', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: [],
+            enableContextMenu: true,
+            allowSelection: true,
+            taskFields: { id: 'TaskID', name: 'TaskName', startDate: 'StartDate', endDate: 'EndDate' }
+        }, done);
+    });
+    it('updateItemStatus coverage', (done: Function) => {
+        const items: any = ganttObj.contextMenuModule.contextMenu.items;
+        ganttObj.contextMenuModule['updateItemStatus'](items[0], document.body, 0);
+        ganttObj.contextMenuModule['updateItemStatus'](items[1], document.body, 0);
+        ganttObj.contextMenuModule['updateItemStatus'](items[6], document.body, 0);
+
+        done();
+    });
+
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+
+describe('Empty content context menu', () => {
+    let emptyGanttObj: Gantt;
+
+    beforeAll((done: Function) => {
+        emptyGanttObj = createGantt({
+            dataSource: [],
+            allowSelection: true,
+            enableContextMenu: true,
+            contextMenuItems: contextMenuItems as ContextMenuItem[],
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                endDate: 'EndDate'
+            }
+        }, done);
+    });
+
+    afterAll(() => {
+        if (emptyGanttObj) {
+            destroyGantt(emptyGanttObj);
+        }
+    });
+
+    it('should render only custom items on empty content area', (done: Function) => {
+        const cmModule: any = emptyGanttObj.contextMenuModule;
+        const contentElement: HTMLElement = emptyGanttObj.treeGrid.element.querySelector('.e-content') as HTMLElement;
+        const args: any = {
+            event: { target: contentElement },
+            element: null,
+            items: cmModule.contextMenu.items,
+            parentItem: null
+        };
+
+        cmModule.contextMenuBeforeOpen(args);
+
+        setTimeout(() => {
+            const visibleItems: string[] = args.items.filter((item: any) => !item.separator &&
+                args.hideItems.indexOf(item.text) === -1).map((item: any) => item.text);
+            expect(args.cancel).toBeFalsy();
+            expect(visibleItems).toEqual(['Collapse the Row', 'Expand the Row']);
+            expect(args.hideItems.indexOf('Add') > -1).toBe(true);
+            expect(args.hideItems.indexOf('Task Information') > -1).toBe(true);
+            expect(args.hideItems.indexOf('Delete Task') > -1).toBe(true);
+            done();
+        }, 0);
+    });
+});

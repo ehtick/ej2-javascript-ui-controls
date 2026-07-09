@@ -761,6 +761,11 @@ export class BaseHistoryInfo {
                     this.owner.selectionModule.select(this.selectionEnd, this.selectionEnd);
                     this.undoRevisionForElements(insertTextPosition, endTextPosition, deletedNodes[deletedNodes.length - 1] as string);
                 }
+
+                if (this.owner.documentHelper.layout && this.owner.documentHelper.isFollowedListLayoutRequired) {
+                    let paragraph: ParagraphWidget = sel.start.paragraph.combineWidget(this.owner.viewer) as ParagraphWidget;
+                    this.owner.documentHelper.layout.reLayoutParagraph(paragraph, 0, 0, undefined, undefined);
+                }
                 let id: string = deletedNodes[deletedNodes.length - 1] as string;
                 if (this.removedNodes.indexOf(id) === -1) {
                     this.removedNodes.push(id);
@@ -1053,6 +1058,11 @@ export class BaseHistoryInfo {
                         start.paragraph.characterFormat.removeRevision(index);
                         this.owner.revisions.remove(revision);
                         this.owner.editorModule.splitRevisionsAndViewBasedOnUntrackedContent(start.paragraph.characterFormat);
+
+                        if (this.owner.documentHelper.layout && this.owner.documentHelper.isFollowedListLayoutRequired) {
+                            let paragraph: ParagraphWidget = start.paragraph.combineWidget(this.owner.viewer) as ParagraphWidget;
+                            this.owner.documentHelper.layout.reLayoutParagraph(paragraph, 0, 0, undefined, undefined);
+                        }
                     }
                     else if (this.action === 'RemoveRevision' && index === -1) {
                         start.paragraph.characterFormat.addRevision(revision);
@@ -1068,6 +1078,11 @@ export class BaseHistoryInfo {
                     else if (this.action === 'AddRevision' && index === -1) {
                         start.paragraph.characterFormat.addRevision(revision);
                         this.owner.editorModule.updateRevisionCollection(revision);
+
+                        if (this.owner.documentHelper.layout && this.owner.documentHelper.isFollowedListLayoutRequired) {
+                            let paragraph: ParagraphWidget = start.paragraph.combineWidget(this.owner.viewer) as ParagraphWidget;
+                            this.owner.documentHelper.layout.reLayoutParagraph(paragraph, 0, 0, undefined, undefined);
+                        }
                         // this.owner.revisions.changes.push(revision);
                     }
                 }

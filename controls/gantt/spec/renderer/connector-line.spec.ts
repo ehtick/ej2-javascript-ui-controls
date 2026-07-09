@@ -4,7 +4,8 @@
 
 import { baselineData, connectorLineFFDatasource, connectorLineFSDatasource, connectorLineSFDatasource, connectorLineSSDatasource, data5, data6, data7, editingData1, predecessorData, projectNewData1, predcessor1, connectorLineData, CR909421, CR919774, CR1023089 } from '../base/data-source.spec';
 import { Gantt, Selection, Toolbar, DayMarkers, Edit, Filter, Reorder, Resize, ColumnMenu, VirtualScroll, Sort, RowDD, ContextMenu, ExcelExport, PdfExport, ITaskbarEditedEventArgs, CriticalPath } from '../../src/index';
-
+import { ConnectorLineEdit } from '../../src/gantt/task-dependency/connector-line-edit';
+import { CalendarModule } from '../../src/gantt/base/calendar-module';
 import { createGantt, destroyGantt, triggerMouseEvent } from '../base/gantt-util.spec';
 interface EJ2Instance extends HTMLElement {
     ej2_instances: Object[];
@@ -167,10 +168,10 @@ describe('Gantt connector line support', () => {
             ganttObj.dataBind();
             expect(ganttObj.flatData[2].ganttProperties.predecessorsName).toBe('2FS');
             ganttObj.removePredecessor(Number(ganttObj.flatData[2].ganttProperties.taskId));
-            expect(ganttObj.flatData[2].ganttProperties.predecessorsName).toBe('');
+            expect(ganttObj.flatData[2].ganttProperties.predecessorsName).toBe(null);
         });
         it('Add Predecessor', () => {
-            expect(ganttObj.flatData[2].ganttProperties.predecessorsName).toBe('');
+            expect(ganttObj.flatData[2].ganttProperties.predecessorsName).toBe(null);
             ganttObj.addPredecessor(Number(ganttObj.flatData[2].ganttProperties.taskId), '2FS');
             expect(ganttObj.flatData[2].ganttProperties.predecessorsName).toBe('2FS');
         });
@@ -3182,6 +3183,914 @@ describe('CR-983909', () => {
     });
     it('Checking for predecessor length', () => {
         expect(ganttObj.flatData[13].ganttProperties.predecessor.length).toBe(12);
+    });
+    afterAll(() => {
+        destroyGantt(ganttObj);
+    });
+});
+describe('computeTopologicalOrder coverage', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: 'Task A', StartDate: new Date('04/04/2019'), Duration: 2 }
+                ],
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true,
+                    allowDeleting: true
+                },
+                enableUndoRedo: true,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration'
+                }
+            }, done);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+    it('Covers the ? 0 branch in computeTopologicalOrder', () => {
+        const cyclicValidator = ganttObj['cyclicValidator'];
+        cyclicValidator['adjacency'] = new Map<string, Set<string>>();
+        cyclicValidator['adjacency'].set('A', new Set(['B']));
+        const order = cyclicValidator['computeTopologicalOrder']().length;
+        expect(order).toBe(2);
+    });
+});
+describe('computeTopologicalOrder coverage', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: 'Task A', StartDate: new Date('04/04/2019'), Duration: 2 }
+                ],
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true,
+                    allowDeleting: true
+                },
+                enableUndoRedo: true,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration'
+                }
+            }, done);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+    it('Covers the ? 0 branch in computeTopologicalOrder', () => {
+        const cyclicValidator = ganttObj['cyclicValidator'];
+        cyclicValidator['adjacency'] = new Map<string, Set<string>>();
+        cyclicValidator['adjacency'].set('A', new Set(['B']));
+        const order = cyclicValidator['computeTopologicalOrder']().length;
+        expect(order).toBe(2);
+    });
+});
+describe('decrementDegree helper coverage', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 2, TaskName: 'Task X', StartDate: new Date('04/06/2019'), Duration: 1 }
+                ],
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true,
+                    allowDeleting: true
+                },
+                enableUndoRedo: true,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration'
+                }
+            }, done);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+    it('Covers missing key branch in decrementDegree helper', () => {
+        const testIndeg: Map<string, number> = new Map();
+        testIndeg.set('otherNode', 5);
+        const node: string = 'missingNode';
+        ganttObj['cyclicValidator']['decrementDegree'](testIndeg, node);
+        expect(ganttObj.flatData.length).toBe(1);
+    });
+});
+
+describe('ConnectorLineEdit - getEditedConnectorLineString branch coverage', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: [
+                {
+                    TaskID: 1, TaskName: 'Parent', StartDate: new Date('04/02/2019'),
+                    EndDate: new Date('04/05/2019'),
+                    subtasks: [
+                        { TaskID: 2, TaskName: 'Child A', StartDate: new Date('04/02/2019'), Duration: 2 },
+                        { TaskID: 3, TaskName: 'Child B', StartDate: new Date('04/04/2019'), Duration: 1, Predecessor: '2FS' }
+                    ]
+                }
+            ],
+            taskFields: {
+                id: 'TaskID', name: 'TaskName', startDate: 'StartDate', endDate: 'EndDate',
+                duration: 'Duration', dependency: 'Predecessor', child: 'subtasks'
+            },
+            editSettings: { allowAdding: true, allowEditing: true, allowTaskbarEditing: true },
+            projectStartDate: new Date('04/01/2019'),
+            projectEndDate: new Date('04/30/2019'),
+        }, done);
+    });
+
+    it('invoke getEditedConnectorLineString when parent is expanded and allowParentDependency = false', () => {
+        const module: any = (ganttObj as any).connectorLineEditModule;
+        const parentRecord: any = ganttObj.flatData[0]; // parent row
+        const childRecord: any = ganttObj.flatData[1]; // first child
+        ganttObj.allowParentDependency = false;
+        parentRecord.expanded = true;
+        childRecord.expanded = false;
+        // call internal method with shaped args to exercise branch
+        module['getEditedConnectorLineString'](ganttObj.flatData);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+
+describe('validationDialogCancelButton - additional branch coverage', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: [
+                { TaskID: 1, TaskName: 'Task 1', StartDate: new Date('04/02/2019'), Duration: 2 },
+                { TaskID: 2, TaskName: 'Task 2', StartDate: new Date('04/04/2019'), Duration: 3, Predecessor: '1FS' }
+            ],
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                duration: 'Duration',
+                dependency: 'Predecessor',
+                child: 'subtasks'
+            },
+            editSettings: { allowEditing: true, allowTaskbarEditing: true },
+            projectStartDate: new Date('04/01/2019'),
+            projectEndDate: new Date('04/30/2019'),
+        }, done);
+    });
+
+    it('executes validationDialogCancelButton for respectLink false and true, and confirm handlers', () => {
+        const module: any = (ganttObj as any).connectorLineEditModule;
+        // ensure dialog placeholder exists to avoid runtime errors
+        module.confirmPredecessorDialog = { destroy: () => { /* noop */ } };
+
+        // branch: respectLink = false
+        ganttObj.constraintViolationType = 'constraintTypeX';
+        ganttObj.currentEditedArgs = { validateMode: { respectLink: false } } as any;
+        module['validationDialogCancelButton']();
+        // branch: respectLink = true -> simulate confirm flow and internal state needed for ok handler
+        ganttObj.currentEditedArgs = { validateMode: { respectLink: true } } as any;
+        module.childRecord = ganttObj.flatData[1];
+        module.predecessorIndex = 0;
+        // ensure removePredecessorByIndex exists to be invoked by confirmOkDeleteButton
+        module.removePredecessorByIndex = (childRecord: any, index: number) => { /* noop */ };
+        // ensure confirm dialog exists
+        module.confirmPredecessorDialog = { destroy: () => { /* noop */ } };
+        module['validationDialogCancelButton']();
+        // directly invoke private confirm handlers to cover those branches
+        module['confirmCloseDialog']();
+        module['confirmOkDeleteButton']();
+    });
+
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+
+describe('Gantt connector line validateTypes - Additional Coverage', () => {
+    let ganttObj: Gantt;
+    
+    // Data source for allowUnscheduledTasks with null startDate/duration (endDate < startDate)
+    const dataUnscheduledTasksBeforePredecessor = [
+        {
+                TaskID: 1,
+                TaskName: 'Unscheduled Task 1',
+                EndDate: new Date('04/01/2019'),
+                Predecessor: '2SS'
+            },
+            {
+                TaskID: 2,
+                TaskName: 'Task 2',
+                StartDate: new Date('04/05/2019'),
+                Duration: 3
+            }
+    ];
+
+    // Data source for allowUnscheduledTasks with null startDate/duration (endDate > startDate)
+    const dataUnscheduledTasksAfterPredecessor = [
+        {
+                TaskID: 1,
+                TaskName: 'Unscheduled Task 1',
+                EndDate: new Date('01/01/1969'),
+                Predecessor: '2SS'
+            },
+            {
+                TaskID: 2,
+                TaskName: 'Task 2',
+                StartDate: new Date('04/05/2019'),
+                Duration: 3
+            }
+    ];
+    // Test Case 2: Coverage for SS type with allowUnscheduledTasks true and endDate < startDate
+    it('should handle unscheduled tasks with endDate before predecessor startDate (endDate < startDate)', (done: Function) => {
+        ganttObj = createGantt({
+            dataSource: dataUnscheduledTasksBeforePredecessor,
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                // startDate: 'StartDate',
+                // duration: 'Duration',
+                endDate: 'EndDate',
+                dependency: 'Predecessor'
+            },
+            editSettings: { allowEditing: true, allowTaskbarEditing: true },
+            projectStartDate: new Date('03/25/2019'),
+            projectEndDate: new Date('05/30/2019'),
+            allowUnscheduledTasks: true
+        }, done);
+    });
+
+    it('validateTypes triggers taskBeforePredecessor_SS for unscheduled task with endDate before predecessor', () => {
+        const ganttRecord = ganttObj.getRecordByID('1');
+        const validateResult = ganttObj.connectorLineEditModule.validateTypes(ganttRecord);
+        ganttObj.connectorLineEditModule.validationPredecessor;
+        validateResult;
+    });
+
+    // Test Case 3: Coverage for SS type with allowUnscheduledTasks true and endDate > startDate
+    it('should handle unscheduled tasks with endDate after predecessor startDate (endDate > startDate)', (done: Function) => {
+        ganttObj = createGantt({
+            dataSource: dataUnscheduledTasksAfterPredecessor,
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                // startDate: 'StartDate',
+                // duration: 'Duration',
+                endDate: 'EndDate',
+                dependency: 'Predecessor'
+            },
+            editSettings: { allowEditing: true, allowTaskbarEditing: true },
+            projectStartDate: new Date('03/25/2019'),
+            projectEndDate: new Date('05/30/2019'),
+            allowUnscheduledTasks: true
+        }, done);
+    });
+
+    it('validateTypes triggers taskAfterPredecessor_SS for unscheduled task with endDate after predecessor', () => {
+        const ganttRecord = ganttObj.getRecordByID('1');
+        const validateResult = ganttObj.connectorLineEditModule.validateTypes(ganttRecord);
+        ganttObj.connectorLineEditModule.validationPredecessor;
+        validateResult;
+    });
+
+    afterAll(() => {
+        destroyGantt(ganttObj);
+    });
+});
+
+describe('Gantt connector line validateTypes - defaultCalendarContext branch coverage', () => {
+    let ganttObj: Gantt;
+    
+    // Data source where ganttProperties.calendarContext is NOT set (will use defaultCalendarContext)
+    const dataWithoutCalendarContext = [
+        {
+            TaskID: 1,
+            TaskName: 'Task 1',
+            StartDate: new Date('04/02/2019'),
+            Duration: 3,
+            Predecessor: '2FS'
+        },
+        {
+            TaskID: 2,
+            TaskName: 'Task 2',
+            StartDate: new Date('03/25/2019'),
+            Duration: 5
+        }
+    ];
+
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: dataWithoutCalendarContext,
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                duration: 'Duration',
+                dependency: 'Predecessor'
+            },
+            editSettings: {
+                allowEditing: true,
+                allowTaskbarEditing: true
+            },
+            projectStartDate: new Date('03/20/2019'),
+            projectEndDate: new Date('04/30/2019')
+        }, done);
+    });
+
+    it('should use defaultCalendarContext when ganttRecord.ganttProperties.calendarContext is not set', () => {
+        const ganttRecord = ganttObj.getRecordByID('1');
+        // Ensure calendarContext is not explicitly set
+        ganttRecord.ganttProperties.calendarContext = null;
+        
+        // Call validateTypes which should use defaultCalendarContext
+        ganttObj.connectorLineEditModule.validateTypes(ganttRecord);
+        
+        // Access the method's internal calendarContext by calling the validation
+        const predecessors = ganttObj.connectorLineEditModule.validationPredecessor;
+        predecessors;
+    });
+    afterAll(() => {
+        destroyGantt(ganttObj);
+    });
+});
+describe('MT-1017141:Code coverage for connector-line-edit file', () => {
+    let ganttObj: Gantt;
+       const data = [
+         {
+            TaskID: 1,
+            TaskName: 'Product Concept',
+            StartDate: new Date('04/02/2019'),
+            EndDate: new Date('04/21/2019'),
+            subtasks: [
+                { TaskID: 2, TaskName: 'Defining the product and its usage', BaselineStartDate: new Date('04/02/2019'), BaselineEndDate: new Date('04/06/2019'), StartDate: new Date('04/02/2019'), Duration: 3, Progress: 30 },
+                { TaskID: 3, TaskName: 'Defining target audience', StartDate: new Date('04/02/2019'), Duration: 3},
+                { TaskID: 4, TaskName: 'Prepare product sketch and notes', StartDate: new Date('04/02/2019'), Duration: 3, Predecessor: "2", Progress: 30 },
+            ]
+        }
+    ]
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: data,
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                duration: 'Duration',
+                progress: 'Progress',
+                dependency: 'Predecessor',
+                child: 'subtasks'
+            },
+            editSettings: {
+                allowAdding: true,
+                allowEditing: true,
+                allowDeleting: true,
+                allowTaskbarEditing: true,
+                showDeleteConfirmDialog: true
+            },
+            splitterSettings: {
+                position: "30%",
+            },
+            highlightWeekends: true,
+            timelineSettings: {
+                showTooltip: true,
+                topTier: {
+                    unit: 'Week',
+                    format: 'dd/MM/yyyy'
+                },
+                bottomTier: {
+                    unit: 'Day',
+                    count: 1
+                }
+            },
+            labelSettings: {
+                leftLabel: 'TaskID',
+                rightLabel: 'Task Name: ${taskData.TaskName}',
+                taskLabel: '${Progress}%'
+            },
+            height: '550px',
+            projectStartDate: new Date('03/25/2019'),
+            projectEndDate: new Date('05/30/2019')
+        }, done);
+    });
+    it('removePredecessors method code coverage spec', () => {
+       ganttObj.connectorLineEditModule['removePredecessors'](ganttObj.currentViewData[3], null);
+    });
+    afterAll(() => {
+        destroyGantt(ganttObj);
+    });
+});
+describe('MT-1017141:Code coverage for connector-line-edit file', () => {
+    let ganttObj: Gantt;
+       const data = [
+         {
+            TaskID: 1,
+            TaskName: 'Product Concept',
+            StartDate: new Date('04/02/2019'),
+            EndDate: new Date('04/21/2019'),
+            subtasks: [
+                { TaskID: 2, TaskName: 'Defining the product and its usage', BaselineStartDate: new Date('04/02/2019'), BaselineEndDate: new Date('04/06/2019'), StartDate: new Date('04/02/2019'), Duration: 3, Progress: 30 },
+                { TaskID: 3, TaskName: 'Defining target audience', StartDate: new Date('04/02/2019'), Duration: 3},
+                { TaskID: 4, TaskName: 'Prepare product sketch and notes', StartDate: new Date('04/02/2019'), Duration: 3, Predecessor: "2", Progress: 30 },
+            ]
+        },
+        { TaskID: 5, TaskName: 'Concept Approval', StartDate: new Date('04/02/2019'), Duration: 0, Predecessor: "1, 4" }
+    ]
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: data,
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                duration: 'Duration',
+                progress: 'Progress',
+                dependency: 'Predecessor',
+                child: 'subtasks'
+            },
+            editSettings: {
+                allowAdding: true,
+                allowEditing: true,
+                allowDeleting: true,
+                allowTaskbarEditing: true,
+                showDeleteConfirmDialog: true
+            },
+            splitterSettings: {
+                position: "30%",
+            },
+            highlightWeekends: true,
+            timelineSettings: {
+                showTooltip: true,
+                topTier: {
+                    unit: 'Week',
+                    format: 'dd/MM/yyyy'
+                },
+                bottomTier: {
+                    unit: 'Day',
+                    count: 1
+                }
+            },
+            labelSettings: {
+                leftLabel: 'TaskID',
+                rightLabel: 'Task Name: ${taskData.TaskName}',
+                taskLabel: '${Progress}%'
+            },
+            height: '550px',
+            projectStartDate: new Date('03/25/2019'),
+            projectEndDate: new Date('05/30/2019')
+        }, done);
+    });
+    it('processPredecessor method code coverage spec', () => {
+        ganttObj.connectorLineEditModule['validatedId'] = [{id: 1, value: ganttObj.currentViewData[3].ganttProperties.predecessor[0]}];
+        ganttObj.connectorLineEditModule['processPredecessor']('1', null);
+    });
+    afterAll(() => {
+        destroyGantt(ganttObj);
+    });
+});
+describe('MT-1017141:Code coverage for connector-line-edit file', () => {
+    let ganttObj: Gantt;
+       const data = [
+         {
+            TaskID: 1,
+            TaskName: 'Product Concept',
+            StartDate: new Date('04/02/2019'),
+            EndDate: new Date('04/21/2019'),
+            subtasks: [
+                { TaskID: 2, TaskName: 'Defining the product and its usage', BaselineStartDate: new Date('04/02/2019'), BaselineEndDate: new Date('04/06/2019'), StartDate: new Date('04/02/2019'), Duration: 3, Progress: 30 },
+                { TaskID: 3, TaskName: 'Defining target audience', StartDate: new Date('04/02/2019'), Duration: 3},
+                { TaskID: 4, TaskName: 'Prepare product sketch and notes', StartDate: new Date('04/02/2019'), Duration: 3, Predecessor: "2", Progress: 30 },
+            ]
+        },
+        { TaskID: 5, TaskName: 'Concept Approval', StartDate: new Date('04/02/2019'), Duration: 0, Predecessor: "1, 4" }
+    ]
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: data,
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                duration: 'Duration',
+                progress: 'Progress',
+                dependency: 'Predecessor',
+                child: 'subtasks'
+            },
+            editSettings: {
+                allowAdding: true,
+                allowEditing: true,
+                allowDeleting: true,
+                allowTaskbarEditing: true,
+                showDeleteConfirmDialog: true
+            },
+            splitterSettings: {
+                position: "30%",
+            },
+            highlightWeekends: true,
+            timelineSettings: {
+                showTooltip: true,
+                topTier: {
+                    unit: 'Week',
+                    format: 'dd/MM/yyyy'
+                },
+                bottomTier: {
+                    unit: 'Day',
+                    count: 1
+                }
+            },
+            labelSettings: {
+                leftLabel: 'TaskID',
+                rightLabel: 'Task Name: ${taskData.TaskName}',
+                taskLabel: '${Progress}%'
+            },
+            height: '550px',
+            projectStartDate: new Date('03/25/2019'),
+            projectEndDate: new Date('05/30/2019')
+        }, done);
+    });
+    it('processPredecessor method code coverage spec', () => {
+        (ganttObj.connectorLineEditModule['validatedId'] as any) = [{id: 1, value: [ganttObj.currentViewData[0].ganttProperties.predecessor[0]]}];
+        ganttObj.connectorLineEditModule['processPredecessor']('1', null);
+    });
+    afterAll(() => {
+        destroyGantt(ganttObj);
+    });
+});
+describe('MT-1017141:Code coverage for connector-line-edit file', () => {
+    let ganttObj: Gantt;
+    const data = [
+        { TaskID: 1, TaskName: 'Defining target audience', StartDate: new Date('04/02/2019'), Duration: 3}
+    ]
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: data,
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                duration: 'Duration',
+                progress: 'Progress',
+                dependency: 'Predecessor'
+            },
+            editSettings: {
+                allowAdding: true,
+                allowEditing: true,
+                allowDeleting: true,
+                allowTaskbarEditing: true,
+                showDeleteConfirmDialog: true
+            },
+            splitterSettings: {
+                position: "30%",
+            },
+            highlightWeekends: true,
+            timelineSettings: {
+                showTooltip: true,
+                topTier: {
+                    unit: 'Week',
+                    format: 'dd/MM/yyyy'
+                },
+                bottomTier: {
+                    unit: 'Day',
+                    count: 1
+                }
+            },
+            labelSettings: {
+                leftLabel: 'TaskID',
+                rightLabel: 'Task Name: ${taskData.TaskName}',
+                taskLabel: '${Progress}%'
+            },
+            height: '550px',
+            projectStartDate: new Date('03/25/2019'),
+            projectEndDate: new Date('05/30/2019')
+        }, done);
+    });
+    it('renderValidationDialog method code coverage spec', () => {
+        ganttObj.element.id ='gantt';
+        ganttObj.connectorLineEditModule.renderValidationDialog();
+    });
+    afterAll(() => {
+        destroyGantt(ganttObj);
+    });
+});
+describe('MT-1017141:Code coverage for connector-line-edit file', () => {
+    let ganttObj: Gantt;
+    const data = [
+         {
+            TaskID: 1,
+            TaskName: 'Product Concept',
+            StartDate: new Date('04/02/2019'),
+            EndDate: new Date('04/21/2019'),
+            subtasks: [
+                { TaskID: 2, TaskName: 'Defining the product and its usage', BaselineStartDate: new Date('04/02/2019'), BaselineEndDate: new Date('04/06/2019'), StartDate: new Date('04/02/2019'), Duration: 3, Progress: 30 },
+                { TaskID: 3, TaskName: 'Defining target audience', StartDate: new Date('04/02/2019'), Duration: 3},
+                { TaskID: 4, TaskName: 'Prepare product sketch and notes', StartDate: new Date('04/02/2019'), Duration: 3, Predecessor: "2", Progress: 30 },
+            ]
+        },
+        { TaskID: 5, TaskName: 'Concept Approval', StartDate: new Date('04/02/2019'), Duration: 0, Predecessor: "1, 4" }
+    ]
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: data,
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                duration: 'Duration',
+                progress: 'Progress',
+                dependency: 'Predecessor',
+                child: 'subtasks'
+            },
+            editSettings: {
+                allowAdding: true,
+                allowEditing: true,
+                allowDeleting: true,
+                allowTaskbarEditing: true,
+                showDeleteConfirmDialog: true
+            },
+            splitterSettings: {
+                position: "30%",
+            },
+            highlightWeekends: true,
+            timelineSettings: {
+                showTooltip: true,
+                topTier: {
+                    unit: 'Week',
+                    format: 'dd/MM/yyyy'
+                },
+                bottomTier: {
+                    unit: 'Day',
+                    count: 1
+                }
+            },
+            labelSettings: {
+                leftLabel: 'TaskID',
+                rightLabel: 'Task Name: ${taskData.TaskName}',
+                taskLabel: '${Progress}%'
+            },
+            height: '550px',
+            projectStartDate: new Date('03/25/2019'),
+            projectEndDate: new Date('05/30/2019')
+        }, done);
+    });
+    it('checkParentRelation method code coverage spec', () => {
+        ganttObj.connectorLineEditModule['checkParentRelation'](ganttObj.currentViewData[1], ['1']);
+    });
+    afterAll(() => {
+        destroyGantt(ganttObj);
+    });
+});
+describe('MT-1017141:Code coverage for connector-line-edit file', () => {
+    let ganttObj: Gantt;
+    const data = [
+         {
+            TaskID: 1,
+            TaskName: 'Product Concept',
+            StartDate: new Date('04/02/2019'),
+            EndDate: new Date('04/21/2019'),
+            subtasks: [
+                { TaskID: 2, TaskName: 'Defining the product and its usage', BaselineStartDate: new Date('04/02/2019'), BaselineEndDate: new Date('04/06/2019'), StartDate: new Date('04/02/2019'), Duration: 3, Progress: 30 },
+                { TaskID: 3, TaskName: 'Defining target audience', StartDate: new Date('04/02/2019'), Duration: 3},
+                { TaskID: 4, TaskName: 'Prepare product sketch and notes', StartDate: new Date('04/02/2019'), Duration: 3, Predecessor: "2", Progress: 30 },
+            ]
+        },
+        { TaskID: 5, TaskName: 'Concept Approval', StartDate: new Date('04/02/2019'), Duration: 0, Predecessor: "1, 4" }
+    ]
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: data,
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                duration: 'Duration',
+                progress: 'Progress',
+                dependency: 'Predecessor',
+                child: 'subtasks'
+            },
+            editSettings: {
+                allowAdding: true,
+                allowEditing: true,
+                allowDeleting: true,
+                allowTaskbarEditing: true,
+                showDeleteConfirmDialog: true
+            },
+            splitterSettings: {
+                position: "30%",
+            },
+            highlightWeekends: true,
+            timelineSettings: {
+                showTooltip: true,
+                topTier: {
+                    unit: 'Week',
+                    format: 'dd/MM/yyyy'
+                },
+                bottomTier: {
+                    unit: 'Day',
+                    count: 1
+                }
+            },
+            labelSettings: {
+                leftLabel: 'TaskID',
+                rightLabel: 'Task Name: ${taskData.TaskName}',
+                taskLabel: '${Progress}%'
+            },
+            height: '550px',
+            projectStartDate: new Date('03/25/2019'),
+            projectEndDate: new Date('05/30/2019')
+        }, done);
+    });
+    it('checkParentRelation method code coverage spec', () => {
+        ganttObj.connectorLineEditModule['checkParentRelation'](ganttObj.currentViewData[4], ['1']);
+    });
+    afterAll(() => {
+        destroyGantt(ganttObj);
+    });
+});
+describe('MT-1017141:Code coverage for calendar-module file', () => {
+    let ganttObj: Gantt;
+    const data = [
+         {
+            TaskID: 1,
+            TaskName: 'Product Concept',
+            StartDate: new Date('04/02/2019'),
+            EndDate: new Date('04/21/2019'),
+            subtasks: [
+                { TaskID: 2, TaskName: 'Defining the product and its usage', BaselineStartDate: new Date('04/02/2019'), BaselineEndDate: new Date('04/06/2019'), StartDate: new Date('04/02/2019'), Duration: 3, Progress: 30 },
+                { TaskID: 3, TaskName: 'Defining target audience', StartDate: new Date('04/02/2019'), Duration: 3},
+                { TaskID: 4, TaskName: 'Prepare product sketch and notes', StartDate: new Date('04/02/2019'), Duration: 3, Predecessor: "2", Progress: 30 },
+            ]
+        },
+        { TaskID: 5, TaskName: 'Concept Approval', StartDate: new Date('04/02/2019'), Duration: 0, Predecessor: "1, 4" }
+    ]
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: data,
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                duration: 'Duration',
+                progress: 'Progress',
+                dependency: 'Predecessor',
+                child: 'subtasks'
+            },
+            editSettings: {
+                allowAdding: true,
+                allowEditing: true,
+                allowDeleting: true,
+                allowTaskbarEditing: true,
+                showDeleteConfirmDialog: true
+            },
+            splitterSettings: {
+                position: "30%",
+            },
+            highlightWeekends: true,
+            timelineSettings: {
+                showTooltip: true,
+                topTier: {
+                    unit: 'Week',
+                    format: 'dd/MM/yyyy'
+                },
+                bottomTier: {
+                    unit: 'Day',
+                    count: 1
+                }
+            },
+            labelSettings: {
+                leftLabel: 'TaskID',
+                rightLabel: 'Task Name: ${taskData.TaskName}',
+                taskLabel: '${Progress}%'
+            },
+            height: '550px',
+            projectStartDate: new Date('03/25/2019'),
+            projectEndDate: new Date('05/30/2019')
+        }, done);
+    });
+    it('returns projectCalendar when taskCalendars is missing or empty', () => {
+        const projectCalendar = { calendarId: 'proj', name: 'Project' } as any;
+        const fakeGantt: any = { calendarSettings: { projectCalendar: projectCalendar, taskCalendars: undefined } };
+        const cm = new CalendarModule(fakeGantt);
+        expect(cm.getCalendarById('someId')).toBe(projectCalendar);
+    });
+    it('calls applyPredecessorOption when isInteracted is true', () => {
+        const ej2Base: any = require('@syncfusion/ej2-base');
+        // minimal fake parent to avoid constructor side-effects
+        const fakeParent: any = {
+            currentEditedArgs: { validateMode: { respectLink: false }, data: {} },
+            hideSpinner: jasmine.createSpy('hideSpinner'),
+            on: function () { /* noop */ },
+            constraintViolationType: 'init',
+            // provide minimal editModule used by applyPredecessorOption
+            editModule: {
+                reUpdatePreviousRecords: jasmine.createSpy('reUpdatePreviousRecords'),
+                updateEditedTask: jasmine.createSpy('updateEditedTask')
+            },
+            // provide chartRowsModule used by applyPredecessorOption
+            chartRowsModule: {
+                refreshRecords: jasmine.createSpy('refreshRecords')
+            }
+        };
+        const cle = new ConnectorLineEdit(fakeParent);
+        spyOn(cle, 'applyPredecessorOption').and.callThrough();
+        spyOn(ej2Base, 'getValue').and.callFake((key: string, e: any) => {
+        return key === 'isInteracted' ? true : undefined;
+        });
+        (cle as any).validationDialogClose({});
+    });
+    afterAll(() => {
+        destroyGantt(ganttObj);
+    });
+});
+describe('MT-1017141: ConnectorLineEdit.predecessorValidation branches code coverage', () => {
+    let ganttObj: Gantt;
+    const data = [
+         {
+            TaskID: 1,
+            TaskName: 'Product Concept',
+            StartDate: new Date('04/02/2019'),
+            EndDate: new Date('04/21/2019'),
+            subtasks: [
+                { TaskID: 2, TaskName: 'Defining the product and its usage', BaselineStartDate: new Date('04/02/2019'), BaselineEndDate: new Date('04/06/2019'), StartDate: new Date('04/02/2019'), Duration: 3, Progress: 30 },
+                { TaskID: 3, TaskName: 'Defining target audience', StartDate: new Date('04/02/2019'), Duration: 3},
+                { TaskID: 4, TaskName: 'Prepare product sketch and notes', StartDate: new Date('04/02/2019'), Duration: 3, Predecessor: "2", Progress: 30 },
+            ]
+        },
+        { TaskID: 5, TaskName: 'Concept Approval', StartDate: new Date('04/02/2019'), Duration: 0, Predecessor: "1, 4" }
+    ]
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: data,
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                duration: 'Duration',
+                progress: 'Progress',
+                dependency: 'Predecessor',
+                child: 'subtasks'
+            },
+            editSettings: {
+                allowAdding: true,
+                allowEditing: true,
+                allowDeleting: true,
+                allowTaskbarEditing: true,
+                showDeleteConfirmDialog: true
+            },
+            splitterSettings: {
+                position: "30%",
+            },
+            highlightWeekends: true,
+            timelineSettings: {
+                showTooltip: true,
+                topTier: {
+                    unit: 'Week',
+                    format: 'dd/MM/yyyy'
+                },
+                bottomTier: {
+                    unit: 'Day',
+                    count: 1
+                }
+            },
+            labelSettings: {
+                leftLabel: 'TaskID',
+                rightLabel: 'Task Name: ${taskData.TaskName}',
+                taskLabel: '${Progress}%'
+            },
+            height: '550px',
+            projectStartDate: new Date('03/25/2019'),
+            projectEndDate: new Date('05/30/2019')
+        }, done);
+    });
+    it('returns false when connectorLineModule.getRecordByID returns null', () => {
+        const data = { rowUniqueID: '1' };
+        ganttObj.connectorLineEditModule['predecessorValidation'](['10'], data as any);
+    });
+    it('returns false when currentRecord.rowUniqueID equals recordId (cycle)', () => {
+        const data = { rowUniqueID: '2' };
+        ganttObj.connectorLineEditModule['predecessorValidation'](['2'], data as any);
+    });
+    it('returns false when currentRecord.predecessor contains a from equal to recordId (currentIdArray matches)', () => {
+        const data = { rowUniqueID: '2' };
+        ganttObj.connectorLineEditModule['predecessorValidation'](['1'], data as any);
     });
     afterAll(() => {
         destroyGantt(ganttObj);

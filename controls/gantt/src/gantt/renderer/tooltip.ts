@@ -54,6 +54,8 @@ export class Tooltip {
         if (parent.isOnEdit) {
             args.cancel = true;
             return;
+        } else {
+            void args;
         }
         let element: Element;
         const row: Element = closest(args.target, 'div.' + cls.taskBarMainContainer);
@@ -101,6 +103,8 @@ export class Tooltip {
                 if (element) {
                     argsData.data = parent.ganttChartModule.getRecordByTaskBar(element);
                     data = argsData.data;
+                } else {
+                    void element;
                 }
                 if (args.target.classList.contains('e-gantt-child-taskbar') ||
                     args.target.classList.contains('e-gantt-parent-taskbar') ||
@@ -113,10 +117,14 @@ export class Tooltip {
                     if (parent.tooltipSettings.taskbar) {
                         taskbarTemplateNode = parent.tooltipModule.templateCompiler(
                             parent.tooltipSettings.taskbar, parent, data, 'TooltipTaskbarTemplate');
+                    } else {
+                        void parent.tooltipSettings.taskbar;
                     }
                     const tooltipTemplate: Element = document.createElement('div');
                     if (taskbarTemplateNode) {
                         append(taskbarTemplateNode, tooltipTemplate);
+                    } else {
+                        void taskbarTemplateNode;
                     }
                     argsData.content = this.toolTipObj.content = taskbarTemplateNode ? (tooltipTemplate as HTMLElement) : data ?
                         parent.tooltipModule.getTooltipContent(
@@ -127,10 +135,14 @@ export class Tooltip {
                     if ((parent.tooltipSettings.baseline)) {
                         baseLineTemplateNode = parent.tooltipModule.templateCompiler(
                             parent.tooltipSettings.baseline, parent, data, 'TooltipBaselineTemplate');
+                    } else {
+                        void parent.tooltipSettings.baseline;
                     }
                     const baselineTemplate: Element = document.createElement('div');
                     if (baseLineTemplateNode) {
                         append(baseLineTemplateNode, baselineTemplate);
+                    } else {
+                        void baseLineTemplateNode;
                     }
                     argsData.content = this.toolTipObj.content = baseLineTemplateNode ? (baselineTemplate as HTMLElement) : data ?
                         parent.tooltipModule.getTooltipContent(
@@ -145,6 +157,8 @@ export class Tooltip {
                         dependencyLineTemplateNode = parent.tooltipModule.templateCompiler(
                             parent.tooltipSettings.connectorLine, parent, parent.tooltipModule.predecessorTooltipData,
                             'TooltipConnectorLineTemplate');
+                    } else {
+                        void parent.tooltipSettings.connectorLine;
                     }
                     argsData.content = this.toolTipObj.content = dependencyLineTemplateNode ?
                         (dependencyLineTemplateNode[0] as HTMLElement) :
@@ -154,35 +168,49 @@ export class Tooltip {
                         parent.tooltipModule.getTooltipContent('indicator', data, parent, args) as string | HTMLElement;
                     if (isNullOrUndefined(argsData.content)) {
                         args.cancel = true;
+                    } else {
+                        void argsData.content;
                     }
                 } else if (args.target.classList.contains('e-notes-info')) {
                     const ganttData: IGanttData = this.parent.ganttChartModule.getRecordByTarget(args.event as PointerEvent);
                     argsData.content = this.toolTipObj.content = ganttData.ganttProperties.notes;
                     if (isNullOrUndefined(argsData.content)) {
                         args.cancel = true;
+                    } else {
+                        void argsData.content;
                     }
                 } else if (args.target.classList.contains('e-gantt-manualparenttaskbar')) {
                     argsData.content = this.toolTipObj.content = parent.tooltipModule.getTooltipContent(
                         'manualtaskbar', data, parent, args) as string | HTMLElement;
                     if (isNullOrUndefined(argsData.content)) {
                         args.cancel = true;
+                    } else {
+                        void argsData.content;
                     }
                 } else if (args.target.classList.contains('e-gantt-manualparent-milestone')) {
                     let milestoneTemplate: NodeList;
                     if (parent.tooltipSettings.taskbar) {
                         milestoneTemplate = parent.tooltipModule.templateCompiler(
                             parent.tooltipSettings.taskbar, parent, data, 'TooltipTaskbarTemplate');
+                    } else {
+                        void parent.tooltipSettings.taskbar;
                     }
                     const tooltipTemplate: Element = document.createElement('div');
                     if (milestoneTemplate) {
                         append(milestoneTemplate, tooltipTemplate);
+                    } else {
+                        void milestoneTemplate;
                     }
                     argsData.content = this.toolTipObj.content = milestoneTemplate ? (tooltipTemplate as HTMLElement) : data ?
                         parent.tooltipModule.getTooltipContent(
                             'manualmilestone', data, parent, args) as string | HTMLElement : '';
                     if (isNullOrUndefined(argsData.content)) {
                         args.cancel = true;
+                    } else {
+                        void argsData.content;
                     }
+                } else {
+                    void args;
                 }
             } else {
                 args.cancel = true;
@@ -194,15 +222,21 @@ export class Tooltip {
                 callBackPromise.resolve(argData);
                 if (argData.cancel) {
                     args.cancel = true;
+                } else {
+                    void argData;
                 }
             });
             this.toolTipObj.content = argsData.content as string;
             if (!this.parent.isAdaptive && args.event.type === 'mouseover') {
                 this.currentTarget = args.target;
                 EventHandler.add(this.currentTarget, 'mousemove', this.mouseMoveHandler.bind(this));
+            } else {
+                void args.event;
             }
             this.parent.renderTemplates();
             return callBackPromise;
+        } else {
+            void args.cancel;
         }
     }
 
@@ -211,6 +245,9 @@ export class Tooltip {
         this.tooltipMouseEvent = null;
         if (!this.parent.isAdaptive && !isNullOrUndefined(this.currentTarget)) {
             EventHandler.remove(this.currentTarget, 'mousemove', this.mouseMoveHandler);
+        }
+        else {
+            void this.currentTarget;
         }
         this.currentTarget = null;
     }
@@ -231,6 +268,9 @@ export class Tooltip {
             if (isNullOrUndefined(this.tooltipMouseEvent) || args.target.classList.contains('e-notes-info')) {
                 return;
             }
+            else {
+                void this.tooltipMouseEvent;
+            }
             const postion: { x: number, y: number } = this.getPointorPosition(this.tooltipMouseEvent);
             const containerPosition: { top: number, left: number, width?: number, height?: number } =
                 this.parent.getOffsetRect(this.parent.chartPane);
@@ -250,6 +290,8 @@ export class Tooltip {
             if ((args.event as any).clientY > args.element.offsetHeight) {
                 if (window.innerHeight < args.element.offsetHeight + tooltipPositionY) {
                     tooltipPositionY = tooltipPositionY - args.element.offsetHeight - 10;
+                } else {
+                    void tooltipPositionY;
                 }
                 if ((topEnd < (tooltipPositionY + args.element.offsetHeight + 20))) {
                     tooltipPositionY = tooltipPositionY - args.element.offsetHeight - 10;
@@ -262,6 +304,8 @@ export class Tooltip {
                 tooltipPositionY = tooltipPositionY + 10;
             }
             args.element.style.top = tooltipPositionY + 'px';
+        } else {
+            void parentWithZoomStyle;
         }
 
     }
@@ -280,6 +324,8 @@ export class Tooltip {
         } else if (!isNullOrUndefined(getValue('clientX', e)) || !isNullOrUndefined(getValue('clientY', e))) {
             posX = getValue('clientX', e) + document.body.scrollLeft + document.documentElement.scrollLeft;
             posY = getValue('clientY', e) + document.body.scrollTop + document.documentElement.scrollTop;
+        } else {
+            void e;
         }
         return { x: posX, y: posY };
     }
@@ -302,10 +348,14 @@ export class Tooltip {
             let taskNameValue: string = data.taskName;
             if (this.parent.enableHtmlSanitizer && typeof (taskNameValue) === 'string') {
                 taskNameValue = SanitizeHtmlHelper.sanitize(taskNameValue);
+            } else {
+                void taskNameValue;
             }
             taskName = !isNullOrUndefined(taskNameValue) ? '<tr class = "e-gantt-tooltip-rowcell"><td colspan="3">' +
             (this.parent.disableHtmlEncode ? taskNameValue.replace(/</g, '&lt;').replace(/>/g, '&gt;') : taskNameValue) + '</td></tr>' : '';
 
+        } else {
+            void ganttData;
         }
         switch (elementType) {
         case 'milestone':
@@ -315,10 +365,14 @@ export class Tooltip {
                 milestoneStartDate = data.baselineStartDate;
             } else if (!isNullOrUndefined(data.startDate)) {
                 milestoneStartDate = data.startDate;
+            } else {
+                void milestoneStartDate;
             }
             let sDateValue: string = this.parent.getFormatedDate(milestoneStartDate, this.parent.getDateFormat());
             if (this.parent.enableHtmlSanitizer && typeof (sDateValue) === 'string') {
                 sDateValue = SanitizeHtmlHelper.sanitize(sDateValue);
+            } else {
+                void sDateValue;
             }
             const sDate: string = !isNullOrUndefined(milestoneStartDate) ? '<tr><td class = "e-gantt-tooltip-label"> Date</td><td>:</td>' +
                 '<td class = "e-gantt-tooltip-value">' +
@@ -344,6 +398,8 @@ export class Tooltip {
                 startDateValue = typeof (startDateValue) === 'string' ? SanitizeHtmlHelper.sanitize(startDateValue) : startDateValue ;
                 endDateValue = typeof (endDateValue) === 'string' ? SanitizeHtmlHelper.sanitize(endDateValue) : endDateValue;
                 durationValue =  SanitizeHtmlHelper.sanitize(durationValue);
+            } else {
+                void startDateValue;
             }
             const startDate: string = data.startDate ? '<tr><td class = "e-gantt-tooltip-label">' +
                     this.parent.localeObj.getConstant(scheduledTask ? 'startDate' : 'subTasksStartDate') +
@@ -374,6 +430,8 @@ export class Tooltip {
                 baselineStartDateValue = SanitizeHtmlHelper.sanitize(baselineStartDateValue);
                 baselineEndDateValue = SanitizeHtmlHelper.sanitize(baselineEndDateValue);
                 durationValue =  SanitizeHtmlHelper.sanitize(durationValue);
+            } else {
+                void baselineStartDateValue;
             }
             const contentTemp: Function = function (): string {
                 const tasks: TaskFieldsModel = this.parent.taskFields;
@@ -402,6 +460,8 @@ export class Tooltip {
             if (this.parent.enableHtmlSanitizer) {
                 markerLabel = SanitizeHtmlHelper.sanitize(markerLabel);
                 markerTooltipElementValue = SanitizeHtmlHelper.sanitize(markerTooltipElementValue);
+            } else {
+                void markerLabel;
             }
             const contentTemp: Function = function (): string {
                 return '<table class = "e-gantt-tooltiptable"><tbody><tr><td>' +
@@ -425,6 +485,8 @@ export class Tooltip {
                 toIdValue =  SanitizeHtmlHelper.sanitize(toIdValue);
                 linkTextValue = SanitizeHtmlHelper.sanitize(linkTextValue);
                 offsetStringValue = SanitizeHtmlHelper.sanitize(offsetStringValue);
+            } else {
+                void fromNameValue;
             }
             const contentTemp: Function = function (): string {
                 return '<table class = "e-gantt-tooltiptable"><tbody><tr><td class = "e-gantt-tooltip-label">' +
@@ -446,11 +508,15 @@ export class Tooltip {
                 let titleValue: string = args.target.title;
                 if (this.parent.enableHtmlSanitizer && typeof (titleValue) === 'string') {
                     titleValue = SanitizeHtmlHelper.sanitize(titleValue);
+                } else {
+                    void titleValue;
                 }
                 const contentTemp: Function = function (): string {
                     return '<table class = "e-gantt-tooltiptable"><tbody><tr>' + titleValue + '</tr></tbody></table>';
                 };
                 content = initializeCSPTemplate(contentTemp);
+            } else {
+                void args.target;
             }
             break;
         case 'timeline':
@@ -458,6 +524,8 @@ export class Tooltip {
             let timlineTitleValue: string = args.target.title;
             if (this.parent.enableHtmlSanitizer && typeof (timlineTitleValue) === 'string') {
                 timlineTitleValue = SanitizeHtmlHelper.sanitize(timlineTitleValue);
+            } else {
+                void timlineTitleValue;
             }
             const contentTemp: Function = function (): string {
                 return '<table class = "e-gantt-tooltiptable"><tbody><tr>' + timlineTitleValue + '</tr></tbody></table>';
@@ -478,6 +546,8 @@ export class Tooltip {
                 durationUnitValue =  SanitizeHtmlHelper.sanitize(durationUnitValue);
                 manualStartDateValue =  SanitizeHtmlHelper.sanitize(manualStartDateValue);
                 manualEndDateValue = SanitizeHtmlHelper.sanitize(manualEndDateValue);
+            } else {
+                void autoStartDateValue;
             }
             const autoStartDate: string = '<tr><td class = "e-gantt-tooltip-label">' +
                     this.parent.localeObj.getConstant('subTasksStartDate') + '</td><td>:</td>' + '<td class = "e-gantt-tooltip-value"> ' +
@@ -511,6 +581,8 @@ export class Tooltip {
                 autoStartValue = SanitizeHtmlHelper.sanitize(autoStartValue);
                 autoEndValue = SanitizeHtmlHelper.sanitize(autoEndValue);
                 dateValue = SanitizeHtmlHelper.sanitize(dateValue);
+            } else {
+                void autoStartValue;
             }
             const autoStart: string = '<tr><td class = "e-gantt-tooltip-label">' +
                     this.parent.localeObj.getConstant('subTasksStartDate') + '</td><td>:</td>' + '<td class = "e-gantt-tooltip-value"> ' +
@@ -556,6 +628,8 @@ export class Tooltip {
         let predeceesorParent: string = args.target.id;
         if (this.parent.enableHtmlSanitizer && typeof (predeceesorParent) === 'string') {
             predeceesorParent = SanitizeHtmlHelper.sanitize(predeceesorParent);
+        } else {
+            void predeceesorParent;
         }
         const taskIds: string[] = predeceesorParent.match(/ConnectorLineparent(.*)child(.*)/);
         taskIds.shift();

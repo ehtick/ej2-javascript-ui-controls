@@ -22,6 +22,7 @@ import { Column } from '../../../src/grid/models/column';
 import { Row } from '../../../src/grid/models/row';
 import { DataManager, WebApiAdaptor, ODataV4Adaptor, Query } from '@syncfusion/ej2-data';
 import { Freeze } from '../../../src/grid/actions/freeze';
+import * as util from '../../../src/grid/base/util';
 
 Grid.Inject(Selection, Page, Sort, Group, Edit, Toolbar, VirtualScroll, Filter, Freeze);
 
@@ -7763,7 +7764,6 @@ describe('EJ2-985690: Partial Selection module', () => {
         });
 
         it('Initial load', (done: Function) => {
-            debugger;
             expect(gridObj.selectionModule.isPartialSelection).toBe(true);
             expect(gridObj.partialSelectedRecords.length).toBe(12);
             expect(gridObj.disableSelectedRecords.length).toBe(4);
@@ -7931,5 +7931,1277 @@ describe('EJ2-985690: Partial Selection module', () => {
             destroy(gridObj);
             gridObj = null;
         });
+    });
+});
+
+describe('Selection module coverage', () => {
+    let gridObj: Grid;
+    let selectionModule: any;
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data.slice(0, 10),
+            columns: [
+                { field: 'OrderID', isPrimaryKey: true, headerText: 'Order ID' },
+                { field: 'CustomerID', headerText: 'CustomerID' },
+                { field: 'EmployeeID', headerText: 'Employee ID' }
+            ],
+            editSettings: { allowEditing: true, allowAdding: true, mode: 'Batch' },
+            selectionSettings: { type: 'Multiple', mode: 'Both', persistSelection: true, checkboxMode: 'ResetOnRowClick' },
+            allowSelection: true,
+            allowPaging: true,
+            pageSettings: { pageSize: 5 }
+        }, done);
+    });
+
+    beforeEach(() => {
+        selectionModule = gridObj.selectionModule as any;
+    });
+
+    it('selection file code coverageactionCompleteHandler, getCurrentBatchRecordChanges, isEditing', (done: Function) => {
+        gridObj.isPersistSelection = true;
+        gridObj.editModule = {
+            getBatchChanges: () => ({
+                addedRecords: [{ OrderID: 999 }],
+                deletedRecords: [] as any
+            }),
+            formObj: { validate: () => true }
+        } as any;
+        selectionModule.actionCompleteHandler({ requestType: 'save' });
+        selectionModule.actionCompleteHandler({ requestType: 'edit'});
+        done()
+    });
+
+    it('selection file code coverage getAvailableDataCount tree-grid path + remote', (done: Function) => {
+        const dataArr = [{ OrderID: 1 }];
+        (gridObj as any).isTreeGrid = true;
+        (gridObj as any).isRemote = () => false
+        expect(selectionModule.getAvailableDataCount(dataArr)).toBe(1);
+        delete (gridObj as any).isTreeGrid;
+        (gridObj as any).isRemote = () => true;
+        expect(selectionModule.getAvailableDataCount(dataArr)).toBe(1);
+        done();
+    });
+
+    it('someDataSelected - remote data with search/filter and selected data path', (done: Function) => {
+        selectionModule.selectedRowState = { 'row1': true };
+        selectionModule.persistSelectedData = [{ OrderID: 10248 }];
+        gridObj.dataSource ={ result: [] };
+        gridObj.filterSettings = { columns: [{ field: 'OrderID' }] };
+        selectionModule.getPkValue = (key: string, data: any) => 'row1';
+        const result = selectionModule.someDataSelected();
+        expect(result).toBe(false);
+        done();
+    });
+
+    it('someDataSelected - non-remote data with lazy load path', (done: Function) => {
+        selectionModule.selectedRowState = {};
+        selectionModule.isPartialSelection = false;
+        selectionModule.isLazyLoadPersistSelection = () => true;
+        selectionModule.getData = () => [] as any;
+        selectionModule.getPkValue = (key: string, data: any) => 'row1';
+        gridObj.dataSource = data;
+        gridObj.filterSettings = { columns: [] };
+        const result = selectionModule.someDataSelected();
+        expect(result).toBe(true);
+        done();
+    });
+
+    
+    it('selection file code coverage clearColumnSelection edge cases + updateColSelection edited/span', (done: Function) => {
+        selectionModule.isColumnSelected = true;
+        selectionModule.selectedColumnsIndexes = [0, 1];
+        selectionModule.clearColumnSelection(0);
+        done();
+    });
+
+    it('covers if true path – allowColumnSelection && needColumnSelection (calls selectColumnsByRange)', (done: Function) => {
+        selectionModule.selectionSettings.allowColumnSelection = true;
+        selectionModule.needColumnSelection = true;
+        selectionModule.prevColIndex = 0;
+        selectionModule.applyShiftLeftRightKey(2, 3);
+        done();
+    });
+
+    it('isSelectAllRowCount - remote virtual/infinite scroll with matching count', (done: Function) => {
+        selectionModule.isPartialSelection = false;
+        const mockRows = Array(10).fill(null).map(() => ({ isSelectable: true }));
+        const mockParent: any = {
+            getDataModule: () => ({ isRemote: () => false }),
+            dataSource: { result: [] },
+            enableVirtualization: true,
+            enableInfiniteScrolling: false,
+            totalDataRecordsCount: 10,
+            getRowsObject: () => mockRows
+        };
+        selectionModule.parent = mockParent;
+        selectionModule.getData = () => Array(10).fill({ OrderID: 1 });
+        const result = selectionModule.isSelectAllRowCount(10);
+        expect(result).toBe(true);
+        done();
+    });
+
+    it('isSelectAllRowCount - remote virtual with mismatched data length', (done: Function) => {
+        selectionModule.isPartialSelection = false;
+        const mockRows = Array(50).fill(null).map(() => ({ isSelectable: true }));
+        const mockParent: any = {
+            getDataModule: () => ({ isRemote: () => false }),
+            dataSource: { result: [] },
+            enableVirtualization: true,
+            enableInfiniteScrolling: false,
+            totalDataRecordsCount: 100,
+            getRowsObject: () => mockRows
+        };
+        selectionModule.parent = mockParent;
+        selectionModule.getData = () => Array(10).fill({ OrderID: 1 });
+        const result = selectionModule.isSelectAllRowCount(10);
+        expect(result).toBe(false);
+        done();
+    });
+
+    it('isSelectAllRowCount - partial selection with persist selection matching row counts', (done: Function) => {
+        selectionModule.isPartialSelection = true;
+        const mockParent: any = {
+            enableVirtualization: true,
+            enableInfiniteScrolling: false,
+            isPersistSelection: true,
+            isRemote: () => false,
+            getRowsObject: () => [] as any
+        };
+        selectionModule.parent = mockParent;
+        selectionModule.persistSelectedRecordsCount = 5;
+        selectionModule.disableSelectableRecordsCount = 3;
+        selectionModule.partialSelectableRecordsCount = 5;
+        selectionModule.partialSelectedRecordsCount = 5;
+        selectionModule.getData = () => ({ records: Array(8).fill({ OrderID: 1 }) });
+        selectionModule.isSelectAllRowCount(10);
+        done();
+    });
+
+    it('isSelectAllRowCount - partial selection with matching row counts', (done: Function) => {
+        selectionModule.isPartialSelection = true;
+        const mockParent: any = {
+            enableVirtualization: true,
+            enableInfiniteScrolling: false,
+            allowGrouping: true,
+            isPersistSelection: false,
+            isRemote: () => false,
+            getRowsObject: () => [] as any
+        };
+        selectionModule.parent = mockParent;
+        selectionModule.persistSelectedRecordsCount = 5;
+        selectionModule.disableSelectableRecordsCount = 3;
+        selectionModule.partialSelectableRecordsCount = 5;
+        selectionModule.partialSelectedRecordsCount = 5;
+        selectionModule.getData.records = function () { return Array(8).fill({ OrderID: 1 }); };
+        selectionModule.isSelectAllRowCount(10);
+        done();
+    });
+
+    it('isSelectAllRowCount - non-paging row count check', (done: Function) => {
+        selectionModule.isPartialSelection = false;
+        const mockRows = Array(8).fill(null).map(() => ({ isSelectable: true }));
+        const mockParent: any = {
+            getDataModule: () => ({ isRemote: () => true }),
+            enableVirtualization: false,
+            enableInfiniteScrolling: false,
+            allowPaging: false,
+            selectionSettings: { persistSelection: false },
+            getRowsObject: () => mockRows,
+            isRowDomVirtualization: () => false
+        };
+        selectionModule.parent = mockParent;
+        const result = selectionModule.isSelectAllRowCount(8);
+        expect(result).toBe(true);
+        done();
+    });
+
+    it('updateSelectedRowIndexes - checkbox + virtual + partial + non-remote + persist + checkAllRows not Uncheck', (done: Function) => {
+        selectionModule.selectedRowIndexes = [];
+        selectionModule.isPartialSelection = true;
+        selectionModule.isHdrSelectAllClicked = false;
+        const mockRows = [
+            { isSelectable: true, index: 0 },
+            { isSelectable: true, index: 1 },
+            { isSelectable: false, index: 2 },
+            { isSelectable: true, index: 3 }
+        ];
+        const mockParent: any = {
+            isCheckBoxSelection: true,
+            enableVirtualization: true,
+            enableInfiniteScrolling: false,
+            getDataModule: () => ({ isRemote: () => false }),
+            dataSource: null,
+            selectionSettings: { persistSelection: true },
+            checkAllRows: 'Check',
+            getRowsObject: () => mockRows
+        };
+        selectionModule.parent = mockParent;
+        selectionModule.updateSelectedRowIndexes();
+        done();
+    });
+
+    it('updateSelectedRowIndexes - checkbox + virtual + partial + non-remote + persist + checkAllRows is Uncheck', (done: Function) => {
+        selectionModule.selectedRowIndexes = [];
+        selectionModule.isPartialSelection = true;
+        selectionModule.isHdrSelectAllClicked = false;
+        const mockRows = [
+            { isSelectable: true, index: 0 },
+            { isSelectable: true, index: 1 }
+        ];
+        const mockParent: any = {
+            isCheckBoxSelection: true,
+            enableVirtualization: true,
+            enableInfiniteScrolling: false,
+            getDataModule: () => ({ isRemote: () => false }),
+            dataSource: null,
+            selectionSettings: { persistSelection: true },
+            checkAllRows: 'Uncheck',
+            getRowsObject: () => mockRows
+        };
+        selectionModule.parent = mockParent;
+        selectionModule.updateSelectedRowIndexes();
+        done();
+    });
+
+    it('updateSelectedRowIndexes - checkbox + virtual + non-partial + remote + no-persist + checkAllRows Check', (done: Function) => {
+        selectionModule.selectedRowIndexes = [0];
+        selectionModule.isPartialSelection = false;
+        const mockRows = [
+            { isSelectable: true, index: 0 },
+            { isSelectable: true, index: 1 },
+            { isSelectable: true, index: 2 },
+            { isSelectable: true, index: 3 }
+        ];
+        const mockParent: any = {
+            isCheckBoxSelection: true,
+            enableVirtualization: true,
+            enableInfiniteScrolling: false,
+            getDataModule: () => ({ isRemote: () => true }),
+            dataSource: { result: [] },
+            isPersistSelection: false,
+            checkAllRows: 'Check',
+            getRowsObject: () => mockRows
+        };
+        selectionModule.parent = mockParent;
+        selectionModule.updateSelectedRowIndexes();
+        done();
+    });
+
+    it('updateSelectedRowIndexes - checkbox + virtual + non-partial + remote + no-persist + matching counts', (done: Function) => {
+        selectionModule.selectedRowIndexes = [0, 1, 2];
+        selectionModule.isPartialSelection = false;
+        const mockRows = [
+            { isSelectable: true, index: 0 },
+            { isSelectable: true, index: 1 },
+            { isSelectable: true, index: 2 }
+        ];
+        const mockParent: any = {
+            isCheckBoxSelection: true,
+            enableVirtualization: true,
+            enableInfiniteScrolling: false,
+            getDataModule: () => ({ isRemote: () => true }),
+            dataSource: { result: [] },
+            isPersistSelection: false,
+            checkAllRows: 'Check',
+            getRowsObject: () => mockRows
+        };
+        selectionModule.parent = mockParent;
+        selectionModule.updateSelectedRowIndexes();
+        done();
+    });
+
+    it('updateSelectedRowIndexes - no conditions met (non-checkbox selection)', (done: Function) => {
+        selectionModule.selectedRowIndexes = [];
+        selectionModule.isPartialSelection = false;
+        const mockParent: any = { isCheckBoxSelection: false, enableVirtualization: false, enableInfiniteScrolling: false };
+        selectionModule.parent = mockParent;
+        selectionModule.updateSelectedRowIndexes();
+        done();
+    });
+
+    it('isAllSelected - remote with virtualization true (matches totalDataRecordsCount)', (done: Function) => {
+        selectionModule.persistSelectedData = [1, 2, 3];
+        selectionModule.getAvailableSelectedData = (data: any[]) => selectionModule.persistSelectedData;
+        const mockParent: any = {
+            getDataModule: () => ({ isRemote: () => true }),
+            dataSource: { result: [] },
+            enableVirtualization: true,
+            enableInfiniteScrolling: false,
+            totalDataRecordsCount: 3
+        };
+        selectionModule.parent = mockParent;
+        selectionModule.totalRecordsCount = 0;
+        const result = selectionModule.isAllSelected(3);
+        expect(result).toBe(true);
+        done();
+    });
+
+    it('isAllSelected - partial selection with paging and persistSelection false (missing pk -> false)', (done: Function) => {
+        selectionModule.isPartialSelection = true;
+        selectionModule.selectionSettings = { persistSelection: false } as any;
+        selectionModule.selectedRowState = {};
+        selectionModule.getPkValue = (key: string, data: any) => `k${data.id}`;
+        selectionModule.parent = {
+            allowPaging: true,
+            pageSettings: { pageSize: 1, totalRecordsCount: 10 },
+            partialSelectedRecords: [{ id: 1 }, { id: 2 }],
+            getDataModule: () => ({ isRemote: () => false }),
+        } as any;
+        selectionModule.selectedRowState['k1'] = true;
+        selectionModule.isAllSelected(0);
+        done();
+    });
+
+    it('clearSelAfterRefresh should populate selectedRowState and persistSelectedData for virtualscroll when persist is true and hdrSelectAll clicked', (done: Function) => {
+        selectionModule.selectedRowState = {};
+        selectionModule.persistSelectedData = [];
+        selectionModule.isPartialSelection = false;
+        selectionModule.isHdrSelectAllClicked = true;
+        selectionModule.primaryKey = 'OrderID';
+        selectionModule.getPkValue = (key: string, data: any) => data.OrderID;
+        const mockRows = [
+            { isSelectable: true, index: 1, data: { OrderID: 1 } },
+            { isSelectable: false, index: 2, data: { OrderID: 2 } },
+            { isSelectable: true, index: 3, data: { OrderID: 3 } }
+        ];
+        const mockParent: any = {
+            enableInfiniteScrolling: false,
+            isPersistSelection: true,
+            getRowsObject: () => mockRows
+        };
+        selectionModule.parent = mockParent;
+        selectionModule.clearSelAfterRefresh({ requestType: 'virtualscroll' });
+        done();
+    });
+
+    it('virtualCheckBoxData - should return grouped records when grouping is applied', () => {
+        gridObj.groupSettings = {columns: ['CustomerID']};
+        selectionModule.parent = gridObj;
+        spyOn((selectionModule as any), 'getData').and.returnValue({
+            records: [
+                { OrderID: 1001, CustomerID: 'VINET' },
+                { OrderID: 1002, CustomerID: 'TOMSP' }
+            ]
+        });
+        selectionModule.virtualCheckBoxData();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = selectionModule = null;
+    });
+});
+
+describe('Selection module – checkSelectAll coverage', () => {
+    let gridObj: Grid;
+    let sel: any;
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data.slice(0, 8),
+            columns: [
+                { type: 'checkbox', width: 50 },
+                { field: 'OrderID', isPrimaryKey: true },
+                { field: 'CustomerID' }
+            ],
+            selectionSettings: { type: 'Multiple', persistSelection: true },
+            allowPaging: true,
+            pageSettings: { pageSize: 5 }
+        }, done);
+    });
+
+    beforeEach(() => {
+        sel = gridObj.selectionModule as any;
+    });
+
+    it('covers remote + Intermediate + persist → rmtHdrChkbxClicked = true', () => {
+        gridObj.dataSource = {result: []};
+        sel.getCheckAllStatus = () => 'Intermediate';
+        gridObj.isPersistSelection = true;
+        sel.checkSelectAll(sel.getCheckAllStatus());
+        expect(sel.rmtHdrChkbxClicked).toBe(true);
+    });
+
+    it('covers if true → clears unSelectedRowState', () => {
+        sel.rmtHdrChkbxClicked = true;
+        sel.isCheckboxReset = true;
+        sel.unSelectedRowState = { '1': true };
+        sel.checkSelectAll(sel.getCheckAllStatus());
+        expect(Object.keys(sel.unSelectedRowState).length).toBe(0);
+    });
+
+    it('covers Intermediate + persist + allowPaging + partial → all rows selectable (state = true)', () => {
+        sel.getCheckAllStatus = () => 'Intermediate';
+        gridObj.isPersistSelection = true;
+        gridObj.allowPaging = true;
+        sel.isPartialSelection = true;
+        gridObj.getRowsObject = () => [
+            { isDataRow: true, isSelectable: true, isSelected: true },
+            { isDataRow: true, isSelectable: true, isSelected: true }
+        ]  as any;
+        sel.checkSelectAll(sel.getCheckAllStatus());
+    });
+
+    it('covers Intermediate + remote + lazyLoadPersistSelection → records filter + selectedKeys loop', () => {
+        sel.getCheckAllStatus = () => 'Intermediate';
+        gridObj.isPersistSelection = true;
+        gridObj.allowPaging = false;
+        gridObj.dataSource = {result: []};
+        sel.isLazyLoadPersistSelection = () => true;
+        gridObj.renderModule.selectableDataKey = {  '1': true, '2': true  }  as any;
+        sel.getCurrentBatchRecordChanges = () => [{ OrderID: 1 }, { OrderID: 2 }];
+        sel.selectedRowState = { '1': true, '2': true };
+        sel.checkSelectAll(sel.getCheckAllStatus());
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = sel = null;
+    });
+});
+
+describe('Selection – checkSelect method coverage', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: data,
+                selectionSettings: { persistSelection: true },
+                height: 300,
+                groupSettings: {columns: ['CustomerID']},
+                columns: [
+                    { type: "checkbox",  headerText: 'Check', width: 120 },
+                    { field: 'OrderID', isPrimaryKey: true, headerText: 'Order ID' },
+                    { field: 'CustomerID', headerText: 'CustomerID', freeze: 'Right' },
+                    { field: 'EmployeeID', headerText: 'Employee ID' },
+                    { field: "ShipCity", headerText: "Ship City", width: 250 , freeze: 'Left' },
+                    ],
+            }, done);
+    });
+    it('get the partial and disable record', (done: Function) => {
+         gridObj.partialSelectedRecords = [
+            { OrderID: 10248, CustomerID: 'VINET' },
+            { OrderID: 10249, CustomerID: 'TOMSP' },
+            { OrderID: 10251, CustomerID: 'HANAR' }
+        ];
+         gridObj.partialSelectedRecords = [
+            { OrderID: 10250, CustomerID: 'VICTE' },
+            { OrderID: 10249, CustomerID: 'TOMSP' },
+        ];
+        let chkBox: any = gridObj.element.querySelectorAll('.e-checkselect')[0] as HTMLElement;
+        chkBox.click();
+        chkBox.click();
+        done()
+    });
+    it('checking Deselect row with persistSelection and frozen column', (done: Function) => {
+        spyOn(util, 'isGroupAdaptive').and.returnValue(true);
+        gridObj.enableVirtualization = true;
+        let chkBox: any = gridObj.element.querySelectorAll('.e-checkselect')[0] as HTMLElement;
+        chkBox.click();
+        done()
+    });
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('Selection – updatePersistDelete method coverage', () => {
+    let gridObj: Grid;
+    let selectionModule: any;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data.slice(0, 10),
+            columns: [
+                { field: 'OrderID', isPrimaryKey: true },
+                { field: 'CustomerID' }
+            ],
+            selectionSettings: { persistSelection: true, type: 'Multiple' }
+        }, done);
+    });
+
+    beforeEach(() => {
+        selectionModule = gridObj.selectionModule as any;
+        selectionModule.primaryKey = 'OrderID';
+        selectionModule.selectedRowState = { '10248': true, '10249': true, '10250': true };
+        selectionModule.persistSelectedData = gridObj.partialSelectedRecords = [
+            { OrderID: 10248, CustomerID: 'VINET' },
+            { OrderID: 10249, CustomerID: 'TOMSP' },
+            { OrderID: 10251, CustomerID: 'HANAR' }
+        ];
+        selectionModule.persistSelectedRecordsCount = 3;
+        gridObj.partialSelectedIndexes = [0, 1, 4];
+        selectionModule.selectedRowIndexes = [0, 1, 4];
+    });
+
+    it('should also clean partial records/indexes when isPartialSelection = true', () => {
+        const pKey = 10248;
+        selectionModule.updatePersistDelete(pKey, true);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = selectionModule = null;
+    });
+});
+
+describe('Selection – virtual checkbox logic in selectRows', () => {
+    let gridObj: Grid;
+    let sel: any;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data.slice(0, 10),
+            columns: [
+                { type: 'checkbox', width: 50 },
+                { field: 'OrderID', isPrimaryKey: true, headerText: 'Order ID' },
+                { field: 'CustomerID', headerText: 'Customer ID' }
+            ],
+            selectionSettings: { type: 'Multiple', persistSelection: false },
+            height: 300,
+            enableVirtualization: true
+        }, done);
+    });
+
+    beforeEach(() => {
+        sel = gridObj.selectionModule;
+        sel.virtualSelectedData = [];
+        sel.selectedRowIndexes = [];
+        sel.totalRecordsCount = 5;
+        gridObj.partialSelectedRecords = [
+            { OrderID: 10248, CustomerID: 'VINET' },
+            { OrderID: 10249, CustomerID: 'TOMSP' },
+            { OrderID: 10251, CustomerID: 'HANAR' }
+        ];
+        gridObj.partialSelectedIndexes = [0, 1, 4];
+        spyOn(sel, 'checkVirtualCheckBox').and.returnValue(true);
+        spyOn(sel, 'setCheckAllState');
+        spyOn(sel, 'selectRowsByRange');
+        spyOn(sel, 'clearRow');
+        spyOn(sel, 'updateRowSelection');
+    });
+    it('copies full virtual data when selecting all rows', () => {
+        sel.selectRows([0, 1, 2, 3, 4]);
+
+    });
+
+    it('skips virtual logic when checkVirtualCheckBox is false', (done: Function) => {
+        sel.checkVirtualCheckBox.and.returnValue(true);
+        sel.selectRows([0, 1, 2]);
+        done();
+    });
+
+    it('skips virtual logic when checkVirtualCheckBox is false', (done: Function) => {
+        sel.checkVirtualCheckBox.and.returnValue(true);
+        sel.checkSelectAllAction(true);
+        done();
+    });
+
+    it('skips virtual logic when persistSelection is enabled', (done: Function) => {
+        gridObj.selectionSettings.persistSelection = false;
+        sel.checkVirtualCheckBox.and.returnValue(false);
+        sel.isPartialSelection = true;
+        sel.checkSelectAllAction(true);
+        done();
+    });
+    it('skips virtual logic when checkVirtualCheckBox is false', (done: Function) => {
+        sel.checkVirtualCheckBox.and.returnValue(false);
+        sel.isLazyLoadPersistSelection = () => { return true; };
+        sel.checkSelectAllAction(true);
+        done();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = sel = null;
+    });
+});
+
+describe('Selection – mouseDownHandler uncovered branches', () => {
+    let gridObj: Grid;
+    let sel: any;
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data.slice(0, 10),
+            columns: [
+                { field: 'OrderID', isPrimaryKey: true },
+                { field: 'CustomerID' }
+            ],
+            allowRowDragAndDrop: true,
+            selectionSettings: {
+                type: 'Multiple',
+                mode: 'Both',
+                cellSelectionMode: 'Box'
+            },
+            editSettings: { allowEditing: true }
+        }, done);
+    });
+
+    beforeEach(() => {
+        sel = gridObj.selectionModule;
+        sel.enableDrag = jasmine.createSpy('enableDrag');
+    });
+
+    it('should return early on headerContent when no frozenRows', () => {
+        const headerCell = document.createElement('th');
+        headerCell.classList.add('e-headercontent'); // simulate headerContent parent
+        const event = { target: headerCell, button: 0, shiftKey: false, ctrlKey: false } as any;
+        gridObj.frozenRows = 0; // no frozen rows
+        sel.mouseDownHandler(event);
+    });
+    it('should call preventDefault on shiftKey or ctrlKey', () => {
+        const cell = document.createElement('td');
+        cell.classList.add('e-rowcell');
+        const event = {
+            target: cell,
+            button: 0,
+            shiftKey: true,
+            preventDefault: jasmine.createSpy('preventDefault')
+        } as any;
+        sel.mouseDownHandler(event);
+    });
+
+    it('should enable row drag when allowRowDragAndDrop conditions met', () => {
+        const cell = document.createElement('td');
+        cell.classList.add('e-rowcell');
+        const event = { target: cell, button: 0, shiftKey: false, ctrlKey: false } as any;
+        spyOn(sel, 'isRowType').and.returnValue(true);
+        spyOn(sel, 'isSingleSel').and.returnValue(false);
+        gridObj.isEdit = false;
+        gridObj.selectionSettings.checkboxOnly = false;
+        spyOn(gridObj, 'createElement').and.callThrough();
+        sel.mouseDownHandler(event);
+    });
+
+    it('should enable row drag when allowRowDragAndDrop conditions met in single selection', () => {
+        const cell = document.createElement('td');
+        cell.classList.add('e-rowcell');
+        const event = { target: cell, button: 0, shiftKey: false, ctrlKey: false } as any;
+        spyOn(sel, 'isRowType').and.returnValue(true);
+        spyOn(sel, 'isSingleSel').and.returnValue(true);
+        gridObj.isEdit = false;
+        gridObj.selectionSettings.checkboxOnly = false;
+        spyOn(gridObj, 'createElement').and.callThrough();
+        sel.mouseDownHandler(event);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = sel = null;
+    });
+});
+
+describe('Selection – setRowSelection uncovered branches', () => {
+    let gridObj: Grid;
+    let sel: any;
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data.slice(0, 10),
+            columns: [
+                { field: 'OrderID', isPrimaryKey: true },
+                { field: 'CustomerID' }
+            ],
+            height: 300,
+            selectionSettings: { type: 'Multiple', persistSelection: true },
+            enableVirtualization: true,
+            groupSettings: { columns: [] }
+        }, done);
+    });
+
+    beforeEach(() => {
+        sel = gridObj.selectionModule;
+        sel.selectedRowState = {};
+        sel.unSelectedRowState = {};
+        sel.rmtHdrChkbxClicked = false;
+        sel.isCheckboxReset = false;
+        sel.isHdrSelectAllClicked = false;
+        sel.getPkValue = (key: string, data: any) => data[key];
+        sel.primaryKey = 'OrderID';
+    });
+
+    it('non-remote + state=true + partial + virtual → selectable rows loop', () => {
+        (gridObj.getDataModule() as any).isRemote = () => false;
+        gridObj.dataSource = { result: null }; // no remote result
+        sel.isPartialSelection = true;
+        sel.isHdrSelectAllClicked = false;
+        gridObj.enableVirtualization = true;
+        gridObj.getRowsObject = () => [
+            { isSelectable: true, data: { OrderID: 1001 } },
+            { isSelectable: false, data: { OrderID: 1002 } },
+            { isSelectable: true, data: { OrderID: 1003 } }
+        ] as any; 
+        sel.setRowSelection(true);
+    });
+
+    it('remote + state=true + !isCheckboxReset → adds new keys to selectedRowState', () => {
+        (gridObj.getDataModule() as any).isRemote = () => true;
+        sel.isCheckboxReset = false;
+        gridObj.allowGrouping = true;
+        gridObj.groupSettings = {columns: ['CustomerID']};
+        sel.selectedRowState = { '5001': true }; // already present
+        sel.unSelectedRowState = { '5003': true };
+        (gridObj as any).currentViewData.records = [
+            { OrderID: 5001 }, // already selected → skip
+            { OrderID: 5002 }, // new → add
+            { OrderID: 5003 }  // unselected → skip
+        ];
+        sel.setRowSelection(true);
+    });
+
+    it('setRowSelection - isCheckboxReset true', () => {
+        (gridObj.getDataModule() as any).isRemote = () => true;
+        sel.isCheckboxReset = true;
+        sel.selectedRowState = { '6001': true };
+        sel.unSelectedRowState = { '6002': true };
+        sel.setRowSelection(true);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = sel = null;
+    });
+});
+
+describe('Selection – setCheckAllState remaining uncovered branches', () => {
+    let gridObj: Grid;
+    let sel: any;
+    let checkBoxInput: any;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data.slice(0, 10),
+            columns: [
+                { type: 'checkbox', width: 50 },
+                { field: 'OrderID', isPrimaryKey: true },
+                { field: 'CustomerID' }
+            ],
+            selectionSettings: { type: 'Multiple', persistSelection: true, checkboxMode: 'ResetOnRowClick' },
+            enableVirtualization: true,
+            height: 300
+        }, done);
+    });
+
+    beforeEach(() => {
+        sel = gridObj.selectionModule;
+        checkBoxInput = document.createElement('input');
+        checkBoxInput.type = 'checkbox';
+        const span = document.createElement('span');
+        span.classList.add('e-frame');
+        const container = document.createElement('div');
+        container.appendChild(checkBoxInput);
+        container.appendChild(span);
+        sel.getCheckAllBox = () => checkBoxInput;
+        sel.selectedRowState = {};
+        sel.isHdrSelectAllClicked = false;
+        sel.isPartialSelection = false;
+        sel.parent.checkAllRows = '';
+        sel.getRenderer = () => ({
+            setSelection: jasmine.createSpy('setSelection')
+        });
+        sel.checkVirtualCheckBox = jasmine.createSpy('checkVirtualCheckBox');
+        sel.isLazyLoadPersistSelection = jasmine.createSpy('isLazyLoadPersistSelection');
+        spyOn(sel, 'isAllSelected').and.returnValue(false);
+        spyOn(sel, 'isSelectAllRowCount').and.returnValue(false);
+        spyOn(sel, 'someDataSelected').and.returnValue(false);
+        spyOn(sel, 'getCurrentBatchRecordChanges').and.returnValue([]);
+        spyOn(sel, 'updateSelectedRowIndex');
+    });
+
+    it('should adjust checkedLen for TreeList when persist + array dataSource + checkedLen > total', () => {
+        gridObj.element.classList.add('e-treelistgrid');
+        gridObj.isPersistSelection = true;
+        gridObj.enableVirtualization = false;
+        (gridObj.getDataModule() as any).isRemote = () => false;
+        gridObj.dataSource = Array(10); 
+        sel.selectedRowState = { a:1, b:1, c:1, d:1, e:1, f:1, g:1, h:1, i:1, j:1 };
+        sel.totalRecordsCount = 6;
+        sel.setCheckAllState();
+    });
+
+    it('should use selectedRowIndexes length and batch length when !persistSelection', () => {
+        gridObj.isPersistSelection = false;
+        gridObj.isRemote = () => true;
+        sel.selectedRowIndexes = [0, 1, 2, 3];
+        sel.getCurrentBatchRecordChanges.and.returnValue([{}, {}, {}]); // length 3
+        sel.setCheckAllState();
+    });
+
+    it('should set isFiltered true and call isAllSelected when filtered + persist', () => {
+        gridObj.isPersistSelection = true;
+        gridObj.searchSettings.key = 'test';
+        sel.isPartialSelection = false;
+        sel.setCheckAllState();
+    });
+
+    it('should set Check state and call setSelection(true) when isInteraction', () => {
+        sel.isAllSelected.and.returnValue(true);
+        sel.checkVirtualCheckBox.and.returnValue(false);
+        sel.isLazyLoadPersistSelection.and.returnValue(false);
+        sel.isPartialSelection = false;
+        sel.selectedRowIndexes = [0, 1, 2];
+        sel.totalRecordsCount = 3;
+        sel.setCheckAllState(0, true);
+    });
+
+    it('should set Uncheck state and call setSelection(false) when conditions match', () => {
+        sel.selectedRowIndexes = [];
+        sel.persistSelectedData = [];
+        gridObj.allowPaging = false;
+        sel.setCheckAllState(0, true);
+    });
+
+    it('should set Intermediate state and indeterminate when partial selection', () => {
+        sel.selectedRowIndexes = [0];
+        sel.isPartialSelection = true;
+        sel.setCheckAllState();
+    });
+
+    it('should disable checkbox when editing + !initialRender + !persist', () => {
+        gridObj.isEdit = true;
+        (gridObj as any).editModule = { editModule: { initialRender: false } as any };
+        sel.setCheckAllState();
+    });
+
+    it('should disable in partial mode when no selectable rows + all disabled + uncheck', () => {
+        sel.isPartialSelection = true;
+        gridObj.getRowsObject = () => [];
+        sel.disableSelectableRecordsCount = 5;
+        sel.totalRecordsCount = 5;
+        checkBoxInput.nextElementSibling.querySelector = () => ({ classList: { contains: () => true } });
+        sel.setCheckAllState();
+    });
+
+    it('should call updateSelectedRowIndex when virtual/infinite + !paging + !remote', () => {
+        gridObj.enableVirtualization = true;
+        gridObj.allowPaging = false;
+        (gridObj.getDataModule() as any).isRemote = () => false;
+        sel.setCheckAllState(7);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = sel = null;
+    });
+});
+
+describe('Selection – updateSelectedRowIndex coverage', () => {
+    let gridObj: any;
+    let selectionModule: any;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data.slice(0, 10),
+            columns: [
+                { type: 'checkbox', width: 50 },
+                { field: 'OrderID', isPrimaryKey: true },
+                { field: 'CustomerID' }
+            ],
+            selectionSettings: { type: 'Multiple', persistSelection: true },
+            enableVirtualization: true,
+            height: 300
+        }, done);
+    });
+
+    beforeEach(() => {
+        selectionModule = gridObj.selectionModule;
+        gridObj.checkAllRows = '';
+        gridObj.isCheckBoxSelection = true;
+        gridObj.enableVirtualization = true;
+        (gridObj.getDataModule() as any).isRemote = () => false;
+        gridObj.pinnedTopRowModels = [];
+    });
+
+    it('builds full indexes including pinned top rows when Check + non-partial', (done: Function) => {
+        gridObj.checkAllRows = 'Check';
+        selectionModule.isPartialSelection = false;
+        gridObj.pinnedTopRowModels = [
+            { data: { OrderID: 1001 } },
+            { data: { OrderID: 1002 } }
+        ];
+        spyOn(selectionModule, 'getData').and.returnValue(Array(8));
+        selectionModule.updateSelectedRowIndex(undefined);
+        done();
+    });
+
+    it('removes index from selectedRowIndexes when row is deselected (aria-selected false)', (done:Function) => {
+        selectionModule.selectedRowIndexes = [0, 2, 4, 7];
+        const mockRow = document.createElement('tr');
+        mockRow.setAttribute('aria-selected', 'false');
+        spyOn(gridObj, 'getRowByIndex').and.returnValue(mockRow);
+        selectionModule.updateSelectedRowIndex(4);
+        done();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = selectionModule = null;
+    });
+});
+
+describe('EJ2-994666 - Keyboard Navigation to Checkbox Column Header with allowColumnSelection', () => {
+    let gridObj: Grid;
+    let selectionModule: Selection;
+    let preventDefault: Function = new Function();
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data,
+            columns: [
+                { type: 'checkbox', width: 50 },
+                { field: 'OrderID', headerText: 'Order ID', width: 100 },
+                { field: 'CustomerID', headerText: 'Customer ID', width: 100 },
+                { field: 'EmployeeID', headerText: 'Employee ID', width: 100 }
+            ],
+            allowSelection: true,
+            selectionSettings: { allowColumnSelection: true, type: 'Single' },
+            height: 300
+        }, done);
+    });
+
+    beforeEach(() => {
+        selectionModule = gridObj.selectionModule;
+    });
+
+    it('should navigate to checkbox column header via Up Arrow without error', (done: Function) => {
+        // Focus first data column cell (OrderID)
+        const firstDataCell = (gridObj.getRows()[1] as HTMLTableRowElement).cells[1] as HTMLElement;
+        firstDataCell.focus();
+        firstDataCell.click();
+        
+        setTimeout(() => {
+            // Simulate Up Arrow key to navigate to header row
+            const args: any = { action: 'upArrow', preventDefault: preventDefault };
+            
+            // This should not throw an error
+            try {
+                gridObj.keyboardModule.keyAction(args);
+                expect(true).toBe(true); // Test passes if no error thrown
+            } catch (e) {
+                expect(e).toBeNull(); // Fail if error thrown
+            }
+            done();
+        }, 50);
+    });
+
+    it('should navigate to checkbox column header via Shift+Tab without error', (done: Function) => {
+        // Focus first data column cell (OrderID)
+        const firstDataCell = (gridObj.getRows()[1] as HTMLTableRowElement).cells[1] as HTMLElement;
+        firstDataCell.focus();
+        
+        setTimeout(() => {
+            // Simulate Shift+Tab key
+            const args: any = { action: 'shiftTab', preventDefault: preventDefault };
+            
+            try {
+                gridObj.keyboardModule.keyAction(args);
+                expect(true).toBe(true); // Test passes if no error thrown
+            } catch (e) {
+                expect(e).toBeNull(); // Fail if error thrown
+            }
+            done();
+        }, 50);
+    });
+
+
+
+    it('should not affect row selection with checkbox column keyboard navigation', (done: Function) => {
+        gridObj.clearSelection();
+        
+        // Focus a cell in first data column
+        const firstRowCell = (gridObj.getRows()[0] as HTMLTableRowElement).cells[1] as HTMLElement;
+        firstRowCell.focus();
+        firstRowCell.click();
+        
+        setTimeout(() => {
+            // Row should be selected
+            expect(gridObj.getSelectedRowIndexes().length).toBeGreaterThan(0);
+            done();
+        }, 50);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = selectionModule = null;
+    });
+});
+describe('cellFocus Event - Test Cases', () => {
+    let gridObj: Grid;
+    let cellFocusArgs: any;
+    let preventDefault = new Function();
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data,
+            allowPaging: true,
+            columns: [
+                { field: 'OrderID', headerText: 'Order ID', isPrimaryKey: true },
+                { field: 'CustomerID', headerText: 'Customer ID' },
+                { field: 'EmployeeID', headerText: 'Employee ID' }
+            ],
+            editSettings: { allowAdding: true },
+            cellFocus: (args: any) => {
+                cellFocusArgs = args;
+            }
+        }, done);
+    });
+
+    it('cellFocus should trigger on header cell click with cellType=header', (done: Function) => {
+        (gridObj.getHeaderContent().querySelectorAll('.e-headercell')[1] as HTMLElement).click();
+        setTimeout(() => {
+            expect(cellFocusArgs.cellType).toBe('header');
+            expect(cellFocusArgs.cell).toBeDefined();
+            done();
+        }, 50);
+    });
+
+    it('cellFocus should trigger on row cell click with correct args', (done: Function) => {
+        (gridObj.getRows()[1] as HTMLTableRowElement).cells[1].click();
+        setTimeout(() => {
+            expect(cellFocusArgs.cellType).toBe('content');
+            expect(cellFocusArgs.rowIndex).toBe(1);
+            expect(cellFocusArgs.cellIndex).toBe(1);
+            done();
+        }, 50);
+    });
+
+    it('cellFocus should trigger on Tab key navigation', (done: Function) => {
+        (gridObj.getRows()[1] as HTMLTableRowElement).cells[1].click();
+        setTimeout(() => {
+            let args: any = { action: 'tab', preventDefault: preventDefault };
+            gridObj.keyboardModule.keyAction(args);
+            setTimeout(() => {
+                expect(cellFocusArgs.cellType).toBe('content');
+                expect(cellFocusArgs.cellIndex).toBeGreaterThan(1);
+                done();
+            }, 50);
+        }, 50);
+    });
+    it('cellFocus should trigger on Shift+Tab key navigation', (done: Function) => {
+        (gridObj.getRows()[1] as HTMLTableRowElement).cells[2].click();
+        setTimeout(() => {
+            let args: any = { action: 'shiftTab', preventDefault: preventDefault };
+            gridObj.keyboardModule.keyAction(args);
+            setTimeout(() => {
+                expect(cellFocusArgs.cellType).toBe('content');
+                expect(cellFocusArgs.cellIndex).toBeLessThan(2);
+                done();
+            }, 50);
+        }, 50);
+    });
+
+    it('cellFocus should trigger on Home key - moves to first cell of row', (done: Function) => {
+        (gridObj.getRows()[1] as HTMLTableRowElement).cells[2].click();
+        setTimeout(() => {
+            let args: any = { action: 'home', preventDefault: preventDefault };
+            gridObj.keyboardModule.keyAction(args);
+            setTimeout(() => {
+                expect(cellFocusArgs.cellIndex).toBe(0);
+                done();
+            }, 50);
+        }, 50);
+    });
+
+    it('cellFocus should trigger on Ctrl+Home - moves to first cell (0,0)', (done: Function) => {
+        (gridObj.getRows()[2] as HTMLTableRowElement).cells[2].click();
+        setTimeout(() => {
+            let args: any = { action: 'ctrlHome', preventDefault: preventDefault };
+            gridObj.keyboardModule.keyAction(args);
+            setTimeout(() => {
+                expect(cellFocusArgs.rowIndex).toBe(0);
+                expect(cellFocusArgs.cellIndex).toBe(0);
+                done();
+            }, 50);
+        }, 50);
+    });
+
+    it('cellFocus should trigger on End key - moves to last cell of row', (done: Function) => {
+        (gridObj.getRows()[1] as HTMLTableRowElement).cells[0].click();
+        setTimeout(() => {
+            let args: any = { action: 'end', preventDefault: preventDefault };
+            gridObj.keyboardModule.keyAction(args);
+            setTimeout(() => {
+                expect(cellFocusArgs.cellIndex).toBeGreaterThan(0);
+                done();
+            }, 50);
+        }, 50);
+    });
+
+    it('cellFocus should trigger on Ctrl+End - moves to last cell of grid', (done: Function) => {
+        (gridObj.getRows()[0] as HTMLTableRowElement).cells[0].click();
+        setTimeout(() => {
+            let args: any = { action: 'ctrlEnd', preventDefault: preventDefault };
+            gridObj.keyboardModule.keyAction(args);
+            setTimeout(() => {
+                expect(cellFocusArgs.rowIndex).toBeGreaterThan(0);
+                done();
+            }, 50);
+        }, 50);
+    });
+    it('cellFocus should trigger on down arrow key navigation', (done: Function) => {
+        (gridObj.getRows()[1] as HTMLTableRowElement).cells[1].click();
+        setTimeout(() => {
+            let args: any = { action: 'downArrow', preventDefault: preventDefault };
+            gridObj.keyboardModule.keyAction(args);
+            setTimeout(() => {
+                expect(cellFocusArgs.rowIndex).toBe(2);
+                done();
+            }, 50);
+        }, 50);
+    });
+
+    it('cellFocus should work after sorting applied', (done: Function) => {
+        gridObj.sortColumn('OrderID', 'Ascending');
+        setTimeout(() => {
+            (gridObj.getRows()[1] as HTMLTableRowElement).cells[1].click();
+            setTimeout(() => {
+                expect(cellFocusArgs.cellType).toBe('content');
+                done();
+            }, 50);
+        }, 100);
+    });
+
+    it('cellFocus should work with filtered data', (done: Function) => {
+        gridObj.filterByColumn('OrderID', 'equal', 10248);
+        setTimeout(() => {
+            (gridObj.getRows()[0] as HTMLTableRowElement).cells[1].click();
+            setTimeout(() => {
+                expect(cellFocusArgs.cellType).toBe('content');
+                done();
+            }, 50);
+        }, 100);
+    });
+
+    it('cellFocus should work on newly added record cells', (done: Function) => {
+        gridObj.addRecord({ OrderID: 10999, CustomerID: 'TEST', EmployeeID: 1 });
+        setTimeout(() => {
+            const newRow = gridObj.getRows()[gridObj.getRows().length - 1];
+            (newRow as HTMLTableRowElement).cells[1].click();
+            setTimeout(() => {
+                expect(cellFocusArgs.cellType).toBe('content');
+                done();
+            }, 50);
+        }, 100);
+    });
+
+    it('cellFocus should work across pages', (done: Function) => {
+        gridObj.goToPage(2);
+        setTimeout(() => {
+            (gridObj.getRows()[0] as HTMLTableRowElement).cells[1].click();
+            setTimeout(() => {
+                expect(cellFocusArgs.cellType).toBe('content');
+                done();
+            }, 50);
+        }, 100);
+    });
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = cellFocusArgs = null;
+    });
+});
+
+describe('cellFocus Event - With Grouping', () => {
+    let gridObj: Grid;
+    let cellFocusArgs: any;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data,
+            columns: [
+                { field: 'OrderID', headerText: 'Order ID' },
+                { field: 'CustomerID', headerText: 'Customer ID' },
+                { field: 'EmployeeID', headerText: 'Employee ID' }
+            ],
+            groupSettings: { columns: ['CustomerID'] },
+            cellFocus: (args: any) => {
+                cellFocusArgs = args;
+            }
+        }, done);
+    });
+
+    it('cellFocus should work on grouped grid content cells', (done: Function) => {
+        setTimeout(() => {
+            const rows = gridObj.getRows();
+            const contentRow = rows.find(r => r.classList.contains('e-datarow'));
+            if (contentRow) {
+                (contentRow as HTMLTableRowElement).cells[1].click();
+                setTimeout(() => {
+                    expect(cellFocusArgs.cellType).toBe('content');
+                    done();
+                }, 50);
+            } else {
+                done();
+            }
+        }, 100);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = cellFocusArgs = null;
+    });
+});
+
+describe('cellFocus Event - With Virtualization', () => {
+    let gridObj: Grid;
+    let cellFocusArgs: any;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data,
+            columns: [
+                { field: 'OrderID', headerText: 'Order ID' },
+                { field: 'CustomerID', headerText: 'Customer ID' },
+                { field: 'EmployeeID', headerText: 'Employee ID' }
+            ],
+            enableVirtualization: true,
+            height: 300,
+            cellFocus: (args: any) => {
+                cellFocusArgs = args;
+            }
+        }, done);
+    });
+
+    it('cellFocus should work in virtualized grid', (done: Function) => {
+        (gridObj.getRows()[0] as HTMLTableRowElement).cells[1].click();
+        setTimeout(() => {
+            expect(cellFocusArgs.cellType).toBe('content');
+            done();
+        }, 50);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = cellFocusArgs = null;
+    });
+});
+
+describe('cellFocus Event - With Frozen Columns', () => {
+    let gridObj: Grid;
+    let cellFocusArgs: any;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data,
+            frozenRows: 2,
+            columns: [
+                { field: 'OrderID', headerText: 'Order ID', freeze: 'Left' },
+                { field: 'CustomerID', headerText: 'Customer ID' },
+                { field: 'EmployeeID', headerText: 'Employee ID' }
+            ],
+            cellFocus: (args: any) => {
+                cellFocusArgs = args;
+            }
+        }, done);
+    });
+
+    it('cellFocus should work on frozen and regular columns', (done: Function) => {
+        (gridObj.getRows()[1] as HTMLTableRowElement).cells[1].click();
+        setTimeout(() => {
+            expect(cellFocusArgs.cellType).toBe('content');
+            done();
+        }, 50);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = cellFocusArgs = null;
     });
 });

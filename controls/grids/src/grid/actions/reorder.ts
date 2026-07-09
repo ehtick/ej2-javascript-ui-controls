@@ -41,7 +41,6 @@ export class Reorder implements IAction {
         this.parent.on(events.columnDrag, this.drag, this);
         this.parent.on(events.columnDragStart, this.dragStart, this);
         this.parent.on(events.columnDragStop, this.dragStop, this);
-        this.parent.on(events.headerDrop, this.headerDrop, this);
         this.parent.on(events.headerRefreshed, this.createReorderElement, this);
         this.parent.on(events.keyPressed, this.keyPressHandler, this);
         this.parent.on(events.destroy, this.destroy, this);
@@ -113,6 +112,9 @@ export class Reorder implements IAction {
 
     private headerDrop(e: { target: Element }): void {
         const gObj: IGrid = this.parent;
+        if (!this.element) {
+            return;
+        }
         const dropElement: Element = this.element.querySelector('.e-headercelldiv') || this.element.querySelector('.e-stackedheadercelldiv');
         const uId: string = dropElement.getAttribute('data-mappinguid');
         const column: Column = gObj.getColumnByUid(uId);
@@ -215,8 +217,9 @@ export class Reorder implements IAction {
         if (this.parent.isFrozenGrid()) {
             if (this.parent.frozenColumns) {
                 for (let i: number = 0; i < cols.length; i++) {
-                    if (cols[parseInt(i.toString(), 10)].freeze === 'Left') {
-                        cols[parseInt(i.toString(), 10)].freeze = undefined;
+                    const col: Column = cols[parseInt(i.toString(), 10)];
+                    if (col.freeze === 'Left' || col.freeze === 'Right') {
+                        col.freeze = undefined;
                     }
                 }
             } else if (!(parent && parent.columns)) {

@@ -464,6 +464,12 @@ export class HtmlEditor {
             this.backSpaceCleanup(e, currentRange);
             this.deleteCleanup(e, currentRange);
         }
+        // Handle iOS-specific mention element with nbsp scenario (must be before other backspace checks)
+        if (((e as NotifyArgs).args as KeyboardEventArgs).code === 'Backspace' && ((e as NotifyArgs).args as KeyboardEventArgs).keyCode === 8) {
+            if (this.handleIosMentionElementNbsp(e, currentRange)) {
+                return;
+            }
+        }
         let isCodeBlock: boolean = false;
         if (!isNOU(this.parent.codeBlockModule)) {
             currentRange = this.parent.getRange();
@@ -1006,6 +1012,55 @@ export class HtmlEditor {
                 }
             }
         }
+    }
+
+    private handleIosMentionElementNbsp(e: NotifyArgs, currentRange: Range): boolean {
+        if (this.parent.userAgentData.getPlatform() !== 'iOS') {
+            return false;
+        }
+        // First backspace: cursor is positioned after nbsp text node (offset = 1, length = 1)
+        if (currentRange.startContainer.nodeType === Node.TEXT_NODE &&
+            currentRange.startContainer.nodeValue === '\u00A0' &&
+            currentRange.startContainer.textContent.length === 1) {
+            const prevSibling: Node = currentRange.startContainer.previousSibling;
+            // Check if previous sibling is a mention element
+            if (!isNOU(prevSibling) && prevSibling.nodeType !== Node.TEXT_NODE &&
+                (prevSibling as HTMLElement).classList.contains('e-mention-chip')) {
+                // Replace nbsp with zero-width space to handle iOS cursor positioning on second backspace
+                currentRange.startContainer.nodeValue = '\u200B';
+                this.parent.formatter.editorManager.nodeSelection.setCursorPoint(
+                    this.parent.contentModule.getDocument(),
+                    currentRange.startContainer as HTMLElement,
+                    1
+                );
+                (e.args as KeyboardEventArgs).preventDefault();
+                return true;
+            }
+        }
+        // Second backspace: cursor is positioned before zero-width space text node (offset = 0, length = 1)
+        if (currentRange.startContainer.nodeType === Node.TEXT_NODE &&
+            currentRange.startContainer.nodeValue === '\u200B' &&
+            currentRange.startContainer.textContent.length === 1) {
+            const prevSibling: Node = currentRange.startContainer.previousSibling;
+            if (!isNOU(prevSibling) && prevSibling.nodeType !== Node.TEXT_NODE &&
+                (prevSibling as HTMLElement).classList.contains('e-mention-chip')) {
+                const mentionElement: HTMLElement = prevSibling as HTMLElement;
+                const rootBlockEle: HTMLElement =
+                    this.parent.formatter.editorManager.domNode.getImmediateBlockNode(mentionElement) as HTMLElement;
+                // Remove the zero-width space text node
+                detach(currentRange.startContainer);
+                // Remove the mention element
+                if ((mentionElement.previousSibling && mentionElement.previousSibling.nodeName === 'BR') ||
+                    (rootBlockEle.textContent.length - mentionElement.textContent.length) === 0) {
+                    mentionElement.parentElement.replaceChild(createElement('br'), mentionElement);
+                } else {
+                    mentionElement.remove();
+                }
+                (e.args as KeyboardEventArgs).preventDefault();
+                return true;
+            }
+        }
+        return false;
     }
 
     private shouldPreventListRemoval(): boolean {

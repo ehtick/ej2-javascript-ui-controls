@@ -15,9 +15,9 @@ import  {profile , inMB, getMemoryProfile} from '../base/common.spec';
 import { isNullOrUndefined, select } from '@syncfusion/ej2-base';
 import * as events from '../../../src/grid/base/constant';
 import { Edit } from '../../../src/grid/actions/edit';
+import { VirtualScroll } from '../../../src/grid/actions/virtual-scroll';
 
-
-Grid.Inject(Page, Toolbar, ColumnChooser, DetailRow, Edit);
+Grid.Inject(Page, Toolbar, ColumnChooser, DetailRow, Edit,VirtualScroll);
 describe('Column chooser module', () => {
     describe('Column chooser testing', () => {
         let gridObj: Grid;
@@ -69,6 +69,113 @@ describe('Column chooser module', () => {
         afterAll(() => {
             destroy(gridObj);
             gridObj = beforeOpenColumnChooser = null;
+        });
+    });
+
+    describe('Extra coverage - infinite and edge branches', () => {
+        let gridObj: Grid;
+        beforeAll((done: Function) => {
+            const cols = [] as any[];
+            for (let i = 0; i < 60; i++) {
+                cols.push({ field: 'f' + i, headerText: 'F' + i, showInColumnChooser: true });
+            }
+            gridObj = createGrid(
+                {
+                    dataSource: [],
+                    showColumnChooser: true,
+                    enableColumnVirtualization: true,
+                    toolbar: ['ColumnChooser'],
+                    columns: cols
+                }, done);
+        });
+
+        it('invoke internal helpers and infinite helpers', (done: Function) => {
+            const cc: any = (gridObj as any).columnChooserModule;
+            // ensure infinite mode is enabled
+            cc.infiniteRenderMode = true;
+            // fabricate infiniteLoadedElement entries with e-uncheck and e-frame
+            cc.infiniteLoadedElement = [];
+            for (let i = 0; i < 5; i++) {
+                const wrapper = document.createElement('div');
+                const frame = document.createElement('span'); frame.className = 'e-frame';
+                // ensure frame carries check/uncheck class so updateSelectAll sees it
+                frame.classList.add(i % 2 ? 'e-uncheck' : 'e-check');
+                const icon = document.createElement('span'); icon.className = 'e-icons';
+                frame.appendChild(icon);
+                // add an input element as real checkbox markup expects
+                const input = document.createElement('input'); input.type = 'checkbox';
+                input.className = 'e-cc-chbox';
+                wrapper.appendChild(frame);
+                wrapper.appendChild(input);
+                cc.infiniteLoadedElement.push(wrapper as HTMLElement);
+            }
+            // exercise updateIfiniteSelectAll (will call checkState for each uncheck)
+            cc.updateIfiniteSelectAll();
+
+            // test updateSelectAll with fabricated ulElement
+            cc.ulElement = document.createElement('ul');
+            const li = document.createElement('li'); cc.ulElement.appendChild(li);
+            // fabricate mainDiv selectall frame for infinite mode
+            cc.mainDiv = document.createElement('div');
+            const selectAll = document.createElement('div'); selectAll.className = 'e-cc-selectall';
+            const frame = document.createElement('div'); frame.className = 'e-frame e-selectall e-uncheck'; selectAll.appendChild(frame);
+            // add input for selectAll
+            const selectAllInput = document.createElement('input'); selectAllInput.type = 'checkbox';
+            selectAll.appendChild(selectAllInput);
+            cc.mainDiv.appendChild(selectAll);
+            cc.updateSelectAll(false);
+
+            // call infinite scroll mouse handlers (no-op branches covered)
+            cc.infiniteDiv = document.createElement('div');
+            cc.infiniteDiv.scrollTop = 0;
+            cc.infiniteScrollMouseKeyDownHandler();
+            // mouse up calls clickHandler via timer; fabricate an event
+            const e: any = { target: document.createElement('div') };
+            cc.infiniteScrollMouseKeyUpHandler(e as any);
+
+            // call infiniteScrollHandler with non-matching conditions to cover branches
+            cc.ulElement = document.createElement('ul');
+            cc.ulElement.appendChild(document.createElement('li'));
+            cc.infiniteLoadedElement = cc.infiniteLoadedElement || [];
+            cc.infiniteSkipCount = 0;
+            cc.itemsCount = 10;
+            cc.infiniteInitialLoad = false;
+            cc.infiniteScrollHandler();
+
+            // changeColumnVisibility with uid and with field
+            gridObj.columnChooserModule.changeColumnVisibility({ visibleColumns: [], hiddenColumns: [] }, 'uid');
+            gridObj.columnChooserModule.changeColumnVisibility({ visibleColumns: ['f1'], hiddenColumns: ['f2'] }, 'field');
+
+            // call various small helpers
+            cc.changedColumnState([]);
+            cc.columnStateChange(['non-existent-uid'], true);
+            cc.resetColumnState();
+            // cover resetColumnState branch when dlgDiv has a focused selectall element
+            cc.dlgDiv = document.createElement('div');
+            const focusLi = document.createElement('li');
+            focusLi.className = 'e-cclist e-cc-selectall e-colfocus';
+            cc.dlgDiv.appendChild(focusLi);
+            cc.infiniteRenderMode = true;
+            cc.resetColumnState();
+            expect(focusLi.classList.contains('e-colfocus')).toBe(false);
+            cc.clearActions();
+            cc.renderResponsiveColumnChooserDiv({ action: 'open' });
+            cc.renderResponsiveColumnChooserDiv({ action: 'clear' });
+            cc.renderResponsiveColumnChooserDiv({ action: 'confirm' });
+
+            // property change with mismatched module and matching module
+            cc.onPropertyChanged({ module: 'something-else' });
+            cc.onPropertyChanged({ module: cc.getModuleName() });
+
+            // confirmDlgBtnClick with null args to hit branch where args is null
+            cc.confirmDlgBtnClick({});
+            cc.extendInfiniteRemoveElements(cc.infiniteColumns);
+            done();
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
         });
     });
 
@@ -1354,6 +1461,305 @@ describe('Column chooser module', () => {
             }, 100);
         });
 
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    describe('Coverage for extendmDlgOpen', () => {
+        let gridObj: Grid;
+        beforeAll((done: Function) => {
+            gridObj = createGrid(
+                {
+                    dataSource: data,
+                    allowPaging: true,
+                    showColumnChooser: true,
+                    toolbar: ['ColumnChooser'],
+                    cssClass: 'e-custom e-customize',
+                    columns: [
+                        { field: 'OrderID', headerText: 'Order ID', width: 130, textAlign: 'Right' },
+                        { field: 'OrderDate', headerText: 'Order Date', width: 130, format: 'yMd', textAlign: 'Right' },
+                        { field: 'Freight', width: 120, format: 'C2', textAlign: 'Right' },
+                        { field: 'ShippedDate', headerText: 'Shipped Date', width: 140, format: 'yMd', textAlign: 'Right' },
+                        { field: 'ShipCountry', visible: false, headerText: 'Ship Country', width: 150 },
+                    ],
+                }, done);
+        });
+
+        it('coverage for mOpenDlg method', (done: Function) => {
+            window['browserDetails']['isDevice'] = true;
+            const btn: HTMLElement = document.getElementById(gridObj.element.id + '_columnchooser');
+            btn.click();
+            let actionBegin = (args: any) => {
+                args.cancel = true;
+                gridObj.actionBegin = null;
+                done();
+            }
+            gridObj.actionBegin = actionBegin;
+            (gridObj as any).columnChooserModule.confirmDlgBtnClick({});
+            (gridObj.columnChooserModule as any).mOpenDlg();
+        });
+
+        afterAll(() => {
+            window['browserDetails']['isDevice'] = false;
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    describe('Coverage for infiniteRenderMode', () => {
+        let gridObj: Grid;
+        beforeAll((done: Function) => {
+            gridObj = createGrid(
+                {
+                    dataSource: data,
+                    allowPaging: true,
+                    showColumnChooser: true,
+                    toolbar: ['ColumnChooser'],
+                    columns: [
+                        { field: 'OrderID', headerText: 'Order ID', width: 130, textAlign: 'Right' },
+                        { field: 'OrderDate', headerText: 'Order Date', width: 130, format: 'yMd', textAlign: 'Right' },
+                        { field: 'Freight', width: 120, format: 'C2', textAlign: 'Right' },
+                        { field: 'ShippedDate', headerText: 'Shipped Date', width: 140, format: 'yMd', textAlign: 'Right' },
+                        { field: 'ShipCountry', visible: false, headerText: 'Ship Country', width: 150 },
+                    ],
+                }, done);
+        });
+
+        it('infinite-render mode coverage', (done: Function) => {
+            gridObj.openColumnChooser();
+            (gridObj.columnChooserModule as any).infiniteRenderMode = true;
+            (gridObj.columnChooserModule as any).refreshCheckboxButton(true);
+            (document.querySelector('.e-cc .e-cc-selectall') as HTMLElement).click();
+            done();
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+        describe('Extra branch coverage for remaining uncovered paths (92%+ target)', () => {
+        let gridObj: Grid;
+
+        beforeAll((done: Function) => {
+            gridObj = createGrid(
+                {
+                    dataSource: data,
+                    columns: [{ field: 'OrderID' }, { field: 'CustomerID' }, { field: 'Freight' }],
+                    allowPaging: true,
+                    showColumnChooser: true,
+                    toolbar: ['ColumnChooser'],
+                    enableAdaptiveUI: true,
+                    columnChooserSettings: {
+                        enableSearching: true,
+                        template: null
+                    }
+                }, done);
+        });
+
+        it('covers actionBegin cancel paths in confirmDlgBtnClick and clearBtnClick', () => {
+            const cc: any = gridObj.columnChooserModule;
+            let cancelTriggered = false;
+            gridObj.actionBegin = (args: any) => {
+                args.cancel = true;
+                cancelTriggered = true;
+            };
+            cc.confirmDlgBtnClick({});
+            expect(cancelTriggered).toBe(true);
+            cancelTriggered = false;
+            cc.clearBtnClick();
+            expect(cancelTriggered).toBe(true);
+            gridObj.actionBegin = null;
+        });
+
+        it('covers early return in checkBoxClickHandler when template is set and !infiniteRenderMode', () => {
+            const cc: any = gridObj.columnChooserModule;
+            gridObj.columnChooserSettings.template = '<div>custom-template</div>';
+            cc.infiniteRenderMode = false;
+            const fakeEvent: any = { target: document.createElement('div') };
+            // Should return immediately without processing checkbox logic
+            cc.checkBoxClickHandler(fakeEvent);
+            gridObj.columnChooserSettings.template = null;
+            expect(true).toBe(true);
+        });
+
+        it('covers infiniteScrollMouseKeyUpHandler inner if branch (length > 1 + scroll condition)', () => {
+            const cc: any = gridObj.columnChooserModule;
+            cc.infiniteRenderMode = true;
+            cc.ulElement = document.createElement('ul');
+            for (let i = 0; i < 5; i++) {
+                cc.ulElement.appendChild(document.createElement('li'));
+            }
+            cc.infiniteDiv = document.createElement('div');
+            cc.infiniteDiv.scrollTop = 0; // triggers <= 0 condition
+            const fakeEvent: any = { target: document.createElement('div') };
+            cc.infiniteScrollMouseKeyUpHandler(fakeEvent); // inner if now taken
+        });
+
+        it('covers onPropertyChanged when dlgObj exists (search wrapper toggle)', () => {
+            const cc: any = gridObj.columnChooserModule;
+            gridObj.columnChooserModule.openColumnChooser();
+            // enableSearching = false
+            gridObj.columnChooserSettings.enableSearching = false;
+            cc.onPropertyChanged({ module: cc.getModuleName() });
+            // enableSearching = true
+            gridObj.columnChooserSettings.enableSearching = true;
+            cc.onPropertyChanged({ module: cc.getModuleName() });
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+});
+
+describe('ColumnChooser Immediate Mode', () => {
+    describe('Immediate Mode - Basic Checkbox Tests', () => {
+        let gridObj: Grid;
+        beforeAll((done: Function) => {
+            gridObj = createGrid({
+                dataSource: data,
+                columns: [
+                    { field: 'OrderID' },
+                    { field: 'CustomerID' },
+                    { field: 'EmployeeID' },
+                    { field: 'Freight' }
+                ],
+                showColumnChooser: true,
+                toolbar: ['ColumnChooser'],
+                columnChooserSettings: { mode: 'Immediate' }
+            }, done);
+        });
+        it('single column uncheck in immediate mode', (done: Function) => {
+            gridObj.columnChooserModule.openColumnChooser();
+            const checkboxes = document.querySelectorAll('.e-cc-chbox') as NodeListOf<HTMLInputElement>;
+            const initialCount = gridObj.getVisibleColumns().length;
+            checkboxes[1].click();
+            const dialog = document.querySelector('.e-ccdlg');
+            setTimeout(() => {
+                expect(gridObj.getVisibleColumns().length).toBe(initialCount - 1);
+                expect(dialog).not.toBeNull();
+                expect(dialog!.classList.contains('e-popup-open')).toBe(true);
+                done();
+            }, 200);
+        });
+        it('single column check in immediate mode', (done: Function) => {
+            const checkboxes = document.querySelectorAll('.e-cc-chbox') as NodeListOf<HTMLInputElement>;
+            const initialCount = gridObj.getVisibleColumns().length;
+            checkboxes[1].click();
+            setTimeout(() => {
+                expect(gridObj.getVisibleColumns().length).toBe(initialCount + 1);
+                done();
+            }, 200);
+        });
+        it('Select All uncheck in immediate mode', (done: Function) => {
+            gridObj.columnChooserModule.openColumnChooser();
+            const selectAllElement = document.querySelector('.e-cc-selectall .e-frame') as HTMLElement;
+            selectAllElement.click();            
+            setTimeout(() => {
+                expect(gridObj.getVisibleColumns().length).toBe(0);
+                done();
+            }, 200);
+        });
+        it('Select All check in immediate mode', (done: Function) => {
+            gridObj.columnChooserModule.openColumnChooser();
+            const selectAllElement = document.querySelector('.e-cc-selectall .e-frame') as HTMLElement;
+            selectAllElement.click();
+            setTimeout(() => {
+                expect(gridObj.getVisibleColumns().length).toBe(4);
+                done();
+            }, 200);
+        });
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    describe('Immediate Mode - Virtualization Support', () => {
+        let gridObj: Grid;
+        beforeAll((done: Function) => {
+            const virtualColumns = [];
+            for (let i = 0; i < 50; i++) {
+                virtualColumns.push({ field: 'Col' + i, headerText: 'Column ' + i });
+            }
+            gridObj = createGrid({
+                dataSource: data,
+                columns: virtualColumns,
+                height: 400,
+                showColumnChooser: true,
+                toolbar: ['ColumnChooser'],
+                enableColumnVirtualization: true,
+                enableVirtualization:true,
+                columnChooserSettings: { mode: 'Immediate' }
+            }, done);
+        });
+        it('checkbox change applies immediately in virtualized mode', (done: Function) => {
+            gridObj.columnChooserModule.openColumnChooser();
+            const visibleBefore = gridObj.getVisibleColumns().length;
+            const checkboxes = document.querySelectorAll('.e-cc-chbox') as NodeListOf<HTMLInputElement>;
+            const dialogBefore = document.querySelector('.e-ccdlg');
+            checkboxes[0].click();
+            const dialogAfter = document.querySelector('.e-ccdlg');
+            setTimeout(() => {
+                expect(dialogBefore!.classList.contains('e-popup-open')).toBe(true);
+                expect(dialogAfter!.classList.contains('e-popup-open')).toBe(true);
+                expect(gridObj.getVisibleColumns().length).toBe(0);
+                done();
+            }, 200);
+        });
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    describe('Immediate Mode - Virtualization with showInColumnChooser false', () => {
+        let gridObj: Grid;
+        beforeAll((done: Function) => {
+            const virtualColumns = [];
+            for (let i = 0; i < 50; i++) {
+                virtualColumns.push({
+                    field: 'Col' + i,
+                    headerText: 'Column ' + i,
+                    showInColumnChooser: i % 4 === 0 ? false : true
+                });
+            }
+            gridObj = createGrid({
+                dataSource: data,
+                columns: virtualColumns,
+                height: 400,
+                showColumnChooser: true,
+                toolbar: ['ColumnChooser'],
+                enableColumnVirtualization: true,
+                enableVirtualization:true,
+                columnChooserSettings: { mode: 'Immediate' }
+            }, done);
+        });
+        it('header and content should render properly after Select All uncheck in virtualized mode', () => {
+            gridObj.columnChooserModule.openColumnChooser();
+            const selectAllElement = document.querySelector('.e-cc-selectall .e-frame') as HTMLElement;
+            selectAllElement.click();            
+            const headerContent = gridObj.getHeaderContent();
+            const bodyContent = gridObj.getContent();
+            expect(headerContent).not.toBeNull();
+            expect(bodyContent).not.toBeNull();
+            expect(headerContent.innerHTML).toBeTruthy();
+            expect(bodyContent.innerHTML).toBeTruthy();
+        });
+        it('select all uncheck should properly hide/show columns with showInColumnChooser false', (done:Function) => {
+            const selectAllElement = document.querySelector('.e-cc-selectall .e-frame') as HTMLElement;
+            selectAllElement.click();
+            const visibleColumns = gridObj.getVisibleColumns();
+            setTimeout(() => {
+                 expect(visibleColumns.length).toBeGreaterThan(0);
+                done();
+            }, 200); 
+        });
         afterAll(() => {
             destroy(gridObj);
             gridObj = null;

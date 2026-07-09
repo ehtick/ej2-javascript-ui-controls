@@ -320,7 +320,9 @@ export class Resize implements IAction {
         const myTr: HTMLTableRowElement = this.parent.createElement('tr') as HTMLTableRowElement;
         for (let i: number = (startRowIndex <= 0 ? 1 : startRowIndex); i <= (endRowIndex > text.length ? text.length : endRowIndex); i++) {
             const tr: HTMLTableRowElement = myTr.cloneNode() as HTMLTableRowElement;
-            tr.className = table.querySelector('tr').className;
+            if (!isNullOrUndefined(table.querySelector('tr'))) {
+                tr.className = table.querySelector('tr').className;
+            }
             tr.appendChild(text[parseInt((i - 1).toString(), 10)]);
             if (!isNullOrUndefined(thead)) {
                 thead.appendChild(tr);

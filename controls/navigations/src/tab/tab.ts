@@ -1288,6 +1288,8 @@ export class Tab extends Component<HTMLElement> implements INotifyPropertyChange
     }
     private compileElement(ele: HTEle, val: string, prop: string, index: number): void {
         let templateFn: Function;
+        const heightAdjustMode: HeightStyles = this.heightAdjustMode;
+        const templateType: string = prop;
         if (typeof val === 'string') {
             val = val.trim();
             if (this.isVue) {
@@ -1304,6 +1306,7 @@ export class Tab extends Component<HTMLElement> implements INotifyPropertyChange
         }
         if (!isNOU(templateFn) && templateFUN.length > 0) {
             [].slice.call(templateFUN).forEach((el: HTEle): void => {
+                if (templateType === 'content' && heightAdjustMode === 'Fill' && el.style) { el.style.height = "100%"; }
                 ele.appendChild(el);
             });
         }
@@ -1476,17 +1479,9 @@ export class Tab extends Component<HTMLElement> implements INotifyPropertyChange
             }
         } else if (this.heightAdjustMode === 'Fill') {
             addClass([this.element], [CLS_FILL]);
-            let parent: HTEle | null = <HTEle>this.element.parentElement;
-            let heightVal: string | null = parent.style.height || parent.getAttribute('height');
-            while (parent && !heightVal) {
-                heightVal = parent.style.height || parent.getAttribute('height');
-                if (!heightVal) {
-                    parent = parent.parentElement;
-                }
-            }
-            setStyle(this.element, { 'height': heightVal != null ? heightVal : '100%' });
+            setStyle(this.element, { 'height': '100%' });
             this.loadContentElement();
-            this.cntEle.style.height = heightVal != null ? `calc(${heightVal} - ${this.hdrEle.offsetHeight}px)` : 'calc(100vh - ' + (this.hdrEle.offsetHeight + this.hdrEle.scrollHeight) + 'px)';
+            this.cntEle.style.height = 'calc(100% - ' + this.hdrEle.offsetHeight + 'px)';
         } else if (this.heightAdjustMode === 'Auto') {
             if (this.isTemplate === true) {
                 const cnt: HTEle[] = selectAll('.' + CLS_CONTENT + ' > .' + CLS_ITEM, this.element);

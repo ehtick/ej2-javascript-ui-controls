@@ -2297,11 +2297,21 @@ private calculatePathBounds(data: string): Rect {
         let format: WCharacterFormat = elementBox.listLevel.characterFormat;
         let breakCharacterFormat: WCharacterFormat = elementBox.line.paragraph.characterFormat;
         let color: string = format.hasValue('fontColor') ? format.fontColor : breakCharacterFormat.fontColor;
+        // To skip the underline for multi revision scenerio
+        let skipUnderline = breakCharacterFormat.revisionLength > 1;
+        if (breakCharacterFormat.revisionLength > 0) {
+            let revisionInfo: RevisionInfo[] = this.checkRevisionType(breakCharacterFormat);
+            color = this.getRevisionColor(revisionInfo);
+        } else if (breakCharacterFormat.revisionLength === 0 &&
+            (elementBox.text.indexOf('\u001F') > -1
+                || (elementBox.previousElement instanceof ListTextElementBox && elementBox.previousElement.text.indexOf('\u001F') > -1 && elementBox.text === "\t"))) {
+            color = "#0f3d57";
+        }
         this.pageContext.textBaseline = 'alphabetic';
         let bold: string = '';
         let italic: string = '';
         let fontFamily: string = format.hasValue('fontFamily') ? format.fontFamily : breakCharacterFormat.fontFamily;
-        if ((this.documentHelper.isIosDevice || this.documentHelper.isLinuxOS)  && (elementBox.text === String.fromCharCode(9679) || elementBox.text === String.fromCharCode(9675))) {
+        if ((this.documentHelper.isIosDevice || this.documentHelper.isLinuxOS) && (elementBox.text === String.fromCharCode(9679) || elementBox.text === String.fromCharCode(9675))) {
             fontFamily = '';
         }
         let fontSize: number = format.hasValue('fontSize') ? format.fontSize : breakCharacterFormat.fontSize;
@@ -2348,6 +2358,43 @@ private calculatePathBounds(data: string): Rect {
             this.pageContext.fillStyle = HelperMethods.getColor(color);
         }
         let scaleFactor: number = format.scaling < 100 ? 1 : format.scaling / 100;
+
+        if (text && text.indexOf('\u001F') > -1 && !isNullOrUndefined(elementBox.dualWidths)) {
+            const parts: string[] = text.split('\u001F');
+            const w1: number = elementBox.dualWidths.w1;
+            const w2: number = elementBox.dualWidths.w2;
+            let baseLeft = isParaBidi ? (left - elementBox.width) + leftMargin : left + leftMargin;
+            let currentLeft = baseLeft;
+            (this.pageContext as any).letterSpacing = format.characterSpacing * this.documentHelper.zoomFactor + 'pt';
+            this.pageContext.save();
+            this.pageContext.scale(scaleFactor, 1);
+            for (let i = 0; i < parts.length; i++) {
+                const partText: string = parts[i];
+                const partWidth: number = (i === 0 ? w1 : w2);
+                const isStrike: boolean = i === 0;
+                let textX: number;
+                if (isParaBidi) {
+                    textX = currentLeft + partWidth;
+                } else {
+                    textX = currentLeft;
+                }
+                this.pageContext.fillText(partText, this.getScaledValue(textX, 1) / scaleFactor, this.getScaledValue(top + topMargin, 2));
+                const decorLeft = currentLeft;
+                if (isStrike) {
+                    this.renderStrikeThrough({ ...elementBox, width: partWidth } as ListTextElementBox, decorLeft, top, format.strikethrough, color, baselineAlignment, { type: 'Deletion', color: color });
+                } else {
+                    this.renderUnderline({ ...elementBox, width: partWidth } as ListTextElementBox, decorLeft, top, underlineY, color, format.underline, baselineAlignment, { type: 'Insertion', color: color });
+                }
+                currentLeft += partWidth;
+            }
+            this.pageContext.restore();
+            if (isParaBidi) {
+                this.pageContext.direction = 'ltr';
+                left -= elementBox.width;
+            }
+            return;
+        }
+
         if (this.documentHelper.owner.documentEditorSettings.showHiddenMarks && !this.isPrinting) {
             if (elementBox instanceof ListTextElementBox && elementBox.text === "\t") {
                 this.tabMark(elementBox, format, left, top, leftMargin, topMargin);
@@ -2355,24 +2402,28 @@ private calculatePathBounds(data: string): Rect {
             (this.pageContext as any).letterSpacing = format.characterSpacing * this.documentHelper.zoomFactor + 'pt';
             this.pageContext.save();
             this.pageContext.scale(scaleFactor, 1);
-            this.pageContext.fillText(this.replaceSpace(text), this.getScaledValue(left + leftMargin, 1)/scaleFactor, this.getScaledValue(top + topMargin, 2), this.getScaledValue(elementBox.width));
+            this.pageContext.fillText(this.replaceSpace(text), this.getScaledValue(left + leftMargin, 1) / scaleFactor, this.getScaledValue(top + topMargin, 2), this.getScaledValue(elementBox.width));
             this.pageContext.restore();
         } else {
             (this.pageContext as any).letterSpacing = format.characterSpacing * this.documentHelper.zoomFactor + 'pt';
             this.pageContext.save();
             this.pageContext.scale(scaleFactor, 1);
-            this.pageContext.fillText(text, this.getScaledValue(left + leftMargin, 1)/scaleFactor, this.getScaledValue(top + topMargin, 2), this.getScaledValue(elementBox.width));
+            this.pageContext.fillText(text, this.getScaledValue(left + leftMargin, 1) / scaleFactor, this.getScaledValue(top + topMargin, 2), this.getScaledValue(elementBox.width));
             this.pageContext.restore();
         }
         if (isParaBidi) {
             this.pageContext.direction = 'ltr';
             left -= elementBox.width;
         }
-        if (format.underline !== 'None' && !isNullOrUndefined(format.underline)) {
-            this.renderUnderline(elementBox, left, top, underlineY, color, format.underline, baselineAlignment);
+        let revisionInfo: RevisionInfo[] = this.checkRevisionType(breakCharacterFormat);
+        let currentInfo: RevisionInfo = this.getRevisionType(revisionInfo, true);
+        if (format.underline !== 'None' && !isNullOrUndefined(format.underline) || ((!isNullOrUndefined(currentInfo) && !skipUnderline && (currentInfo.type === 'Insertion' || currentInfo.type === 'MoveTo')) ||
+            (elementBox.previousElement instanceof ListTextElementBox && elementBox.previousElement.text.indexOf('\u001F') > -1 && elementBox.text === "\t"))) {
+            this.renderUnderline(elementBox, left, top, underlineY, color, format.underline, baselineAlignment, currentInfo);
         }
-        if (strikethrough !== 'None') {
-            this.renderStrikeThrough(elementBox, left, top, format.strikethrough, color, baselineAlignment);
+        currentInfo = this.getRevisionType(revisionInfo, false);
+        if (strikethrough !== 'None' || (!isNullOrUndefined(currentInfo) && (currentInfo.type === 'Deletion' || currentInfo.type === 'MoveFrom'))) {
+            this.renderStrikeThrough(elementBox, left, top, format.strikethrough, color, baselineAlignment, currentInfo);
         }
     }
 
@@ -2703,7 +2754,12 @@ private calculatePathBounds(data: string): Rect {
         let scaleFactor: number = format.scaling < 100 ? 1 : format.scaling / 100;
         this.pageContext.scale(scaleFactor, 1);
         if (availableSpaceWidth > tabMarkWidth) {
-            this.pageContext.fillText(tabMarkString, this.getScaledValue(((left + leftMargin + availableSpaceWidth) - (tabWidth)), 1)/scaleFactor, this.getScaledValue(top + topMargin, 2));
+            if (elementBox.paragraph.bidi) {
+                this.pageContext.fillText(tabMarkString, this.getScaledValue(((left + leftMargin + tabWidth) - (availableSpaceWidth)), 1) / scaleFactor, this.getScaledValue(top + topMargin, 2));
+            }
+            else {
+                this.pageContext.fillText(tabMarkString, this.getScaledValue(((left + leftMargin + availableSpaceWidth) - (tabWidth)), 1) /scaleFactor, this.getScaledValue(top + topMargin, 2));
+            }
         } else {
             this.pageContext.fillText(tabMarkString, this.getScaledValue(left + leftMargin, 1)/scaleFactor, this.getScaledValue(top + topMargin, 2), this.getScaledValue(elementBox.width));
         }

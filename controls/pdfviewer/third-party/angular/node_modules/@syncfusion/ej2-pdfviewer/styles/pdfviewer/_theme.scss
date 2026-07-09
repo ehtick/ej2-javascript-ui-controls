@@ -1517,38 +1517,60 @@ $lg-desktop: 1399.98;
   .e-pv-tbar-btn.e-pv-custom-button.e-btn:focus,
   .e-pv-tbar-btn.e-pv-organize-view-button.e-btn:focus
   {
-    background: $pv-thumbnail-view-button-selection-background;
-    border: $pv-thumbnail-view-button-selection-border;
-    border-radius: $pv-thumbnail-border-selection-radius;
-    @if $skin-name == 'bootstrap4' {
-      color: $pv-thumbnail-border-selection-font-color;
+    @if $skin-name !='material' and $skin-name !='material-dark' {
+      background: $pv-thumbnail-view-button-selection-background;
+      border: $pv-thumbnail-view-button-selection-border;
+      border-radius: $pv-thumbnail-border-selection-radius;
+      @if $skin-name =='bootstrap4' {
+        color: $pv-thumbnail-border-selection-font-color;
+      }
+      @if $skin-name =='bootstrap5' {
+        color: $white;
+      }
+      @if $skin-name =='bootstrap5.3' {
+        color: $pv-item-selection-color;
+      }
+      line-height: $pv-thumbnail-view-button-selection-line-height;
+      padding: $pv-thumbnail-view-button-selection-padding;
     }
-    @if $skin-name == 'bootstrap5' {
-      color: $white;
+    @if $skin-name == 'material' or $skin-name == 'material-dark' {
+      background: $pv-thumbnail-view-button-focus-background;
+      border-radius: $pv-thumbnail-view-button-focus-border-radius;
+      color: $pv-thumbnail-view-button-focus-color;
+      border-color: $pv-thumbnail-view-button-focus-border-color;
+      border-style: $pv-thumbnail-view-button-focus-border-style;
+      border-width: $pv-thumbnail-view-button-focus-border-width;
+      box-shadow: $pv-thumbnail-view-button-focus-box-shadow;
     }
-    @if $skin-name == 'bootstrap5.3' {
-      color: $pv-item-selection-color;
-    }
-    line-height: $pv-thumbnail-view-button-selection-line-height;
-    padding: $pv-thumbnail-view-button-selection-padding;
   }
 
   .e-pv-tbar-btn.e-pv-bookmark-button.e-btn:focus
   {
-    background: $pv-thumbnail-view-button-selection-background;
-    border: $pv-thumbnail-view-button-selection-border;
-    border-radius: $pv-thumbnail-border-selection-radius;
-    @if $skin-name == 'bootstrap4' {
-      color: $pv-thumbnail-border-selection-font-color;
+    @if $skin-name !='material' and $skin-name !='material-dark' {
+      background: $pv-thumbnail-view-button-selection-background;
+      border: $pv-thumbnail-view-button-selection-border;
+      border-radius: $pv-thumbnail-border-selection-radius;
+      @if $skin-name =='bootstrap4' {
+        color: $pv-thumbnail-border-selection-font-color;
+      }
+      @if $skin-name =='bootstrap5' {
+        color: $white;
+      }
+      @if $skin-name =='bootstrap5.3' {
+        color: $pv-item-selection-color;
+      }
+      line-height: $pv-thumbnail-view-button-selection-line-height;
+      padding: $pv-thumbnail-view-button-selection-padding;
     }
-    @if $skin-name == 'bootstrap5' {
-      color: $white;
+    @if $skin-name == 'material' or $skin-name == 'material-dark' {
+      background: $pv-thumbnail-view-button-focus-background;
+      border-radius: $pv-thumbnail-view-button-focus-border-radius;
+      color: $pv-thumbnail-view-button-focus-color;
+      border-color: $pv-thumbnail-view-button-focus-border-color;
+      border-style: $pv-thumbnail-view-button-focus-border-style;
+      border-width: $pv-thumbnail-view-button-focus-border-width;
+      box-shadow: $pv-thumbnail-view-button-focus-box-shadow;
     }
-    @if $skin-name == 'bootstrap5.3' {
-      color: $pv-item-selection-color;
-    }
-    line-height: $pv-thumbnail-view-button-selection-line-height;
-    padding: $pv-thumbnail-view-button-selection-padding;
   }
 
   .e-pv-thumbnail-view-button-selection.e-pv-thumbnail-view-button.e-btn {

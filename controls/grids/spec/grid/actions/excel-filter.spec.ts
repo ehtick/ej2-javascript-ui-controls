@@ -18,6 +18,8 @@ import  {profile , inMB, getMemoryProfile} from '../base/common.spec';
 import { PredicateModel } from '../../../src/grid/base/grid-model';
 import * as events from '../../../src/grid/base/constant';
 import { ICustomOptr } from '../../../src/grid/base/interface';
+import { NumberFilterUI } from '../../../src/grid/renderer/number-filter-ui';
+import { DataManager } from '@syncfusion/ej2-data';
 
 Grid.Inject(Filter, Page, Selection, Group, LazyLoadGroup, Sort);
 
@@ -1818,4 +1820,327 @@ describe('991898: Updating the Chrome version in coverage test cases of EJ2 comp
         destroy(gridObj);
         gridObj = null;
     });
+});
+
+// Additional tests for Number Filter UI branch coverage
+describe('Number Filter UI Module', () => {
+  let gridObj: Grid;
+  const makeCreateArgs = (colField: string, operatorValue: string, previousValue?: string) => {
+  const col: any = gridObj.getColumnByField(colField);
+  const localizeText = { getConstant: () => 'EnterValue' };
+  const getOptrInstance: any = { dropOptr: { value: operatorValue, previousValue } };
+  const target = gridObj.createElement('div', { className: 'nfui-host' });
+  gridObj.element.appendChild(target);
+  const dialogObj: any = { element: gridObj.element };
+  return { column: col, localizeText, getOptrInstance, target, dialogObj };
+  };
+
+  const withOperator = (ui: any, value: string, run: () => void) => {
+  if (!ui || !ui.parent) { throw new Error('withOperator: ui.parent is not set'); }
+
+  if (!ui.parent.filterModule) { ui.parent.filterModule = {}; }
+  if (!ui.parent.filterModule.filterModule) { ui.parent.filterModule.filterModule = {}; }
+
+  const holder = ui.parent.filterModule.filterModule;
+  const had = typeof holder.getOperatorDropdown === 'function';
+  const original = holder.getOperatorDropdown;
+
+  holder.getOperatorDropdown = function () { return { value: value }; };
+
+  try {
+    run();
+  } finally {
+    if (had) {
+      holder.getOperatorDropdown = original;
+    } else {
+      delete holder.getOperatorDropdown;
+    }
+  }
+};
+
+  beforeAll((done: Function) => {
+    gridObj = createGrid(
+      {
+        dataSource: filterData,
+        allowFiltering: true,
+        filterSettings: { type: 'Excel' },
+        columns: [
+          { field: 'OrderID', type: 'number', visible: true },
+          { field: 'EmployeeID', type: 'number' }
+        ]
+      },
+      done
+    );
+  });
+
+  it('create() should render numeric and multiselect inputs and toggle UI', () => {
+    const ui = new NumberFilterUI(gridObj, (gridObj as any).serviceLocator, undefined);
+    const args: any = makeCreateArgs('OrderID', 'equal');
+    ui.create(args);
+    expect(args.target.querySelector(`#numberui-${args.column.uid}`)).toBeTruthy();
+    expect(args.target.querySelector(`#multiselectnumberui-${args.column.uid}`)).toBeTruthy();
+    ui.destroy();
+    args.target.remove();
+  });
+
+  it('write() should set MultiSelect value when operator is "in" with array filteredValue', () => {
+    const ui = new NumberFilterUI(gridObj, (gridObj as any).serviceLocator, undefined);
+    const argsCreate: any = makeCreateArgs('OrderID', 'in');
+    ui.create(argsCreate);
+    withOperator(ui as any, 'in', () => {
+      ui.write({ column: argsCreate.column, filteredValue: [10248, 10249] } as any);
+    });
+    const ms = (ui as any).multiSelectObj; 
+    expect(ms.value).toEqual([10248, 10249]);
+    ui.destroy();
+    argsCreate.target.remove();
+  });
+
+  it('write() should set empty MultiSelect when "notin" with non-array filteredValue', () => {
+    const ui = new NumberFilterUI(gridObj, (gridObj as any).serviceLocator, undefined);
+    const argsCreate: any = makeCreateArgs('OrderID', 'notin');
+    ui.create(argsCreate);
+    withOperator(ui as any, 'notin', () => {
+      ui.write({ column: argsCreate.column, filteredValue: 99999 } as any);
+    });
+    const ms = (ui as any).multiSelectObj;
+    expect(ms.value).toEqual([]);
+    ui.destroy();
+    argsCreate.target.remove();
+  });
+
+  it('write() should attach keydown and keyEventHandler should cover false and true branches', () => {
+    const ui = new NumberFilterUI(gridObj, (gridObj as any).serviceLocator, undefined);
+    const argsCreate: any = makeCreateArgs('OrderID', 'equal');
+    ui.create(argsCreate);
+    withOperator(ui as any, 'equal', () => {
+      ui.write({ column: argsCreate.column, filteredValue: 12345 } as any);
+    });
+    const numeric = (ui as any).numericTxtObj;
+    let changeCount = 0;
+    const onChange = () => { changeCount += 1; };
+    numeric.element.addEventListener('change', onChange);
+    numeric.element.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', keyCode: 40 } as any));
+    expect(changeCount).toBe(0);
+    numeric.element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13 } as any));
+    expect(changeCount).toBe(1);
+    numeric.element.removeEventListener('change', onChange);
+    ui.destroy();
+    argsCreate.target.remove();
+  });
+
+  it('read() should call filterByColumn correctly for "in"', () => {
+    const ui = new NumberFilterUI(gridObj, (gridObj as any).serviceLocator, undefined);
+    const argsCreate: any = makeCreateArgs('OrderID', 'in');
+    ui.create(argsCreate);
+    (ui as any).multiSelectObj.value = [10248, 10250];
+    const calls: any[] = [];
+    const filterObj = {
+      filterByColumn: (field: any, op: any, val: any, pred: any, match: any) => {
+        calls.push({ field, op, val, pred, match });
+      }
+    };
+    ui.read(argsCreate.target, argsCreate.column, 'in', filterObj as any);
+    expect(calls.length).toBe(1);
+    expect(calls[0]).toEqual({ field: 'OrderID', op: 'in', val: [10248, 10250], pred: 'and', match: true });
+    ui.destroy();
+    argsCreate.target.remove();
+  });
+
+  it('read() should call filterByColumn correctly for numeric operator (equal)', () => {
+    const ui = new NumberFilterUI(gridObj, (gridObj as any).serviceLocator, undefined);
+    const argsCreate: any = makeCreateArgs('OrderID', 'equal');
+    ui.create(argsCreate);
+    (ui as any).numericTxtObj.value = 777;
+    const calls: any[] = [];
+    const filterObj = {
+      filterByColumn: (field: any, op: any, val: any, pred: any, match: any) => {
+        calls.push({ field, op, val, pred, match });
+      }
+    };
+    ui.read(argsCreate.target, argsCreate.column, 'equal', filterObj as any);
+    expect(calls.length).toBe(1);
+    expect(calls[0]).toEqual({ field: 'OrderID', op: 'equal', val: 777, pred: 'and', match: true });
+    ui.destroy();
+    argsCreate.target.remove();
+  });
+
+  it('createMultiSelectDropDown() foreign column + DataManager + actionComplete distinct', () => {
+    const ui = new NumberFilterUI(gridObj, (gridObj as any).serviceLocator, undefined);
+    const fakeColumn: any = {
+      uid: 'fk-1',
+      field: 'EmployeeID',
+      type: 'number',
+      isForeignColumn: () => true,
+      foreignKeyValue: 'Name',
+      dataSource: new DataManager([
+        { Id: 1, Name: 'A' },
+        { Id: 2, Name: 'A' },
+        { Id: 3, Name: 'B' }
+      ]),
+      filter: { params: {} },
+      format: undefined
+    };
+    const args: any = {
+      column: fakeColumn,
+      localizeText: { getConstant: () => 'EnterValue' },
+      getOptrInstance: { dropOptr: { value: 'in', previousValue: undefined } },
+      dialogObj: { element: gridObj.element },
+      target: gridObj.createElement('div')
+    };
+    gridObj.element.appendChild(args.target);
+    (ui as any).numericInstance = gridObj.createElement('input', { className: 'e-flmenu-input', id: 'numberui-' + fakeColumn.uid });
+    (ui as any).multiSelectCheckBoxInstance = gridObj.createElement('input', { className: 'multiselect-input', id: 'multiselectnumberui-' + fakeColumn.uid });
+    args.target.appendChild((ui as any).numericInstance);
+    args.target.appendChild((ui as any).multiSelectCheckBoxInstance);
+    (ui as any).createNumericTextBox(args);
+    (ui as any).createMultiSelectDropDown(args);
+    (ui as any).openPopup({ popup: { element: gridObj.element } });
+    const handler = (ui as any).dropdownComplete;
+    const payload: any = { result: [{ Name: 'A' }, { Name: 'A' }, { Name: 'B' }] };
+    handler(payload);
+    expect(payload.result.length).toBe(2);
+    ui.destroy();
+    args.target.remove();
+  });
+
+  it('destroy() should dispose NumericTextBox and MultiSelect cleanly', () => {
+    const ui = new NumberFilterUI(gridObj, (gridObj as any).serviceLocator, undefined);
+    const args: any = makeCreateArgs('EmployeeID', 'equal');
+    ui.create(args);
+    expect((ui as any).numericTxtObj.isDestroyed).toBeFalsy();
+    expect((ui as any).multiSelectObj.isDestroyed).toBeFalsy();
+    ui.destroy();
+    expect((ui as any).numericTxtObj.isDestroyed).toBeTruthy();
+    expect((ui as any).multiSelectObj.isDestroyed).toBeTruthy();
+    args.target.remove();
+  });
+  
+   afterAll(() => {
+    destroy(gridObj);
+    gridObj = null;
+  });
+});
+
+// Additional tests for Number Filter UI branch coverage 
+describe('Number Filter UI Module - branch coverage additions', () => {
+  let gridWithCss: Grid;
+  let gridNoCss: Grid;
+  const makeCreateArgs = (gridObj: Grid, colField: string, operatorValue: string, previousValue?: string) => {
+  const col: any = gridObj.getColumnByField(colField);
+  const localizeText = { getConstant: () => 'EnterValue' };
+  const getOptrInstance: any = { dropOptr: { value: operatorValue, previousValue } };
+  const target = gridObj.createElement('div', { className: 'nfui-host' });
+  gridObj.element.appendChild(target);
+  const dialogObj: any = { element: gridObj.element };
+  return { column: col, localizeText, getOptrInstance, target, dialogObj };
+  };
+
+  const createNumericOnly = (ui: any, args: any) => {
+    ui.numericInstance = args.target.ownerDocument.createElement('input');
+    ui.numericInstance.id = 'numberui-' + args.column.uid;
+    args.target.appendChild(ui.numericInstance);
+    (ui as any).createNumericTextBox(args);
+  };
+
+  const createMultiOnly = (ui: any, args: any) => {
+    ui.multiSelectCheckBoxInstance = args.target.ownerDocument.createElement('input');
+    ui.multiSelectCheckBoxInstance.id = 'multiselectnumberui-' + args.column.uid;
+    args.target.appendChild(ui.multiSelectCheckBoxInstance);
+    (ui as any).createMultiSelectDropDown(args);
+  };
+  beforeAll((done: Function) => {
+    gridWithCss = createGrid(
+      {
+        dataSource: filterData,
+        allowFiltering: true,
+        filterSettings: { type: 'Excel' },
+        cssClass: 'my-class',                                     
+        columns: [
+          { field: 'OrderID', type: 'number', visible: true },
+          { field: 'EmployeeID', type: 'number' }
+        ]
+      },
+      () => {
+        gridNoCss = createGrid(
+          {
+            dataSource: filterData,
+            allowFiltering: true,
+            filterSettings: { type: 'Excel' },
+            columns: [
+              { field: 'OrderID', type: 'number', visible: true },
+              { field: 'EmployeeID', type: 'number' }
+            ]
+          },
+          done
+        );
+      }
+    );
+  });
+
+
+  it('createNumericTextBox: format when args.column.format is a string', () => {
+    const ui = new NumberFilterUI(gridWithCss, (gridWithCss as any).serviceLocator, undefined);
+    const args: any = makeCreateArgs(gridWithCss, 'OrderID', 'equal');
+    args.column.format = 'N2';
+    createNumericOnly(ui as any, args);
+    const num = (ui as any).numericTxtObj;
+    expect(num.format).toBe('N2');
+    expect(num.cssClass.indexOf('e-popup-flmenu') > -1).toBeTruthy();
+    expect(num.cssClass.indexOf('my-class') > -1).toBeTruthy();
+    ui.destroy();
+    args.target.remove();
+  });
+
+  it('createNumericTextBox: format when args.column.format is an object with .format', () => {
+    const ui = new NumberFilterUI(gridWithCss, (gridWithCss as any).serviceLocator, undefined);
+    const args: any = makeCreateArgs(gridWithCss, 'OrderID', 'equal');
+    args.column.format = { format: 'C2' }; 
+    createNumericOnly(ui as any, args);
+    const num = (ui as any).numericTxtObj;
+    expect(num.format).toBe('C2');
+    expect(num.cssClass.indexOf('e-popup-flmenu') > -1).toBeTruthy();
+    expect(num.cssClass.indexOf('my-class') > -1).toBeTruthy();
+
+    ui.destroy();
+    args.target.remove();
+  });
+
+  it('createMultiSelectDropDown: non-foreign column, array dataSource wraps to DataManager, cssClass without custom class', () => {
+    const ui = new NumberFilterUI(gridNoCss, (gridNoCss as any).serviceLocator, undefined);
+    const args: any = makeCreateArgs(gridNoCss, 'OrderID', 'in');
+    args.column.isForeignColumn = () => false;
+    (ui as any).parent.dataSource = filterData.slice(0, 3);
+    createMultiOnly(ui as any, args);
+    const ms = (ui as any).multiSelectObj;
+    expect(ms.dataSource instanceof DataManager).toBeTruthy();
+    expect(ms.fields.text).toBe('OrderID');
+    expect(ms.fields.value).toBe('OrderID');
+    expect(ms.cssClass).toBe('e-multiselect-flmenu');
+    ui.destroy();
+    args.target.remove();
+  });
+
+  it('createMultiSelectDropDown: non-foreign column, parent has cssClass (truthy cssClass branch)', () => {
+    const ui = new NumberFilterUI(gridWithCss, (gridWithCss as any).serviceLocator, undefined);
+    const args: any = makeCreateArgs(gridWithCss, 'EmployeeID', 'in');
+    args.column.isForeignColumn = () => false;
+    (ui as any).parent.dataSource = filterData.slice(0, 2);
+    createMultiOnly(ui as any, args);
+    const ms = (ui as any).multiSelectObj;
+    expect(ms.dataSource instanceof DataManager).toBeTruthy();
+    expect(ms.fields.text).toBe('EmployeeID');
+    expect(ms.fields.value).toBe('EmployeeID');
+    expect(ms.cssClass.indexOf('e-multiselect-flmenu') > -1).toBeTruthy();
+    expect(ms.cssClass.indexOf('my-class') > -1).toBeTruthy();
+    ui.destroy();
+    args.target.remove();
+  });
+
+  afterAll(() => {
+    destroy(gridWithCss);
+    destroy(gridNoCss);
+    gridWithCss = null;
+    gridNoCss = null;
+  });
 });

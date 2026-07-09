@@ -1,4 +1,4 @@
-@use 'ej2-base/styles/common/mixin' as *;
+@use 'variables' as *;
 @mixin background-styles($color,$border-color) {
   background-color: $color;
   border-color: $border-color;
@@ -39,7 +39,7 @@ $applies-hover-bg: $theme-name == 'bootstrap5.3' or
   }
 }
 
-@mixin border-styles($back-color,$border-color, $border-radius) {
+@mixin border-style($back-color,$border-color, $border-radius) {
   background-color: $back-color;
   border: $border-color;
   border-radius: $border-radius;
@@ -310,18 +310,18 @@ $applies-hover-bg: $theme-name == 'bootstrap5.3' or
       }
 
       .e-gantt-parent-progressbar-inner-div {
-        @include border-styles($gantt-parent-progress-bar, $gantt-parent-progress-bar-border,$gantt-parent-progress-bar-border-radius);
+        @include border-style($gantt-parent-progress-bar, $gantt-parent-progress-bar-border,$gantt-parent-progress-bar-border-radius);
         //margin-left: $gantt-child-progress-margin-left;
       }
 
       .e-gantt-child-progressbar-inner-div {
-        @include border-styles($gantt-child-progress-bar, $gantt-child-progress-bar-border,$gantt-child-progress-bar-border-radius);
+        @include border-style($gantt-child-progress-bar, $gantt-child-progress-bar-border,$gantt-child-progress-bar-border-radius);
         //margin-left: $gantt-child-progress-margin-left;
       }
 
       .e-gantt-child-manualtaskbar .e-gantt-child-progressbar-inner-div {
         @if $skin-name == 'tailwind3' {
-          @include border-styles($gantt-manualchild-progress-bar, $gantt-child-progress-bar-border,$gantt-child-progress-bar-border-radius);
+          @include border-style($gantt-manualchild-progress-bar, $gantt-child-progress-bar-border,$gantt-child-progress-bar-border-radius);
         }
       }
       

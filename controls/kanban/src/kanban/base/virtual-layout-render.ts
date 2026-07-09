@@ -79,6 +79,9 @@ export class VirtualLayoutRender extends MobileLayout {
         if (!this.isSwimlane) {
             this.renderContent();
             this.renderCards();
+            if (this.parent.height === 'auto') {
+                console.error('Kanban height must be set in virtualization mode. Please provide a valid pixel value.');
+            }
         }
         this.renderValidation();
         this.parent.renderTemplates();

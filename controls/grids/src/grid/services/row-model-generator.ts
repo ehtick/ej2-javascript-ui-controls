@@ -27,9 +27,13 @@ export class RowModelGenerator implements IModelGenerator<Column> {
         this.parent = parent;
     }
 
-    public generateRows(data: Object, args?: { startIndex?: number, requestType?: Action }): Row<Column>[] {
+    public generateRows(data: Object, args?: { startIndex?: number, endIndex?: number, requestType?: Action }): Row<Column>[] {
+        if (this.parent.isRowDomVirtualization() && args) {
+            return this.generateDomVirtualRows(data, args);
+        }
         const rows: Row<Column>[] = [];
-        let startIndex: number = this.parent.enableVirtualization && args ? args.startIndex : 0;
+        let startIndex: number = this.parent.enableVirtualization && args
+            ? args.startIndex : 0;
         startIndex = this.parent.enableInfiniteScrolling && args ? this.getInfiniteIndex(args) : startIndex;
         if (this.parent.enableImmutableMode && args && args.startIndex) {
             startIndex = args.startIndex;
@@ -39,6 +43,49 @@ export class RowModelGenerator implements IModelGenerator<Column> {
         }
         for (let i: number = 0, len: number = Object.keys(data).length; i < len; i++ , startIndex++) {
             rows[parseInt(i.toString(), 10)] = this.generateRow(data[parseInt(i.toString(), 10)], startIndex);
+        }
+        return rows;
+    }
+
+    private generateDomVirtualRows(
+        data: Object, args: { startIndex?: number, endIndex?: number, requestType?: Action }
+    ): Row<Column>[] {
+        if (args.requestType && this.parent.domVirtualClearActions.indexOf(args.requestType as string) !== -1) {
+            this.parent.clearDomVirtualRowCache();
+        }
+        const rows: Row<Column>[] = [];
+        const dataLength: number = Object.keys(data).length;
+        const startIndex: number = args.startIndex || 0;
+        const endIndex: number = args.endIndex !== undefined ? args.endIndex : dataLength;
+
+        if (this.parent.enableVirtualization) {
+            const pageSize: number = this.parent.pageSettings.pageSize;
+            const pageOffset: number = (this.parent.pageSettings.currentPage - 1) * pageSize;
+            for (let r: number = pageOffset; r < pageOffset + dataLength; r++) {
+                this.parent.domRowObj.delete(r);
+            }
+            const loopStart: number = Math.max(startIndex, pageOffset);
+            const loopEnd: number = Math.min(endIndex, pageOffset + dataLength);
+            for (let i: number = loopStart; i < loopEnd; i++) {
+                const dataItem: Object = data[parseInt((i - pageOffset).toString(), 10)];
+                const row: Row<Column> = this.generateRow(dataItem, i);
+                this.parent.notify(events.applyDomVirtualRowHeight, { row: row });
+                this.parent.domRowObj.set(i, row);
+                rows.push(row);
+            }
+        } else {
+            for (let i: number = startIndex; i < Math.min(endIndex, dataLength); i++) {
+                const dataItem: Object = data[parseInt(i.toString(), 10)];
+                const cached: Row<Column> | undefined = this.parent.domRowObj.get(i);
+                if (cached) {
+                    rows.push(cached);
+                } else {
+                    const row: Row<Column> = this.generateRow(dataItem, i);
+                    this.parent.notify(events.applyDomVirtualRowHeight, { row: row });
+                    this.parent.domRowObj.set(i, row);
+                    rows.push(row);
+                }
+            }
         }
         return rows;
     }

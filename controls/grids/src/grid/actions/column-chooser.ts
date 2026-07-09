@@ -14,6 +14,7 @@ import { ResponsiveDialogRenderer } from '../renderer/responsive-dialog-renderer
 import { createCheckBox } from '@syncfusion/ej2-buttons';
 import { SearchBox } from '../services/focus-strategy';
 import * as literals from '../base/string-literals';
+import { ColumnChooserSettings } from '../models/column-chooser-settings';
 
 /**
  * The `ColumnChooser` module is used to show or hide columns dynamically.
@@ -61,6 +62,9 @@ export class ColumnChooser implements IAction {
     private prevShowedCols: string[] = [];
     private hideDialogFunction: Function = this.hideDialog.bind(this);
     private infiniteRenderMode: boolean = false;
+    private toggleQueue: Map<string, boolean> | null = null;
+    private flushToggleTimer: number | null = null;
+    private isEscapePressed: boolean = false;
 
 
     //Module declarations
@@ -114,6 +118,14 @@ export class ColumnChooser implements IAction {
     private destroy(): void {
         const gridElement: Element = this.parent.element;
         if (!gridElement.querySelector( '.' + literals.gridContent) && (!gridElement.querySelector('.' + literals.gridHeader)) || !gridElement) { return; }
+        if (this.flushToggleTimer !== null) {
+            clearTimeout(this.flushToggleTimer);
+            this.flushToggleTimer = null;
+        }
+        if (this.toggleQueue) {
+            this.toggleQueue.clear();
+            this.toggleQueue = null;
+        }
         this.removeEventListener();
         this.unWireEvents();
         this.infiniteLoadedElement = null;
@@ -265,10 +277,14 @@ export class ColumnChooser implements IAction {
         if (!isNullOrUndefined(this.dlgObj) && this.dlgObj.visible) {
             if (this.parent.enableAdaptiveUI) {
                 this.responsiveDialogRenderer.hideResponsiveColumnChooser();
-            } else {
+            } else if (this.parent.columnChooserSettings.mode !== 'Immediate') {
                 this.dlgObj.hide();
                 // this.unWireEvents();
                 this.isDlgOpen = false;
+            } else if (this.parent.columnChooserSettings.mode === 'Immediate' && this.isEscapePressed) {
+                this.dlgObj.hide();
+                this.isDlgOpen = false;
+                this.isEscapePressed = false;
             }
         }
     }
@@ -453,6 +469,7 @@ export class ColumnChooser implements IAction {
 
     private keyUpHandler(e: KeyboardEventArgs): void {
         if (e.key === 'Escape') {
+            this.isEscapePressed = true;
             this.resetColumnState();
         }
         if (e && e.target && !isNullOrUndefined(closest(e.target as Element, '.e-grid-popup'))) {
@@ -501,13 +518,14 @@ export class ColumnChooser implements IAction {
 
     private renderDlgContent(): void {
         const isAdaptive: boolean = this.parent.enableAdaptiveUI;
+        const isImmediateMode: boolean = this.parent.columnChooserSettings.mode === 'Immediate';
         this.dlgDiv = this.parent.createElement('div', { className: 'e-ccdlg e-cc', id: this.parent.element.id + '_ccdlg' });
         if (!isAdaptive) {
             this.parent.element.appendChild(this.dlgDiv);
         }
         this.dlgObj = new Dialog({
             header: this.parent.enableAdaptiveUI ? null : this.renderHeader(),
-            showCloseIcon: false,
+            showCloseIcon: isImmediateMode && !isAdaptive ? true : false,
             closeOnEscape: false,
             locale: this.parent.locale,
             visible: false,
@@ -517,25 +535,9 @@ export class ColumnChooser implements IAction {
             width: 250,
             cssClass: this.parent.cssClass ? 'e-cc' + ' ' + this.parent.cssClass : 'e-cc',
             animationSettings: { effect: 'None' },
-            footerTemplate: this.parent.enableAdaptiveUI ? null : this.renderFooter()
+            footerTemplate: isImmediateMode ? null : (this.parent.enableAdaptiveUI ? null : this.renderFooter())
         });
-        if (!isAdaptive && (this.infiniteRenderMode || !this.parent.columnChooserSettings.footerTemplate)) {
-            this.dlgObj.buttons = [{
-                click: this.confirmDlgBtnClick.bind(this),
-                buttonModel: {
-                    content: this.l10n.getConstant('OKButton'), isPrimary: true,
-                    cssClass: this.parent.cssClass ? 'e-cc e-cc_okbtn' + ' ' + this.parent.cssClass : 'e-cc e-cc_okbtn'
-                }
-            },
-            {
-                click: this.clearBtnClick.bind(this),
-                buttonModel: {
-                    cssClass: this.parent.cssClass ?
-                        'e-flat e-cc e-cc-cnbtn' + ' ' + this.parent.cssClass : 'e-flat e-cc e-cc-cnbtn',
-                    content: this.l10n.getConstant('CancelButton')
-                }
-            }];
-        }
+        this.renderDialogButtons(isImmediateMode);
         const isStringTemplate: string = 'isStringTemplate';
         this.dlgObj[`${isStringTemplate}`] = true;
         this.dlgObj.appendTo(this.dlgDiv);
@@ -548,6 +550,31 @@ export class ColumnChooser implements IAction {
             this.dlgObj.target = document.querySelector('.e-rescolumnchooser > .e-dlg-content > .e-mainfilterdiv') as HTMLElement;
         }
         this.wireEvents();
+    }
+
+    private renderDialogButtons(isImmediateMode: boolean): void {
+        if (!this.parent.enableAdaptiveUI && (this.infiniteRenderMode || !this.parent.columnChooserSettings.footerTemplate)) {
+            if (isImmediateMode) {
+                this.dlgObj.buttons = null;
+                this.dlgObj.footerTemplate = null;
+            } else {
+                this.dlgObj.buttons = [{
+                    click: this.confirmDlgBtnClick.bind(this),
+                    buttonModel: {
+                        content: this.l10n.getConstant('OKButton'), isPrimary: true,
+                        cssClass: this.parent.cssClass ? 'e-cc e-cc_okbtn' + ' ' + this.parent.cssClass : 'e-cc e-cc_okbtn'
+                    }
+                },
+                {
+                    click: this.clearBtnClick.bind(this),
+                    buttonModel: {
+                        cssClass: this.parent.cssClass ?
+                            'e-flat e-cc e-cc-cnbtn' + ' ' + this.parent.cssClass : 'e-flat e-cc e-cc-cnbtn',
+                        content: this.l10n.getConstant('CancelButton')
+                    }
+                }];
+            }
+        }
     }
 
     /**
@@ -952,7 +979,7 @@ export class ColumnChooser implements IAction {
                 this.mainDiv.querySelector('.e-ccheck .e-selectall').parentElement.classList.remove('e-checkbox-disabled');
                 this.updateIntermediateBtn();
             }
-            if (!clearSearch) {
+            if (!clearSearch && this.parent.columnChooserSettings.mode !== 'Immediate') {
                 this.addcancelIcon();
                 this.refreshCheckboxButton();
             } else {
@@ -1063,14 +1090,20 @@ export class ColumnChooser implements IAction {
                 for (let i: number = 0; i < column.length; i++) {
                     if (column[parseInt(i.toString(), 10)].showInColumnChooser) {
                         this.checkstatecolumn(checkstate, column[parseInt(i.toString(), 10)].uid, true);
+                        if (this.parent.columnChooserSettings.mode === 'Immediate') {
+                            this.applyImmediateColumnToggle(column[parseInt(i.toString(), 10)].uid, checkstate);
+                        }
                     }
                 }
             } else {
                 this.checkstatecolumn(checkstate, columnUid);
+                if (this.parent.columnChooserSettings.mode === 'Immediate') {
+                    this.applyImmediateColumnToggle(columnUid, checkstate);
+                }
             }
             const isSelectAll: boolean = this.infiniteRenderMode && selectAllElement.querySelector('.e-selectall') &&
                 selectAllElement.querySelector('.e-uncheck') ? true : false;
-            if (!this.parent.columnChooserSettings.footerTemplate) {
+            if (!this.parent.columnChooserSettings.footerTemplate && this.parent.columnChooserSettings.mode !== 'Immediate') {
                 this.refreshCheckboxButton(isSelectAll);
             }
             this.setFocus(parentsUntil(e.target as Element, 'e-cclist'));
@@ -1078,6 +1111,65 @@ export class ColumnChooser implements IAction {
                 this.updateIntermediateBtn();
             }
         }
+    }
+
+    private applyImmediateColumnToggle(columnUid: string, visible: boolean): void {
+        if (!this.toggleQueue) {
+            this.toggleQueue = new Map<string, boolean>();
+        }
+        this.toggleQueue.set(columnUid, visible);
+        if (this.flushToggleTimer !== null) {
+            clearTimeout(this.flushToggleTimer);
+        }
+        this.flushToggleTimer = window.setTimeout(() => {
+            this.flushImmediateToggles();
+        }, this.parent.columnChooserSettings.immediateModeDelay);
+    }
+
+    private flushImmediateToggles(): void {
+        if (!this.toggleQueue || this.toggleQueue.size === 0) {
+            return;
+        }
+        const onActionBeginArgs: ColumnChooserActionArgs = {
+            requestType: 'columnVisibilityUpdate',
+            columns: this.getColumns() as Column[],
+            cancel: false
+        };
+        this.parent.trigger(events.actionBegin, onActionBeginArgs);
+        if (onActionBeginArgs.cancel) {
+            this.toggleQueue.clear();
+            this.flushToggleTimer = null;
+            return;
+        }
+
+        this.stateChangeColumns = [];
+        this.changedStateColumns = [];
+        this.toggleQueue.forEach((visible: boolean, columnUid: string) => {
+            const allColumns: Column[] = this.infiniteRenderMode
+                ? this.infiniteColumns
+                : this.parent.getColumns();
+
+            const column: Column | undefined = allColumns.find((col: Column) => col.uid === columnUid);
+
+            if (column && column.type !== 'checkbox') {
+                this.columnStateChange([columnUid], visible);
+                this.parent.trigger(events.columnVisibilityChanged, {
+                    columnField: column.field,
+                    visible: visible,
+                    source: 'column-chooser',
+                    timestamp: Date.now()
+                });
+            }
+        });
+        this.getShowHideService.setVisible(this.stateChangeColumns, this.changedStateColumns);
+        const onActionCompleteArgs: ColumnChooserActionArgs = {
+            requestType: 'columnVisibilityUpdate',
+            columns: this.getColumns() as Column[],
+            cancel: false
+        };
+        this.parent.trigger(events.actionComplete, onActionCompleteArgs);
+        this.toggleQueue.clear();
+        this.flushToggleTimer = null;
     }
 
     private updateIntermediateBtn(): void {
@@ -1098,8 +1190,10 @@ export class ColumnChooser implements IAction {
         const selected: number = this.infiniteRenderMode ? this.infiniteLoadedElement.filter(
             (arr: HTMLElement) => arr.querySelector('.e-check')).length : this.ulElement.querySelectorAll('.e-check:not(.e-selectall)').length;
         let btn: Button;
-        if (!this.parent.enableAdaptiveUI && !this.parent.columnChooserSettings.footerTemplate) {
-            btn = (<{ btnObj?: Button }>(this.dlgObj as DialogModel)).btnObj[0];
+        if (!this.parent.enableAdaptiveUI && !this.parent.columnChooserSettings.footerTemplate && this.parent.columnChooserSettings.mode !== 'Immediate' &&
+            this.dlgObj && (<{ btnObj?: Button[] }>(this.dlgObj as DialogModel)).btnObj &&
+            (<{ btnObj?: Button[] }>(this.dlgObj as DialogModel)).btnObj.length) {
+            btn = (<{ btnObj?: Button[] }>(this.dlgObj as DialogModel)).btnObj[0];
             btn.disabled = false;
         } else if (this.parent.enableAdaptiveUI && this.responsiveDialogRenderer) {
             this.parent.notify(events.refreshCustomFilterOkBtn, { disabled: false });
@@ -1166,7 +1260,7 @@ export class ColumnChooser implements IAction {
             selected = this.infiniteLoadedElement.filter((arr: HTMLElement) => arr.querySelector('.e-uncheck')).length;
         }
         let btn: Button;
-        if (!this.parent.enableAdaptiveUI) {
+        if (!this.parent.enableAdaptiveUI && this.parent.columnChooserSettings.mode !== 'Immediate') {
             btn = (this.dlgDiv.querySelector('.e-footer-content').querySelector('.e-btn') as EJ2Intance).ej2_instances[0] as Button;
             btn.disabled = false;
         } else if (this.parent.enableAdaptiveUI && this.responsiveDialogRenderer) {
@@ -1185,13 +1279,13 @@ export class ColumnChooser implements IAction {
         const hideColumns: string[] = this.showColumn.filter((column: string) => sreachShowColumns.indexOf(column) !== -1);
         if ((this.infiniteRenderMode && (checkstate || sreachShowColumns.length === selected)) ||
             (!this.infiniteRenderMode && selected === 0 && hideColumns.length === 0)) {
-            if (!this.parent.enableAdaptiveUI) {
+            if (!this.parent.enableAdaptiveUI && btn && this.parent.columnChooserSettings.mode !== 'Immediate') {
                 btn.disabled = true;
             } else if (this.parent.enableAdaptiveUI && this.responsiveDialogRenderer) {
                 this.parent.notify(events.refreshCustomFilterOkBtn, { disabled: true });
             }
         }
-        if (!this.parent.enableAdaptiveUI) {
+        if (!this.parent.enableAdaptiveUI && btn && this.parent.columnChooserSettings.mode !== 'Immediate') {
             btn.dataBind();
         }
     }
@@ -1287,22 +1381,29 @@ export class ColumnChooser implements IAction {
         } else if (target.scrollTop === 0 && !this.infiniteInitialLoad && this.infiniteSkipCount &&
             (this.infiniteSkipCount > this.itemsCount * 2) && this.infiniteLoadedElement.length &&
             this.ulElement.children.length < this.itemsCount * 3) {
-            infiniteRemoveElements(([].slice.call(this.ulElement.children)).splice(
-                (this.itemsCount * 2), columns.length % this.itemsCount));
-            this.infiniteSkipCount = (Math.floor(columns.length / this.itemsCount) - 3) *
-                this.itemsCount;
-            infiniteAppendElements([].slice.call(this.infiniteLoadedElement.slice(this.infiniteSkipCount, this.infiniteSkipCount +
-                this.itemsCount)), this.ulElement);
-            this.infiniteDiv.scrollTop = this.infiniteScrollAppendDiff;
-            this.prevInfiniteScrollDirection = 'up';
+            this.extendInfiniteRemoveElements(columns);
         }
+    }
+
+    private extendInfiniteRemoveElements(columns: Column[]): void {
+        infiniteRemoveElements(([].slice.call(this.ulElement.children)).splice(
+            (this.itemsCount * 2), columns.length % this.itemsCount));
+        this.infiniteSkipCount = (Math.floor(columns.length / this.itemsCount) - 3) *
+            this.itemsCount;
+        infiniteAppendElements([].slice.call(this.infiniteLoadedElement.slice(this.infiniteSkipCount, this.infiniteSkipCount +
+            this.itemsCount)), this.ulElement);
+        this.infiniteDiv.scrollTop = this.infiniteScrollAppendDiff;
+        this.prevInfiniteScrollDirection = 'up';
     }
 
     private refreshCheckboxState(): void {
         if (!this.parent.columnChooserSettings.enableSearching && !this.selectedColumnModels.length && this.sortDirection === 'None') {
             return;
         }
-        (<HTMLInputElement>this.dlgObj.element.querySelector('.e-cc.e-input')).value = '';
+        const searchBox: HTMLInputElement = (<HTMLInputElement>this.dlgObj.element.querySelector('.e-cc.e-input'));
+        if (searchBox) {
+            searchBox.value = '';
+        }
         this.columnChooserSearch('', false);
         const gridObject: IGrid = this.parent;
         const currentCheckBoxColls: NodeListOf<Element> = this.dlgObj.element.querySelectorAll('.e-cc-chbox:not(.e-selectall)');
@@ -1496,6 +1597,14 @@ export class ColumnChooser implements IAction {
             const contentElement: HTMLElement = this.dlgObj.element.querySelector('.e-dlg-content');
             searchWrapper.style.display = enableSearch ? '' : 'none';
             contentElement.style.margin = enableSearch ? '' : '0px';
+        }
+        if (this.dlgObj && !this.dlgObj.isDestroyed && e && e.properties && (e.properties as { mode?: string }).mode) {
+            const isImmediateMode: boolean = (e.properties as { mode?: string }).mode === 'Immediate';
+            const isAdaptive: boolean = this.parent.enableAdaptiveUI;
+            this.dlgObj.hide();
+            this.dlgObj.showCloseIcon = isImmediateMode && !isAdaptive ? true : false;
+            this.renderDialogButtons(isImmediateMode);
+            this.dlgObj.dataBind();
         }
     }
 }

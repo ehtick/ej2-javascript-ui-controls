@@ -800,4 +800,366 @@ describe('Pager base module', () => {
             pagerObj = elem = null;
         });
     });
+    
+    describe('Coverage - Pager render and lifecycle - branch coverage', () => {
+        let pagerObj: Pager;
+        let elem: HTMLElement = createElement('div', { id: 'PagerRender' });
+        let __originalUserAgentDescriptor: PropertyDescriptor;
+        let templateFunction = (data: any) => {
+            return `<div class="pager-info">Page 1 of 2</div>`;
+        };
+        it('destroy with React template and !hasParent should destroy template', () => {
+            document.body.appendChild(elem);
+            
+            pagerObj = new Pager({ totalRecordsCount: 50, template: templateFunction });
+            pagerObj.isReact = true;
+            pagerObj.hasParent = false;
+            pagerObj.appendTo('#PagerRender');
+            pagerObj.destroy();
+        });
+        
+        it('should add e-mac-safari class on Safari browser', () => {
+            document.body.appendChild(elem);
+            __originalUserAgentDescriptor = Object.getOwnPropertyDescriptor(navigator, 'userAgent');
+            Object.defineProperty(navigator, 'userAgent', {
+                value: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Safari/537.36',
+                configurable: true
+            });
+            pagerObj = new Pager({ totalRecordsCount: 50 });
+            pagerObj.appendTo('#PagerRender');
+        });
+
+        afterEach(() => {
+            if (pagerObj) { pagerObj.destroy(); }
+            if (elem && elem.parentElement) { elem.remove(); }
+            // restore navigator.userAgent descriptor if it was modified
+            if (__originalUserAgentDescriptor) {
+                try {
+                    Object.defineProperty(navigator, 'userAgent', __originalUserAgentDescriptor);
+                } catch (e) {
+                    // ignore if restore fails in some environments
+                }
+                __originalUserAgentDescriptor = undefined;
+            }
+            pagerObj = templateFunction = null;
+        });
+    });
+
+    describe('Coverage - Pager focus and keyboard navigation - branch coverage', () => {
+        let pagerObj: Pager;
+        let elem: HTMLElement = createElement('div', { id: 'PagerFocus' });
+
+        beforeEach((done: Function) => {
+            document.body.appendChild(elem);
+            pagerObj = new Pager({ 
+                totalRecordsCount: 100, 
+                pageCount: 10, 
+                pageSize: 10,
+                pageSizes: true
+            });
+            pagerObj.appendTo('#PagerFocus');
+            setTimeout(() => done(), 100);
+        });
+
+        it('onFocusOut with pageSizes and dropdown should remove focus from dropdown', () => {
+            const dropDown = elem.querySelector('.e-pagerdropdown') as HTMLElement;
+            if (dropDown && dropDown.children.length > 0) {
+                const dropDownInput = dropDown.children[0] as HTMLElement;
+                dropDownInput.classList.add('e-input-focus');
+                (pagerObj as any).onFocusOut({ target: elem } as any);
+            }
+        });
+
+        it('onKeyPress should call changePagerFocus when pager has focus', () => {
+            const mockEvent = { keyCode: 9, preventDefault: jasmine.createSpy('preventDefault') } as any;
+            (pagerObj as any).checkPagerHasFocus = jasmine.createSpy('checkPagerHasFocus').and.returnValue(true);
+            (pagerObj as any).changePagerFocus = jasmine.createSpy('changePagerFocus');
+            (pagerObj as any).onKeyPress(mockEvent);
+        });
+
+        it('changeFocusByTab should move focus forward when incrementNumber < array length', () => {
+            const mockElements = [
+                { focus: jasmine.createSpy('focus'), classList: { contains: () => false } },
+                { focus: jasmine.createSpy('focus'), classList: { contains: () => false } }
+            ] as any[];
+            const mockEvent = { preventDefault: jasmine.createSpy('preventDefault'), keyCode: 9 } as any;
+            (pagerObj as any).getFocusedTabindexElement = () => mockElements[0];
+            (pagerObj as any).getFocusablePagerElements = () => mockElements;
+            (pagerObj as any).changeFocusByTab(mockEvent);
+        });
+
+        it('changeFocusByShiftTab should move focus backward when decrementNumber >= 0', () => {
+            const mockElements = [
+                { focus: jasmine.createSpy('focus'), classList: { contains: () => false } },
+                { focus: jasmine.createSpy('focus'), classList: { contains: () => false } }
+            ] as any[];
+            const mockEvent = { preventDefault: jasmine.createSpy('preventDefault'), keyCode: 9, shiftKey: true } as any;
+            (pagerObj as any).getFocusedTabindexElement = () => mockElements[1];
+            (pagerObj as any).getFocusablePagerElements = () => mockElements;
+            (pagerObj as any).changeFocusByShiftTab(mockEvent);
+        });
+        
+        it('navigateToPageByKey should call changeFocusInAdaptiveMode when focused element is adaptive', () => {
+            // Prepare a paging action item and an adaptive focused element inside pager
+            const pagingItem = document.createElement('a');
+            pagingItem.className = 'e-prev';
+            pagingItem.setAttribute('data-index', '2');
+            pagerObj.element.appendChild(pagingItem);
+
+            const focusedElem = document.createElement('div');
+            focusedElem.className = 'e-focused e-mprev';
+            pagerObj.element.appendChild(focusedElem);
+
+            spyOn((pagerObj as any), 'changeFocusInAdaptiveMode');
+            (pagerObj as any).navigateToPageByKey({ keyCode: 37 } as any);
+        });
+
+        afterEach(() => {
+            if (pagerObj) { pagerObj.destroy(); }
+            if (elem && elem.parentElement) { elem.remove(); }
+            pagerObj = null;
+        });
+    });
+
+    describe('Coverage - Pager template methods - branch coverage', () => {
+        let pagerObj: Pager;
+        let elem: HTMLElement = createElement('div', { id: 'PagerTemplate' });
+        let templateFunction = (data: any) => {
+            return `<span>Test</span>`;
+        };
+        it('pagerTemplate should handle React template with !isVue', () => {
+            document.body.appendChild(elem);
+            const testElement : Element = document.createElement('span');
+            testElement.innerHTML = 'Test';
+            testElement.className = 'e-test';
+            document.body.appendChild(testElement);
+            pagerObj = new Pager({ totalRecordsCount: 50, template: templateFunction });
+            pagerObj.isReact = true;
+            pagerObj.isVue = false;
+            pagerObj.appendTo('#PagerTemplate');
+            pagerObj.refresh();
+            document.querySelector('.e-test').remove();
+        });
+
+        it('compile should handle template fallback when DOM selector not found', () => {
+            document.body.appendChild(elem);
+            pagerObj = new Pager({ totalRecordsCount: 50 });
+            pagerObj.appendTo('#PagerTemplate');
+            const result = pagerObj.compile('<span>Fallback</span>');
+        });
+
+        it('refresh with Angular template should destroy template', () => {
+            document.body.appendChild(elem);
+            pagerObj = new Pager({ totalRecordsCount: 50, template: '<span>Test</span>' });
+            (pagerObj as any).parent = { isAngular: true, destroyTemplate: jasmine.createSpy('destroyTemplate') } as any;
+            pagerObj.appendTo('#PagerTemplate');
+            pagerObj.refresh();
+        });
+
+        it('refresh without template should call setPagerFocusForActiveElement when no focused element', () => {
+            document.body.appendChild(elem);
+            pagerObj = new Pager({ totalRecordsCount: 50, pageCount: 5 });
+            pagerObj.appendTo('#PagerTemplate');
+            const testElement : Element = document.createElement('span');
+            testElement.classList.add('e-disable');
+            (pagerObj as any).getFocusedTabindexElement = (): any => testElement;
+            (pagerObj as any).setPagerFocusForActiveElement = jasmine.createSpy('setPagerFocusForActiveElement');
+            pagerObj.refresh();
+        });
+        
+        afterEach(() => {
+            if (pagerObj) { pagerObj.destroy(); }
+            if (elem && elem.parentElement) { elem.remove(); }
+            pagerObj = templateFunction = null;
+        });
+    });
+
+    describe('Coverage - Pager query string and URL methods - branch coverage', () => {
+        let pagerObj: Pager;
+        let elem: HTMLElement = createElement('div', { id: 'PagerURL' });
+
+        beforeEach((done: Function) => {
+            document.body.appendChild(elem);
+            pagerObj = new Pager({ totalRecordsCount: 100, pageSize: 10 });
+            pagerObj.appendTo('#PagerURL');
+            setTimeout(() => done(), 100);
+        });
+
+        it('updateQueryString should dispatch popstate event when isReact is true', () => {
+            pagerObj.isReact = true;
+            spyOn(window, 'dispatchEvent');
+            (pagerObj as any).updateQueryString(2);
+        });
+
+        it('getUpdatedURL should handle URL with hash fragment', () => {
+            const uri = 'http://localhost:9876/page#section';
+            const result = (pagerObj as any).getUpdatedURL(uri, 'page', '5');
+        });
+
+        it('render should set current page from querystring when enableQueryString true', () => {
+            const originalHref = window.location.href;
+            try {
+                const tempElem = createElement('div', { id: 'PagerQS' });
+                document.body.appendChild(tempElem);
+                const p = new Pager({ enableQueryString: true });
+                spyOn((p as any), 'setCurrentPageValue');
+                p.appendTo('#PagerQS');
+                expect((p as any).setCurrentPageValue).toHaveBeenCalled();
+                p.destroy();
+                tempElem.remove();
+            } finally {
+                history.pushState({}, '', originalHref);
+            }
+        });
+
+        afterEach(() => {
+            if (pagerObj) { pagerObj.destroy(); }
+            if (elem && elem.parentElement) { elem.remove(); }
+            pagerObj = null;
+        });
+    });
+
+    describe('Coverage - Pager resize methods - branch coverage', () => {
+        let pagerObj: Pager;
+        let elem: HTMLElement = createElement('div', { id: 'PagerResize' });
+
+        beforeEach((done: Function) => {
+            document.body.appendChild(elem);
+            pagerObj = new Pager({ 
+                totalRecordsCount: 100, 
+                pageCount: 30, 
+                pageSize: 2,
+                pageSizes: true
+            });
+            pagerObj.appendTo('#PagerResize');
+            pagerObj.element.style.borderStyle = 'solid';
+            pagerObj.element.style.width = '500px';
+            setTimeout(() => done(), 100);
+        });
+
+        it('setShowItems should show items from lesser and greater indices', () => {
+            const hrefElem = '<a class="e-link e-numericitem e-spacing e-pager-default e-hide" tabindex="-1" aria-label="Page 2 of 50 Pages" href="#" data-index="2">2</a>';
+            const testElement : Element = document.createElement('div');
+            testElement.innerHTML = hrefElem;
+            const hiddenItems = Array.from(testElement.querySelectorAll('.e-numericitem.e-hide')) as HTMLElement[];
+            if (hiddenItems.length > 0) {
+                const mockItems = hiddenItems.map(item => ({
+                    getAttribute: (attr: string) => item.getAttribute(attr),
+                    classList: item.classList
+                }));
+                (pagerObj as any).currentPage = 5;
+                (pagerObj as any).setShowItems(100, 30, 5, 1, mockItems as any);
+                const shownItems = mockItems.filter(item => !item.classList.contains('e-hide'));
+            }
+        });
+
+        it('hideDetailItems should add e-hide to detail items when required', () => {
+            // append detail items to pager element
+            const detail1 = document.createElement('div');
+            detail1.className = 'e-parentmsgbar';
+            detail1.style.width = '50px';
+            const detail2 = document.createElement('div');
+            detail2.className = 'e-pagesizes';
+            detail2.style.width = '50px';
+            pagerObj.element.appendChild(detail1);
+            pagerObj.element.appendChild(detail2);
+
+            // stub calculateActualWidth to force hiding
+            (pagerObj as any).calculateActualWidth = () => 1000;
+            (pagerObj as any).averageDetailWidth = 10;
+            const detailItems = pagerObj.element.querySelectorAll('.e-parentmsgbar, .e-pagesizes') as NodeListOf<HTMLElement>;
+            (pagerObj as any).hideDetailItems(100, 5, 50, detailItems);
+        });
+
+        it('resizePager should handle condition with numItems.length <= 1 and detailItems', () => {
+            elem.style.width = '200px';
+            (pagerObj as any).resizePager();
+        });
+
+        it('keyPressHandler should call stopImmediatePropagation when presskey.cancel is true', (done: Function) => {
+            // Create a mock KeyboardEvent
+            const mockEvent: any = {
+                keyCode: 13,
+                stopImmediatePropagation: jasmine.createSpy('stopImmediatePropagation'),
+                preventDefault: jasmine.createSpy('preventDefault')
+            };
+            // Register a keyPressed listener that sets cancel to true
+            (pagerObj as any).on('key-pressed', (args: any) => {
+                args.cancel = true;
+            });
+            // Call keyPressHandler with our mock event
+            (pagerObj as any).keyPressHandler(mockEvent);
+            // Verify that stopImmediatePropagation was called
+            expect(mockEvent.stopImmediatePropagation).toHaveBeenCalled();
+            done();
+        });
+        
+        afterEach(() => {
+            if (pagerObj) { pagerObj.destroy(); }
+            if (elem && elem.parentElement) { elem.remove(); }
+            pagerObj = null;
+        });
+
+    });
+
+    describe('Coverage - navigateToPageByEnterOrSpace - branch coverage', () => {
+        let pagerObj: Pager;
+        let elem: HTMLElement = createElement('div', { id: 'PagerNavigate' });
+
+        beforeEach((done: Function) => {
+            document.body.appendChild(elem);
+            pagerObj = new Pager({ 
+                totalRecordsCount: 100, 
+                pageCount: 10, 
+                pageSize: 10
+            });
+            pagerObj.appendTo('#PagerNavigate');
+            setTimeout(() => done(), 100);
+        });
+
+        it('should focus on classElement when selectedClass is e-last and element is not disabled', () => {
+            const numericItem = elem.querySelector('.e-numericitem') as HTMLElement;
+            if (numericItem) {
+                numericItem.focus();
+                numericItem.setAttribute('data-index', '2');
+                numericItem.classList.add('e-focused');
+                
+                // Mock getClass to return 'e-last'
+                (pagerObj as any).getClass = () => 'e-last';
+                // Mock getElementByClass to return the last button
+                const lastButton = elem.querySelector('.e-mlast') as HTMLElement;
+                (pagerObj as any).getElementByClass = () => lastButton;
+                
+                const focusSpy = spyOn(lastButton, 'focus');
+                (pagerObj as any).navigateToPageByEnterOrSpace({} as any);
+                expect(focusSpy).toHaveBeenCalled();
+            }
+        });
+
+        it('should call changeFocusInAdaptiveMode when checkFocusInAdaptiveMode returns true', () => {
+            const numericItem = elem.querySelector('.e-numericitem') as HTMLElement;
+            if (numericItem) {
+                numericItem.focus();
+                numericItem.setAttribute('data-index', '2');
+                numericItem.classList.add('e-focused');
+                
+                // Mock getClass to return a non-navigation class
+                (pagerObj as any).getClass = () => 'e-numericitem';
+                // Mock getElementByClass to return null or a disabled element
+                (pagerObj as any).getElementByClass = (): any => null;
+                // Mock checkFocusInAdaptiveMode to return true
+                (pagerObj as any).checkFocusInAdaptiveMode = jasmine.createSpy('checkFocusInAdaptiveMode').and.returnValue(true);
+                (pagerObj as any).changeFocusInAdaptiveMode = jasmine.createSpy('changeFocusInAdaptiveMode');
+                
+                (pagerObj as any).navigateToPageByEnterOrSpace({} as any);
+                expect((pagerObj as any).changeFocusInAdaptiveMode).toHaveBeenCalledWith(numericItem);
+            }
+        });
+
+        afterEach(() => {
+            if (pagerObj) { pagerObj.destroy(); }
+            if (elem && elem.parentElement) { elem.remove(); }
+            pagerObj = null;
+        });
+    });
 });

@@ -268,6 +268,56 @@ describe('EJ2-7314/7299===>Grid clipboard => ', () => {
     });
 });
 
+describe('Clipboard module coverage', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: filterData,
+                editSettings: { allowEditing: true, mode: 'Batch' },
+                selectionSettings: { type: 'Multiple', mode: 'Cell', cellSelectionMode: 'Box' },
+                columns: [
+                    { headerText: 'OrderID', field: 'OrderID' },
+                    { headerText: 'CustomerID', field: 'CustomerID' },
+                    { headerText: 'Freight', field: 'Freight' }
+                ]
+            }, done);
+    });
+
+    it('pasteHandler should process ctrl+v and clear clipboard textarea', (done: Function) => {
+        // ensure clipboard textarea exists
+        if (!(document.querySelector('.e-clipboard'))) {
+            (gridObj.clipboardModule as any).initialEnd();
+        }
+        const txt = document.querySelector('.e-clipboard') as HTMLInputElement;
+        txt.value = 'A\tB\n';
+
+        // select a cell and add to selection so pasteHandler proceeds
+        gridObj.selectionModule.addCellsToSelection([{ rowIndex: 0, cellIndex: 0 }]);
+        const cell: HTMLElement = gridObj.getContent().querySelector('.e-rowcell') as HTMLElement;
+        cell.setAttribute('tabindex', '0');
+        cell.focus();
+
+        // simulate ctrl+v (non-Mac) keyboard event
+        (gridObj.clipboardModule as any).pasteHandler({ keyCode: 86, ctrlKey: true, metaKey: false } as any);
+
+        // wait for setTimeout in pasteHandler to complete
+        setTimeout(() => {
+            expect(txt.value).toBe('');
+            done();
+        }, 50);
+    });
+
+    it('paste with out-of-range indices should not throw', () => {
+        (gridObj.clipboardModule as any).paste('X\tY\n', 1, 1);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
 describe('EJ2-826272 - Copy-Paste problem while adding a new row in grid', () => {
     let gridObj: Grid;
     let inputElement: HTMLInputElement;
@@ -603,6 +653,398 @@ describe('EJ2-1011563: Accessibility warning throws due to textarea used for Cli
     });
 });
 
+describe('setCopyData fallback branch coverage => ', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: filterData,
+                enableVirtualization: true,
+                height: 200,
+                allowSelection: true,
+                selectionSettings: { type: 'Multiple' },
+                columns: [
+                    { headerText: 'OrderID', field: 'OrderID' },
+                    { headerText: 'CustomerID', field: 'CustomerID' },
+                    { headerText: 'Freight', field: 'Freight' }
+                ]
+            }, done);
+    });
+
+    it('should handle selectedIndexes > rows.length and copy without error', () => {
+        // select a large set of row indexes so selectedIndexes length > rendered rows length
+        const idxs: number[] = [];
+        for (let i = 0; i < (filterData.length || 50); i++) { idxs.push(i); }
+        gridObj.selectRows(idxs as number[]);
+        // calling copy should trigger setCopyData fallback that reads aria-selected from DOM rows
+        gridObj.copy(true);
+        const txt = document.querySelector('.e-clipboard') as HTMLTextAreaElement;
+        expect(txt && txt.value).toBeTruthy();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('Coverage Improvement - Mac Platform Clipboard Operations => ', () => {
+    let gridObj: Grid;
+    let originalPlatform: any;
+    let originalDescriptor: PropertyDescriptor;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: employeeData,
+            columns: [
+                { field: 'EmployeeID', headerText: 'Employee ID', width: 135 },
+                { field: 'FirstName', headerText: 'Name', width: 125 },
+                { field: 'Title', headerText: 'Title', width: 180 }
+            ],
+            allowSelection: true,
+            selectionSettings: { type: 'Multiple' }
+        }, done);
+    });
+
+    beforeEach(() => {
+        // Save original platform descriptor
+        originalDescriptor = Object.getOwnPropertyDescriptor(Navigator.prototype, 'platform');
+        originalPlatform = navigator.platform;
+    });
+
+    afterEach(() => {
+        // Restore original platform
+        if (originalDescriptor) {
+            Object.defineProperty(Navigator.prototype, 'platform', originalDescriptor);
+        }
+    });
+
+    it('should copy on Mac platform using Command+C (metaKey) - Coverage: Line 42', () => {
+        // Mock Mac platform
+        Object.defineProperty(Navigator.prototype, 'platform', {
+            get: () => 'MacIntel',
+            configurable: true
+        });
+
+        gridObj.selectRows([0, 1]);
+
+        // Spy on copy method
+        const copySpy = spyOn(gridObj.clipboardModule, 'copy').and.callThrough();
+
+        // Simulate Mac Command+C keyboard event
+        const keyEvent: any = {
+            keyCode: 67,  // C key
+            metaKey: true,  // Command key on Mac
+            ctrlKey: false,
+            target: gridObj.element.querySelector('.e-gridcontent')
+        };
+
+        // Trigger pasteHandler (which handles Mac copy detection)
+        (gridObj.clipboardModule as any).pasteHandler(keyEvent);
+
+        // Assertions
+        expect(copySpy).toHaveBeenCalled();
+        expect((document.querySelector('.e-clipboard') as HTMLInputElement).value)
+            .toContain('Nancy');
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('Coverage Improvement - Mac Platform Paste Operations => ', () => {
+    let gridObj: Grid;
+    let originalDescriptor: PropertyDescriptor;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: filterData.slice(0, 10),
+            editSettings: { allowEditing: true, mode: 'Batch' },
+            selectionSettings: { type: 'Multiple', mode: 'Cell', cellSelectionMode: 'Box' },
+            columns: [
+                { field: 'OrderID', headerText: 'Order ID', width: 120 },
+                { field: 'CustomerID', headerText: 'Customer Name', width: 150 },
+                { field: 'Freight', width: 120 }
+            ]
+        }, done);
+    });
+
+    beforeEach(() => {
+        // Save original platform descriptor
+        originalDescriptor = Object.getOwnPropertyDescriptor(Navigator.prototype, 'platform');
+        
+        // Ensure clipboard textarea exists
+        if (!(document.querySelector('.e-clipboard'))) {
+            (gridObj.clipboardModule as any).initialEnd();
+        }
+    });
+
+    afterEach(() => {
+        // Restore original platform
+        if (originalDescriptor) {
+            Object.defineProperty(Navigator.prototype, 'platform', originalDescriptor);
+        }
+    });
+
+    it('should paste on Mac platform using Command+V (metaKey) - Coverage: Lines 44, 60', (done: Function) => {
+        // Mock Mac platform
+        Object.defineProperty(Navigator.prototype, 'platform', {
+            get: () => 'MacIntel',
+            configurable: true
+        });
+
+        // Select a cell
+        gridObj.selectionModule.selectCell({ rowIndex: 0, cellIndex: 1 }, false);
+
+        // Set clipboard textarea value
+        const txt = document.querySelector('.e-clipboard') as HTMLInputElement;
+        txt.value = 'TestData\tValue2\n';
+
+        // Focus the cell
+        const cell: HTMLElement = gridObj.getCellFromIndex(0, 1) as HTMLElement;
+        cell.setAttribute('tabindex', '0');
+        cell.focus();
+
+        // Spy on paste method
+        const pasteSpy = spyOn(gridObj.clipboardModule, 'paste').and.callThrough();
+
+        // Simulate Mac Command+V keyboard event
+        const keyEvent: any = {
+            keyCode: 86,  // V key
+            metaKey: true,  // Command key on Mac
+            ctrlKey: false,
+            target: cell
+        };
+
+        // Trigger pasteHandler
+        (gridObj.clipboardModule as any).pasteHandler(keyEvent);
+
+        // Wait for Mac timeout (100ms) + buffer
+        setTimeout(() => {
+            expect(pasteSpy).toHaveBeenCalled();
+            expect(pasteSpy).toHaveBeenCalledWith(
+                jasmine.any(String),
+                0,  // rowIndex
+                1   // cellIndex
+            );
+            expect(txt.value).toBe('');  // Cleared after paste
+            done();
+        }, 150);
+    });
+
+    it('should use 10ms timeout for non-Mac paste operation - Coverage: Validation', (done: Function) => {
+        // Ensure NOT Mac platform
+        Object.defineProperty(Navigator.prototype, 'platform', {
+            get: () => 'Win32',
+            configurable: true
+        });
+
+        gridObj.selectionModule.selectCell({ rowIndex: 0, cellIndex: 0 }, false);
+        const txt = document.querySelector('.e-clipboard') as HTMLInputElement;
+        txt.value = 'WindowsData\n';
+        const cell: HTMLElement = gridObj.getCellFromIndex(0, 0) as HTMLElement;
+        cell.setAttribute('tabindex', '0');
+        cell.focus();
+
+        const pasteSpy = spyOn(gridObj.clipboardModule, 'paste').and.callThrough();
+
+        // Trigger Windows Ctrl+V
+        const keyEvent: any = {
+            keyCode: 86,
+            ctrlKey: true,
+            metaKey: false,
+            target: cell
+        };
+
+        (gridObj.clipboardModule as any).pasteHandler(keyEvent);
+
+        // Wait for non-Mac timeout (10ms) + buffer
+        setTimeout(() => {
+            expect(pasteSpy).toHaveBeenCalled();
+            done();
+        }, 60);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('Coverage Improvement - Paste Boundary Validation => ', () => {
+    let gridObj: Grid;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: filterData.slice(0, 10),
+            editSettings: { allowEditing: true, mode: 'Batch' },
+            selectionSettings: { type: 'Multiple', mode: 'Cell', cellSelectionMode: 'Box' },
+            columns: [
+                { field: 'OrderID', headerText: 'Order ID', width: 120 },
+                { field: 'CustomerID', headerText: 'Customer Name', width: 150 },
+                { field: 'Freight', width: 120 }
+            ]
+        }, done);
+    });
+
+    it('should handle paste when column index exceeds grid columns - Coverage: Lines 79-81', () => {
+        // Grid has 3 columns (0, 1, 2), pasting at column 2 with 5 tab-separated values
+        const pasteData = 'Val1\tVal2\tVal3\tVal4\tVal5\n';
+
+        // Spy on getCellFromIndex to verify it's called with out-of-bounds index
+        const getCellSpy = spyOn(gridObj, 'getCellFromIndex').and.callThrough();
+
+        // Call paste directly - starting at column 2, data extends beyond column 2
+        gridObj.clipboardModule.paste(pasteData, 0, 2);
+
+        // Verify getCellFromIndex was called with indices beyond grid columns
+        expect(getCellSpy).toHaveBeenCalledWith(0, 2);  // Valid
+        expect(getCellSpy).toHaveBeenCalledWith(0, 3);  // Out of bounds - triggers branch
+
+        // Verify no error thrown
+        expect(() => gridObj.clipboardModule.paste(pasteData, 0, 2)).not.toThrow();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('Coverage Improvement - Virtual Scrolling Selection Copy => ', () => {
+    let gridObj: Grid;
+    let largeData: any[];
+
+    beforeAll((done: Function) => {
+        // Create large dataset for virtual scrolling
+        largeData = [];
+        for (let i = 0; i < 500; i++) {
+            largeData.push({
+                OrderID: 10000 + i,
+                CustomerID: 'CUST' + i,
+                Freight: Math.random() * 100
+            });
+        }
+
+        gridObj = createGrid({
+            dataSource: largeData,
+            enableVirtualization: true,
+            height: 300,  // Limited height to force virtualization
+            allowSelection: true,
+            selectionSettings: { type: 'Multiple' },
+            columns: [
+                { field: 'OrderID', headerText: 'Order ID', width: 120 },
+                { field: 'CustomerID', headerText: 'Customer Name', width: 150 },
+                { field: 'Freight', width: 120 }
+            ]
+        }, done);
+    });
+
+    it('should handle copy when selected indexes exceed rendered rows - Coverage: Lines 175-180', (done: Function) => {
+        // Wait for grid to render
+        setTimeout(() => {
+            const renderedRows = gridObj.getDataRows();
+            const renderedRowCount = renderedRows.length;
+
+            // Select MORE rows than currently rendered
+            const largeSelection: number[] = [];
+            for (let i = 0; i < renderedRowCount + 30; i++) {
+                largeSelection.push(i);
+            }
+
+            // Select rows - this creates selectedIndexes.length > rows.length scenario
+            gridObj.selectRows(largeSelection);
+            // Track getAttribute calls to verify aria-selected DOM check
+            let ariaSelectedCheckCount = 0;
+            const originalGetAttribute = Element.prototype.getAttribute;
+            const getAttrSpy = spyOn(Element.prototype, 'getAttribute').and.callFake(function(this: Element, attr: string) {
+                if (attr === 'aria-selected' && this.classList && this.classList.contains('e-row')) {
+                    ariaSelectedCheckCount++;
+                }
+                return originalGetAttribute.call(this, attr);
+            });
+
+            // Trigger copy - should use DOM aria-selected fallback
+            gridObj.copy(true);
+
+            // Verify clipboard has content
+            const clipboardValue = (document.querySelector('.e-clipboard') as HTMLInputElement).value;
+            expect(clipboardValue).toBeTruthy();
+            expect(clipboardValue).toContain('Order ID');  // Header included
+
+            done();
+        }, 500);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('Coverage Improvement - Infinite Scroll Selection Copy => ', () => {
+    let gridObj: Grid;
+    let largeData: any[];
+
+    beforeAll((done: Function) => {
+        // Create large dataset for infinite scrolling
+        largeData = [];
+        for (let i = 0; i < 500; i++) {
+            largeData.push({
+                OrderID: 20000 + i,
+                CustomerID: 'CUST' + i,
+                Freight: Math.random() * 100
+            });
+        }
+
+        gridObj = createGrid({
+            dataSource: largeData,
+            enableInfiniteScrolling: true,
+            infiniteScrollSettings: { enableCache: true },
+            height: 300,
+            allowSelection: true,
+            selectionSettings: { type: 'Multiple' },
+            columns: [
+                { field: 'OrderID', headerText: 'Order ID', width: 120 },
+                { field: 'CustomerID', headerText: 'Customer Name', width: 150 },
+                { field: 'Freight', width: 120 }
+            ]
+        }, done);
+    });
+
+    it('should use aria-selected fallback when selected rows exceed rendered rows - Coverage: Lines 175-180', (done: Function) => {
+        setTimeout(() => {
+            const renderedRows = gridObj.getDataRows();
+            const largeSelection: number[] = [];
+            for (let i = 0; i < renderedRows.length + 50; i++) {
+                largeSelection.push(i);
+            }
+            gridObj.selectRows(largeSelection);
+            // Track aria-selected getAttribute calls
+            let ariaCheckCount = 0;
+            const originalGetAttr = Element.prototype.getAttribute;
+            const getAttrSpy = spyOn(Element.prototype, 'getAttribute').and.callFake(function(this: Element, attr: string) {
+                if (attr === 'aria-selected' && this.classList && this.classList.contains('e-row')) {
+                    ariaCheckCount++;
+                }
+                return originalGetAttr.call(this, attr);
+            });
+
+            gridObj.copy();
+            expect((document.querySelector('.e-clipboard') as HTMLInputElement).value).toBeTruthy();
+
+            done();
+        }, 500);
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
 describe('EJ2-1030705: Not able to copy to clipboard when virtualization is enabled => ', () => {
     let gridObj: Grid;
     beforeAll((done: Function) => {
@@ -628,82 +1070,6 @@ describe('EJ2-1030705: Not able to copy to clipboard when virtualization is enab
         const clipboardValue = (document.querySelector('.e-clipboard') as HTMLInputElement).value;
         expect(clipboardValue).toBeTruthy();
         expect(clipboardValue).toContain('TOMSP');
-    });
-
-    afterAll(() => {
-        destroy(gridObj);
-        gridObj = null;
-    });
-});
-
-describe('Coverage Improvement - Empty String Branch in setCopyData (ariaRowIndex) => ', () => {
-    let gridObj: Grid;
-    beforeAll((done: Function) => {
-        gridObj = createGrid(
-            {
-                dataSource: filterData,
-                enableVirtualization: true,
-                height: 300,
-                allowSelection: true,
-                selectionSettings: { type: 'Multiple', mode: 'Row' },
-                columns: [
-                    { field: 'OrderID', headerText: 'Order ID', width: 120 },
-                    { field: 'CustomerID', headerText: 'Customer Name', width: 150 },
-                    { field: 'OrderDate', headerText: 'Order Date', width: 130, format: 'yMd' },
-                    { field: 'Freight', width: 120, format: 'C2' }
-                ]
-            }, done);
-    });
-
-    it('should handle empty string when ariaRowIndex is undefined', () => {
-        gridObj.selectRows([5, 10, 15]);
-        const rows: HTMLElement[] = [].slice.call(gridObj.getContent().querySelectorAll('.e-row'));
-        if (rows.length > 0) {
-            const rowElement: HTMLElement = rows[0];
-            const originalAriaRowIndex = rowElement.getAttribute('aria-rowindex');
-            rowElement.removeAttribute('aria-rowindex');
-            gridObj.copy(true);
-            if (originalAriaRowIndex) {
-                rowElement.setAttribute('aria-rowindex', originalAriaRowIndex);
-            }
-        }
-    });
-
-    afterAll(() => {
-        destroy(gridObj);
-        gridObj = null;
-    });
-});
-
-describe('Coverage Improvement - Virtualization with selectedIndexes > rows.length => ', () => {
-    let gridObj: Grid;
-    beforeAll((done: Function) => {
-        gridObj = createGrid(
-            {
-                dataSource: filterData,
-                enableVirtualization: true,
-                height: 250,
-                allowSelection: true,
-                selectionSettings: { type: 'Multiple', mode: 'Row', persistSelection: true },
-                columns: [
-                    { field: 'OrderID', headerText: 'Order ID', width: 120, textAlign: 'Right' },
-                    { field: 'CustomerID', headerText: 'Customer Name', width: 150 },
-                    { field: 'OrderDate', headerText: 'Order Date', width: 130, format: 'yMd', textAlign: 'Right' },
-                    { field: 'Freight', width: 120, format: 'C2', textAlign: 'Right' }
-                ]
-            }, done);
-    });
-
-    it('should enter if block when enableVirtualization=true AND selectedIndexes.length > rows.length - Coverage: Line 242', () => {
-        const largeSelection: number[] = [];
-        for (let i: number = 0; i < 50; i += 2) {
-            largeSelection.push(i);
-        }
-        gridObj.selectRows(largeSelection);
-        const rows: HTMLElement[] = [].slice.call(gridObj.getContent().querySelectorAll('.e-row'));
-        gridObj.selectionModule.selectedRowIndexes = largeSelection;
-        expect(gridObj.getSelectedRowIndexes().length).toBeGreaterThan(rows.length);
-        gridObj.copy(true);
     });
 
     afterAll(() => {

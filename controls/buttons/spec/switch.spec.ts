@@ -263,6 +263,17 @@ describe('Switch', () => {
             specSwitch = new Switch({ enablePersistence: true }, '#specSwitch');
             expect(specSwitch.enablePersistence).toEqual(true);
         });
+        it('should persist checked state after refresh when input id is stable', () => {
+            specSwitch = new Switch({ enablePersistence: true }, '#specSwitch');
+            // Toggle state
+            specSwitch.checked = true;
+            specSwitch.dataBind();
+            expect(specSwitch.checked).toBe(true);
+            // Simulate page refresh
+            specSwitch.destroy();
+            specSwitch = new Switch({ enablePersistence: true }, '#specSwitch');
+            expect(specSwitch.checked).toBe(true);
+        });
     });
     describe('Notify property Changes', () => {
         afterEach(() => {

@@ -2495,7 +2495,7 @@ export abstract class PdfAnnotation {
             template = this._customTemplate.get('N');
         } else {
             template = new PdfTemplate(nativeBounds, this._crossReference);
-            _setMatrix(template, this._getRotationAngle());
+            _setMatrix(template, this._getRotationAngle(), this);
             if (this._dictionary.has('BE')) {
                 template._writeTransformation = false;
             }
@@ -9812,7 +9812,7 @@ export class PdfInkAnnotation extends PdfComment {
                 const appearance: PdfAppearance = new PdfAppearance(nativeRectangle, this);
                 appearance.normal = new PdfTemplate(nativeRectangle, this._crossReference);
                 const template: PdfTemplate = appearance.normal;
-                _setMatrix(template, this._getRotationAngle());
+                _setMatrix(template, this._getRotationAngle(), this);
                 template._writeTransformation = false;
                 this._appearanceTemplate = this._createInkAppearance(template);
                 this._appearanceTemplate._content.dictionary._updated = true;
@@ -9909,7 +9909,7 @@ export class PdfInkAnnotation extends PdfComment {
                     }
                     const rect: number[] = this._getInkBoundsValue();
                     const template: PdfTemplate = new PdfTemplate(rect, this._crossReference);
-                    _setMatrix(template, this._getRotationAngle());
+                    _setMatrix(template, this._getRotationAngle(), this);
                     template._writeTransformation = false;
                     this._appearanceTemplate = this._createInkAppearance(template);
                     this._dictionary.update('Rect', [rect[0], rect[1], rect[0] + rect[2], rect[1] + rect[3]]);
@@ -16090,6 +16090,7 @@ export class PdfFreeTextAnnotation extends PdfComment {
             format.lineAlignment = PdfVerticalAlignment.top;
             format.alignment = alignment;
             format.lineSpacing = 0;
+            format.lineLimit = false;
             if (isRotation) {
                 g.drawString(text, font, parameter.bounds, parameter.backBrush, format);
             } else {

@@ -191,11 +191,8 @@ export class DateProcessor {
                 }
                 if (ganttProp.predecessor && ganttProp.predecessor.length > 0) {
                     return this.parent['assignTimeToDate'](date, this.parent['getCurrentDayStartTime'](date));
-                } else if (parentRecord) {
-                    return this.parent.getRecordByID(parentRecord.taskId).ganttProperties.startDate;
-                } else {
-                    return this.parent.dateValidationModule.checkStartDate(new Date(this.parent.projectStartDate));
                 }
+                return this.updateSoonAsPossibleParent(parentRecord);
             }
         case ConstraintType.AsLateAsPossible:
             if (isLoad) {
@@ -231,9 +228,7 @@ export class DateProcessor {
                 constraintValue = this.parent.editModule.dialogModule['dialogConstraintValue'];
             }
             const isConstraintTypeRestricted: boolean =
-                isNullOrUndefined(constraintValue) ||
-                constraintValue === 2 ||
-                constraintValue === 3;
+                isNullOrUndefined(constraintValue) || constraintValue === 2 || constraintValue === 3;
             if (isViolation && !isLoad && isConstraintTypeRestricted) {
                 this.parent.constraintViolationType = 'MustStartOn';
             }
@@ -313,6 +308,13 @@ export class DateProcessor {
         }
         default:
             return date;
+        }
+    }
+    private updateSoonAsPossibleParent(parentItem: IParent | null): Date {
+        if (parentItem) {
+            return this.parent.getRecordByID(parentItem.taskId).ganttProperties.startDate;
+        } else {
+            return this.parent.dateValidationModule.checkStartDate(new Date(this.parent.projectStartDate));
         }
     }
     /**
@@ -843,7 +845,7 @@ export class DateProcessor {
             const timeDiff: number = this.getTimeDifference(startDate, endDate, isCheckTimeZone) / 1000;
             const nonWorkHours: number = this.getNonworkingTime(startDate, endDate, isAutoSchedule, isCheckTimeZone, calendarContext);
             const durationHours: number = timeDiff - nonWorkHours;
-            if (!(isMilestone && isSameDay)) {
+            if (!(isSameDay && isMilestone)) {
                 durationValue = this.calculateDurationValue(durationUnit, durationHours / totSeconds, totSeconds);
             }
         }
@@ -2006,7 +2008,7 @@ export class DateProcessor {
             new Date(this.parent.projectEndDate) : this.parent.projectEndDate;
         let minStartDate: Date | string = null; let maxEndDate: Date | string = null;
         const flatData: object[] = (getValue('dataOperation.dataArray', this.parent));
-        if ((!projectStartDate || !projectEndDate) && (flatData && flatData.length === 0)) {
+        if ((flatData && flatData.length === 0) && (!projectStartDate || !projectEndDate)) {
             minStartDate = this.getDateFromFormat(new Date());
             maxEndDate = this.getDateFromFormat(new Date(minStartDate.getTime()));
         } else if (flatData.length > 0) {
@@ -2022,6 +2024,7 @@ export class DateProcessor {
             typeof minStartDate === 'string' ? new Date(minStartDate) : minStartDate;
         this.parent.cloneProjectEndDate = projectEndDate ? new Date(projectEndDate.getTime()) :
             typeof maxEndDate === 'string' ? new Date(maxEndDate) : maxEndDate;
+        this.calculateTimelineDates();
     }
     /**
      *
@@ -2030,38 +2033,20 @@ export class DateProcessor {
      * @private
      */
     public calculateProjectDates(editArgs?: Object): void {
-        if (this.parent.isLoad && this.parent.enablePersistence) {
-            if (this.parent.cloneProjectStartDate && this.parent.cloneProjectEndDate) {
-                this.parent.cloneProjectStartDate = this.getDateFromFormat(this.parent.cloneProjectStartDate);
-                this.parent.cloneProjectEndDate = this.getDateFromFormat(this.parent.cloneProjectEndDate);
-            }
-            if (this.parent.cloneTimelineStartDate && this.parent.cloneTimelineEndDate) {
-                this.parent.cloneTimelineStartDate = this.getDateFromFormat(this.parent.cloneTimelineStartDate);
-                this.parent.cloneTimelineEndDate = this.getDateFromFormat(this.parent.cloneTimelineEndDate);
-            }
-            if (
-                (this.parent.cloneProjectStartDate && this.parent.cloneProjectEndDate) ||
-                (this.parent.cloneTimelineStartDate && this.parent.cloneTimelineEndDate)
-            ) {
-                return;
-            }
+        if (this.parent.isLoad && this.parent.enablePersistence &&
+            this.parent.cloneProjectStartDate && this.parent.cloneProjectEndDate) {
+            this.parent.cloneProjectStartDate = this.getDateFromFormat(this.parent.cloneProjectStartDate);
+            this.parent.cloneProjectEndDate = this.getDateFromFormat(this.parent.cloneProjectEndDate);
+            // Project dates are stored and retrieved from local storage for persistence
+            this.calculateTimelineDates();
+            return;
         }
-        // Utility to safely convert string/Date/null to Date or null
-        const toDate: (date: string | Date) => Date = (date: string | Date): Date =>
-            date == null || (typeof date === 'string' && date.toLowerCase() === 'auto')
-                ? null
-                : (typeof date === 'string' ? new Date(date) : date);
-        // Utility to resolve the correct date for project/timeline, considering zooming and clone values
-        const resolveDate: (cloneDate: Date, propDate: Date) => Date = (cloneDate: Date, propDate: Date): Date =>
-            this.getDateFromFormat(this.parent.timelineModule.isZooming && cloneDate ? cloneDate : propDate);
-        const sDate: Date = toDate(this.parent.projectStartDate);
-        const eDate: Date = toDate(this.parent.projectEndDate);
-        const tSDate: Date = toDate(this.parent.timelineSettings.viewStartDate);
-        const tEDate: Date = toDate(this.parent.timelineSettings.viewEndDate);
-        const projectStartDate: Date = resolveDate(this.parent.cloneProjectStartDate, sDate);
-        const projectEndDate: Date = resolveDate(this.parent.cloneProjectEndDate, eDate);
-        const timelineStartDate: Date = resolveDate(this.parent.cloneTimelineStartDate, tSDate);
-        const timelineEndDate: Date = resolveDate(this.parent.cloneTimelineEndDate, tEDate);
+        const sDate: Date = typeof this.parent.projectStartDate === 'string' ?
+            new Date(this.parent.projectStartDate) : this.parent.projectStartDate;
+        const eDate: Date = typeof this.parent.projectEndDate === 'string' ?
+            new Date(this.parent.projectEndDate) : this.parent.projectEndDate;
+        const projectStartDate: Date = this.getDateFromFormat(sDate);
+        const projectEndDate: Date = this.getDateFromFormat(eDate);
         let minStartDate: Date = null; let maxEndDate: Date = null;
         const flatData: IGanttData[] = this.parent.flatData;
         const currentViewData: IGanttData[] = this.parent.currentViewData;
@@ -2080,20 +2065,17 @@ export class DateProcessor {
                 maxEndDate = dates.length > 1 ? new Date(dates[dates.length - 1].getTime()) : null;
             }
         };
-        if ((flatData.length > 0) || editArgs || this.parent.timelineModule.isZoomToFit) {
-            let viewData: IGanttData[];
-            if (currentViewData.length > 0 && this.parent.timelineModule.isZoomToFit &&
-                this.parent.treeGrid.filterModule &&
-                this.parent.treeGrid.filterModule.filteredResult.length > 0) {
-                viewData = currentViewData;
-            } else {
-                viewData = flatData;
-            }
+        if (((!projectStartDate || !projectEndDate) && flatData.length > 0) || editArgs) {
+            const viewData: IGanttData[] = flatData;
             viewData.forEach((data: IGanttData) => {
                 taskRange = [];
                 const task: ITaskData = data.ganttProperties;
                 let tempStartDate: Date;
                 let tempEndDate: Date;
+                if (this.parent.viewType === 'ResourceView' && data.level === 0) {
+                    // skips the parent task dates of resource view's start and end dates
+                    return;
+                }
                 if (isNullOrUndefined(task.startDate) && isNullOrUndefined(task.endDate)) {
                     tempStartDate = null;
                     tempEndDate = null;
@@ -2106,11 +2088,11 @@ export class DateProcessor {
                 addDateToList(maxEndDate);
                 addDateToList(tempStartDate);
                 addDateToList(tempEndDate);
-                if (this.parent.renderBaseline && !this.parent.timelineModule.isZoomToFit) {
+                if (this.parent.renderBaseline) {
                     addDateToList(task.baselineStartDate);
                     addDateToList(task.baselineEndDate);
                 }
-                if (task.indicators && task.indicators.length > 0 && !this.parent.timelineModule.isZoomToFit) {
+                if (task.indicators && task.indicators.length > 0) {
                     task.indicators.forEach((item: IIndicator) => {
                         addDateToList(this.getDateFromFormat(item.date));
                     });
@@ -2121,14 +2103,14 @@ export class DateProcessor {
             addDateToList(minStartDate);
             addDateToList(maxEndDate);
             //update schedule dates as per holiday and strip line collection
-            if (this.parent.eventMarkers.length > 0 && !this.parent.timelineModule.isZoomToFit) {
+            if (this.parent.eventMarkers.length > 0) {
                 const eventMarkers: EventMarkerModel[] = this.parent.eventMarkers;
                 // eslint-disable-next-line
                 eventMarkers.forEach((marker: EventMarkerModel, index: number) => {
                     addDateToList(this.getDateFromFormat(marker.day));
                 });
             }
-            if (this.parent.defaultCalendarContext.defaultHolidays.length > 0 && !this.parent.timelineModule.isZoomToFit) {
+            if (this.parent.defaultCalendarContext.defaultHolidays.length > 0) {
                 const holidays: number[] = this.parent.defaultCalendarContext.defaultHolidays;
                 // eslint-disable-next-line
                 holidays.forEach((holiday: number, index: number) => {
@@ -2148,38 +2130,49 @@ export class DateProcessor {
                 maxEndDate = this.getDateFromFormat(new Date(minStartDate.getTime()));
                 maxEndDate.setDate(maxEndDate.getDate() + 20);
             }
-        } else if (flatData.length === 0) {
-            if (tSDate && !eDate) {
-                minStartDate = this.getDateFromFormat(tSDate);
-                maxEndDate = this.getDateFromFormat(new Date(minStartDate.getTime()));
-            } else {
-                minStartDate = this.getDateFromFormat(new Date());
-                maxEndDate = this.getDateFromFormat(new Date(minStartDate.getTime()));
-            }
+        } else if ((!projectStartDate || !projectEndDate) && flatData.length === 0) {
+            minStartDate = this.getDateFromFormat(new Date());
+            maxEndDate = this.getDateFromFormat(new Date(minStartDate.getTime()));
         }
 
         if (!editArgs) {
-            const getClonedDate: (zoomToFit: boolean, date: Date, fallback: Date) => Date =
-                (zoomToFit: boolean, date: Date, fallback: Date): Date => !zoomToFit
-                    ? (!isNullOrUndefined(date) ? new Date(date.getTime()) : fallback)
-                    : fallback;
-
             this.prevProjectStartDate = this.parent.cloneProjectStartDate;
-            const isZoomToFit: boolean = this.parent.timelineModule.isZoomToFit;
-            this.parent.cloneProjectStartDate = getClonedDate(isZoomToFit, projectStartDate, minStartDate);
-            this.parent.cloneProjectEndDate = getClonedDate(isZoomToFit, projectEndDate, maxEndDate);
-            this.parent.cloneTimelineStartDate = getClonedDate(isZoomToFit, timelineStartDate, minStartDate);
-            this.parent.cloneTimelineEndDate = this.parent.timelineSettings.viewStartDate !== 'auto' && this.parent.timelineSettings.viewEndDate === 'auto' ?
-                this.parent.cloneProjectEndDate : getClonedDate(isZoomToFit, timelineEndDate, maxEndDate);
-            if ((isNullOrUndefined(this.parent.projectEndDate) && this.parent.timelineSettings.viewEndDate === 'auto') ||
-                (this.parent.timelineSettings.viewStartDate !== 'auto' && this.parent.timelineSettings.viewEndDate === 'auto')) {
-                this.parent.timelineModule.adjustEndDateToFillChart(false);
-            }
+            this.parent.cloneProjectStartDate = projectStartDate ? new Date(projectStartDate.getTime()) :
+                typeof minStartDate === 'string' ? new Date(minStartDate) : minStartDate;
+            this.parent.cloneProjectEndDate = projectEndDate ? new Date(projectEndDate.getTime()) :
+                typeof maxEndDate === 'string' ? new Date(maxEndDate) : maxEndDate;
         } else {
             setValue('minStartDate', minStartDate, editArgs);
             setValue('maxEndDate', maxEndDate, editArgs);
         }
         this.parent['isProjectDateUpdated'] = true;
+        this.calculateTimelineDates();
+    }
+
+    public calculateTimelineDates(): void {
+        if (this.parent.isLoad && this.parent.enablePersistence &&
+            this.parent.cloneTimelineStartDate && this.parent.cloneTimelineEndDate) {
+            this.parent.cloneTimelineStartDate = this.getDateFromFormat(this.parent.cloneTimelineStartDate);
+            this.parent.cloneTimelineEndDate = this.getDateFromFormat(this.parent.cloneTimelineEndDate);
+            return;
+        }
+        const toDate: (date: string | Date) => Date = (date: string | Date): Date =>
+            date == null || (typeof date === 'string' && date.toLowerCase() === 'auto')
+                ? null
+                : (typeof date === 'string' ? new Date(date) : new Date(date));
+        const sDate: Date = typeof this.parent.projectStartDate === 'string' ?
+            new Date(this.parent.projectStartDate) : this.parent.projectStartDate;
+        const eDate: Date = typeof this.parent.projectEndDate === 'string' ?
+            new Date(this.parent.projectEndDate) : this.parent.projectEndDate;
+        const timelineStartDate: Date = toDate(this.parent.timelineSettings.viewStartDate);
+        const timelineEndDate: Date = toDate(this.parent.timelineSettings.viewEndDate);
+        this.parent.cloneTimelineStartDate = sDate ? new Date(this.parent.cloneProjectStartDate)
+            : timelineStartDate ? timelineStartDate : new Date(this.parent.cloneProjectStartDate);
+        this.parent.cloneTimelineEndDate = eDate ? new Date(this.parent.cloneProjectEndDate)
+            : timelineEndDate ? timelineEndDate : new Date(this.parent.cloneProjectEndDate);
+        if (!timelineEndDate) {
+            this.parent.timelineModule.adjustEndDateToFillChart(false);
+        }
     }
     /**
      *

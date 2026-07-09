@@ -115,6 +115,8 @@ export function updateTextNode(value: string, isBlazor?: boolean): string {
             }
         }
     }
+    // Handle <u> tags with any number of children - move the u tag to wrap text nodes
+    swapUnderlineEle(resultElm);
     const imageElm: NodeListOf<HTMLElement> = resultElm.querySelectorAll('img');
     for (let i: number = 0; i < imageElm.length; i++) {
         const img: HTMLElement = imageElm[i as number] as HTMLElement;
@@ -138,6 +140,66 @@ export function updateTextNode(value: string, isBlazor?: boolean): string {
         }
     }
     return resultElm.innerHTML;
+}
+
+/**
+ * Recursively wraps all text nodes and BR elements within the given node with `<u>` tags.
+ * Inline element children are processed recursively; block-level elements are skipped.
+ *
+ * @param {Node} node - The DOM node whose text/BR children will be wrapped with `<u>` tags.
+ * @returns {void}
+ * @private
+ * @hidden
+ */
+export function wrapTextNodesWithUnderline(node: Node): void {
+    const childNodes: Node[] = Array.from(node.childNodes);
+    for (const child of childNodes) {
+        if (child.nodeType === Node.TEXT_NODE || child.nodeName === 'BR') {
+            // Wrap the text node with a u tag
+            const newUElement: HTMLElement = document.createElement('u');
+            child.parentNode.insertBefore(newUElement, child);
+            newUElement.appendChild(child);
+        } else if (child.nodeType === Node.ELEMENT_NODE && !isBlockNode(child as Element)) {
+            // Recursively process inline element children
+            wrapTextNodesWithUnderline(child);
+        }
+    }
+}
+
+/**
+ * Swap underline element to the inner most text node wrapper.
+ *
+ * @param {HTMLElement} resultElm - Div element created to store the editor insertion data
+ * @returns {void}
+ * @private
+ * @hidden
+ */
+export function swapUnderlineEle(resultElm: HTMLElement): void {
+    const uElements: NodeListOf<HTMLElement> = resultElm.querySelectorAll('u');
+    for (let i: number = 0; i < uElements.length; i++) {
+        const uElement: HTMLElement = uElements[i as number] as HTMLElement;
+        // Only process if it has children and at least one is an inline element or text node
+        if (uElement.childNodes.length > 0) {
+            let shouldProcess: boolean = false;
+            for (let j: number = 0; j < uElement.childNodes.length; j++) {
+                const child: Node = uElement.childNodes[j as number];
+                if (child.nodeType === Node.TEXT_NODE ||
+                    (child.nodeType === Node.ELEMENT_NODE && !isBlockNode(child as Element))) {
+                    shouldProcess = true;
+                    break;
+                }
+            }
+            if (shouldProcess) {
+                wrapTextNodesWithUnderline(uElement);
+                // Replace the u element with its children
+                const parentEle: Node = uElement.parentNode;
+                while (uElement.firstChild) {
+                    parentEle.insertBefore(uElement.firstChild, uElement);
+                }
+                parentEle.removeChild(uElement);
+            }
+        }
+    }
 }
 
 /**

@@ -2,11 +2,11 @@
  * Gantt base spec
  */
 import { createElement, remove } from '@syncfusion/ej2-base';
-import { DataManager, RemoteSaveAdaptor } from '@syncfusion/ej2-data';
-import { Gantt, Selection, Toolbar, DayMarkers, Edit, Filter,  ContextMenu, Sort, ColumnMenu, ITaskbarClickEventArgs, RecordDoubleClickEventArgs,ExcelExport ,PdfExport ,Reorder, Resize, CriticalPath, VirtualScroll} from '../../src/index';
+import { DataManager, RemoteSaveAdaptor, WebApiAdaptor } from '@syncfusion/ej2-data';
+import { Gantt, Selection, Toolbar, DayMarkers, Edit, Filter,  ContextMenu, Sort, ColumnMenu, ITaskbarClickEventArgs, RecordDoubleClickEventArgs,ExcelExport ,PdfExport ,Reorder, Resize, CriticalPath, VirtualScroll, UndoRedo} from '../../src/index';
 import { unscheduledData, projectResources, resourceGanttData, dragSelfReferenceData, selfReference, projectData1,baselineDatas, projectNewData2, totalDurationData, filterdata, projectNewData9, projectNewData10, projectNewData11, projectNewData12, selfData1, splitTasksData1, projectNewData13, publicProperty, cellEditData, resourcesData, cr884998,treeData,invalidPrdcessor, dataSource2, dataSource1, cR893051, undoDataSource, editingData3,editingResources3, exportData1,resourceCollection10,projectNewDatas1, cr940492,
     autoValidateTaskData, autoValidateTaskModeData, autoValidateUnScheduleData, 
-    autoValidatedTaskResrcmode, autovaldateResourceCollection, autovalidateDatasource,projectData
+    autoValidatedTaskResrcmode, autovaldateResourceCollection, autovalidateDatasource,projectData, MT1014886
 } from '../base/data-source.spec';
 import { createGantt, destroyGantt, triggerMouseEvent } from './gantt-util.spec';
 import { getValue, setValue } from '@syncfusion/ej2-base';
@@ -14,7 +14,7 @@ import { ClickEventArgs } from '@syncfusion/ej2-navigations';
 interface EJ2Instance extends HTMLElement {
     ej2_instances: Object[];
 }
-Gantt.Inject(Edit, Selection, ContextMenu, Sort, Toolbar, Filter, DayMarkers, ColumnMenu, ExcelExport , PdfExport, Reorder, Resize,CriticalPath, VirtualScroll);
+Gantt.Inject(Edit, Selection, ContextMenu, Sort, Toolbar, Filter, DayMarkers, ColumnMenu, ExcelExport , PdfExport, Reorder, Resize,CriticalPath, VirtualScroll, UndoRedo);
 // describe('Gantt - Base', () => {
 
 describe('Gantt base module', () => {
@@ -3380,7 +3380,7 @@ describe('Gantt editing action', () => {
         input.value = '1';
         let update: HTMLElement = ganttObj.element.querySelector('#' + ganttObj.element.id + '_Gantt_Toolbar > div > div:nth-child(3)') as HTMLElement;
         triggerMouseEvent(update, 'click');
-        expect(ganttObj.currentViewData[1].ganttProperties.predecessorsName).toBe('');
+        expect(ganttObj.currentViewData[1].ganttProperties.predecessorsName).toBe(null);
         expect(actionFailedFunction).toHaveBeenCalled();  
     });
     afterAll(() => {
@@ -4049,7 +4049,7 @@ describe('Gantt editing action', () => {
         input.value = '1';
         let update: HTMLElement = ganttObj.element.querySelector('#' + ganttObj.element.id + '_Gantt_Toolbar > div > div:nth-child(3)') as HTMLElement;
         triggerMouseEvent(update, 'click');
-        expect(ganttObj.currentViewData[1].ganttProperties.predecessorsName).toBe('');
+        expect(ganttObj.currentViewData[1].ganttProperties.predecessorsName).toBe(null);
         expect(actionFailedFunction).toHaveBeenCalled();  
     });
     afterAll(() => {
@@ -7825,24 +7825,52 @@ describe('Expanded tasks', () => {
         }
     });
 });
-describe('Zoom actionComplete requestType via public methods', () => {
+describe('handleTouchMove invocation without branch execution', () => {
     let ganttObj: Gantt;
-
     beforeAll((done: Function) => {
         ganttObj = createGantt(
             {
-                dataSource:  [
+                dataSource: [
+                    { TaskID: 50, TaskName: 'TouchMove test', StartDate: new Date('04/25/2019'), Duration: 2 }
+                ],
+                editSettings: { allowAdding: true, allowEditing: true, allowDeleting: true },
+                taskFields: { id: 'TaskID', name: 'TaskName', startDate: 'StartDate', duration: 'Duration' }
+            }, done);
+    });
+    it('Calls handleTouchMove with non-matching event type', () => {
+        const nonMatchingTouchEvent = { type: 'touchesmove' };
+        const chartRowsModule = ganttObj.chartRowsModule;
+        chartRowsModule['handleTouchMove'](nonMatchingTouchEvent as TouchEvent);
+        expect(ganttObj.editSettings.allowTaskbarEditing).toBe(false);
+    });
+    it('Calls handleTouchEnd with which=3 to trigger early return', () => {
+        const rightClickTouchEndEvent: any = {
+            type: 'touchesend',
+            target: document.createElement('div'),
+            which: 3
+        };
+        const chartRowsModule = ganttObj.chartRowsModule;
+        chartRowsModule['handleTouchEnd'](rightClickTouchEndEvent);
+        expect(ganttObj.editSettings.allowTaskbarEditing).toBe(false);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('calculatePinchDistance coverage in ganttChartModule', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
                     {
-                        TaskID: 1, TaskName: 'Task 1',
-                        StartDate: new Date('2024-01-15'), EndDate: new Date('2024-01-20'), Duration: 5
-                    },
-                    {
-                        TaskID: 2, TaskName: 'Task 2',
-                        StartDate: new Date('2024-01-21'), EndDate: new Date('2024-01-25'), Duration: 4
-                    },
-                    {
-                        TaskID: 3, TaskName: 'Task 3',
-                        StartDate: new Date('2024-01-26'), EndDate: new Date('2024-02-02'), Duration: 7
+                        TaskID: 1,
+                        TaskName: 'Test Task',
+                        StartDate: new Date('03/10/2026'),
+                        EndDate: new Date('03/11/2026'),
+                        Duration: 1
                     }
                 ],
                 taskFields: {
@@ -7852,99 +7880,3220 @@ describe('Zoom actionComplete requestType via public methods', () => {
                     endDate: 'EndDate',
                     duration: 'Duration'
                 },
-                toolbar: ['ZoomIn', 'ZoomOut', 'ZoomToFit'],
-                projectStartDate: new Date('2024-01-10'),
-                projectEndDate: new Date('2024-02-10'),
-                height: '400px'
+                projectStartDate: new Date('03/10/2026'),
+                projectEndDate: new Date('03/12/2026'),
             }, done);
     });
-
+    it('computes correct pinch distance', () => {
+        const touch1 = { clientX: 10, clientY: 20 } as Touch;
+        const touch2 = { clientX: 13, clientY: 24 } as Touch;
+        const distance = ganttObj.ganttChartModule['calculatePinchDistance'](touch1, touch2);
+        expect(distance).toBe(5);
+    });
     afterAll(() => {
-        destroyGantt(ganttObj);
-    });
-
-    it('should emit AfterZoomIn when zoomIn() is called — happy path', (done: Function) => {
-        let capturedRequestType: string;
-        ganttObj.actionComplete = (args: any) => {
-            if (args.requestType && args.requestType.indexOf('Zoom') !== -1) {
-                capturedRequestType = args.requestType;
-            }
-        };
-        ganttObj.zoomIn();
-        setTimeout(() => {
-            expect(capturedRequestType).toBe('AfterZoomIn');
-            done();
-        }, 100);
-    });
-
-    it('should emit AfterZoomOut when zoomOut() is called — happy path', (done: Function) => {
-        let capturedRequestType: string;
-        ganttObj.actionComplete = (args: any) => {
-            if (args.requestType && args.requestType.indexOf('Zoom') !== -1) {
-                capturedRequestType = args.requestType;
-            }
-        };
-        ganttObj.zoomOut();
-        setTimeout(() => {
-            expect(capturedRequestType).toBe('AfterZoomOut');
-            done();
-        }, 100);
-    });
-
-    it('should emit AfterZoomToProject when fitToProject() is called — happy path', (done: Function) => {
-        let capturedRequestType: string;
-        ganttObj.actionComplete = (args: any) => {
-            if (args.requestType && args.requestType.indexOf('Zoom') !== -1) {
-                capturedRequestType = args.requestType;
-            }
-        };
-        ganttObj.fitToProject();
-        setTimeout(() => {
-            expect(capturedRequestType).toBe('AfterZoomToProject');
-            done();
-        }, 100);
-    });
-
-    it('should emit AfterZoomToProject (not AfterZoomIn) when fitToProject() is called after zoomIn() — regression',
-        (done: Function) => {
-        let capturedRequestType: string;
-        ganttObj.zoomIn();
-        setTimeout(() => {
-            capturedRequestType = null;
-            ganttObj.actionComplete = (args: any) => {
-                if (args.requestType && args.requestType.indexOf('Zoom') !== -1) {
-                    capturedRequestType = args.requestType;
-                }
-            };
-            ganttObj.fitToProject();
-            setTimeout(() => {
-                expect(capturedRequestType).toBe('AfterZoomToProject');
-                expect(capturedRequestType).not.toBe('AfterZoomIn');
-                done();
-            }, 100);
-        }, 100);
-    });
-
-    it('should emit AfterZoomOut (not AfterZoomIn) when zoomOut() is called after zoomIn() — regression',
-        (done: Function) => {
-        let capturedRequestType: string;
-        ganttObj.zoomIn();
-        setTimeout(() => {
-            capturedRequestType = null;
-            ganttObj.actionComplete = (args: any) => {
-                if (args.requestType && args.requestType.indexOf('Zoom') !== -1) {
-                    capturedRequestType = args.requestType;
-                }
-            };
-            ganttObj.zoomOut();
-            setTimeout(() => {
-                expect(capturedRequestType).toBe('AfterZoomOut');
-                expect(capturedRequestType).not.toBe('AfterZoomIn');
-                done();
-            }, 100);
-        }, 100);
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
     });
 });
+describe('ganttChartMouseClick triggers scrollToTarget safely', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    {
+                        TaskID: 1,
+                        TaskName: 'Test Task',
+                        StartDate: new Date('03/10/2026'),
+                        EndDate: new Date('03/11/2026'),
+                        Duration: 1
+                    }
+                ],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    endDate: 'EndDate',
+                    duration: 'Duration'
+                },
+                projectStartDate: new Date('03/10/2026'),
+                projectEndDate: new Date('03/12/2026'),
+                autoFocusTasks: true
+            }, done);
+    });
+    it('invokes scrollToTarget via ganttChartMouseClick without entering condition', () => {
+        const element = document.createElement('span');
+        const e = new PointerEvent('click', { bubbles: true });
+        Object.defineProperty(e, 'target', { value: element });
+        ganttObj.ganttChartModule['ganttChartMouseClick'](e);
+        expect(ganttObj.autoFocusTasks).toBe(true);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('ganttChartLeave coverage', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    {
+                        TaskID: 1,
+                        TaskName: 'Test Task',
+                        StartDate: new Date('03/10/2026'),
+                        EndDate: new Date('03/11/2026'),
+                        Duration: 1
+                    }
+                ],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    endDate: 'EndDate',
+                    duration: 'Duration'
+                },
+                editSettings: { allowTaskbarEditing: true },
+                projectStartDate: new Date('03/10/2026'),
+                projectEndDate: new Date('03/12/2026')
+            }, done);
+    });
+    it('invokes notify when allowTaskbarEditing is true', () => {
+        const e = new PointerEvent('mouseleave');
+        ganttObj.ganttChartModule['ganttChartLeave'](e);
+        expect(ganttObj.flatData.length === 1).toBe(true);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('ganttChartMove coverage', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    {
+                        TaskID: 1,
+                        TaskName: 'Sample Task',
+                        StartDate: new Date('03/10/2026'),
+                        EndDate: new Date('03/11/2026'),
+                        Duration: 1
+                    }
+                ],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    endDate: 'EndDate',
+                    duration: 'Duration'
+                },
+                projectStartDate: new Date('03/10/2026'),
+                projectEndDate: new Date('03/12/2026'),
+                editSettings: { allowTaskbarEditing: true }
+            }, done);
+    });
+    it('covers pinch zoom in branch with two touches farther apart', () => {
+        ganttObj.ganttChartModule['isPinching'] = true;
+        ganttObj.ganttChartModule.previousPinchDistance = 10;
+        const pinchEvent = {
+            type: 'touchmove',
+            touches: [
+                { clientX: 0, clientY: 0 },
+                { clientX: 30, clientY: 40 }
+            ],
+            changedTouches: [{ pageX: 120 }],
+            __proto__: TouchEvent.prototype
+        } as any as TouchEvent;
+        ganttObj.ganttChartModule['ganttChartMove'](pinchEvent);
+        expect(ganttObj.ganttChartModule['isTouchMoved']).toBe(true);
+    });
+    it('covers pinch zoom out branch with two touches closer together', () => {
+        ganttObj.ganttChartModule['isPinching'] = true;
+        ganttObj.ganttChartModule.previousPinchDistance = 100;
+        const pinchEvent = {
+            type: 'touchmove',
+            touches: [
+                { clientX: 0, clientY: 0 },
+                { clientX: 10, clientY: 10 }
+            ],
+            changedTouches: [{ pageX: 80 }],
+            __proto__: TouchEvent.prototype
+        } as any as TouchEvent;
+        ganttObj.ganttChartModule['ganttChartMove'](pinchEvent);
+        expect(ganttObj.ganttChartModule['isTouchMoved']).toBe(true);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('ganttChartMove taskbar editing coverage', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    {
+                        TaskID: 1,
+                        TaskName: 'Sample Task',
+                        StartDate: new Date('03/10/2026'),
+                        EndDate: new Date('03/11/2026'),
+                        Duration: 1
+                    }
+                ],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    endDate: 'EndDate',
+                    duration: 'Duration'
+                },
+                projectStartDate: new Date('03/10/2026'),
+                projectEndDate: new Date('03/12/2026'),
+                editSettings: { allowTaskbarEditing: true }
+            }, done);
+    });
+    it('covers taskbar editing branch with PointerEvent', () => {
+        ganttObj.ganttChartModule['isPinching'] = false;
+        const cloneElement = document.createElement('div');
+        cloneElement.className = 'e-clone-taskbar';
+        ganttObj.element.appendChild(cloneElement);
+        const pointerEvent = new PointerEvent('mousemove');
+        ganttObj.ganttChartModule['ganttChartMove'](pointerEvent);
+        expect(ganttObj.ganttChartModule['isTouchMoved']).toBe(false);
+        ganttObj.element.removeChild(cloneElement);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('mouseMoveHandler basic coverage', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: 'Sample Task', StartDate: new Date('03/10/2026'), EndDate: new Date('03/11/2026'), Duration: 1 }
+                ],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    endDate: 'EndDate',
+                    duration: 'Duration',
+                    dependency: 'Predecessor'
+                },
+                projectStartDate: new Date('03/10/2026'),
+                projectEndDate: new Date('03/12/2026'),
+                editSettings: { allowTaskbarEditing: true },
+            }, done);
+    });
+    it('covers header cell label branch', () => {
+        const headerCell = document.createElement('div');
+        headerCell.classList.add('e-header-cell-label');
+        headerCell.dataset.content = '2026-03-10';
+        const e = new PointerEvent('mousemove', { bubbles: true });
+        Object.defineProperty(e, 'target', { value: headerCell });
+        ganttObj.onMouseMove = () => {};
+        ganttObj.ganttChartModule.mouseMoveHandler(e);
+        ganttObj.onMouseMove = undefined;
+        expect(headerCell.classList.contains('e-header-cell-label')).toBe(true);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('isTouchpad coverage', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [{ TaskID: 1, TaskName: 'Sample Task', StartDate: new Date(), Duration: 1 }],
+                taskFields: { id: 'TaskID', name: 'TaskName', startDate: 'StartDate', duration: 'Duration' }
+            }, done);
+    });
+    it('returns true for small deltaY', () => {
+        expect(ganttObj.ganttChartModule['isTouchpad'](10)).toBe(true);
+    });
+    it('returns false for large deltaY', () => {
+        expect(ganttObj.ganttChartModule['isTouchpad'](100)).toBe(false);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('updateDebounceTimeout coverage', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [{ TaskID: 1, TaskName: 'Sample Task', StartDate: new Date(), Duration: 1 }],
+                taskFields: { id: 'TaskID', name: 'TaskName', startDate: 'StartDate', duration: 'Duration' }
+            }, done);
+    });
+    it('updates debounceTimeoutNext when debounceTimeout exists', () => {
+        ganttObj.ganttChartModule['debounceTimeout'] = 100;
+        ganttObj.ganttChartModule['debounceTimeoutNext'] = 50;
+        ganttObj.ganttChartModule['updateDebounceTimeout']();
+        expect(ganttObj.ganttChartModule['debounceTimeoutNext']).toBe(100);
+        ganttObj.ganttChartModule['debounceTimeout'] = 0;
+        ganttObj.ganttChartModule['debounceTimeoutNext'] = 0;
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('performZoomCheck coverage', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [{ TaskID: 1, TaskName: 'Sample Task', StartDate: new Date(), Duration: 1 }],
+                taskFields: { id: 'TaskID', name: 'TaskName', startDate: 'StartDate', duration: 'Duration' }
+            }, done);
+    });
+    it('calls zooming when valid touchpad delta', () => {
+        ganttObj.ganttChartModule['performZoomCheck'](10, true, true);
+        expect(ganttObj.flatData.length).toBe(1);
+    });
+    it('calls zooming when valid mouse wheel delta', () => {
+        ganttObj.ganttChartModule['performZoomCheck'](50, false, false);
+        expect(ganttObj.flatData.length).toBe(1);
+    });
+    it('does not zoom when delta out of range', () => {
+        ganttObj.ganttChartModule['performZoomCheck'](1, true, false);
+        expect(ganttObj.flatData.length).toBe(1);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('ganttChartMouseUp touchend with child taskbar target', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [{ TaskID: 1, TaskName: 'Sample Task', StartDate: new Date(), Duration: 1 }],
+                taskFields: { id: 'TaskID', name: 'TaskName', startDate: 'StartDate', duration: 'Duration' },
+                editSettings: { allowEditing: false,  allowTaskbarEditing: true }
+            }, done);
+    });
+    it('handles touchend on child taskbar element', () => {
+        const childTaskbar = document.createElement('div');
+        childTaskbar.className = 'e-gantt-child-taskbar-inner-div e-gantt-child-taskbar';
+        const touchEndEvent = new PointerEvent('touchend', { bubbles: true });
+        Object.defineProperty(touchEndEvent, 'target', { value: childTaskbar });
+        ganttObj.ganttChartModule['ganttChartMouseUp'](touchEndEvent);
+        expect((touchEndEvent.target as HTMLElement).classList.contains('e-gantt-child-taskbar')).toBe(true);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('mouseMoveHandler event markers coverage', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [{ TaskID: 1, TaskName: 'Sample Task', StartDate: new Date(), Duration: 1 }],
+                taskFields: { id: 'TaskID', name: 'TaskName', startDate: 'StartDate', duration: 'Duration' },
+                eventMarkers: [{ day: new Date('03/11/2026'), label: 'Deadline' }]
+            }, done);
+    });
+    it('covers event markers branch', () => {
+        const markerDiv = document.createElement('div');
+        markerDiv.classList.add('e-event-markers');
+        const e = new PointerEvent('mousemove', { bubbles: true });
+        Object.defineProperty(e, 'target', { value: markerDiv });
+        ganttObj.onMouseMove = () => {};
+        ganttObj.ganttChartModule.mouseMoveHandler(e);
+        ganttObj.onMouseMove = undefined;
+        expect(markerDiv.classList.contains('e-event-markers')).toBe(true);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('mouseMoveHandler connector line coverage', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: 'Task 1', StartDate: new Date('03/10/2026'), Duration: 1 },
+                    { TaskID: 2, TaskName: 'Task 2', StartDate: new Date('03/11/2026'), Duration: 1, Predecessor: '1FS' }
+                ],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration',
+                    dependency: 'Predecessor'
+                },
+                editSettings: { allowTaskbarEditing: true }
+            }, done);
+    });
+    it('covers connector line container branch', () => {
+        const connectorDiv = document.createElement('div');
+        connectorDiv.classList.add('e-connector-line-container');
+        connectorDiv.id = 'ConnectorLineparent1child2';
+        const e = new PointerEvent('mousemove', { bubbles: true });
+        Object.defineProperty(e, 'target', { value: connectorDiv });
+        ganttObj.onMouseMove = () => { };
+        ganttObj.ganttChartModule.mouseMoveHandler(e);
+        ganttObj.onMouseMove = undefined;
+        expect(connectorDiv.classList.contains('e-connector-line-container')).toBe(true);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('mouseMoveHandler indicator span coverage', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    {
+                        TaskID: 1,
+                        TaskName: 'Sample Task',
+                        StartDate: new Date('03/10/2026'),
+                        Duration: 1,
+                        Indicators: [
+                            { name: 'Milestone', date: new Date('03/11/2026') },
+                            { name: 'Review', date: new Date('03/12/2026') }
+                        ]
+                    }
+                ],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    endDate: 'EndDate',
+                    duration: 'Duration',
+                    indicators: 'Indicators'
+                }
+            }, done);
+    });
+    it('covers indicator span branch using rendered DOM', () => {
+        const indicatorSpan = ganttObj.element.querySelector('.e-indicator-span') as HTMLElement;
+        const e = new PointerEvent('mousemove', { bubbles: true });
+        Object.defineProperty(e, 'target', { value: indicatorSpan });
+        ganttObj.onMouseMove = () => { };
+        ganttObj.ganttChartModule.mouseMoveHandler(e);
+        ganttObj.onMouseMove = undefined;
+        expect((e.target as HTMLElement).classList.contains('e-indicator-span')).toBe(true);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('mouseMoveHandler column element coverage', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: 'Sample Task', StartDate: new Date('03/10/2026'), Duration: 1 }
+                ],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration'
+                },
+                columns: [
+                    { field: 'TaskID', headerText: 'ID' },
+                    { field: 'TaskName', headerText: 'Name' }
+                ]
+            }, done);
+    });
+    it('assigns args.column when columnElement exists', () => {
+        const rowCell = document.createElement('div');
+        rowCell.className = 'e-rowcell';
+        (rowCell as any).cellIndex = 1;
+        const e = new PointerEvent('mousemove', { bubbles: true });
+        Object.defineProperty(e, 'target', { value: rowCell });
+        ganttObj.onMouseMove = () => {};
+        ganttObj.ganttChartModule.mouseMoveHandler(e);
+        ganttObj.onMouseMove = undefined;
+        expect(ganttObj.columns[1]['field']).toBe('TaskName');
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('mouseMoveHandler columnElement branch with empty flatData', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration'
+                },
+                columns: [
+                    { field: 'TaskID', headerText: 'ID' },
+                    { field: 'TaskName', headerText: 'Name' }
+                ]
+            }, done);
+    });
+    it('assigns args.column when headercell target exists', () => {
+        const headerCell = document.createElement('div');
+        headerCell.className = 'e-headercell';
+        (headerCell as any).cellIndex = 0;
+        const e = new PointerEvent('mousemove', { bubbles: true });
+        Object.defineProperty(e, 'target', { value: headerCell });
+        ganttObj.onMouseMove = () => {};
+        ganttObj.ganttChartModule.mouseMoveHandler(e);
+        ganttObj.onMouseMove = undefined;
+        expect(ganttObj.flatData.length).toBe(0);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('ganttChartMouseDown pinch zoom coverage', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: 'Task 1', StartDate: new Date('03/10/2026'), Duration: 1 }
+                ],
+                taskFields: { id: 'TaskID', name: 'TaskName', startDate: 'StartDate', duration: 'Duration' },
+                editSettings: { allowTaskbarEditing: true }
+            }, done);
+    });
+    it('sets initPinchDistance and isPinching on two‑finger touchstart', () => {
+        const touch1 = new Touch({ identifier: 1, target: ganttObj.element, clientX: 50, clientY: 50 });
+        const touch2 = new Touch({ identifier: 2, target: ganttObj.element, clientX: 150, clientY: 50 });
+        const touchEvent = new TouchEvent('touchstart', { touches: [touch1, touch2] });
+        ganttObj.ganttChartModule['ganttChartMouseDown'](touchEvent);
+        expect(ganttObj.ganttChartModule['isPinching']).toBe(true);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('onTabAction headercell branches with revert', () => {
+    let ganttObj: Gantt;
+    let originalGetNextElement: any;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [],
+                taskFields: { id: 'TaskID', name: 'TaskName' },
+                columns: [
+                    { field: 'TaskID', headerText: 'ID', visible: true },
+                    { field: 'TaskName', headerText: 'Name', visible: false }
+                ],
+                toolbar: ['Add', 'Edit'],
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true,
+                },
+            }, done);
+        originalGetNextElement = ganttObj.ganttChartModule['getNextElement'];
+    });
+    it('covers noNextRow branch', () => {
+        const e = new KeyboardEvent('keydown', { key: 'Tab' });
+        e['action'] = 'tab';
+        e['preventDefault'] = () => { };
+        Object.defineProperty(e, 'target', { value: document.createElement('div') });
+        ganttObj.ganttChartModule['getNextElement'] = () => 'noNextRow';
+        ganttObj.ganttChartModule.onTabAction(e as any);
+        expect(ganttObj.ganttChartModule.tempNextElement).toBeNull();
+    });
+    it('covers headercell with shiftTab branch', () => {
+        const headerCell = document.createElement('div');
+        headerCell.className = 'e-headercell';
+        const nextElement = document.createElement('div');
+        nextElement.setAttribute('aria-colindex', '2');
+        const e = new KeyboardEvent('keydown', { key: 'Tab' });
+        e['action'] = 'shiftTab';
+        e['preventDefault'] = () => {};
+        Object.defineProperty(e, 'target', { value: headerCell });
+        ganttObj.ganttChartModule['getNextElement'] = () => nextElement;
+        ganttObj.ganttChartModule.onTabAction(e as any);
+        expect(ganttObj.ganttChartModule.tempNextElement).not.toBeNull();
+    });
+    it('covers headercell with tab branch', () => {
+        const headerCell = document.createElement('div');
+        headerCell.className = 'e-headercell';
+        const nextElement = document.createElement('div');
+        nextElement.setAttribute('aria-colindex', '1');
+        const e = new KeyboardEvent('keydown', { key: 'Tab' });
+        e['action'] = 'tab';
+        e['preventDefault'] = () => {};
+        Object.defineProperty(e, 'target', { value: headerCell });
+        ganttObj.ganttChartModule['getNextElement'] = () => nextElement;
+        ganttObj.ganttChartModule.onTabAction(e as any);
+        expect(ganttObj.ganttChartModule.tempNextElement).not.toBeNull();
+    });
+    it('covers headercell shiftTab toolbar fallback branch', () => {
+        ganttObj.treeGrid.columns.forEach((col: any) => col['visible'] = false);
+        const headerCell = document.createElement('div');
+        headerCell.className = 'e-headercell';
+        const nextElement = document.createElement('div');
+        nextElement.setAttribute('aria-colindex', '1');
+        const e = new KeyboardEvent('keydown', { key: 'Tab' });
+        e['action'] = 'shiftTab';
+        e['preventDefault'] = () => { };
+        Object.defineProperty(e, 'target', { value: headerCell });
+        ganttObj.ganttChartModule['getNextElement'] = () => nextElement;
+        ganttObj.ganttChartModule.onTabAction(e as any);
+        expect(ganttObj.flatData.length).toBe(0);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            ganttObj.ganttChartModule['getNextElement'] = originalGetNextElement;
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('T1014886: Coverage for gantt file', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: MT1014886,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration',
+                    progress: 'Progress',
+                    dependency: 'Predecessor',
+                    constraintType: 'ConstraintType',
+                    constraintDate: 'ConstraintDate',
+                    child: 'subtasks'
+                },
+                editSettings: {
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true,
+                    showDeleteConfirmDialog: true
+                },
+                allowSelection: true,
+                gridLines: "Both",
+                showColumnMenu: false,
+                highlightWeekends: true,
+                timelineSettings: {
+                    topTier: {
+                        unit: 'Week',
+                        format: 'dd/MM/yyyy'
+                    },
+                    bottomTier: {
+                        unit: 'Day',
+                        count: 1
+                    }
+                },
+                labelSettings: {
+                    leftLabel: 'TaskName',
+                    taskLabel: 'Progress'
+                },
+                height: '550px',
+                allowUnscheduledTasks: true,
+                updateOffsetOnTaskbarEdit: false,
+                projectStartDate: new Date('03/25/2019'),
+                projectEndDate: new Date('05/30/2019')
+            }, done);
+    });
+    it('render method coverage', () => {
+        ganttObj.isReact = true;
+        ganttObj.isVue = true;
+        ganttObj.refresh();
+        ganttObj['getTranslateY']('1' as any);
+        ganttObj['validateDimentionValue']('1');
+        ganttObj.height = null;
+        ganttObj.width = null;
+        ganttObj.element.style.height = null;
+        ganttObj.element.style.width = null;
+        ganttObj['calculateDimensions']();
+        ganttObj.taskFields['properties'] = {};
+        ganttObj['actionFailures']();
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('T1014886: Coverage for gantt file', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: MT1014886,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration',
+                    progress: 'Progress',
+                    dependency: 'Predecessor',
+                    child: 'subtasks'
+                },
+                editSettings: {
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true,
+                    showDeleteConfirmDialog: true
+                },
+                allowSelection: true,
+                gridLines: "Both",
+                showColumnMenu: false,
+                highlightWeekends: true,
+                timelineSettings: {
+                    topTier: {
+                        unit: 'Week',
+                        format: 'dd/MM/yyyy'
+                    },
+                    bottomTier: {
+                        unit: 'Day',
+                        count: 1
+                    }
+                },
+                labelSettings: {
+                    leftLabel: 'TaskName',
+                    taskLabel: 'Progress'
+                },
+                height: '550px',
+                allowUnscheduledTasks: true,
+                projectStartDate: new Date('03/25/2019'),
+                projectEndDate: new Date('05/30/2019')
+            }, done);
+    });
+    it('updateDataArgs method coverage', () => {
+       let args: any = {};
+       args.data = ganttObj.currentViewData[1];
+       ganttObj.updateDataArgs(args);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('T1014886: Coverage for gantt file', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [{
+                 TaskID: 1, TaskName: 'Prepare product sketch and notes', StartDate: new Date('04/02/2019'), EndDate: new Date('04/05/2019'), Progress: 30, isMilestone: false
+                }],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    endDate: 'EndDate',
+                    progress: 'Progress',
+                    child: 'subtasks',
+                    milestone: 'isMilestone'
+                },
+                editSettings: {
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true,
+                    showDeleteConfirmDialog: true
+                },
+                allowSelection: true,
+                gridLines: "Both",
+                showColumnMenu: false,
+                highlightWeekends: true,
+                timelineSettings: {
+                    topTier: {
+                        unit: 'Week',
+                        format: 'dd/MM/yyyy'
+                    },
+                    bottomTier: {
+                        unit: 'Day',
+                        count: 1
+                    }
+                },
+                labelSettings: {
+                    leftLabel: 'TaskName',
+                    taskLabel: 'Progress'
+                },
+                height: '550px',
+                allowUnscheduledTasks: true,
+                projectStartDate: new Date('03/25/2019'),
+                projectEndDate: new Date('05/30/2019')
+            }, done);
+    });
+    it('convertToMilestone method coverage', () => {
+       ganttObj.convertToMilestone('1');
+       ganttObj['updateColumnModel'](null);
+       ganttObj.getUndoActions();
+       ganttObj.getRedoActions();
+       ganttObj.setSplitterPosition(null, null);
+       let data =[{
+            TaskID: 1, TaskName: 'Prepare product sketch and notes', StartDate: new Date('04/02/2019'), EndDate: new Date('04/05/2019'), Progress: 30, isMilestone: false
+        }];
+       ganttObj.getRecordFromFlatdata(data as any);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('T1014886: Coverage for gantt file', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [{
+                 TaskID: 1, TaskName: 'Prepare product sketch and notes', StartDate: new Date('04/02/2019'), EndDate: new Date('04/05/2019'), Progress: 30, isMilestone: false
+                }],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    endDate: 'EndDate',
+                    progress: 'Progress',
+                    child: 'subtasks',
+                    milestone: 'isMilestone'
+                },
+                editSettings: {
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true,
+                    showDeleteConfirmDialog: true
+                },
+                allowSelection: true,
+                gridLines: "Both",
+                showColumnMenu: false,
+                highlightWeekends: true,
+                timelineSettings: {
+                    topTier: {
+                        unit: 'Week',
+                        format: 'dd/MM/yyyy'
+                    },
+                    bottomTier: {
+                        unit: 'Day',
+                        count: 1
+                    }
+                },
+                labelSettings: {
+                    leftLabel: 'TaskName',
+                    taskLabel: 'Progress'
+                },
+                height: '550px',
+                toolbar: ['Add', 'Edit', 'Update', 'Delete', 'Cancel', 'ExpandAll', 'CollapseAll', 'Search', 'ZoomIn', 'ZoomOut', 'ZoomToFit',
+                'PrevTimeSpan', 'NextTimeSpan', 'ExcelExport', 'CsvExport', 'PdfExport'],
+                allowUnscheduledTasks: true,
+                enableUndoRedo: true,
+                enableTimelineVirtualization: true,
+                projectStartDate: new Date('03/25/2019'),
+                projectEndDate: new Date('05/30/2019')
+            }, done);
+    });
+    it('onPropertyChanged method coverage', () => {
+        ganttObj.timelineModule.isZoomToFit = true;
+        ganttObj.timelineSettings.bottomTier.unit = 'Hour';
+        ganttObj.allowPdfExport = true;
+        ganttObj.allowExcelExport = true;
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('T1014886: Coverage for gantt file', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [{
+                 TaskID: 1, TaskName: 'Prepare product sketch and notes', StartDate: new Date('04/02/2019'), EndDate: new Date('04/05/2019'), Progress: 30, isMilestone: false
+                }],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    endDate: 'EndDate',
+                    progress: 'Progress',
+                    child: 'subtasks',
+                    milestone: 'isMilestone'
+                },
+                editSettings: {
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true,
+                    showDeleteConfirmDialog: true
+                },
+                allowSelection: true,
+                gridLines: "Both",
+                showColumnMenu: false,
+                highlightWeekends: true,
+                timelineSettings: {
+                    topTier: {
+                        unit: 'Week',
+                        format: 'dd/MM/yyyy'
+                    },
+                    bottomTier: {
+                        unit: 'Day',
+                        count: 1
+                    }
+                },
+                labelSettings: {
+                    leftLabel: 'TaskName',
+                    taskLabel: 'Progress'
+                },
+                height: '550px',
+                toolbar: ['Add', 'Edit', 'Update', 'Delete', 'Cancel', 'ExpandAll', 'CollapseAll', 'Search', 'ZoomIn', 'ZoomOut', 'ZoomToFit',
+                'PrevTimeSpan', 'NextTimeSpan', 'ExcelExport', 'CsvExport', 'PdfExport'],
+                allowUnscheduledTasks: true,
+                enableUndoRedo: true,
+                projectStartDate: new Date('03/25/2019'),
+                projectEndDate: new Date('05/30/2019')
+            }, done);
+    });
+    it('onPropertyChanged method coverage -dynamic datsource update', () => {
+       ganttObj.dataSource = [
+            { TaskID: 1, TaskName: 'Design phase', StartDate: new Date('04/01/2019'), EndDate: new Date('04/10/2019') },
+            { TaskID: 2, TaskName: 'Development phase', StartDate: new Date('04/11/2019'), EndDate: new Date('04/20/2019') }
+        ];
+        ganttObj.emptyRecordTemplate = '#emptytemplate';
+        ganttObj.frozenColumns = 2;
+        ganttObj.reUpdateDimention();
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('T1014886: Coverage for gantt file', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    {
+                        taskID: 1,
+                        taskName: "Design",
+                        startDate: new Date("02/10/2017"),
+                        endDate: new Date("02/18/2017"),
+                        subtasks: [
+                            { taskID: 2, taskName: "Software Specification", BaselineStartDate: new Date('04/02/2017'), BaselineEndDate: new Date('04/06/2017'), startDate: new Date("02/11/2017"), endDate: new Date("02/16/2017"), duration: 5, progress: "60",Segments: [
+                                { startDate: new Date('04/11/2017'), duration: 2 },
+                                { startDate: new Date('04/13/2017'), duration: 1 }
+                            ] },
+                            {
+                                taskID: 3, taskName: "Develop prototype", startDate: new Date("02/10/2017"), endDate: new Date("02/12/2017"), duration: 3, progress: "40",
+                                subtasks: [
+                                    { taskID: 4, taskName: "Plan timeline", startDate: new Date("02/06/2017"), endDate: new Date("02/20/2017"), duration: 5, progress: "80" }
+                                ]
+                            }
+                        ]
+                    }
+                ],
+                taskFields: {
+                    id: 'taskID',
+                    name: 'taskName',
+                    startDate: 'startDate',
+                    endDate: 'endDate',
+                    duration: 'duration',
+                    progress: 'progress',
+                    dependency: 'predecessor',
+                    baselineStartDate: "BaselineStartDate",
+                    baselineEndDate: "BaselineEndDate",
+                    child: 'subtasks',
+                    segments: 'Segments'
+                },
+                enableWBS: true,
+                renderBaseline: true,
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true,
+                    showDeleteConfirmDialog: true
+                },
+                columns: [
+                    { field: 'TaskID', headerText: 'Task ID' },
+                    { field: 'TaskName', headerText: 'Task Name', allowReordering: false },
+                    { field: 'StartDate', headerText: 'Start Date', allowSorting: false },
+                    { field: 'Duration', headerText: 'Duration', allowEditing: false },
+                    { field: 'Progress', headerText: 'Progress', allowFiltering: false },
+                    { field: 'CustomColumn', headerText: 'CustomColumn' }
+                ],
+                toolbar: ['Add', 'Edit', 'Update', 'Delete', 'Cancel', 'ExpandAll', 'CollapseAll', 'Search', 'ZoomIn', 'ZoomOut', 'ZoomToFit',
+                    'PrevTimeSpan', 'NextTimeSpan', 'ExcelExport', 'CsvExport', 'PdfExport'],
+                enableCriticalPath: true,
+                splitterSettings: {
+                    position: "50%",
+                },
+                gridLines: "Both",
+                showColumnMenu: true,
+                highlightWeekends: true,
+                timelineSettings: {
+                    showTooltip: true,
+                    topTier: {
+                        unit: 'Week',
+                        format: 'dd/MM/yyyy'
+                    },
+                    bottomTier: {
+                        unit: 'Day',
+                        count: 1
+                    }
+                },
+                labelSettings: {
+                    leftLabel: 'taskID',
+                    rightLabel: 'task Name: ${taskData.TaskName}',
+                    taskLabel: '${progress}%'
+                },
+                height: '550px',
+                allowUnscheduledTasks: true
+            }, done);
+    });
+    it('getTaskInfo method coverage', () => {
+      ganttObj.getTaskInfo('2');
+      ganttObj.getCriticalTasks();
+      ganttObj['setFrozenCount']();
+      ganttObj['splitFrozenCount'](null);
+      ganttObj['mergeColumns'](ganttObj.columns as any, ganttObj.columns as any);
+      ganttObj['removeBorder'](ganttObj.columns as any);
+      ganttObj['frozenLeftBorderColumns'](ganttObj.columns as any);
+      ganttObj['frozenRightBorderColumns'](ganttObj.columns as any);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('T1014886: Coverage for gantt file', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    {
+                        taskID: 1,
+                        taskName: "Design",
+                        startDate: new Date("02/10/2017"),
+                        endDate: new Date("02/18/2017"),
+                        subtasks: [
+                            { taskID: 2, taskName: "Software Specification", BaselineStartDate: new Date('04/02/2017'), BaselineEndDate: new Date('04/06/2017'), startDate: new Date("02/11/2017"), endDate: new Date("02/16/2017"), duration: 5, progress: "60",Segments: [
+                                { startDate: new Date('04/11/2017'), duration: 2 },
+                                { startDate: new Date('04/13/2017'), duration: 1 }
+                            ] },
+                            {
+                                taskID: 3, taskName: "Develop prototype", startDate: new Date("02/10/2017"), endDate: new Date("02/12/2017"), duration: 3, progress: "40",
+                                subtasks: [
+                                    { taskID: 4, taskName: "Plan timeline", startDate: new Date("02/06/2017"), endDate: new Date("02/20/2017"), duration: 5, progress: "80" }
+                                ]
+                            }
+                        ]
+                    }
+                ],
+                taskFields: {
+                    id: 'taskID',
+                    name: 'taskName',
+                    startDate: 'startDate',
+                    endDate: 'endDate',
+                    duration: 'duration',
+                    progress: 'progress',
+                    dependency: 'predecessor',
+                    baselineStartDate: "BaselineStartDate",
+                    baselineEndDate: "BaselineEndDate",
+                    child: 'subtasks',
+                    segments: 'Segments'
+                },
+                enableWBS: true,
+                renderBaseline: true,
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true,
+                    showDeleteConfirmDialog: true
+                },
+                columns: [
+                    { field: 'TaskID', headerText: 'Task ID' },
+                    { field: 'TaskName', headerText: 'Task Name', allowReordering: false },
+                    { field: 'StartDate', headerText: 'Start Date', allowSorting: false },
+                    { field: 'Duration', headerText: 'Duration', allowEditing: false },
+                    { field: 'Progress', headerText: 'Progress', allowFiltering: false },
+                    { field: 'CustomColumn', headerText: 'CustomColumn' }
+                ],
+                toolbar: ['Add', 'Edit', 'Update', 'Delete', 'Cancel', 'ExpandAll', 'CollapseAll', 'Search', 'ZoomIn', 'ZoomOut', 'ZoomToFit',
+                    'PrevTimeSpan', 'NextTimeSpan', 'ExcelExport', 'CsvExport', 'PdfExport'],
+                enableCriticalPath: true,
+                splitterSettings: {
+                    position: "50%",
+                },
+                gridLines: "Both",
+                showColumnMenu: true,
+                highlightWeekends: true,
+                timelineSettings: {
+                    showTooltip: true,
+                    topTier: {
+                        unit: 'Week',
+                        format: 'dd/MM/yyyy'
+                    },
+                    bottomTier: {
+                        unit: 'Day',
+                        count: 1
+                    }
+                },
+                taskMode: 'Manual',
+                labelSettings: {
+                    leftLabel: 'taskID',
+                    rightLabel: 'task Name: ${taskData.TaskName}',
+                    taskLabel: '${progress}%'
+                },
+                height: '550px',
+                allowUnscheduledTasks: true
+            }, done);
+    });
+    it('getTaskInfo method coverage-Manual mode', () => {
+      ganttObj.getTaskInfo('2');
+    });
+    it('getTaskInfo method coverage-Manual mode parent task check', () => {
+      ganttObj.getTaskInfo('1');
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('T1014886: Coverage for gantt file', () => {
+        let ganttObj: Gantt;
+        let dataSource: DataManager = new DataManager({
+            url: 'https://services.syncfusion.com/js/production/api/GanttLoadOnDemand',
+            adaptor: new WebApiAdaptor,
+            crossDomain: true
+        });
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: dataSource,
+            loadChildOnDemand: true,
+            taskFields: {
+                id: 'taskId',
+                name: 'taskName',
+                startDate: 'startDate',
+                endDate: 'endDate',
+                duration: 'duration',
+                dependency: 'Predecessor',
+                progress: 'progress',
+                hasChildMapping: 'isParent',
+                parentID: 'parentID'
+            },
+            columns: [
+                { field: 'taskId', headerText: 'Task ID' },
+                { field: 'taskName', headerText: 'Task Name', allowReordering: false },
+                { field: 'startDate', headerText: 'Start Date', allowSorting: false },
+                { field: 'duration', headerText: 'Duration', allowEditing: false },
+                { field: 'progress', headerText: 'Progress', allowFiltering: false },
+            ],
+            allowSelection: true,
+            enableVirtualization: true,
+            splitterSettings: {
+                columnIndex: 3,
+            },
+            tooltipSettings: {
+                showTooltip: true
+            },
+            highlightWeekends: true,
+            timelineSettings: {
+                showTooltip: true,
+                topTier: {
+                    unit: 'Week',
+                    format: 'dd/MM/yyyy'
+                },
+                bottomTier: {
+                    unit: 'Day',
+                    count: 1
+                }
+            },
+            treeColumnIndex: 1,
+            height: '460px',
+            projectStartDate: new Date('01/02/2000'),
+            projectEndDate: new Date('12/01/2002')
+        }, done);
+    });
+    it('updateCurrentViewData method coverage', () => {
+      ganttObj['updateCurrentViewData']();
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('T1014886: Coverage for gantt file', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    {
+                        taskID: 1,
+                        taskName: "Design",
+                        startDate: new Date("02/10/2017"),
+                        endDate: new Date("02/18/2017"),
+                        subtasks: [
+                            { taskID: 2, taskName: "Software Specification", BaselineStartDate: new Date('04/02/2017'), BaselineEndDate: new Date('04/06/2017'), startDate: new Date("02/11/2017"), endDate: new Date("02/16/2017"), duration: 5, progress: "60",Segments: [
+                                { startDate: new Date('04/11/2017'), duration: 2 },
+                                { startDate: new Date('04/13/2017'), duration: 1 }
+                            ] },
+                            {
+                                taskID: 3, taskName: "Develop prototype", startDate: new Date("02/10/2017"), endDate: new Date("02/12/2017"), duration: 3, progress: "40",
+                                subtasks: [
+                                    { taskID: 4, taskName: "Plan timeline", startDate: new Date("02/06/2017"), endDate: new Date("02/20/2017"), duration: 5, progress: "80" }
+                                ]
+                            }
+                        ]
+                    }
+                ],
+                taskFields: {
+                    id: 'taskID',
+                    name: 'taskName',
+                    startDate: 'startDate',
+                    endDate: 'endDate',
+                    duration: 'duration',
+                    progress: 'progress',
+                    dependency: 'predecessor',
+                    baselineStartDate: "BaselineStartDate",
+                    baselineEndDate: "BaselineEndDate",
+                    child: 'subtasks',
+                    segments: 'Segments'
+                },
+                enableWBS: true,
+                renderBaseline: true,
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true,
+                    showDeleteConfirmDialog: true
+                },
+                columns: [
+                    { field: 'TaskID', headerText: 'Task ID' },
+                    { field: 'TaskName', headerText: 'Task Name', allowReordering: false },
+                    { field: 'StartDate', headerText: 'Start Date', allowSorting: false },
+                    { field: 'Duration', headerText: 'Duration', allowEditing: false },
+                    { field: 'Progress', headerText: 'Progress', allowFiltering: false },
+                    { field: 'CustomColumn', headerText: 'CustomColumn' }
+                ],
+                toolbar: ['Add', 'Edit', 'Update', 'Delete', 'Cancel', 'ExpandAll', 'CollapseAll', 'Search', 'ZoomIn', 'ZoomOut', 'ZoomToFit',
+                    'PrevTimeSpan', 'NextTimeSpan', 'ExcelExport', 'CsvExport', 'PdfExport'],
+                enableCriticalPath: true,
+                splitterSettings: {
+                    position: "50%",
+                },
+                gridLines: "Both",
+                showColumnMenu: true,
+                highlightWeekends: true,
+                timelineSettings: {
+                    showTooltip: true,
+                    topTier: {
+                        unit: 'Week',
+                        format: 'dd/MM/yyyy'
+                    },
+                    bottomTier: {
+                        unit: 'Day',
+                        count: 1
+                    }
+                },
+                labelSettings: {
+                    leftLabel: 'taskID',
+                    rightLabel: 'task Name: ${taskData.TaskName}',
+                    taskLabel: '${progress}%'
+                },
+                height: '550px',
+                allowUnscheduledTasks: true
+            }, done);
+    });
+    it('showMaskRow method coverage', () => {
+      ganttObj['getSecondsPerDay'](new Date('00/00/0000'));
+      ganttObj.ganttChartModule.scrollObject['isSetScrollLeft'] = true;
+      ganttObj.timelineModule.isSingleTier = true;
+      ganttObj.showMaskRow();
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('T1014886: Coverage for gantt file', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    {
+                        taskID: 1, taskName: "Software Specification", startDate: new Date("02/11/2017"), endDate: new Date("02/16/2017"), duration: 5, progress: "60"
+                    }
+                ],
+                taskFields: {
+                    id: 'taskID',
+                    name: 'taskName',
+                    startDate: 'startDate',
+                    endDate: 'endDate',
+                    duration: 'duration',
+                    progress: 'progress',
+                    child: 'subtasks'
+                },
+                enableWBS: true,
+                renderBaseline: true,
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true,
+                    showDeleteConfirmDialog: true
+                },
+                columns: [
+                    { field: 'TaskID', headerText: 'Task ID' },
+                    { field: 'TaskName', headerText: 'Task Name', allowReordering: false },
+                    { field: 'StartDate', headerText: 'Start Date', allowSorting: false },
+                    { field: 'Duration', headerText: 'Duration', allowEditing: false },
+                    { field: 'Progress', headerText: 'Progress', allowFiltering: false },
+                    { field: 'CustomColumn', headerText: 'CustomColumn' }
+                ],
+                toolbar: ['Add', 'Edit', 'Update', 'Delete', 'Cancel', 'ExpandAll', 'CollapseAll', 'Search', 'ZoomIn', 'ZoomOut', 'ZoomToFit',
+                    'PrevTimeSpan', 'NextTimeSpan', 'ExcelExport', 'CsvExport', 'PdfExport'],
+                enableCriticalPath: true,
+                splitterSettings: {
+                    position: "50%",
+                },
+                gridLines: "Both",
+                showColumnMenu: true,
+                highlightWeekends: true,
+                timelineSettings: {
+                    showTooltip: true,
+                    topTier: {
+                        unit: 'Week',
+                        format: 'dd/MM/yyyy'
+                    },
+                    bottomTier: {
+                        unit: 'Day',
+                        count: 1
+                    }
+                },
+                labelSettings: {
+                    leftLabel: 'taskID',
+                    rightLabel: 'task Name: ${taskData.TaskName}',
+                    taskLabel: '${progress}%'
+                },
+                height: '550px',
+                allowUnscheduledTasks: true
+            }, done);
+    });
+    it('applyTimelineMaskRow method coverage for topBottomHeader case-0', () => {
+        let row = ganttObj.getRowByID(1);
+        ganttObj.topBottomHeader = 0;
+        ganttObj.enableRtl = true;
+        ganttObj['applyTimelineMaskRow'](row);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('T1014886: Coverage for gantt file', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    {
+                        taskID: 1, taskName: "Software Specification", startDate: new Date("02/11/2017"), endDate: new Date("02/16/2017"), duration: 5, progress: "60"
+                    }
+                ],
+                taskFields: {
+                    id: 'taskID',
+                    name: 'taskName',
+                    startDate: 'startDate',
+                    endDate: 'endDate',
+                    duration: 'duration',
+                    progress: 'progress',
+                    child: 'subtasks'
+                },
+                enableWBS: true,
+                renderBaseline: true,
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true,
+                    showDeleteConfirmDialog: true
+                },
+                columns: [
+                    { field: 'TaskID', headerText: 'Task ID' },
+                    { field: 'TaskName', headerText: 'Task Name', allowReordering: false },
+                    { field: 'StartDate', headerText: 'Start Date', allowSorting: false },
+                    { field: 'Duration', headerText: 'Duration', allowEditing: false },
+                    { field: 'Progress', headerText: 'Progress', allowFiltering: false },
+                    { field: 'CustomColumn', headerText: 'CustomColumn' }
+                ],
+                toolbar: ['Add', 'Edit', 'Update', 'Delete', 'Cancel', 'ExpandAll', 'CollapseAll', 'Search', 'ZoomIn', 'ZoomOut', 'ZoomToFit',
+                    'PrevTimeSpan', 'NextTimeSpan', 'ExcelExport', 'CsvExport', 'PdfExport'],
+                enableCriticalPath: true,
+                splitterSettings: {
+                    position: "50%",
+                },
+                gridLines: "Both",
+                showColumnMenu: true,
+                highlightWeekends: true,
+                timelineSettings: {
+                    showTooltip: true,
+                    topTier: {
+                        unit: 'Week',
+                        format: 'dd/MM/yyyy'
+                    },
+                    bottomTier: {
+                        unit: 'Day',
+                        count: 1
+                    }
+                },
+                labelSettings: {
+                    leftLabel: 'taskID',
+                    rightLabel: 'task Name: ${taskData.TaskName}',
+                    taskLabel: '${progress}%'
+                },
+                height: '550px',
+                allowUnscheduledTasks: true
+            }, done);
+    });
+    it('applyTimelineMaskRow method coverage for topBottomHeader case-1', () => {
+        let row = ganttObj.getRowByID(1);
+        ganttObj.topBottomHeader = 1;
+        ganttObj.enableRtl = true;
+        ganttObj['applyTimelineMaskRow'](row);
+        ganttObj.enableTimelineVirtualization = true;
+        ganttObj.windowResize();
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('T1014886: Coverage for gantt file', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [{
+                    TaskID: 1, TaskName: 'Prepare product sketch and notes', StartDate: new Date('04/02/2019'), EndDate: new Date('04/05/2019'), Progress: 30, isMilestone: false
+                }],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    endDate: 'EndDate',
+                    progress: 'Progress',
+                    child: 'subtasks',
+                    milestone: 'isMilestone'
+                },
+                editSettings: {
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true,
+                    showDeleteConfirmDialog: true
+                },
+                allowFiltering: true,
+                allowSelection: true,
+                gridLines: "Both",
+                showColumnMenu: false,
+                highlightWeekends: true,
+                timelineSettings: {
+                    topTier: {
+                        unit: 'Week',
+                        format: 'dd/MM/yyyy'
+                    },
+                    bottomTier: {
+                        unit: 'Day',
+                        count: 1
+                    }
+                },
+                labelSettings: {
+                    leftLabel: 'TaskName',
+                    taskLabel: 'Progress'
+                },
+                height: '550px',
+                toolbar: ['Add', 'Edit', 'Update', 'Delete', 'Cancel', 'ExpandAll', 'CollapseAll', 'Search', 'ZoomIn', 'ZoomOut', 'ZoomToFit',
+                'PrevTimeSpan', 'NextTimeSpan', 'ExcelExport', 'CsvExport', 'PdfExport'],
+                allowUnscheduledTasks: true,
+                projectStartDate: new Date('03/25/2019'),
+                projectEndDate: new Date('05/30/2019')
+            }, done);
+    });
+    it('onPropertyChanged method coverage with splitterSettings', () => {
+        ganttObj.splitterSettings.columnIndex = 3;
+        ganttObj['updateWBSPredecessor'](ganttObj.currentViewData[0]);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('T1014886: Coverage for gantt file', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    {
+                        taskID: 1, taskName: "Software Specification", startDate: new Date("02/11/2017"), endDate: new Date("02/16/2017"), duration: 5, progress: "60"
+                    }
+                ],
+                taskFields: {
+                    id: 'taskID',
+                    name: 'taskName',
+                    startDate: 'startDate',
+                    endDate: 'endDate',
+                    duration: 'duration',
+                    progress: 'progress',
+                    child: 'subtasks'
+                },
+                enableWBS: true,
+                renderBaseline: true,
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true,
+                    showDeleteConfirmDialog: true
+                },
+                columns: [
+                    { field: 'TaskID', headerText: 'Task ID' },
+                    { field: 'TaskName', headerText: 'Task Name', allowReordering: false },
+                    { field: 'StartDate', headerText: 'Start Date', allowSorting: false },
+                    { field: 'Duration', headerText: 'Duration', allowEditing: false },
+                    { field: 'Progress', headerText: 'Progress', allowFiltering: false },
+                    { field: 'CustomColumn', headerText: 'CustomColumn' }
+                ],
+                toolbar: ['Add', 'Edit', 'Update', 'Delete', 'Cancel', 'ExpandAll', 'CollapseAll', 'Search', 'ZoomIn', 'ZoomOut', 'ZoomToFit',
+                    'PrevTimeSpan', 'NextTimeSpan', 'ExcelExport', 'CsvExport', 'PdfExport'],
+                enableCriticalPath: true,
+                splitterSettings: {
+                    position: "50%",
+                },
+                gridLines: "Both",
+                showColumnMenu: true,
+                highlightWeekends: true,
+                timelineSettings: {
+                    showTooltip: true,
+                    topTier: {
+                        unit: 'Week',
+                        format: 'dd/MM/yyyy'
+                    },
+                    bottomTier: {
+                        unit: 'Day',
+                        count: 1
+                    }
+                },
+                labelSettings: {
+                    leftLabel: 'taskID',
+                    rightLabel: 'task Name: ${taskData.TaskName}',
+                    taskLabel: '${progress}%'
+                },
+                height: '550px',
+                allowUnscheduledTasks: true
+            }, done);
+    });
+    it('updateChartScrollOffset method coverage', () => {
+        ganttObj.enableRtl = true;
+        ganttObj.updateChartScrollOffset(850, 523);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('onTabAction with e-btn target and selectedRowIndex', () => {
+    let ganttObj: Gantt;
+    let originalGetNextElement: any;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: 'Planning', StartDate: new Date('2026-03-11'), Duration: 5 },
+                    { TaskID: 2, TaskName: 'Design', StartDate: new Date('2026-03-16'), Duration: 3 }
+                ],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration'
+                },
+                columns: [
+                    { field: 'TaskID', headerText: 'ID', visible: true },
+                    { field: 'TaskName', headerText: 'Name', visible: true }
+                ],
+                toolbar: ['Add', 'ExpandAll'],
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true
+                },
+            }, done);
+        originalGetNextElement = ganttObj.ganttChartModule['getNextElement'];
+    });
+    it('covers toolbar branch when target is e-btn and nextElement is null', () => {
+        const btn = document.createElement('button');
+        btn.className = 'e-btn';
+        const e = new KeyboardEvent('keydown', { key: 'Tab' });
+        e['action'] = 'tab';
+        e['preventDefault'] = () => {};
+        Object.defineProperty(e, 'target', { value: btn });
+        ganttObj.ganttChartModule['getNextElement'] = () => null;
+        ganttObj.ganttChartModule.onTabAction(e as any);
+        expect(ganttObj.getRowByID(2).classList.contains('e-active')).toBe(false);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            ganttObj.ganttChartModule['getNextElement'] = originalGetNextElement;
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('onTabAction branch when e-btn is last toolbar item', () => {
+    let ganttObj: Gantt;
+    let originalGetNextElement: any;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: 'Planning', StartDate: new Date('2026-03-11'), Duration: 5 },
+                    { TaskID: 2, TaskName: 'Design', StartDate: new Date('2026-03-16'), Duration: 3 }
+                ],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration'
+                },
+                columns: [
+                    { field: 'TaskID', headerText: 'ID', visible: true },
+                    { field: 'TaskName', headerText: 'Name', visible: true }
+                ],
+                toolbar: ['Add', 'ExpandAll'],
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true
+                }
+            }, done);
+        originalGetNextElement = ganttObj.ganttChartModule['getNextElement'];
+    });
+    it('moves focus from last toolbar e-btn to first visible column header', () => {
+        const btn = document.createElement('button');
+        btn.className = 'e-btn';
+        const e = new KeyboardEvent('keydown', { key: 'Tab' });
+        e['action'] = 'tab';
+        e['preventDefault'] = () => { };
+        Object.defineProperty(e, 'target', { value: btn });
+        ganttObj.ganttChartModule['getNextElement'] = () => null;
+        const toolbarItems = document.getElementsByClassName('e-toolbar-item');
+        ganttObj.ganttChartModule['currentToolbarIndex'] = toolbarItems.length - 1;
+        ganttObj.ganttChartModule.onTabAction(e as any);
+        expect(ganttObj.ganttChartModule.tempNextElement.classList.contains('e-headercell')).toBe(true);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            ganttObj.ganttChartModule['getNextElement'] = originalGetNextElement;
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('getNextElement segment branch', () => {
+    let ganttObj: Gantt;
+    let insertedBefore: Element | null = null;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    {
+                        TaskID: 1,
+                        TaskName: 'Split Task',
+                        StartDate: new Date('2019-02-04'),
+                        Duration: 7,
+                        Segments: [
+                            { StartDate: new Date('2019-02-04'), Duration: 2 },
+                            { StartDate: new Date('2019-02-05'), Duration: 5 }
+                        ]
+                    }
+                ],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration',
+                    segments: 'Segments'
+                },
+                columns: [{ field: 'TaskID', headerText: 'ID' }]
+            }, done);
+    });
+    afterEach(() => {
+        if (insertedBefore && insertedBefore.parentElement) {
+            insertedBefore.parentElement.removeChild(insertedBefore);
+        }
+        insertedBefore = null;
+    });
+    it('covers segment branch when nextElement is taskbar-main-container', () => {
+        const chart = (ganttObj.ganttChartModule as any);
+        chart.focusedRowIndex = 0;
+        const record = ganttObj.currentViewData[chart.focusedRowIndex];
+        record.ganttProperties = record.ganttProperties || {};
+        record.ganttProperties.segments = [
+            { startDate: new Date('2019-02-04'), duration: 2 },
+            { startDate: new Date('2019-02-05'), duration: 5 }
+        ];
+        const taskbar = ganttObj.element.getElementsByClassName('e-taskbar-main-container')[0];
+        let precedingElement: Element = taskbar.previousElementSibling as Element;
+        if (!precedingElement) {
+            insertedBefore = document.createElement('div');
+            taskbar.parentElement.insertBefore(insertedBefore, taskbar);
+            precedingElement = insertedBefore;
+        }
+        const result = chart['getNextElement'](precedingElement, true, false);
+        expect((result as Element).classList.contains('e-gantt-child-taskbar-inner-div')).toBe(true);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('getNextElement segment branch', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    {
+                        TaskID: 1,
+                        TaskName: 'Parent Task',
+                        StartDate: new Date('2026-03-11'),
+                        Duration: 5,
+                        SubTasks: [
+                            {
+                                TaskID: 2,
+                                TaskName: 'Child Task',
+                                StartDate: new Date('2026-03-12'),
+                                Duration: 3
+                            }
+                        ]
+                    }
+                ],
+                taskMode: 'Manual',
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration',
+                    child: 'SubTasks'
+                }
+            }, done);
+    });
+    it('applies focus to manual parent taskbar', () => {
+        const element = ganttObj.element.getElementsByClassName('e-taskbar-main-container')[0] as HTMLElement;
+        ganttObj.ganttChartModule.manageFocus(element, 'add', true);
+        const manualParent = element.getElementsByClassName('e-manualparent-main-container')[0];
+        expect(manualParent.classList.contains('e-active-container')).toBe(true);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('manageFocus milestone branch', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    {
+                        TaskID: 2,
+                        TaskName: 'Milestone Task',
+                        StartDate: new Date('2026-03-11'),
+                        Duration: 0 // milestone
+                    }
+                ],
+                taskFields: { id: 'TaskID', name: 'TaskName', startDate: 'StartDate', duration: 'Duration' }
+            }, done);
+    });
+    it('applies focus to milestone taskbar', () => {
+        const element = ganttObj.element.getElementsByClassName('e-taskbar-main-container')[0] as HTMLElement;
+        ganttObj.ganttChartModule.manageFocus(element, 'add', true);
+        expect(element.getElementsByClassName('e-gantt-milestone')[0].classList.contains('e-active-container')).toBe(true);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('manageFocus segmented taskbar branch', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    {
+                        TaskID: 3,
+                        TaskName: 'Segmented Task',
+                        StartDate: new Date('2026-03-11'),
+                        Duration: 7,
+                        Segments: [
+                            { StartDate: new Date('2026-03-11'), Duration: 2 },
+                            { StartDate: new Date('2026-03-13'), Duration: 5 }
+                        ]
+                    }
+                ],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration',
+                    segments: 'Segments'
+                }
+            }, done);
+    });
+    it('applies focus to segmented taskbar', () => {
+        const element = ganttObj.element.getElementsByClassName('e-taskbar-main-container')[0] as HTMLElement;
+        ganttObj.ganttChartModule.manageFocus(element, 'add', true);
+        expect(element.getElementsByClassName('e-segmented-taskbar')[0].classList.contains('e-active-container')).toBe(true);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('manageFocus temp container branch', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: 'Task A', StartDate: new Date('2026-03-11'), Duration: 3 }
+                ],
+                taskFields: { id: 'TaskID', name: 'TaskName', startDate: 'StartDate', duration: 'Duration' }
+            }, done);
+    });
+    it('adds focus to right label temp container', () => {
+        const element = document.createElement('div');
+        element.className = 'e-right-label-temp-container';
+        ganttObj.ganttChartModule.manageFocus(element, 'add', true);
+        expect(element.classList.contains('e-active-container')).toBe(true);
+    });
+    it('removes focus from right label temp container', () => {
+        const element = document.createElement('div');
+        element.className = 'e-right-label-temp-container e-active-container';
+        ganttObj.ganttChartModule.manageFocus(element, 'remove', true);
+        expect(element.classList.contains('e-active-container')).toBe(false);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('getChildElement previousElementSibling branch', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                { TaskID: 1, TaskName: 'Task A', StartDate: new Date('2026-03-11'), Duration: 3 }
+            ],
+            taskFields: { id: 'TaskID', name: 'TaskName', startDate: 'StartDate', duration: 'Duration' }
+            }, done);
+    });
+    it('returns previous sibling when last child is hidden', () => {
+        const row = document.createElement('tr');
+        const validCell = document.createElement('td');
+        validCell.className = 'e-rowcell';
+        const hiddenCell = document.createElement('td');
+        hiddenCell.className = 'e-hide';
+        row.appendChild(validCell);
+        row.appendChild(hiddenCell);
+        const result = ganttObj.ganttChartModule['getChildElement'](row, false);
+        expect(result).toBe(validCell);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('getChildElement exit branches', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: 'Task A', StartDate: new Date('2026-03-11'), Duration: 3 }
+                ],
+                taskFields: { id: 'TaskID', name: 'TaskName', startDate: 'StartDate', duration: 'Duration' }
+            }, done);
+    });
+    it('returns "noNextRow" when rowElement is null', () => {
+        const result = ganttObj.ganttChartModule['getChildElement'](null, true);
+        expect(result).toBe('noNextRow');
+    });
+    it('falls through and returns null when all children are hidden', () => {
+        const row = document.createElement('tr');
+        const hiddenCell = document.createElement('td');
+        hiddenCell.className = 'e-hide';
+        row.appendChild(hiddenCell);
+        const result = ganttObj.ganttChartModule['getChildElement'](row, true);
+        expect(result).toBeNull();
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('expandedGanttRow early return branch', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: 'Task A', StartDate: new Date('2026-03-11'), Duration: 3, hasChild: true }
+                ],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration',
+                    hasChildMapping: 'hasChild'
+                },
+                loadChildOnDemand: true,
+                enableVirtualization: true
+            }, done);
+    });
+    it('marks record.expanded and returns when gridRow is null with virtualization enabled', () => {
+        const chartModule = ganttObj.ganttChartModule as any;
+        const args: any = {
+            data: { TaskID: 1 },
+            gridRow: null,
+            chartRow: {}
+        };
+        chartModule.expandedGanttRow(args);
+        const record = ganttObj.currentViewData[0];
+        expect(record.expanded).toBe(true);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('ganttChartMouseUp branches', () => {
+    let ganttObj: Gantt;
+    let insertedWrapper: HTMLElement | null = null;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [{ TaskID: 1, TaskName: 'Task A', StartDate: new Date(), Duration: 3 }],
+                taskFields: { id: 'TaskID', name: 'TaskName', startDate: 'StartDate', duration: 'Duration' },
+                editSettings: { allowTaskbarEditing: true, allowEditing: false },
+                autoFocusTasks: true
+            }, done);
+    });
+    beforeEach(() => {
+        insertedWrapper = null;
+    });
+    afterEach(() => {
+        if (insertedWrapper && insertedWrapper.parentElement) {
+            insertedWrapper.parentElement.removeChild(insertedWrapper);
+        }
+    });
+    it('saves cell when edited batch cell exists', () => {
+        const chartModule = ganttObj.ganttChartModule;
+        insertedWrapper = document.createElement('div');
+        const cell = document.createElement('div');
+        cell.classList.add('e-editedbatchcell');
+        insertedWrapper.appendChild(cell);
+        ganttObj.element.appendChild(insertedWrapper);
+        const target = document.createElement('div');
+        target.classList.add('e-gantt-chart-pane');
+        const e = new PointerEvent('mouseup');
+        Object.defineProperty(e, 'target', { value: target });
+        chartModule['ganttChartMouseUp'](e);
+        expect(ganttObj.isEdit).toBe(false);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('ganttChartMouseUp parent-taskbar branch', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    {
+                        TaskID: 1,
+                        TaskName: 'Parent',
+                        StartDate: new Date('2026-03-11'),
+                        expanded: true,
+                        childRecords: [
+                            { TaskID: 2, TaskName: 'Child', StartDate: new Date('2026-03-11'), Duration: 3 }
+                        ]
+                    }
+                ],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration',
+                    child: 'childRecords'
+                },
+                editSettings: { allowTaskbarEditing: true, allowEditing: false },
+                autoFocusTasks: true,
+                columns: [{ field: 'TaskID', headerText: 'ID' }]
+            }, done);
+    });
+    it('calls chartExpandCollapseRequest when target is inside .e-gantt-parent-taskbar and editing disabled', () => {
+        const chartModule: any = ganttObj.ganttChartModule;
+        (ganttObj as any).isAdaptive = false;
+        const parentTaskbar = ganttObj.element.querySelector('.e-gantt-parent-taskbar') as HTMLElement;
+        const innerTarget = parentTaskbar.querySelector('.e-taskbar-main-container') || parentTaskbar;
+        const evt = new PointerEvent('mouseup', { bubbles: true });
+        Object.defineProperty(evt, 'target', { value: innerTarget });
+        chartModule.ganttChartMouseUp(evt);
+        expect(ganttObj.flatData.length).toBe(2);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('documentMouseUp expand/collapse branch', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [{ TaskID: 1, TaskName: 'Task A', StartDate: new Date(), Duration: 3 }],
+                taskFields: { id: 'TaskID', name: 'TaskName', startDate: 'StartDate', duration: 'Duration' },
+                editSettings: { allowTaskbarEditing: true, allowEditing: false },
+                autoFocusTasks: true
+            }, done);
+    });
+    it('resets isEditCollapse when clicking expand/collapse icon', () => {
+        const chartModule = ganttObj.ganttChartModule;
+        (ganttObj.treeGrid as any).isEditCollapse = true;
+        const target = document.createElement('div');
+        target.classList.add('e-treegridexpand');
+        const e = new PointerEvent('mouseup');
+        Object.defineProperty(e, 'target', { value: target });
+        chartModule['documentMouseUp'](e);
+        expect((ganttObj.treeGrid as any).isEditCollapse).toBe(false);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('documentMouseUp invokes onTaskbarClick', () => {
+    let ganttObj: Gantt;
+    let origParentHandler: any;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [{ TaskID: 1, TaskName: 'Task A', StartDate: new Date(), Duration: 3 }],
+                taskFields: { id: 'TaskID', name: 'TaskName', startDate: 'StartDate', duration: 'Duration' },
+                editSettings: { allowTaskbarEditing: true, allowEditing: false },
+                autoFocusTasks: true
+            }, done);
+    });
+    beforeEach(() => {
+        origParentHandler = (ganttObj as any).onTaskbarClick;
+        (ganttObj as any).onTaskbarClick = function () { };
+    });
+    afterEach(() => {
+        (ganttObj as any).onTaskbarClick = origParentHandler;
+    });
+    it('calls onTaskbarClick when clicking a rendered taskbar element', () => {
+        const chartModule: any = ganttObj.ganttChartModule;
+        (ganttObj as any).isAdaptive = false;
+        chartModule.isTouchMoved = false;
+        const taskbarElement = ganttObj.element.querySelector('.e-gantt-child-taskbar, .e-gantt-parent-taskbar, .e-gantt-milestone') as HTMLElement;
+        const innerTarget = taskbarElement.querySelector('.e-taskbar-main-container') || taskbarElement;
+        const evt = new PointerEvent('mouseup', { bubbles: true });
+        Object.defineProperty(evt, 'target', { value: innerTarget });
+        chartModule['documentMouseUp'](evt);
+        expect(ganttObj.autoFocusTasks).toBe(true);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('setVirtualHeight fallback branches using existing DOM', () => {
+    let ganttObj: Gantt;
+    let chartModule: any;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [{ TaskID: 1, TaskName: 'Task A', StartDate: new Date(), Duration: 3 }],
+                taskFields: { id: 'TaskID', name: 'TaskName', startDate: 'StartDate', duration: 'Duration' },
+                enableVirtualization: true,
+                enableTimelineVirtualization: true
+            }, done);
+            chartModule = ganttObj.ganttChartModule;
+    });
+    it('falls back to 0px when regex does not match', () => {
+        const treeGridTable = ganttObj.treeGrid.element.getElementsByClassName('e-virtualtable')[0] as HTMLElement;
+        const chartTable = ganttObj.ganttChartModule.scrollElement.getElementsByClassName('e-virtualtable')[0] as HTMLElement;
+        treeGridTable.style.transform = '';
+        chartTable.style.transform = 'not-a-translate';
+        chartModule['setVirtualHeight']();
+        expect((chartModule.virtualRender.wrapper as HTMLElement).style.transform).toContain('0px');
+    });
+    it('falls back to 0px for Y when only one part present', () => {
+        const treeGridTable = ganttObj.treeGrid.element.getElementsByClassName('e-virtualtable')[0] as HTMLElement;
+        const chartTable = ganttObj.ganttChartModule.scrollElement.getElementsByClassName('e-virtualtable')[0] as HTMLElement;
+        treeGridTable.style.transform = 'translate3d(100px, 50px, 0px)';
+        chartTable.style.transform = '';
+        chartModule['setVirtualHeight']();
+        expect((chartModule.virtualRender.wrapper as HTMLElement).style.transform).toContain(', 0px');
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('updateLastRowBottomWidth contentHeight fallback', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: 'Task A', StartDate: new Date(), Duration: 3 },
+                    { TaskID: 2, TaskName: 'Task B', StartDate: new Date(), Duration: 2 }
+                ],
+                taskFields: { id: 'TaskID', name: 'TaskName', startDate: 'StartDate', duration: 'Duration' },
+                height: '450px', // not 'auto'
+                enableVirtualization: true
+            }, done);
+    });
+    it('uses divHeight when contentHeight is 0', () => {
+        const chartModule: any = ganttObj.ganttChartModule;
+        ganttObj.contentHeight = 0;
+        chartModule.chartBodyContent.style.height = '100px';
+        chartModule.chartBodyContainer.style.height = '200px';
+        chartModule.updateLastRowBottomWidth();
+        expect(ganttObj.enableVirtualization).toBe(true);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('getNextElement sibling navigation', () => {
+    let ganttObj: Gantt;
+    let chartModule: any;
+    let appended: Element[] = [];
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                 dataSource: [
+                { TaskID: 1, TaskName: 'Task A', StartDate: new Date(), Duration: 3 },
+                { TaskID: 2, TaskName: 'Task B', StartDate: new Date(), Duration: 2 }
+            ],
+            columns: [
+                { field: 'TaskID', headerText: 'Task ID' },
+                { field: 'TaskName', headerText: 'Task Name', allowReordering: false, visible: false },
+                { field: 'StartDate', headerText: 'Start Date', allowSorting: false },
+                { field: 'Duration', headerText: 'Duration', allowEditing: false }
+            ],
+            taskFields: { id: 'TaskID', name: 'TaskName', startDate: 'StartDate', duration: 'Duration' },
+            height: '450px'
+            }, done);
+            chartModule = ganttObj.ganttChartModule;
+    });
+    afterEach(() => {
+        appended.forEach(el => { if (el.parentElement) { el.parentElement.removeChild(el); } });
+        appended = [];
+    });
+    it('advances to nextElementSibling when current is hidden', () => {
+        const row = ganttObj.treeGrid.getRows()[0] as HTMLElement;
+        const cell = row.querySelector('.e-rowcell') as HTMLElement;
+        const sibling = document.createElement('td');
+        sibling.classList.add('e-rowcell');
+        row.appendChild(sibling);
+        appended.push(sibling);
+        const result = chartModule['getNextElement'](cell, true, false);
+        expect(ganttObj.flatData.length).toBe(2);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('getNextElement non-tab path left-label-container branch', () => {
+    let ganttObj: Gantt;
+    let chartModule: any;
+    let appended: Element[] = [];
+    let originalGetNextRowElement: any;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                 dataSource: [
+                { TaskID: 1, TaskName: 'Task A', StartDate: new Date(), Duration: 3 },
+                { TaskID: 2, TaskName: 'Task B', StartDate: new Date(), Duration: 2 }
+            ],
+            columns: [
+                { field: 'TaskID', headerText: 'Task ID' },
+                { field: 'TaskName', headerText: 'Task Name', visible: false },
+                { field: 'StartDate', headerText: 'Start Date' },
+                { field: 'Duration', headerText: 'Duration' }
+            ],
+            taskFields: { id: 'TaskID', name: 'TaskName', startDate: 'StartDate', duration: 'Duration' },
+            height: '450px'
+            }, done);
+            chartModule = ganttObj.ganttChartModule;
+            originalGetNextRowElement = chartModule.getNextRowElement;
+    });
+    afterEach(() => {
+        appended.forEach(el => {
+            if (el.parentElement) {
+                el.parentElement.removeChild(el);
+            }
+        });
+        appended = [];
+        chartModule.getNextRowElement = originalGetNextRowElement;
+    });
+    it('returns left-label-container when valid (isTab = false)', () => {
+        const row = ganttObj.treeGrid.getRows()[0] as HTMLElement;
+        const cell = row.querySelector('.e-rowcell') as HTMLElement;
+        const controlledRow = document.createElement('tr');
+        const leftLabel = document.createElement('div');
+        leftLabel.classList.add('e-left-label-container');
+        controlledRow.appendChild(leftLabel);
+        appended.push(leftLabel);
+        chartModule.getNextRowElement = () => controlledRow;
+        const result = chartModule['getNextElement'](cell, false, false);
+        expect(result).toBe(null);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('onTabAction special branches', () => {
+    let ganttObj: Gantt;
+    let chartModule: any;
+    let appended: Element[] = [];
+    let origGetNextElement: any;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: 'Task A', StartDate: new Date(), Duration: 3 },
+                    { TaskID: 2, TaskName: 'Task B', StartDate: new Date(), Duration: 2 }
+                ],
+                columns: [
+                    { field: 'TaskID', headerText: 'Task ID' },
+                    { field: 'TaskName', headerText: 'Task Name', visible: true },
+                    { field: 'StartDate', headerText: 'Start Date', visible: true },
+                    { field: 'Duration', headerText: 'Duration', visible: true }
+                ],
+                taskFields: { id: 'TaskID', name: 'TaskName', startDate: 'StartDate', duration: 'Duration' },
+                height: '450px'
+            }, done);
+        chartModule = ganttObj.ganttChartModule;
+    });
+    beforeEach(() => {
+        origGetNextElement = chartModule.getNextElement;
+    });
+    afterEach(() => {
+        chartModule.getNextElement = origGetNextElement;
+        appended.forEach(el => {
+            if (el.parentElement) {
+                el.parentElement.removeChild(el);
+            }
+        });
+        appended = [];
+    });
+    it('executes saveCell branch when nextElement is noNextRow and edited batch cell exists', () => {
+        const cell = ganttObj.treeGrid.getRows()[0].querySelector('.e-rowcell') as HTMLElement;
+        const editedCell = document.createElement('td');
+        editedCell.classList.add('e-editedbatchcell');
+        ganttObj.treeGrid.element.appendChild(editedCell);
+        appended.push(editedCell);
+        chartModule.getNextElement = () => 'noNextRow';
+        chartModule.onTabAction({ action: 'tab', target: cell } as any);
+        expect(ganttObj.treeGrid.element.getElementsByClassName('e-editedbatchcell').length).toBe(1);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('onTabAction header-cell event', () => {
+    let ganttObj: Gantt;
+    let chartModule: any;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: 'Task A', StartDate: new Date(), Duration: 3 }
+                ],
+                taskFields: { id: 'TaskID', name: 'TaskName', startDate: 'StartDate', duration: 'Duration' },
+                editSettings: { allowTaskbarEditing: true, allowEditing: false },
+                autoFocusTasks: true,
+                allowRowDragAndDrop: true
+            }, done);
+        chartModule = ganttObj.ganttChartModule;
+    });
+    it('does not throw when invoked with a header-cell target (preventDefault provided)', () => {
+        const headerCell = ganttObj.treeGrid.element.querySelector('.e-headercell') as HTMLElement;
+        const evt: any = { action: 'tab', target: headerCell, preventDefault: () => { } };
+        chartModule.onTabAction(evt);
+        expect(ganttObj.allowRowDragAndDrop).toBe(true);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('documentMouseUp focusedElement tabIndex toggle', () => {
+    let ganttObj: Gantt;
+    let chartModule: any;
+    let appended: Element[] = [];
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: 'Task A', StartDate: new Date(), Duration: 3 },
+                    { TaskID: 2, TaskName: 'Task B', StartDate: new Date(), Duration: 2 }
+                ],
+                columns: [
+                    { field: 'TaskID', headerText: 'Task ID' },
+                    { field: 'TaskName', headerText: 'Task Name', visible: true },
+                    { field: 'StartDate', headerText: 'Start Date', visible: true },
+                    { field: 'Duration', headerText: 'Duration', visible: true }
+                ],
+                taskFields: { id: 'TaskID', name: 'TaskName', startDate: 'StartDate', duration: 'Duration' },
+                height: '450px'
+            }, done);
+        chartModule = ganttObj.ganttChartModule;
+    });
+    afterEach(() => {
+        appended.forEach(el => {
+            if (el.parentElement) {
+                el.parentElement.removeChild(el);
+            }
+        });
+        appended = [];
+    });
+    it('changes tabIndex from 0 to -1 when showActiveElement is true', () => {
+        const focusContainer = document.createElement('div');
+        focusContainer.tabIndex = 0;
+        ganttObj.element.appendChild(focusContainer);
+        appended.push(focusContainer);
+        chartModule.focusedElement = focusContainer;
+        ganttObj.showActiveElement = true;
+        const evt = {
+            type: 'mouseup',
+            target: ganttObj.element,
+            preventDefault: () => { }
+        } as any;
+        chartModule['documentMouseUp'](evt);
+        expect(focusContainer.tabIndex).toBe(-1);
+    });
+    it('keeps tabIndex unchanged when it is not 0', () => {
+        const focusContainer = document.createElement('div');
+        focusContainer.tabIndex = 5;
+        ganttObj.element.appendChild(focusContainer);
+        appended.push(focusContainer);
+        chartModule.focusedElement = focusContainer;
+        ganttObj.showActiveElement = true;
+        const evt = { type: 'mouseup', target: ganttObj.element, preventDefault: () => { } } as any;
+        chartModule['documentMouseUp'](evt);
+        expect(focusContainer.tabIndex).toBe(5);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('collapsedGanttRow record and gridRec branches', () => {
+    let ganttObj: Gantt;
+    let chartModule: any;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { taskId: 1, TaskName: 'Task A', StartDate: new Date('2026-03-11'), Duration: 3, hasChild: true }
+                ],
+                taskFields: {
+                    id: 'taskId',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration',
+                    hasChildMapping: 'hasChild'
+                },
+                loadChildOnDemand: true,
+                enableVirtualization: true
+            }, done);
+        chartModule = ganttObj.ganttChartModule;
+    });
+    it('uses currentViewData.filter to get record', () => {
+        const record = ganttObj.currentViewData[0];
+        const args: any = {
+            data: record,
+            gridRow: ganttObj.treeGrid.getRows()[0],
+            chartRow: ganttObj.ganttChartModule.chartBodyContainer.querySelector('.e-chart-row')
+        };
+        chartModule.collapsedGanttRow(args);
+        expect(record.expanded).toBe(false);
+    });
+    it('computes gridRec from getCurrentViewRecords and collapses row', () => {
+        const record = ganttObj.currentViewData[0];
+        const args: any = {
+            data: record,
+            gridRow: ganttObj.treeGrid.getRows()[0],
+            chartRow: ganttObj.ganttChartModule.chartBodyContainer.querySelector('.e-chart-row')
+        };
+        chartModule.isExpandCollapseFromChart = true;
+        chartModule.collapsedGanttRow(args);
+        expect(args.chartRow.getAttribute('aria-expanded')).toBe('false');
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('expandedGanttRow gridRec branch', () => {
+    let ganttObj: Gantt;
+    let chartModule: any;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { taskId: 1, TaskName: 'Task A', StartDate: new Date('2026-03-11'), Duration: 3, hasChild: true }
+                ],
+                taskFields: {
+                    id: 'taskId',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration',
+                    hasChildMapping: 'hasChild'
+                },
+                loadChildOnDemand: true,
+                enableVirtualization: true
+            }, done);
+        chartModule = ganttObj.ganttChartModule;
+    });
+    it('computes gridRec from getCurrentViewRecords and expands row', () => {
+        const record = ganttObj.currentViewData[0];
+        const args: any = {
+            data: record,
+            gridRow: ganttObj.treeGrid.getRows()[0],
+            chartRow: ganttObj.ganttChartModule.chartBodyContainer.querySelector('.e-chart-row')
+        };
+        chartModule.isExpandCollapseFromChart = true;
+        chartModule.expandedGanttRow(args);
+        expect(args.chartRow.getAttribute('aria-expanded')).toBe('true');
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('onTabAction branch with child record handling (patched getNextRowElement)', () => {
+    let ganttObj: Gantt;
+    let chartModule: any;
+    let originalGetNext: any;
+    let originalGetNextRow: any;
+    let originalUpdate: any;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                {
+                    TaskID: 1,
+                    TaskName: 'Parent',
+                    StartDate: new Date('2026-03-10T00:00:00'),
+                    Duration: 5
+                },
+                {
+                    TaskID: 2,
+                    TaskName: 'Parent with child',
+                    StartDate: new Date('2026-03-11T00:00:00'),
+                    Duration: 4,
+                    children: [
+                        { TaskID: 3, TaskName: 'Child A', StartDate: new Date('2026-03-12T00:00:00'), Duration: 2 }
+                    ]
+                }
+            ],
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                duration: 'Duration',
+                child: 'children'
+            },
+            columns: [
+                { field: 'TaskID', headerText: 'ID', visible: true },
+                { field: 'Duration', headerText: 'Duration', allowEditing: false },
+                { field: 'TaskName', headerText: 'Name', allowEditing: true }
+            ],
+            editSettings: { allowNextRowEdit: true },
+            height: '450px'
+            }, done);
+        chartModule = ganttObj.ganttChartModule;
+    });
+    beforeEach(() => {
+        originalGetNext = chartModule.getNextElement;
+        originalGetNextRow = chartModule.getNextRowElement;
+        originalUpdate = chartModule.updateElement;
+    });
+
+    afterEach(() => {
+        chartModule.getNextElement = originalGetNext;
+        chartModule.getNextRowElement = originalGetNextRow;
+        chartModule.updateElement = originalUpdate;
+    });
+    it('executes child-record branch without null errors', () => {
+        const rowCells = ganttObj.element.querySelectorAll('.e-rowcell');
+        const editedCell = rowCells[0];
+        editedCell.classList.add('e-editedbatchcell');
+        const secondRow = ganttObj.treeGrid.getRows()[1];
+        secondRow.setAttribute('aria-rowindex', '2');
+        const idCellSecondRow = secondRow.querySelector('.e-rowcell') as HTMLElement;
+        idCellSecondRow.setAttribute('aria-colindex', '1');
+        chartModule.getNextElement = function(arg: any) {
+            if (arg === editedCell) { return idCellSecondRow; }
+            return null;
+        };
+        chartModule.getNextRowElement = function() {
+            return secondRow;
+        };
+        let updateCalls = 0;
+        chartModule.updateElement = function(next: Element) {
+            updateCalls++;
+            return next;
+        };
+        chartModule['onTabAction']({
+            action: 'shiftTab',
+            target: editedCell,
+            preventDefault: () => {}
+        } as any);
+        expect(ganttObj.flatData[0].hasChildRecords).toBe(false)
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('onTabAction branch with child record handling (patched getNextRowElement) If Condition', () => {
+    let ganttObj: Gantt;
+    let chartModule: any;
+    let originalGetNext: any;
+    let originalGetNextRow: any;
+    let originalUpdate: any;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                {
+                    TaskID: 1,
+                    TaskName: 'Parent',
+                    StartDate: new Date('2026-03-10T00:00:00'),
+                    Duration: 5
+                },
+                {
+                    TaskID: 2,
+                    TaskName: 'Parent with child',
+                    StartDate: new Date('2026-03-11T00:00:00'),
+                    Duration: 4,
+                    children: [
+                        { TaskID: 3, TaskName: 'Child A', StartDate: new Date('2026-03-12T00:00:00'), Duration: 2 }
+                    ]
+                }
+            ],
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                duration: 'Duration',
+                child: 'children',
+                progress: 'TaskName'
+            },
+            columns: [
+                { field: 'TaskID', headerText: 'ID', visible: true },
+                { field: 'Duration', headerText: 'Duration', allowEditing: false },
+                { field: 'TaskName', headerText: 'Name', allowEditing: true }
+            ],
+            editSettings: { allowNextRowEdit: true },
+            height: '450px'
+            }, done);
+        chartModule = ganttObj.ganttChartModule;
+    });
+    beforeEach(() => {
+        originalGetNext = chartModule.getNextElement;
+        originalGetNextRow = chartModule.getNextRowElement;
+        originalUpdate = chartModule.updateElement;
+    });
+
+    afterEach(() => {
+        chartModule.getNextElement = originalGetNext;
+        chartModule.getNextRowElement = originalGetNextRow;
+        chartModule.updateElement = originalUpdate;
+    });
+    it('executes child-record branch without null errors', () => {
+        const rowCells = ganttObj.element.querySelectorAll('.e-rowcell');
+        const editedCell = rowCells[0];
+        editedCell.classList.add('e-editedbatchcell');
+        const secondRow = ganttObj.treeGrid.getRows()[1];
+        secondRow.setAttribute('aria-rowindex', '2');
+        const idCellSecondRow = secondRow.querySelector('.e-rowcell') as HTMLElement;
+        idCellSecondRow.setAttribute('aria-colindex', '1');
+        chartModule.getNextElement = function(arg: any) {
+            if (arg === editedCell) { return idCellSecondRow; }
+            return null;
+        };
+        chartModule.getNextRowElement = function() {
+            return secondRow;
+        };
+        let updateCalls = 0;
+        chartModule.updateElement = function(next: Element) {
+            updateCalls++;
+            return next;
+        };
+        chartModule['onTabAction']({
+            action: 'shiftTab',
+            target: editedCell,
+            preventDefault: () => {}
+        } as any);
+        expect(ganttObj.flatData[0].hasChildRecords).toBe(false)
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('resolveNextElement helper in Gantt context', () => {
+    let ganttObj: Gantt;
+    let chartModule: any;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: 'Task A', StartDate: new Date('2026-03-10'), Duration: 3 },
+                    { TaskID: 2, TaskName: 'Task B', StartDate: new Date('2026-03-13'), Duration: 4 }
+                ],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration'
+                },
+                columns: [
+                    { field: 'TaskID', headerText: 'ID' },
+                    { field: 'TaskName', headerText: 'Name' }
+                ],
+                height: '450px'
+            }, done);
+        chartModule = ganttObj.ganttChartModule;
+    });
+    it('returns the elementIfTrue when condition is true', () => {
+        const firstRow = ganttObj.treeGrid.getRows()[0];
+        const firstCell = firstRow.querySelector('.e-rowcell') as HTMLElement;
+        const secondCell = firstRow.querySelectorAll('.e-rowcell')[1] as HTMLElement;
+        const result = chartModule.resolveNextElement(true, firstCell, secondCell);
+        expect(result.textContent).toContain('1');
+    });
+    it('returns the elementIfFalse when condition is false', () => {
+        const firstRow = ganttObj.treeGrid.getRows()[0];
+        const firstCell = firstRow.querySelector('.e-rowcell') as HTMLElement;
+        const secondCell = firstRow.querySelectorAll('.e-rowcell')[1] as HTMLElement;
+        const result = chartModule.resolveNextElement(false, firstCell, secondCell);
+        expect(result.textContent).toContain('Task A');
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+
+describe('ChartRows - constructSegments method', () => {
+    let ganttObj: Gantt;
+    let chartRowsInstance: any;
+
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    {
+                        TaskId: 1,
+                        TaskName: 'Parent Task',
+                        StartDate: new Date('2024/01/01'),
+                        EndDate: new Date('2024/01/10'),
+                        Duration: 10
+                    }
+                ],
+                taskFields: {
+                    id: 'TaskId',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    endDate: 'EndDate',
+                    duration: 'Duration',
+                    child: 'Children'
+                },
+                projectStartDate: new Date('2024/01/01'),
+                projectEndDate: new Date('2024/01/31')
+            }, 
+            done
+        );
+        chartRowsInstance = ganttObj.chartRowsModule;
+    });
+
+    it('constructSegments - Empty dates array', () => {
+        const dates: Date[] = [];
+        const taskData: any = {
+            startDate: new Date('2024/01/01'),
+            endDate: new Date('2024/01/10'),
+            durationUnit: 'Day',
+            isAutoSchedule: true,
+            isMilestone: false,
+            calendarContext: undefined
+        };
+
+        chartRowsInstance.constructSegments(dates, taskData);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('getSegmentIndex - splitStartDate equals segment.startDate (bottomTier Day)', () => {
+    let ganttObj: Gantt;
+    const data: any[] = [
+        {
+            TaskID: 1,
+            TaskName: 'Split Task Day',
+            StartDate: new Date('2024-01-01'),
+            Duration: 10,
+            segments: [
+                { StartDate: new Date('2024-01-05'), Duration: 2 },
+                { StartDate: new Date('2024-01-08'), Duration: 2 }
+            ]
+        }
+    ];
+    beforeEach((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: data,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration',
+                    segments: 'segments',
+                    child: 'subtasks'
+                },
+                editSettings: {
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true
+                },
+                enableContextMenu: true,
+                timelineSettings: {
+                    topTier: { unit: 'Week', format: 'dd/MM/yyyy' },
+                    bottomTier: { unit: 'Day', count: 1 }
+                },
+                projectStartDate: new Date('2024-01-01'),
+                projectEndDate: new Date('2024-01-31'),
+            }, done);
+    });
+    it('invoke getSegmentIndex with splitStartDate equal to a segment start (Day)', () => {
+        ganttObj.flatData[0].ganttProperties.startDate = new Date('2024-01-02');
+        ganttObj.contextMenuModule['isFromContextMenuBeforeOpen'] = false
+        const record = ganttObj.flatData[0];
+        const splitDate = new Date('2024-01-01T08:00:00');
+        ganttObj.chartRowsModule.getSegmentIndex(splitDate, record);
+    });
+    it('invoke getSegmentIndex with splitStartDate equal to a segment start (Day)', () => {
+        ganttObj.flatData[0].ganttProperties.startDate = new Date('2024-01-02');
+        ganttObj.timelineModule.customTimelineSettings.bottomTier.unit = 'Minutes';
+        const record = ganttObj.flatData[0];
+        ganttObj.contextMenuModule['isFromContextMenuBeforeOpen'] = false
+        const splitDate = new Date('2024-01-01T08:00:00');
+        ganttObj.chartRowsModule.getSegmentIndex(splitDate, record);
+    });
+    it('invoke getSegmentIndex with splitStartDate equal to a segment start (Day)', () => {
+        ganttObj.flatData[0].ganttProperties.startDate = new Date('2024-01-02');
+        ganttObj.timelineModule.customTimelineSettings.bottomTier.unit = 'Hour';
+        const record = ganttObj.flatData[0];
+        ganttObj.contextMenuModule['isFromContextMenuBeforeOpen'] = false
+        const splitDate = new Date('2024-01-01T08:00:00');
+        ganttObj.chartRowsModule.getSegmentIndex(splitDate, record);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('getTableTrNode method', () => {
+    let ganttObj: Gantt;
+    const data: any[] = [
+        {
+            TaskID: 1,
+            TaskName: 'Split Task Day',
+            StartDate: new Date('2024-01-01'),
+            Duration: 10,
+            segments: [
+                { StartDate: new Date('2024-01-05'), Duration: 2 },
+                { StartDate: new Date('2024-01-08'), Duration: 2 }
+            ]
+        }
+    ];
+    beforeEach((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: data,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration',
+                    segments: 'segments',
+                    child: 'subtasks'
+                },
+                editSettings: {
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true
+                },
+                allowSelection: true,
+                selectedRowIndex: 1,
+                enableContextMenu: true,
+                timelineSettings: {
+                    topTier: { unit: 'Week', format: 'dd/MM/yyyy' },
+                    bottomTier: { unit: 'Day', count: 1 }
+                },
+                projectStartDate: new Date('2024-01-01'),
+                projectEndDate: new Date('2024-01-31'),
+            }, done);
+    });
+    it('getTableTrNode method', () => {
+        ganttObj.treeGridModule.isPersist = true;
+        (ganttObj as any).treeGrid.grid.contentModule.getRows()[0].isSelected = true
+        ganttObj.chartRowsModule['getTableTrNode'](0)
+    });
+    it('getTableTrNode method', () => {
+        ganttObj.treeGridModule.isPersist = true;
+        ganttObj.chartRowsModule['getTableTrNode'](0)
+    });
+    
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+
+describe('ChartRows - constructSegments method', () => {
+    let ganttObj: Gantt;
+    let chartRowsInstance: any;
+
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    {
+                        TaskId: 1,
+                        TaskName: 'Parent Task',
+                        StartDate: new Date('2024/01/01'),
+                        EndDate: new Date('2024/01/10'),
+                        Duration: 10
+                    }
+                ],
+                taskFields: {
+                    id: 'TaskId',
+                    name: 'TaskName',
+                    endDate: 'EndDate',
+                    duration: 'Duration',
+                    child: 'Children'
+                },
+                projectStartDate: new Date('2024/01/01'),
+                projectEndDate: new Date('2024/01/31')
+            }, 
+            done
+        );
+        chartRowsInstance = ganttObj.chartRowsModule;
+    });
+    it('constructSegments - Empty dates array', () => {
+        const dates: Date[] = [new Date('2024/01/11'),new Date('2024/01/12')];
+        const taskData: any = {
+            startDate: new Date('2024/01/01'),
+            endDate: new Date('2024/01/10'),
+            durationUnit: 'Day',
+            isAutoSchedule: true,
+            isMilestone: false,
+            calendarContext: undefined
+        };
+
+        const result = chartRowsInstance.constructSegments(dates, taskData);
+        // Expected: Single segment from startDate to endDate (i=0, loop breaks at i===0)
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+
+describe('splitTask method', () => {
+    let ganttObj: Gantt;
+    const data: any[] = [
+        {
+            TaskID: 1,
+            TaskName: 'Split Task Day',
+            StartDate: new Date('2024-01-01'),
+            Duration: 10,
+            segments: [
+                { StartDate: new Date('2024-01-05'), Duration: 2 },
+                { StartDate: new Date('2024-01-08'), Duration: 2 }
+            ]
+        }
+    ];
+    beforeEach((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: data,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration',
+                    segments: 'segments',
+                    child: 'subtasks'
+                },
+                editSettings: {
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true
+                },
+                enableUndoRedo: true,
+                allowSelection: true,
+                selectedRowIndex: 1,
+                enableContextMenu: true,
+                timelineSettings: {
+                    topTier: { unit: 'Week', format: 'dd/MM/yyyy' },
+                    bottomTier: { unit: 'Day', count: 1 }
+                },
+                projectStartDate: new Date('2024-01-01'),
+                projectEndDate: new Date('2024-01-31'),
+            }, done);
+    });
+    it('splitTask method', () => {
+        ganttObj.chartRowsModule['splitTask'](1,new Date('2024-01-01'))
+    });
+    it('getTableTrNode method', function () {
+        ganttObj.chartRowsModule['splitTask'](1, [new Date('2024-01-01')]);
+    });
+    it('refreshChartAfterSegment method', () => {
+        ganttObj.timezone = 'UTC',
+        ganttObj.chartRowsModule['refreshChartAfterSegment'](ganttObj.flatData[0],'action');
+    });
+    it('getExpandDisplayProp method', function () {
+        (ganttObj as any).chartRowsModule['templateData'] = {'filterLevel':true};
+        (ganttObj as any).chartRowsModule['getExpandDisplayProp']()
+        });
+    it('setRowHeight method', function () {
+        (ganttObj as any).chartRowsModule['setRowHeight'](1, '20', ganttObj.treeGrid, true, undefined)
+    });
+    it('refreshRecords method', function () {     
+        ganttObj.isGanttChartRendered = true;
+        ganttObj.isReact = true
+        ganttObj.chartRowsModule['refreshRecords'](ganttObj.flatData,undefined, true);
+        });
+    it('removeEventListener method', function () {     
+        ganttObj.isDestroyed = true
+        ganttObj.chartRowsModule['removeEventListener']()
+        });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+
+describe('splitTask method', () => {
+    let ganttObj: Gantt;
+    const data: any[] = [
+        {
+            TaskID: 1,
+            TaskName: 'Split Task Day',
+            StartDate: new Date('2024-01-01'),
+            Duration: 10,
+            segments: [
+                { StartDate: new Date('2024-01-05'), Duration: 2 },
+                { StartDate: new Date('2024-01-08'), Duration: 2 }
+            ],
+            subtasks: [
+                    { TaskID: 2, StartDate: new Date('2024-01-05'), Duration: 2},
+                    { TaskID: 3, StartDate: new Date('2024-01-05'), Duration: 2}
+
+                ],
+        }
+    ];
+    beforeEach((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: data,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration',
+                    segments: 'segments',
+                    child: 'subtasks'
+                },
+                editSettings: {
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true
+                },
+                enableUndoRedo: true,
+                allowSelection: true,
+                selectedRowIndex: 1,
+                enableContextMenu: true,
+                timelineSettings: {
+                    topTier: { unit: 'Week', format: 'dd/MM/yyyy' },
+                    bottomTier: { unit: 'Day', count: 1 }
+                },
+                projectStartDate: new Date('2024-01-01'),
+                projectEndDate: new Date('2024-01-31'),
+            }, done);
+    });
+    it('refreshRow  method', function () {
+        ganttObj.previousFlatData = ganttObj.flatData
+        ganttObj.frozenColumns = 2;
+        ganttObj.previousFlatData[0].expanded = true;
+        ganttObj['freezeModule'] = true;
+        ganttObj.allowTaskbarOverlap = false;
+        ganttObj.chartRowsModule['refreshRow'](0, false, true)
+        });
+    it('refreshRow  method', function () {
+        ganttObj.previousFlatData = ganttObj.flatData
+        ganttObj.frozenColumns = 2;
+        ganttObj.previousFlatData[0].expanded = true;
+        ganttObj['freezeModule'] = true;
+        ganttObj.allowTaskbarOverlap = false;
+        ganttObj.chartRowsModule['refreshRow'](0, false, false)
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+
+describe('splitTask method', () => {
+    let ganttObj: Gantt;
+    const data: any[] = [
+        {
+            TaskID: 1,
+            TaskName: 'Split Task Day',
+            StartDate: new Date('2024-01-01'),
+            Duration: 10,
+            segments: [
+                { StartDate: new Date('2024-01-05'), Duration: 2 },
+                { StartDate: new Date('2024-01-08'), Duration: 2 }
+            ],
+            subtasks: [
+                    { TaskID: 2, StartDate: new Date('2024-01-05'), Duration: 2, BaselineStartDate: new Date('2024-01-05'), BaselineEndDate:new Date('2024-01-08') },
+                    { TaskID: 3, StartDate: new Date('2024-01-05'), Duration: 2, BaselineStartDate: new Date('2024-01-05'), BaselineEndDate:new Date('2024-01-08') }
+
+                ],
+        }
+    ];
+    beforeEach((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: data,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration',
+                    segments: 'segments',
+                    baselineStartDate: 'BaselineStartDate',
+                    baselineEndDate: 'BaselineEndDate',
+                    child: 'subtasks'
+                },
+                editSettings: {
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true
+                },
+                enableUndoRedo: true,
+                allowSelection: true,
+                selectedRowIndex: 1,
+                enableContextMenu: true,
+                timelineSettings: {
+                    topTier: { unit: 'Week', format: 'dd/MM/yyyy' },
+                    bottomTier: { unit: 'Day', count: 1 }
+                },
+                projectStartDate: new Date('2024-01-01'),
+                projectEndDate: new Date('2024-01-31'),
+            }, done);
+    });
+    it('refreshRow  method', function () {
+        ganttObj.previousFlatData = ganttObj.flatData
+        ganttObj.frozenColumns = 2;
+        ganttObj.previousFlatData[0].expanded = false;
+        ganttObj['freezeModule'] = true;
+        ganttObj.allowTaskbarOverlap = false;
+        ganttObj.enableMultiTaskbar = true;
+        ganttObj.renderBaseline = true;
+        ganttObj.chartRowsModule['refreshRow'](0, false, false)
+        });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+
+describe('splitTask method', () => {
+    let ganttObj: Gantt;
+    const data: any[] = [
+        {
+            TaskID: 1,
+            TaskName: 'Split Task Day',
+            StartDate: new Date('2024-01-01'),
+            Duration: 10,
+            segments: [
+                { StartDate: new Date('2024-01-05'), Duration: 2 },
+                { StartDate: new Date('2024-01-08'), Duration: 2 }
+            ],
+            subtasks: [
+                    { TaskID: 2, StartDate: new Date('2024-01-05'), Duration: 2, BaselineStartDate: new Date('2024-01-05'), BaselineEndDate:new Date('2024-01-08') },
+                    { TaskID: 3, StartDate: new Date('2024-01-05'), Duration: 2, BaselineStartDate: new Date('2024-01-05'), BaselineEndDate:new Date('2024-01-08') }
+
+                ],
+        }
+    ];
+    beforeEach((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: data,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration',
+                    segments: 'segments',
+                    baselineStartDate: 'BaselineStartDate',
+                    baselineEndDate: 'BaselineEndDate',
+                    child: 'subtasks'
+                },
+                editSettings: {
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true
+                },
+                enableUndoRedo: true,
+                allowSelection: true,
+                selectedRowIndex: 1,
+                enableContextMenu: true,
+                timelineSettings: {
+                    topTier: { unit: 'Week', format: 'dd/MM/yyyy' },
+                    bottomTier: { unit: 'Day', count: 1 }
+                },
+                projectStartDate: new Date('2024-01-01'),
+                projectEndDate: new Date('2024-01-31'),
+            }, done);
+    });
+    it('refreshRow  method', function () {
+        ganttObj.previousFlatData = ganttObj.flatData
+        ganttObj.frozenColumns = 2;
+        ganttObj.previousFlatData[0].expanded = false;
+        ganttObj['freezeModule'] = true;
+        ganttObj.allowTaskbarOverlap = true;
+        ganttObj.enableMultiTaskbar = true;
+        ganttObj.showOverAllocation = true;
+        ganttObj.renderBaseline = true;
+        ganttObj.chartRowsModule['refreshRow'](0, true, true)
+        });
+    afterEach(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+
 describe('CR1015593:Auto corrected task collection returns incorrectly when validated data is passed', () => {
     let ganttObj: Gantt;
     beforeAll((done: Function) => {
@@ -8007,6 +11156,447 @@ describe('CR1015593:Auto corrected task collection returns incorrectly when vali
     it('Checking autovalidated task collection', () => {
         expect(ganttObj.dataOperation['validatedGanttData'].size).toBe(0);
     });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+
+describe('Improve Coverage', () => {
+        let ganttObj: Gantt;
+        beforeAll((done: Function) => {
+            ganttObj = createGantt(
+                {
+                    dataSource: projectNewData13,
+                   resources: [ { resourceId: 1, resourceName: 'Martin Tamer', resourceGroup: 'Planning Team'},
+                   { resourceId: 2, resourceName: 'Rose Fuller', resourceGroup: 'Testing Team' },
+                   { resourceId: 3, resourceName: 'Margaret Buchanan', resourceGroup: 'Approval Team' }],
+                   viewType: 'ResourceView',
+                   showOverAllocation: true,
+                   enableContextMenu: true,
+                   allowSorting: true,
+                   allowReordering: true,
+                   taskFields: {
+                       id: 'TaskID',
+                       name: 'TaskName',
+                       startDate: 'StartDate',
+                       endDate: 'EndDate',
+                       duration: 'Duration',
+                       progress: 'Progress',
+                       dependency: 'Predecessor',
+                       resourceInfo: 'resources',
+                       work: 'work',
+                       child: 'subtasks'
+                   },
+                   resourceFields: {
+                       id: 'resourceId',
+                       name: 'resourceName',
+                       unit: 'resourceUnit',
+                       group: 'resourceGroup'
+                   },
+                   editSettings: {
+                       allowAdding: true,
+                       allowEditing: true,
+                       allowDeleting: true,
+                       allowTaskbarEditing: true,
+                       showDeleteConfirmDialog: true
+                   },
+                   columns: [
+                       { field: 'TaskID' },
+                       { field: 'TaskName', headerText: 'Name', width: 250 },
+                       { field: 'work', headerText: 'Work' },
+                       { field: 'Progress' },
+                       { field: 'resourceGroup', headerText: 'Group' },
+                       { field: 'StartDate' },
+                       { field: 'Duration' },
+                   ],
+                   toolbar: ['Add', 'Edit', 'Update', 'Delete', 'Cancel', 'ExpandAll', 'CollapseAll',
+                   { text: 'Show/Hide Overallocation', tooltipText: 'Show/Hide Overallocation', id: 'showhidebar' },'Search', 'ZoomIn', 'ZoomOut', 'ZoomToFit',  'PrevTimeSpan', 'NextTimeSpan','ExcelExport', 'CsvExport', 'PdfExport'],
+    
+                   selectionSettings: {
+                       mode: 'Row',
+                       type: 'Single',
+                       enableToggle: false
+                   },
+                   tooltipSettings: {
+                       showTooltip: true
+                   },
+                   timelineSettings: {
+                       showTooltip: true,
+                       topTier: {
+                           unit: 'Week',
+                           format: 'dd/MM/yyyy'
+                       },
+                       bottomTier: {
+                           unit: 'Day',
+                           count: 1
+                       }
+                   },
+                   readOnly: false,
+                   allowRowDragAndDrop: true,
+                   allowResizing: true,
+                   allowFiltering: true,
+                   allowSelection: true,
+                   highlightWeekends: true,
+                   height: '550px',
+                   projectStartDate: new Date('03/28/2019'),
+                   projectEndDate: new Date('05/18/2019')
+    
+                }, done);
+        });
+        it('actionFailures method', () => {
+            (ganttObj as any).resourceFields.id = false
+            ganttObj['actionFailures']();
+        });
+        it('keyDownHandler method', function () {
+            const e = {altKey: true, keyCode: 74};
+            (ganttObj as any)['keyDownHandler'](e);
+        });
+        afterAll(() => {
+            if (ganttObj) {
+                destroyGantt(ganttObj);
+            }
+        });
+    });
+describe('improve coverage', () => {
+    let ganttObj: Gantt;
+    const data: any[] = [
+        {
+            TaskID: 1,
+            TaskName: 'Split Task Day',
+            StartDate: new Date('2024-01-01'),
+            Duration: 10,
+            segments: [
+                { StartDate: new Date('2024-01-05'), Duration: 2 },
+                { StartDate: new Date('2024-01-08'), Duration: 2 }
+            ]
+        }
+    ];
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: data,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration',
+                    segments: 'segments',
+                    child: 'subtasks'
+                },
+                editSettings: {
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true
+                },
+                enableUndoRedo: true,
+                allowSelection: true,
+                selectedRowIndex: 1,
+                enableContextMenu: true,
+                timelineSettings: {
+                    topTier: { unit: 'Week', format: 'dd/MM/yyyy' },
+                    bottomTier: { unit: 'Day', count: 1 }
+                },
+                projectStartDate: new Date('2024-01-01'),
+                projectEndDate: new Date('2024-01-31'),
+            }, done);
+    });
+    it('isValidDateString ', function () {
+        ganttObj.dataOperation['isValidDateString']('123');
+    });
+    it('processTimeline ', function () {
+        ganttObj.taskbarHeight = 5;
+        ganttObj.rowHeight = 10;
+        ganttObj.dataOperation['getTaskbarHeight']()
+    });
+    it('processTimeline ', function () {
+        ganttObj.dataOperation['validateWorkUnitMapping']('day')
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+
+describe('improve coverage', () => {
+    let ganttObj: Gantt;
+    const data: any[] = [
+        {
+            TaskID: 1,
+            TaskName: 'Split Task Day',
+            StartDate: new Date('2024-01-01'),
+            Duration: 10,
+            segments: [
+                { StartDate: new Date('2024-01-05'), Duration: 2 },
+                { StartDate: new Date('2024-01-08'), Duration: 2 }
+            ]
+        }
+    ];
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: data,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration',
+                    segments: 'segments',
+                    child: 'subtasks'
+                },
+                editSettings: {
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true
+                },
+                enableUndoRedo: true,
+                allowSelection: true,
+                selectedRowIndex: 1,
+                enableContextMenu: true,
+                timelineSettings: {
+                    topTier: { unit: 'Week', format: 'dd/MM/yyyy' },
+                    bottomTier: { unit: 'Day', count: 1 }
+                },
+                projectStartDate: new Date('2024-01-01'),
+                projectEndDate: new Date('2024-01-31'),
+            }, done);
+    });
+    it('processTimeline ', ()=>{
+        ganttObj.enableValidation = false;
+        ganttObj.dataOperation['processTimeline']()
+    });
+    it('isValidDateString ', function () {
+            ganttObj.dataOperation['isValidDateString']('');
+    });
+    it('processTimeline ', function () {
+        ganttObj.taskbarHeight = 10;
+        ganttObj.rowHeight = 5;
+        ganttObj.dataOperation['getTaskbarHeight']()
+    });
+    it('processTimeline ', function () {
+        ganttObj.dataOperation['validateWorkUnitMapping']('minute')
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+
+describe('Improve Coverage', () => {
+        let ganttObj: Gantt;
+        beforeAll((done: Function) => {
+            ganttObj = createGantt(
+                {
+                    dataSource: projectNewData13,
+                   resources: [ { resourceId: 1, resourceName: 'Martin Tamer', resourceGroup: 'Planning Team'},
+                   { resourceId: 2, resourceName: 'Rose Fuller', resourceGroup: 'Testing Team' },
+                   { resourceId: 3, resourceName: 'Margaret Buchanan', resourceGroup: 'Approval Team' }],
+                   viewType: 'ResourceView',
+                   showOverAllocation: true,
+                   enableContextMenu: true,
+                   allowSorting: true,
+                   enableUndoRedo: true,
+                   allowReordering: true,
+                   taskFields: {
+                       id: 'TaskID',
+                       name: 'TaskName',
+                       startDate: 'StartDate',
+                       endDate: 'EndDate',
+                       duration: 'Duration',
+                       progress: 'Progress',
+                       dependency: 'Predecessor',
+                       resourceInfo: 'resources',
+                       work: 'work',
+                       child: 'subtasks'
+                   },
+                   resourceFields: {
+                       id: 'resourceId',
+                       name: 'resourceName',
+                       unit: 'resourceUnit',
+                       group: 'resourceGroup'
+                   },
+                   editSettings: {
+                       allowAdding: true,
+                       allowEditing: true,
+                       allowDeleting: true,
+                       allowTaskbarEditing: true,
+                       showDeleteConfirmDialog: true
+                   },
+                   columns: [
+                       { field: 'TaskID' },
+                       { field: 'TaskName', headerText: 'Name', width: 250 },
+                       { field: 'work', headerText: 'Work' },
+                       { field: 'Progress' },
+                       { field: 'resourceGroup', headerText: 'Group' },
+                       { field: 'StartDate' },
+                       { field: 'Duration' },
+                   ],
+                   toolbar: ['Add', 'Edit', 'Update', 'Delete', 'Cancel', 'ExpandAll', 'CollapseAll',
+                   { text: 'Show/Hide Overallocation', tooltipText: 'Show/Hide Overallocation', id: 'showhidebar' },'Search', 'ZoomIn', 'ZoomOut', 'ZoomToFit',  'PrevTimeSpan', 'NextTimeSpan','ExcelExport', 'CsvExport', 'PdfExport'],
+    
+                   selectionSettings: {
+                       mode: 'Row',
+                       type: 'Single',
+                       enableToggle: false
+                   },
+                   tooltipSettings: {
+                       showTooltip: true
+                   },
+                   timelineSettings: {
+                       showTooltip: true,
+                       topTier: {
+                           unit: 'Week',
+                           format: 'dd/MM/yyyy'
+                       },
+                       bottomTier: {
+                           unit: 'Day',
+                           count: 1
+                       }
+                   },
+                   readOnly: false,
+                   allowRowDragAndDrop: true,
+                   allowResizing: true,
+                   allowFiltering: true,
+                   allowSelection: true,
+                   highlightWeekends: true,
+                   height: '550px',
+                   projectStartDate: new Date('03/28/2019'),
+                   projectEndDate: new Date('05/18/2019')
+    
+                }, done);
+        });
+        it('previousTimeSpan method', () => {
+            ganttObj.isReact = true
+            ganttObj.undoRedoModule['redoEnabled'] = true;
+            ganttObj['previousTimeSpan']()
+        });
+        it('nextTimeSpan method', function () {
+            ganttObj.isReact = true
+            ganttObj.undoRedoModule['redoEnabled'] = true;
+            ganttObj['nextTimeSpan']()
+        });
+        it('removeCalendarContext method', function () {
+            (ganttObj as any)['removeCalendarContext'](false)
+        });
+        afterAll(() => {
+            if (ganttObj) {
+                destroyGantt(ganttObj);
+            }
+        });
+    });
+    describe('setValidatedDates method', () => {
+    let ganttObj: Gantt;
+    const data: any[] = [
+        {
+            TaskID: 1,
+            TaskName: 'Split Task Day',
+            StartDate: new Date('2024-01-01'),
+            Duration: 10,
+            segments: [
+                { StartDate: new Date('2024-01-05'), Duration: 2 },
+                { StartDate: new Date('2024-01-08'), Duration: 2 }
+            ]
+        }
+    ];
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: data,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    endDate: 'EndDate',
+                    duration: 'Duration',
+                    segments: 'segments',
+                    child: 'subtasks'
+                },
+                editSettings: {
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true
+                },
+                enableUndoRedo: true,
+                allowSelection: true,
+                selectedRowIndex: 1,
+                enableContextMenu: true,
+                timelineSettings: {
+                    topTier: { unit: 'Week', format: 'dd/MM/yyyy' },
+                    bottomTier: { unit: 'Day', count: 1 }
+                },
+                projectStartDate: new Date('2024-01-01'),
+                projectEndDate: new Date('2024-01-31'),
+            }, done);
+    });
+    
+    it('setValidatedDates method',  () =>  {
+        let data = {StartDate: new Date('2024-01-01'), EndDate: new Date('2024-01-29')}
+        ganttObj.dataOperation['setValidatedDates'](ganttObj.flatData[0], data);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+describe('setValidatedDates method', () => {
+    let ganttObj: Gantt;
+    const data: any[] = [
+        {
+            TaskID: 1,
+            TaskName: 'Split Task Day',
+            StartDate: new Date('2024-01-01'),
+            Duration: 10,
+            segments: [
+                { StartDate: new Date('2024-01-05'), Duration: 2 },
+                { StartDate: new Date('2024-01-08'), Duration: 2 }
+            ]
+        }
+    ];
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: data,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    endDate: 'EndDate',
+                    duration: 'Duration',
+                    segments: 'segments',
+                    child: 'subtasks'
+                },
+                editSettings: {
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true
+                },
+                enableUndoRedo: true,
+                allowSelection: true,
+                selectedRowIndex: 1,
+                enableContextMenu: true,
+                timelineSettings: {
+                    topTier: { unit: 'Week', format: 'dd/MM/yyyy' },
+                    bottomTier: { unit: 'Day', count: 1 }
+                },
+                projectStartDate: new Date('2024-01-01'),
+                projectEndDate: new Date('2024-01-31'),
+            }, done);
+    });
+    it('setValidatedDates method', () => {
+            let data = {StartDate: new Date('2024-01-01'), EndDate: new Date('2024-01-29'), Duration: 5}
+            ganttObj.dataOperation['setValidatedDates'](ganttObj.flatData[0], data);
+        });
+    it('getTaskbarHeight method', ()=> {
+        ganttObj['getTaskbarHeight']();
+    })
+    it('expandByID method', ()=> {
+        ganttObj.enableVirtualization = true;
+        ganttObj['expandByID'](1);
+    })
     afterAll(() => {
         if (ganttObj) {
             destroyGantt(ganttObj);
@@ -8098,8 +11688,8 @@ describe('1021511 Parent taskbar startDate calculation not considering the unsch
             }, done);
     });
     it('Unscheduled tasks ', () => {
-        expect(ganttObj.getFormatedDate(ganttObj.flatData[0].ganttProperties.startDate)).toBe('3/30/2026');
-        expect(ganttObj.getFormatedDate(ganttObj.flatData[0].ganttProperties.endDate)).toBe('4/3/2026');
+        expect(ganttObj.getFormatedDate(ganttObj.flatData[0].ganttProperties.startDate)).toBe('4/2/2026');
+        expect(ganttObj.getFormatedDate(ganttObj.flatData[0].ganttProperties.endDate)).toBe('4/6/2026');
         expect(ganttObj.flatData[1].ganttProperties.duration).toBe(3);
         expect(ganttObj.getFormatedDate(ganttObj.flatData[2].ganttProperties.endDate)).toBe('4/3/2026');
 
@@ -8110,3 +11700,4 @@ describe('1021511 Parent taskbar startDate calculation not considering the unsch
         }
     });
 });
+

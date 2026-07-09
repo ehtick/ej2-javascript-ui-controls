@@ -11,11 +11,11 @@ import { iterateArrayOrObject, prepareColumns, parentsUntil, wrap, templateCompi
 import { getRowHeight, setColumnIndex, Global, ispercentageWidth, getNumberFormat, getTransformValues } from './util';
 import { setRowElements, resetRowIndex, compareChanges, getCellByColAndRowIndex, performComplexDataOperation } from './util';
 import * as events from '../base/constant';
-import { ReturnType, BatchChanges, RowSelectable, PinRow } from '../base/type';
+import { ReturnType, BatchChanges, RowSelectable, PinRow, SetRowHeight } from '../base/type';
 import { IDialogUI, ScrollPositionType, ActionArgs, ExportGroupCaptionEventArgs, FilterUI, LazyLoadArgs, LoadEventArgs, ContextMenuClickEventArgs, ContextMenuOpenEventArgs, NotifyArgs, ExportHeaders, DetailTemplateDetachArgs, BeforeCustomFilterOpenEventArgs } from './interface';
 import {AggregateQueryCellInfoEventArgs, IGrid } from './interface';
 import { IRenderer, IValueFormatter, IFilterOperator, IIndex, RowDataBoundEventArgs, QueryCellInfoEventArgs } from './interface';
-import { CellDeselectEventArgs, CellSelectEventArgs, CellSelectingEventArgs, ParentDetails, ContextMenuItemModel } from './interface';
+import { CellDeselectEventArgs, CellSelectEventArgs, CellSelectingEventArgs, CellFocusEventArgs, ParentDetails, ContextMenuItemModel } from './interface';
 import { PdfQueryCellInfoEventArgs, ExcelQueryCellInfoEventArgs, ExcelExportProperties, PdfExportProperties } from './interface';
 import { PdfHeaderQueryCellInfoEventArgs, ExcelHeaderQueryCellInfoEventArgs, ExportDetailDataBoundEventArgs, ExportDetailTemplateEventArgs } from './interface';
 import { ColumnMenuOpenEventArgs, BatchCancelArgs, RecordDoubleClickEventArgs, DataResult, PendingState } from './interface';
@@ -31,7 +31,7 @@ import { SearchEventArgs, SortEventArgs, ISelectedCell, EJ2Intance, BeforeCopyEv
 import {BeforePasteEventArgs, CheckBoxChangeEventArgs, CommandClickEventArgs, BeforeAutoFillEventArgs } from './interface';
 import { Render } from '../renderer/render';
 import { Column, ColumnModel, ActionEventArgs } from '../models/column';
-import { SelectionType, GridLine, RenderType, SortDirection, SelectionMode, PrintMode, FilterType, FilterBarMode } from './enum';
+import { SelectionType, GridLine, RenderType, SortDirection, SelectionMode, PrintMode, FilterType, FilterBarMode, FilterMode } from './enum';
 import { CheckboxSelectionType, HierarchyGridPrintMode, NewRowPosition, ClipMode, freezeMode, IndicatorType } from './enum';
 import { WrapMode, ToolbarItems, ContextMenuItem, ColumnMenuItem, ToolbarItem, CellSelectionMode, EditMode, ResizeMode } from './enum';
 import { ColumnQueryModeType, RowRenderingDirection, AdaptiveMode  } from './enum';
@@ -48,7 +48,7 @@ import { AriaService } from '../services/aria-service';
 import { FocusStrategy } from '../services/focus-strategy';
 import { SortSettingsModel, SelectionSettingsModel, FilterSettingsModel, SearchSettingsModel, EditSettingsModel } from './grid-model';
 import { SortDescriptorModel, PredicateModel, RowDropSettingsModel, GroupSettingsModel, TextWrapSettingsModel, LoadingIndicatorModel } from './grid-model';
-import { InfiniteScrollSettingsModel } from './grid-model';
+import { InfiniteScrollSettingsModel, DomVirtualizationSettingsModel } from './grid-model';
 import { PageSettingsModel, AggregateRowModel, AggregateColumnModel, ColumnChooserSettingsModel } from '../models/models';
 import { PageSettings } from '../models/page-settings';
 import { ColumnChooserSettings } from '../models/column-chooser-settings';
@@ -329,6 +329,58 @@ export class InfiniteScrollSettings extends ChildProperty<InfiniteScrollSettings
 }
 
 /**
+ * Configures the DOM virtualization behavior of the Grid.
+ */
+export class DomVirtualizationSettings extends ChildProperty<DomVirtualizationSettings> {
+    /**
+     * Defines the virtualization mode.
+     * * `Row` — Vertical virtualization only.
+     *
+     * @default 'Row'
+     */
+    @Property('Row')
+    public virtualDomType: string;
+
+    /**
+     * Number of extra rows rendered above and below the visible viewport.
+     * Higher values reduce whitespace during fast scroll at the cost of a larger DOM.
+     *
+     * @default 5
+     */
+    @Property(5)
+    public rowBuffer: number;
+
+    /**
+     * Throttle scroll events (milliseconds).
+     * Reduces scroll event processing frequency and used for backend fetching delay can set from user.
+     *
+     * @default 0 (no throttling)
+     */
+    @Property(0)
+    public scrollThrottle: number;
+
+    /**
+     * Maximum row pool size (for memory safety).
+     * Restricted to no.of dom rows render.
+     *
+     * @default 500 rows
+     * @hidden
+     */
+    @Property(500)
+    public maxPoolSize: number;
+
+    /**
+     * If `autoRowHeight` is set to true, row heights are measured automatically to support variable row heights.
+     * Enable this when using `rowTemplate`, `columnTemplate`, or `allowTextWrap` features that produce rows of different heights.
+     * Note: enabling this with column templates disables column virtualization.
+     *
+     * @default false
+     */
+    @Property(false)
+    public autoRowHeight: boolean;
+}
+
+/**
  * Configures the filtering behavior of the Grid.
  */
 export class FilterSettings extends ChildProperty<FilterSettings> {
@@ -353,14 +405,16 @@ export class FilterSettings extends ChildProperty<FilterSettings> {
     public type: FilterType;
 
     /**
-     * Defines the filter bar modes. The available options are,
-     * * `OnEnter`: Initiates filter operation after Enter key is pressed.
-     * * `Immediate`: Initiates filter operation after a certain time interval. By default, time interval is 1500 ms.
+     * Defines the filter behavior for FilterBar, Excel, and Checkbox filter types.
+     * The available options are,
+     * * `onEnter`: Initiates filter operation after Enter key is pressed (default for FilterBar).
+     * * `onSubmit`: Initiates filter operation only after clicking OK/Filter button (default for Excel and Checkbox filters).
+     * * `Immediate`: Initiates filter operation immediately on value change (check/uncheck, typing) with 1500ms debouncing.
      *
-     * @default OnEnter
+     * @default 'OnEnter' for FilterBar; 'onSubmit' for Excel and Checkbox filters
      */
     @Property('OnEnter')
-    public mode: FilterBarMode;
+    public mode: FilterBarMode | FilterMode;
 
     /**
      * Shows or hides the filtered status message on the pager.
@@ -861,6 +915,22 @@ export class EditSettings extends ChildProperty<EditSettings> {
      */
     @Property(false)
     public showAddNewRow: boolean;
+
+    /**
+     * If enableUndoRedo is set to true, actions can be undo or redo using keyboard shortcuts or toolbar buttons.
+     *
+     * @default false
+     */
+    @Property(false)
+    public enableUndoRedo: boolean;
+
+    /**
+     * Defines the maximum number of undo/redo actions to store in the stack.
+     *
+     * @default 20
+     */
+    @Property(20)
+    public undoRedoLimit: number;
 }
 
 /**
@@ -1042,6 +1112,13 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
     public partialSelectedIndexes: number[] = [];
     /** @hidden */
     public pinnedTopRowModels: Row<Column>[] = [];
+    /** @hidden */
+    public domRowObj: Map<number, Row<Column>> = new Map<number, Row<Column>>();
+    /** @hidden */
+    public readonly domVirtualClearActions: string[] = [
+        'filtering', 'searching', 'grouping', 'ungrouping', 'sorting',
+        'refresh', 'reorder', 'delete', 'save', 'batchsave', 'paging'
+    ];
     /** @hidden */
     public pinnedTopRecords: Object[] = [];
     /** @hidden */
@@ -1497,6 +1574,37 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
     public infiniteScrollSettings: InfiniteScrollSettingsModel;
 
     /**
+     * If `enableDomVirtualization` set to true, the Grid will use a fixed DOM pool and recycle DOM elements
+     * based on the active viewport, rendering only viewport rows/columns plus configurable buffers.
+     * This enables smooth 60 FPS scrolling and stable memory usage for very large datasets.
+     *
+     * @default false
+     */
+    @Property(false)
+    public enableDomVirtualization: boolean;
+
+    /**
+     * Configures the DOM virtualization settings such as buffer size, pool size, and virtualization mode.
+     *
+     * @default { virtualDomType: 'Row', rowBuffer: 5, scrollThrottle: 0, maxPoolSize: 500, autoRowHeight: false }
+     */
+    @Complex<DomVirtualizationSettingsModel>({}, DomVirtualizationSettings)
+    public domVirtualizationSettings: DomVirtualizationSettingsModel;
+
+    /**
+     * Specifies the height of an expanded detail template row when `enableDomVirtualization` is true.
+     * Accepts a number (pixels) or a string with a CSS unit (e.g. `'300px'`, `'20rem'`).
+     * DOM Virtualization uses this value to correctly compute the total virtual scroll height when
+     * detail template rows are expanded or collapsed.
+     * This property applies only to the `detailTemplate` feature.
+     * For hierarchy grids, the child grid's own `height` property is used instead.
+     *
+     * @default 500
+     */
+    @Property(500)
+    public detailTemplateHeight: number | string;
+
+    /**
      * If `allowSelection` is set to true, it allows selection of (highlight row) Grid records by clicking it.
      * {% codeBlock src='grid/allowSelection/index.md' %}{% endcodeBlock %}
      *
@@ -1863,6 +1971,14 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
     public rowHeight: number;
 
     /**
+     * Defines the height of Grid footer rows.
+     *
+     * @default null
+     */
+    @Property(null)
+    public footerRowHeight: number;
+
+    /**
      * Defines the external [`Query`](https://ej2.syncfusion.com/documentation/api/data/query)
      * that will be executed along with data processing.
      * {% codeBlock src='grid/query/index.md' %}{% endcodeBlock %}
@@ -2036,6 +2152,7 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
     /**
      * Determines whether a row can be selected.
      * When not set, all rows are considered selectable.
+     *
      * @default null
      * @example
      * const grid = new Grid({
@@ -2055,7 +2172,9 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
 
     /**
      * Determines if a row should be pinned at the top. When not set, no rows are pinned.
+     *
      * Pinned rows remain visible across paging, scrolling and other data actions.
+     *
      * @default null
      * @example
      * const grid = new Grid({
@@ -2103,6 +2222,22 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
      */
     @Event()
     public rowDataBound: EmitType<RowDataBoundEventArgs>;
+
+    /**
+     * Fires for each row rendered in DOM virtualization mode after the row is in the DOM.
+     * Receives the row object and must return the height of that row in pixels.
+     * Takes priority over the static `rowHeight` property, but is superseded by
+     * `domVirtualizationSettings.autoRowHeight: true` (DOM measurement).
+     * @default null
+     * @example
+     * const grid = new Grid({
+     *   setRowHeight: function(row) {
+     *     return row.data['Category'] === 'Beverages' ? 60 : 36;
+     *   }
+     * });
+     */
+    @Event()
+    public setRowHeight: SetRowHeight | Function;
 
     /**
      * Triggered every time a request is made to access cell information, element, or data.
@@ -2236,6 +2371,14 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
      */
     @Event()
     public cellDeselected: EmitType<CellDeselectEventArgs>;
+
+    /**
+     * Triggers when the Grid's active/focused cell changes.
+     *
+     * @event cellFocus
+     */
+    @Event()
+    public cellFocus: EmitType<CellFocusEventArgs>;
 
     /**
      * Triggers before column selection occurs.
@@ -2427,18 +2570,39 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
     /**
      * Triggers before expanding the detail row.
      * This event allows to perform customize actions or cancel the expansion of the detail row.
+     *
      * @event detailExpand
+     *
      */
     @Event()
     public detailExpand: EmitType<DetailExpandCollapseArgs>;
 
+
     /**
      * Triggers before collapsing the detail row.
+     *
      * This event allows to perform customize actions or cancel the collapse of the detail row.
+     *
      * @event detailCollapse
      */
     @Event()
     public detailCollapse: EmitType<DetailExpandCollapseArgs>;
+
+    /**
+     * Triggers after expanding the detail row.
+     * This event allows to perform customize actions after the detail row is expanded.
+     * @event detailExpanded
+     */
+    @Event()
+    public detailExpanded: EmitType<DetailExpandCollapseArgs>;
+
+    /**
+     * Triggers after collapsing the detail row.
+     * This event allows to perform customize actions after the detail row is collapsed.
+     * @event detailCollapsed
+     */
+    @Event()
+    public detailCollapsed: EmitType<DetailExpandCollapseArgs>;
 
 
     /**
@@ -2927,7 +3091,7 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
                 name: 'Toolbar'
             });
         }
-        if (this.enableVirtualization || this.enableColumnVirtualization) {
+        if ((this.enableVirtualization && !this.isRowDomVirtualization()) || this.enableColumnVirtualization) {
             modules.push({
                 member: 'virtualscroll',
                 args: [this, this.serviceLocator],
@@ -2961,6 +3125,14 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
                 member: 'infiniteScroll',
                 args: [this, this.serviceLocator],
                 name: 'InfiniteScroll'
+            });
+        }
+
+        if (this.enableDomVirtualization) {
+            modules.push({
+                member: 'domVirtualization',
+                args: [this, this.serviceLocator],
+                name: 'DomVirtualization'
             });
         }
 
@@ -3214,6 +3386,8 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
             Collapsed: 'Collapsed',
             PinRow: 'Pin Row',
             UnpinRow: 'Unpin Row',
+            Undo: 'Undo',
+            Redo: 'Redo',
             ...this.defaultChartLocale
         };
         this.keyConfigs = {
@@ -3255,7 +3429,11 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
             ctrlShiftPlusH: 'ctrl+shift+H',
             ctrlSpace: 'ctrl+space',
             ctrlLeftArrow: 'ctrl+leftarrow',
-            ctrlRightArrow: 'ctrl+rightarrow'
+            ctrlRightArrow: 'ctrl+rightarrow',
+            ctrlPlusZ: 'ctrl+Z',
+            ctrlPlusY: 'ctrl+Y',
+            cmdPlusZ: 'cmd+Z',
+            cmdShiftPlusZ: 'cmd+shift+Z'
         };
     }
 
@@ -3324,6 +3502,9 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
         }
         if (typeof this.isRowPinned === 'string') {
             this.isRowPinned = getValue(this.isRowPinned, window);
+        }
+        if (typeof this.setRowHeight === 'string') {
+            this.setRowHeight = getValue(this.setRowHeight, window);
         }
         if (this.isRowPinned) {
             if (this.allowSelection) {
@@ -3457,9 +3638,13 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
         }
         if (gridFooter && gridFooter.querySelector('.e-summaryrow')) {
             const gridFooterContent: Element = gridFooter.firstChild as Element;
-            if (!this.footerContentMaskTable) {
-                const footerContent: Element = gridFooterContent;
-                this.footerContentMaskTable = this.createMaskTable(footerContent);
+            if (!this.footerContentMaskTable && ((this.isFrozenGrid() && !this.isRowPinned && !this.pinnedTopRowModels.length) ||
+                (this.enableColumnVirtualization && axisDirection === 'X'))) {
+                let footerContent: Element = gridFooterContent;
+                if (this.enableColumnVirtualization && axisDirection === 'X') {
+                    footerContent = footerContent.querySelector('.e-virtualtable');
+                }
+                this.footerContentMaskTable = this.createMaskTable(footerContent, this.getContentMaskColumns(), axisDirection);
             }
         }
         if (!(this.enableVirtualization && axisDirection)) {
@@ -3487,10 +3672,10 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
         return table;
     }
 
-    private createFrozenMaskRow(td: HTMLElement[], columns: Column[]): void {
+    private createFrozenMaskRow(td: HTMLElement[], columns: Column[], isFooter?: boolean): void {
         for (let i: number = 0; i < td.length; i++) {
             if (i < this.frozenLeftCount) {
-                if (this.frozenLeftCount - 1 === i) {
+                if (this.frozenLeftCount - 1 === i && !isFooter) {
                     td[parseInt(i.toString(), 10)].classList.add('e-freezeleftborder');
                 }
                 td[parseInt(i.toString(), 10)].classList.add('e-leftfreeze');
@@ -3498,7 +3683,7 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
                 td[parseInt(i.toString(), 10)].style.left  = ((<{ valueX?: number }>columns[parseInt(i.toString(), 10)]).valueX -
                     this.translateX) + 'px';
             } else if ((td.length - this.frozenRightCount) <= i && columns[parseInt(i.toString(), 10)]) {
-                if ((td.length - this.frozenRightCount) === i) {
+                if ((td.length - this.frozenRightCount) === i && !isFooter) {
                     td[parseInt(i.toString(), 10)].classList.add('e-freezerightborder');
                 }
                 td[parseInt(i.toString(), 10)].classList.add('e-rightfreeze');
@@ -3634,10 +3819,19 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
             maskTFoot.setAttribute('class', 'e-masked-tfoot');
             const rows: Element[] = [].slice.call(tfoot.querySelectorAll('tr'));
             for (let i: number = 0; i < rows.length; i++) {
-                maskTFoot.appendChild(
-                    this.applyMaskRow(
+                let maskFootRow: Element;
+                if (this.enableColumnVirtualization && axisDirection === 'X') {
+                    maskFootRow = this.createMaskRow(maskColgroup, columns, footer);
+                    if (this.isFrozenGrid()) {
+                        const frozenTd: HTMLElement[] = [].slice.call(maskFootRow.querySelectorAll('.e-rowcell'));
+                        this.createFrozenMaskRow(frozenTd, columns, footer);
+                    }
+                } else {
+                    maskFootRow = this.applyMaskRow(
                         rows[parseInt(i.toString(), 10)].cloneNode(true) as Element,
-                        rows[parseInt(i.toString(), 10)].getBoundingClientRect().height));
+                        rows[parseInt(i.toString(), 10)].getBoundingClientRect().height);
+                }
+                maskTFoot.appendChild(maskFootRow);
             }
             maskTable.appendChild(maskTFoot);
         }
@@ -3708,12 +3902,16 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
         return maskRow;
     }
 
-    private createMaskRow(refColgroup: Element, refColumns: Column[]): Element {
+    private createMaskRow(refColgroup: Element, refColumns: Column[], isFooter?: boolean): Element {
         const colgroup: Element = refColgroup;
         const columns: Column[] = refColumns;
         const row: Element = this.createElement('tr', { className: 'e-masked-row e-row' });
         if (this.rowRenderingMode !== 'Vertical') {
-            (row as HTMLElement).style.height = this.getRowHeight() + 'px';
+            if (isFooter && this.footerRowHeight) {
+                (row as HTMLElement).style.height = this.footerRowHeight + 'px';
+            } else {
+                (row as HTMLElement).style.height = this.getRowHeight() + 'px';
+            }
         }
         const td: Element = this.createElement('td', { className: 'e-masked-cell e-rowcell' });
         for (let i: number = 0, colIndex: number = 0; i < colgroup.childNodes.length; i++) {
@@ -4059,7 +4257,8 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
             case 'allowPaging':
                 this.notify(events.uiUpdate, { module: 'pager', enable: this.allowPaging });
                 requireRefresh = true;
-                if (this.height === '100%') {
+                if (this.height === '100%' || (typeof this.height === 'string' &&
+                    this.height.toLowerCase().indexOf('vh') !== -1)) {
                     this.scrollModule.refresh();
                 }
                 this.getDataModule().clearCache();
@@ -4097,7 +4296,8 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
                 if (this.filterSettings.type !== 'FilterBar' || (this.editSettings.showAddNewRow && this.filterSettings.type === 'FilterBar')) {
                     this.refreshHeader();
                 } else {
-                    if (this.height === '100%') {
+                    if (this.height === '100%' || (typeof this.height === 'string' &&
+                    this.height.toLowerCase().indexOf('vh') !== -1)) {
                         this.scrollModule.refresh();
                     }
                 } break;
@@ -4139,12 +4339,18 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
             case 'detailTemplate':
                 this.detailTemplateFn = templateCompiler(this.detailTemplate);
                 requireRefresh = true; break;
+            case 'detailTemplateHeight':
+                if (this.isRowDomVirtualization()) {
+                    requireRefresh = true;
+                }
+                break;
             case 'allowGrouping':
                 this.notify(events.uiUpdate, { module: 'group', enable: this.allowGrouping });
                 this.headerModule.refreshUI();
                 requireRefresh = true;
                 checkCursor = true;
-                if (this.height === '100%') {
+                if (this.height === '100%' || (typeof this.height === 'string' &&
+                    this.height.toLowerCase().indexOf('vh') !== -1)) {
                     this.scrollModule.refresh();
                 } break;
             case 'enableInfiniteScrolling':
@@ -4170,7 +4376,8 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
                 break;
             case 'toolbar':
                 this.notify(events.uiUpdate, { module: 'toolbar' });
-                if (this.height === '100%') {
+                if (this.height === '100%' || (typeof this.height === 'string' &&
+                    this.height.toLowerCase().indexOf('vh') !== -1)) {
                     this.scrollModule.refresh();
                 } break;
             case 'groupSettings':
@@ -4183,13 +4390,23 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
                     requireRefresh = true;
                 }
                 this.notify(events.uiUpdate, { module: 'aggregate', properties: newProp });
-                if (this.height === '100%') {
+                if (this.height === '100%' || (typeof this.height === 'string' &&
+                    this.height.toLowerCase().indexOf('vh') !== -1)) {
                     this.scrollModule.refresh();
                 } break;
+            case 'domVirtualizationSettings':
+                if (!isNullOrUndefined(newProp.domVirtualizationSettings.virtualDomType)) {
+                    freezeRefresh = true;
+                    requireGridRefresh = true;
+                } else {
+                    requireRefresh = true;
+                }
+                break;
             case 'frozenColumns':
             case 'frozenRows':
             case 'enableVirtualization':
             case 'enableColumnVirtualization':
+            case 'enableDomVirtualization':
             case 'currencyCode':
             case 'locale':
                 if (prop === 'frozenColumns' && newProp.frozenColumns === null) {
@@ -4293,7 +4510,7 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
             }
             this.notify(events.uiUpdate, { module: 'columnChooser', enable: this.showColumnChooser }); break;
         case 'columnChooserSettings':
-            this.notify(events.inBoundModelChanged, { module: 'columnChooser' }); break;
+            this.notify(events.inBoundModelChanged, { module: 'columnChooser', properties: newProp.columnChooserSettings }); break;
         case 'filterSettings':
             this.updateStackedFilter();
             this.notify(events.inBoundModelChanged, { module: 'filter', properties: newProp.filterSettings }); break;
@@ -4314,7 +4531,8 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
             }
             this.notify(events.freezeRender, { case: 'textwrap', isModeChg: (prop === 'textWrapSettings') });
             this.refreshHeader();
-            if (this.height === '100%') {
+            if (this.height === '100%' || (typeof this.height === 'string' &&
+                    this.height.toLowerCase().indexOf('vh') !== -1)) {
                 this.scrollModule.refresh();
             }
             break;
@@ -5924,6 +6142,16 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
     }
 
     /**
+     * Gets the collection of selected records by cell selection.
+     *
+     * @returns {Object[]} Returns record details of selected cells
+     * @isGenericType true
+     */
+    public getSelectedCellRecords(): Object[] {
+        return this.selectionModule ? this.selectionModule.getSelectedCellRecords() : [];
+    }
+
+    /**
      * Gets the collection of selected columns uid.
      *
      * @returns {string[]} Returns the selected column uid
@@ -7275,6 +7503,54 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
     }
 
     /**
+     * Undo the last edit action and restore the grid to its previous state.
+     *
+     * @returns {void}
+     */
+    public undoEdit(): void {
+        if (this.editSettings.mode === 'Batch' && this.editModule) {
+            this.editModule.undoBatchEdit();
+        }
+    }
+
+    /**
+     * Redo the last undone edit action and reapply the changes to the grid.
+     *
+     * @returns {void}
+     */
+    public redoEdit(): void {
+        if (this.editSettings.mode === 'Batch' && this.editModule) {
+            this.editModule.redoBatchEdit();
+        }
+    }
+
+    /**
+     * Defines whether an undo action is available.
+     *
+     * @returns {boolean} True if undo stack has actions
+     * @hidden
+     */
+    public isUndoStackAvailable(): boolean {
+        if (this.editSettings.mode !== 'Batch' || !this.editModule) {
+            return false;
+        }
+        return this.editModule.isUndoStackAvailable();
+    }
+
+    /**
+     * Defines whether an redo action is available.
+     *
+     * @returns {boolean} True if redo stack has actions
+     * @hidden
+     */
+    public isRedoStackAvailable(): boolean {
+        if (this.editSettings.mode !== 'Batch' || !this.editModule) {
+            return false;
+        }
+        return this.editModule.isRedoStackAvailable();
+    }
+
+    /**
      * Delete any visible row by TR element.
      *
      * @param {HTMLTableRowElement} tr - Defines the table row element.
@@ -8342,11 +8618,14 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
 
     private checkEdit(e: MouseEvent): boolean {
         const tr: Element = parentsUntil(e.target as Element, literals.row);
-        const isEdit: boolean = this.editSettings.mode !== 'Batch' &&
+        const isCellEditMode: boolean = this.editSettings.mode === 'Batch' || (this.editSettings.mode === 'Cell' &&
+            !isNullOrUndefined(parentsUntil((e.target as Element), literals.editedRow)));
+        const isEdit: boolean = !isCellEditMode &&
             this.isEdit && tr && (tr.classList.contains(literals.editedRow) || (tr.classList.contains(literals.addedRow)) &&
             !this.editSettings.showAddNewRow);
         return !parentsUntil(e.target as Element, 'e-unboundcelldiv') && (isEdit || (parentsUntil(e.target as Element, literals.rowCell) &&
-            parentsUntil(e.target as Element, literals.rowCell).classList.contains('e-editedbatchcell')));
+            (parentsUntil(e.target as Element, literals.rowCell).classList.contains('e-editedbatchcell') ||
+            parentsUntil(e.target as Element, literals.rowCell).classList.contains('e-editedcell'))));
     }
 
     private dblClickHandler(e: MouseEvent | TouchEventArgs): void {
@@ -8386,7 +8665,9 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
             (!isNullOrUndefined(ariaOwns) &&
                 (ariaOwns)) !== (e.target as Element).getAttribute('aria-owns')))
             && !this.keyPress && this.isEdit && !Browser.isDevice) {
-            if (this.editSettings.mode === 'Batch' && !(((parentsUntil(relatedTarget, 'e-ddl') || parentsUntil(relatedTarget, 'e-ddt')) &&
+            if ((this.editSettings.mode === 'Batch' || (this.editSettings.mode ===  'Cell' &&
+                !isNullOrUndefined(parentsUntil((e.target as Element), literals.editedRow)))) &&
+                !(((parentsUntil(relatedTarget, 'e-ddl') || parentsUntil(relatedTarget, 'e-ddt')) &&
                 (parentsUntil(relatedTarget, 'e-multi-select-list-wrapper') || parentsUntil(relatedTarget, 'e-input-filter'))) &&
                 parentsUntil(relatedTarget, 'e-input-group')) && (parentsUntil(relatedTarget, 'e-uploader') || (!(relatedTarget &&
                 isNullOrUndefined(parentsUntil(relatedTarget, 'e-input-group'))) && !parentsUntil((e.target as Element), 'edit-custom-template')))) {
@@ -8521,7 +8802,7 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
             if (e.keyCode === 87) {//alt w
                 const focusModule: FocusStrategy = this.focusModule;
                 if (focusModule) {
-                    if (!this.currentViewData.length) { return; }
+                    if (!this.currentViewData.length || this.enableVirtualization || this.isRowDomVirtualization()) { return; }
                     if (this.element.getBoundingClientRect().width !== 0) {
                         focusModule.focusContent();
                     }
@@ -9843,6 +10124,23 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
             }
         }
         return cols;
+    }
+
+    /**
+     * @hidden
+     * @returns {boolean} returns the row virtualization is enabled or not.
+     */
+    public isRowDomVirtualization(): boolean {
+        const type: string = this.domVirtualizationSettings.virtualDomType;
+        return this.enableDomVirtualization && (type === 'Row');
+    }
+
+    /**
+     * @hidden
+     * @returns {void} clears the dom virtual row cache.
+     */
+    public clearDomVirtualRowCache(): void {
+        this.domRowObj.clear();
     }
 
     private enableInfiniteAggrgate(): void {

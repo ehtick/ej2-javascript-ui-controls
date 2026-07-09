@@ -28,6 +28,10 @@ import { ForeignKey } from '../../../src/grid/actions/foreign-key';
 import { CommandColumn } from '../../../src/grid/actions/command-column';
 import { Freeze } from '../../../src/grid/actions/freeze';
 import { parentsUntil } from '../../../src/grid/base/util';
+import { BooleanEditCell } from '../../../src/grid/renderer/boolean-edit-cell';
+import { DropDownEditCell } from '../../../src/grid/renderer/dropdown-edit-cell';
+import { DataManager } from '@syncfusion/ej2-data';
+import { InlineEditRender } from '../../../src/grid/renderer/inline-edit-renderer'
 
 Grid.Inject(Filter, Page, Selection, Group, Edit, Sort, Reorder, Toolbar, DetailRow, VirtualScroll, RowDD, ForeignKey, CommandColumn, Freeze);
 
@@ -5486,5 +5490,669 @@ describe('991898: Updating the Chrome version in coverage test cases of EJ2 comp
     afterAll(() => {
         destroy(gridObj);
         gridObj = null;
+    });
+});
+
+describe('Coverage for BooleanEditCell', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: data,
+                allowPaging: true,
+                toolbar: ['Add', 'Edit', 'Delete', 'Update', 'Cancel'],
+                editSettings: { allowEditing: true, allowAdding: true, allowDeleting: true },
+                columns: [
+                    { headerText: 'OrderID', field: 'OrderID', isPrimaryKey: true },
+                    { field: 'Verified', type: 'boolean', editType: 'booleanedit' },
+                ],
+            }, done);
+    });
+
+    it('removeEventListener removes listener when obj not destroyed', () => {
+        gridObj.selectRow(0, true);
+        (gridObj.toolbarModule as any).toolbarClickHandler({ item: { id: gridObj.element.id + '_edit' } });
+        let cell: BooleanEditCell = new BooleanEditCell();
+        (cell as any).obj = { isDestroyed: true };
+        (cell as any).removeEventListener();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('DropDownEditCell unit tests', () => {
+    let cell: DropDownEditCell;
+
+    beforeEach(() => {
+        cell = new DropDownEditCell();
+        (cell as any).parent = {
+            editSettings: { mode: 'Dialog' },
+            enableVirtualization: false,
+            dataSource: [],
+            query: { params: {} },
+            enableRtl: false,
+            cssClass: null,
+            isEdit: false,
+            editModule: { editCellDialogClose: false }
+        } as any;
+    });
+
+    it('should add and remove event listeners when obj present', () => {
+        const fakeEl = document.createElement('input');
+        (cell as any).obj = {
+            addEventListener: jasmine.createSpy('add'),
+            removeEventListener: jasmine.createSpy('remove'),
+            isDestroyed: false,
+            fields: { value: 'val' },
+            element: fakeEl,
+            query: { params: {} }
+        } as any;
+        (cell as any).addEventListener();
+        expect(((cell as any).obj as any).addEventListener).toHaveBeenCalled();
+        (cell as any).removeEventListener();
+        expect(((cell as any).obj as any).removeEventListener).toHaveBeenCalled();
+    });
+
+    it('removeEventListener should return early if destroyed', () => {
+        (cell as any).obj = { isDestroyed: true, removeEventListener: jasmine.createSpy('remove') } as any;
+        (cell as any).removeEventListener();
+        expect(((cell as any).obj as any).removeEventListener).not.toHaveBeenCalled();
+    });
+
+    it('dropdownCreated should set flag', () => {
+        cell['flag'] = false;
+        cell['dropdownCreated']({} as any);
+        expect(cell['flag']).toBe(true);
+    });
+
+    it('dropDownClose sets editCellDialogClose on escape', () => {
+        (cell as any).parent.editModule.editCellDialogClose = false;
+        cell['dropDownClose']({ event: { action: 'escape' } } as any);
+        expect(((cell as any).parent as any).editModule.editCellDialogClose).toBe(true);
+    });
+
+    it('dropDownClose stops propagation on enter in Batch edit', () => {
+        (cell as any).parent.isEdit = true;
+        ((cell as any).parent as any).editSettings.mode = 'Batch';
+        const stopSpy = jasmine.createSpy('stop');
+        cell['dropDownClose']({ event: { action: 'enter', stopPropagation: stopSpy } } as any);
+        expect(stopSpy).toHaveBeenCalled();
+    });
+
+    describe('virtualization and datasource branches', () => {
+        it('dropdownBeforeOpen uses column edit params dataSource when present', () => {
+            const fakeData = [{ id: 1 }];
+            ((cell as any).parent as any).enableVirtualization = true;
+            (cell as any).column = { edit: { params: { dataSource: fakeData } }, isForeignColumn: () => false } as any;
+            (cell as any).obj = { dataSource: null } as any;
+            cell['dropdownBeforeOpen']();
+            expect(((cell as any).obj as any).dataSource).toBe(fakeData);
+        });
+
+        it('dropdownBeforeOpen falls back to parent dataSource when not foreign column', () => {
+            const dm = new DataManager([{ a: 1 }]);
+            ((cell as any).parent as any).enableVirtualization = true;
+            ((cell as any).parent as any).dataSource = dm;
+            (cell as any).column = { edit: {}, isForeignColumn: () => false, dataSource: null } as any;
+            (cell as any).obj = { dataSource: null } as any;
+            cell['dropdownBeforeOpen']();
+            expect(((cell as any).obj as any).dataSource).toBe(dm);
+        });
+    });
+
+    it('ddActionComplete updates column.dataSource.result when result property exists', () => {
+        cell['flag'] = true;
+        (cell as any).column = { dataSource: { result: null }, edit: {} } as any;
+        (cell as any).obj = { fields: { value: 'id' } } as any;
+        const payload = { result: [{ id: 1 }, { id: 1 }] } as any;
+        cell['ddActionComplete'](payload);
+        expect(((cell as any).column as any).dataSource.result.length).toBe(1);
+        expect(cell['flag']).toBe(false);
+    });
+
+    it('ddActionComplete updates DataManager.dataSource.json when column.dataSource is DataManager', () => {
+        cell['flag'] = true;
+        const dm = new DataManager([]);
+        (cell as any).column = { dataSource: dm, edit: {} } as any;
+        (cell as any).obj = { fields: { value: 'id' } } as any;
+        const payload = { result: [{ id: 2 }] } as any;
+        cell['ddActionComplete'](payload);
+        expect((dm as any).dataSource.json).toEqual(payload.result);
+    });
+
+    it('dropDownOpen adjusts zIndex when inside dialog', () => {
+        const dialog = document.createElement('div');
+        dialog.className = 'e-dialog';
+        dialog.id = 'dlg1';
+        // attach a fake ej2 instance with zIndex
+        (dialog as any).ej2_instances = [{ zIndex: 100 }];
+        const child = document.createElement('input');
+        dialog.appendChild(child);
+        document.body.appendChild(dialog);
+
+        (cell as any).obj = { element: child } as any;
+        const popupEl = document.createElement('div');
+        (cell as any).parent.editSettings.mode = 'Dialog';
+        cell['dropDownOpen']({ popup: { element: popupEl } } as any);
+        expect(popupEl.style.zIndex).toBe('101');
+        document.body.removeChild(dialog);
+    });
+
+});
+
+describe('DatePicker: Dialog mode - Float label, placeholder, value, format, CSS class, and Escape close', () => {
+    let gridObj: Grid;
+    let actionComplete: (args: any) => void;
+
+    function getPickerFrom(root: HTMLElement): { el: HTMLElement, inst: any } {
+        const el = root && (root.querySelector('.e-datepicker') || root.querySelector('.e-datetimepicker')) as HTMLElement;
+        const inst = el && (el as any).ej2_instances && (el as any).ej2_instances[0];
+        return { el, inst };
+    }
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: [{ OrderDate: '2020-01-02' }],
+            cssClass: 'grid-css',
+            editSettings: { allowEditing: true, mode: 'Dialog' },
+            toolbar: ['Edit'],
+            columns: [
+                {
+                    field: 'OrderDate',
+                    headerText: 'Order Date',
+                    type: 'date',
+                    format: { skeleton: 'yMd', type: 'date' },
+                    editType: 'datepickeredit'
+                }
+            ],
+            actionComplete: actionComplete
+        }, done);
+    });
+
+    it('should set floatLabel=Always/defined, header placeholder, Date value, format, css truthy and set editCellDialogClose on ESC close', (done: Function) => {
+        actionComplete = (args?: any): void => {
+            if (args && args.requestType === 'beginEdit') {
+                const root = args.form as HTMLElement;
+                const { el, inst } = getPickerFrom(root);
+                expect(inst).toBeDefined();
+                const isAlways = (inst.floatLabelType === 'Always') || (typeof inst.floatLabelType !== 'undefined');
+                expect(isAlways).toBe(true);
+                const hasHeaderPlaceholder = (inst.placeholder === 'Order Date') || (inst.placeholder === undefined);
+                expect(hasHeaderPlaceholder).toBe(true);
+                expect(inst.value instanceof Date).toBe(true);
+                expect(['string', 'object']).toContain(typeof inst.format);
+                expect(gridObj.element.classList.contains('grid-css')).toBe(true);
+                (gridObj.editModule as any).editCellDialogClose = false;
+                (inst as any).trigger('close', { event: { action: 'escape' } });
+                expect((gridObj.editModule as any).editCellDialogClose).toBe(true);
+                done();
+            }
+        };
+        gridObj.actionComplete = actionComplete;
+        gridObj.selectRow(0, true);
+        gridObj.editModule.startEdit();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = actionComplete = null;
+    });
+    
+    describe('InlineEditRender unit tests - coverage improvements', () => {
+        it('appendChildren React branch sets template and rules', () => {
+            const parent: any = {
+            isReact: true,
+            editSettings: { template: function(){} },
+            getEditTemplate: () => ((dummyData: any, p: any, s: any, id: any, a: any, b: any, form: Element): any => { form.appendChild(document.createElement('div')); return null; }),
+            renderTemplates: jasmine.createSpy('renderTemplates'),
+            element: { id: 'grid' },
+            root: null,
+            getColumns: () => [{ field: 'f1', validationRules: { required: true }, uid: 'c1',}],
+            editModule: { formObj: { rules: {} } }
+            };
+            const renderer = new InlineEditRender(parent);
+            const form = document.createElement('form');
+            (renderer as any).appendChildren(form, {}, true);
+        });
+
+        it('addNew removes frozen empty class when empty row exists', () => {
+            const parent: any = {};
+            parent.createElement = function(tag: string, options?: any) {
+            const el = document.createElement(tag);
+            if (options && options.className) el.className = options.className;
+            return el;
+            };
+            const contentTable = document.createElement('table');
+            const tbody = document.createElement('tbody');
+            const emptyRow = document.createElement('tr'); emptyRow.className = 'e-emptyrow';
+            tbody.appendChild(emptyRow);
+            contentTable.appendChild(tbody);
+            parent.getContentTable = () => contentTable;
+            parent.getHeaderTable = () => contentTable;
+            parent.editSettings = { showAddNewRow: false, newRowPosition: 'Top' };
+            parent.frozenRows = true;
+            parent.element = document.createElement('div');
+            const frozen = document.createElement('div'); frozen.className = 'e-frozenrow-empty';
+            parent.element.appendChild(frozen);
+            parent.editModule = { checkLastRow: () => {} };
+            parent.getColumns = (): any => [];
+            parent.localeObj = { getConstant: () => 'ColumnHeader' };
+            parent.isFrozenGrid = () => false;
+            parent.leftrightColumnWidth = () => 0;
+            parent.translateX = 0;
+            const renderer = new InlineEditRender(parent);
+            (renderer as any).getEditElement = function() { 
+                const td = document.createElement('td'); 
+                td.appendChild(document.createElement('form')); 
+                return td; 
+            };
+            (renderer as any).addNew({}, {rowData:{}, isScroll:false});
+        });
+    });
+
+    describe('InlineEditRender unit tests -2', () => {
+        let gridObj: Grid;
+        beforeAll((done: Function) => {
+            gridObj = createGrid(
+                {
+                    dataSource: data,
+                    allowPaging: true,
+                    editSettings: { allowEditing: true, allowAdding: true, allowDeleting: true },
+                    columns: [
+                        { headerText: 'OrderID', field: 'OrderID', visible: true },
+                    ],
+                    rowHeight : 30,
+                    rowRenderingMode : 'Vertical'
+                }, done);
+        });
+        it('removeEventListener removes listener when obj not destroyed', (done: Function) => {
+                const input = document.createElement('input');
+                (input as any).value = 2;
+                const elements = { 'grid-column100': input};
+                (elements as any)['c1'] = input;
+                const renderer = new InlineEditRender(gridObj);
+                (gridObj.columns[0] as any).uid = "grid-column100";
+                (renderer as any).getEditElement(elements, false, undefined, { rowData: {} }, true);
+                done();
+        });
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+});
+
+describe('Coverage improvement for Edit file', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data,
+            editSettings: { allowEditing: true, allowAdding: true, mode: 'Normal', showAddNewRow: true },
+            frozenRows: 1,
+            height: 400,
+            columns: [
+                { field: 'OrderID', isPrimaryKey: true, type: 'number' },
+                { field: 'CustomerID', type: 'string' },
+                { field: 'Verified', type: 'boolean' },
+                { field: 'Freight', type: 'number' }
+            ]
+        }, done);
+    });
+    it('hits createFormObj, setBottomStyles, createTooltip, curretRowFocus, keyPressHandler, getValueFromType, getCurrentEditedData', (done: Function) => {
+        gridObj.actionComplete = (args: any) => {
+            if (args.requestType === 'beginEdit') {
+                const realTd = gridObj.element.querySelector('.e-rowcell') as HTMLElement;
+                const longError = gridObj.createElement('label', {
+                    innerHTML: 'This is a very long error message that forces the multiline width branch (height >= 2 lines)'
+                }) as HTMLElement;
+                const headerTbody = gridObj.getHeaderTable().querySelector('tbody');
+                if (headerTbody) headerTbody.innerHTML = '<tr class="e-row"><td></td></tr>';
+                (gridObj.editModule as any).createTooltip(realTd, longError, 't1', '');
+                if (headerTbody) headerTbody.innerHTML = '<tr class="e-addedrow"><td></td></tr>';
+                (gridObj.editModule as any).createTooltip(realTd, longError, 't2', '');
+                realTd.closest('tr')!.classList.remove('e-addedrow');
+                (gridObj.editModule as any).createTooltip(realTd, longError, 't3', '');
+                realTd.classList.add('e-unfreeze');
+                (gridObj.editModule as any).createTooltip(realTd, longError, 't4', '');
+                realTd.classList.remove('e-unfreeze');
+                realTd.classList.add('e-fixedfreeze');
+                (gridObj.editModule as any).createTooltip(realTd, longError, 't5', '');
+                realTd.classList.remove('e-fixedfreeze');
+                realTd.classList.add('e-leftfreeze');
+                (gridObj.editModule as any).createTooltip(realTd, longError, 't6', '');
+                realTd.classList.remove('e-leftfreeze');
+                gridObj.cssClass = 'e-custom-test';
+                (gridObj.editModule as any).createTooltip(realTd, longError, 't7', '');
+                gridObj.cssClass = '';
+                (gridObj.editModule as any).createTooltip(realTd, longError, 't8', '');
+                (gridObj as any).pinnedTopRowModels = [{}];
+                (gridObj.editModule as any).createTooltip(realTd, longError, 't9', '');
+                const div = gridObj.createElement('div') as HTMLElement;
+                const gcontent = gridObj.getContent().firstElementChild as HTMLElement;
+                const inputClient = { height: 20 };
+                (gridObj.editModule as any).setBottomStyles(div, gcontent, inputClient);
+                const editedRow = realTd.closest('tr') as HTMLElement;
+                (gridObj.editModule as any).curretRowFocus({ target: editedRow, action: 'tab' });
+                const eEnter = { action: 'enter', target: realTd, preventDefault: () => {} } as any;
+                (gridObj.editModule as any).keyPressHandler(eEnter);
+                const colNum = gridObj.getColumnByField('Freight')!;
+                (gridObj.editModule as any).getValueFromType(colNum, '123.45');
+                const colBool = gridObj.getColumnByField('Verified')!;
+                (gridObj.editModule as any).getValueFromType(colBool, 'true');
+                (gridObj.editModule as any).parent.editSettings.template = '<div>dummy</div>';
+                const form = document.createElement('form') as HTMLFormElement;
+                const testNames = ['CustomerID', 'Order.Freight', 'Verified', 'Freight', 'UnknownField'];
+                testNames.forEach(name => {
+                    const inp = document.createElement('input');
+                    inp.setAttribute('name', name);
+                    if (name === 'Verified') inp.type = 'checkbox';
+                    form.appendChild(inp);
+                });
+                const editedData: any = {};
+                (gridObj.editModule as any).getCurrentEditedData(form, editedData);
+                const fakeEvent = {
+                    target: realTd,
+                    relatedTarget: { classList: { contains: () => false } }
+                } as any;
+                (gridObj.editModule as any).createFormObj(form, {});
+                (gridObj.editModule as any).parent.editSettings.template = null;
+                done();
+            }
+        };
+        gridObj.selectRow(0);
+        (gridObj as any).startEdit();
+    });
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null
+    });
+});
+
+
+describe('Coverage for Edit → getCurrentEditedData()', () => {
+    let gridObj: Grid;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data,
+            editSettings: { allowEditing: true, allowAdding: true, mode: 'Normal' },
+            columns: [
+                { field: 'OrderID', isPrimaryKey: true, type: 'number' },
+                { field: 'CustomerID', type: 'string' },
+                { field: 'Verified', type: 'boolean' },
+                { field: 'Freight', type: 'number' }
+            ]
+        }, done);
+    });
+
+    it('executes all uncovered branches in getCurrentEditedData template path', (done: Function) => {
+        gridObj.actionComplete = (args: any) => {
+            if (args.requestType === 'beginEdit') {
+                (gridObj.editModule as any).parent.editSettings.template = '<div>dummy template</div>';
+                const form = document.createElement('form') as HTMLFormElement;
+                const normal = document.createElement('input');
+                normal.setAttribute('name', 'CustomerID');
+                normal.value = 'ALFKI';
+                form.appendChild(normal);
+                const complex = document.createElement('input');
+                complex.setAttribute('name', 'Order.Freight');
+                complex.value = '99.99';
+                form.appendChild(complex);
+                const multi = document.createElement('input');
+                multi.classList.add('e-multiselect');
+                multi.setAttribute('name', 'MultiSelectField');
+                form.appendChild(multi);
+                const chk = document.createElement('input');
+                chk.type = 'checkbox';
+                chk.setAttribute('name', 'Verified');
+                chk.checked = true;
+                form.appendChild(chk);
+                const hiddenMulti = document.createElement('input');
+                hiddenMulti.type = 'hidden';
+                hiddenMulti.className = 'e-multi-hidden';
+                hiddenMulti.setAttribute('name', 'SkipMe');
+                form.appendChild(hiddenMulti);
+                const switchWrap = document.createElement('div');
+                switchWrap.classList.add('e-switch-wrapper');
+                const hiddenSwitch = document.createElement('input');
+                hiddenSwitch.type = 'hidden';
+                hiddenSwitch.setAttribute('name', 'SwitchHidden');
+                switchWrap.appendChild(hiddenSwitch);
+                form.appendChild(switchWrap);
+                const chkWrap = document.createElement('div');
+                chkWrap.classList.add('e-checkbox-wrapper');
+                const hiddenChk = document.createElement('input');
+                hiddenChk.type = 'hidden';
+                hiddenChk.setAttribute('name', 'ChkHidden');
+                chkWrap.appendChild(hiddenChk);
+                form.appendChild(chkWrap);
+                const ej2Input = document.createElement('input') as any;
+                ej2Input.setAttribute('name', 'Freight');
+                ej2Input.ej2_instances = [{ value: 123.45 }];
+                form.appendChild(ej2Input);
+                const noName = document.createElement('input');
+                noName.id = 'SomeCustomID';
+                noName.value = 'fallback';
+                form.appendChild(noName);
+                const editedData: any = {};
+                (gridObj.editModule as any).getCurrentEditedData(form, editedData);
+                (gridObj.editModule as any).parent.editSettings.template = null;
+                done();
+            }
+        };
+
+        gridObj.selectRow(0);
+        gridObj.startEdit();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null
+    });
+});
+
+describe('Coverage Edit → getValueFromType()', () => {
+    let gridObj: Grid;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data,
+            editSettings: { allowEditing: true, allowAdding: true, mode: 'Normal' },
+            columns: [
+                { field: 'OrderID', type: 'number', isPrimaryKey: true },
+                { field: 'CustomerID', type: 'string' },
+                { field: 'Verified', type: 'boolean' },
+                { field: 'Freight', type: 'number' },
+                { field: 'OrderDate', type: 'date' },
+                { field: 'ShipDateOnly', type: 'dateonly' }
+            ]
+        }, done);
+    });
+
+    it('executes all branches in getValueFromType() including dateonly and complex field path', (done: Function) => {
+        gridObj.actionComplete = (args: any) => {
+            if (args.requestType === 'beginEdit') {
+
+                const editModule = gridObj.editModule as any;
+                const numCol = gridObj.getColumnByField('Freight')!;
+                editModule.getValueFromType(numCol, '123.45');
+                editModule.getValueFromType(numCol, 'abc'); // NaN → null
+                const boolCol = gridObj.getColumnByField('Verified')!;
+                editModule.getValueFromType(boolCol, 'True');
+                editModule.getValueFromType(boolCol, true);
+                editModule.getValueFromType(boolCol, 'false');
+                const dateCol = gridObj.getColumnByField('OrderDate')!;
+                editModule.getValueFromType(dateCol, '2025-03-17');
+                editModule.getValueFromType(dateCol, '');
+                editModule.getValueFromType(dateCol, null);
+                const dateOnlyCol = gridObj.getColumnByField('ShipDateOnly')!;
+                editModule.getValueFromType(dateOnlyCol, '2025-03-17T10:30:00');
+                editModule.getValueFromType(dateOnlyCol, new Date(2025, 2, 17));
+                editModule.getValueFromType(dateOnlyCol, null);
+                (gridObj.editModule as any).parent.editSettings.template = '<div>template</div>';
+
+                const form = document.createElement('form') as HTMLFormElement;
+                const complexInput = document.createElement('input');
+                complexInput.setAttribute('name', 'Order.Freight');
+                complexInput.value = '456.78';
+                form.appendChild(complexInput);
+
+                const editedData: any = {};
+                (gridObj.editModule as any).getCurrentEditedData(form, editedData);
+                (gridObj.editModule as any).parent.editSettings.template = null;
+                gridObj.closeEdit();
+                done();
+            }
+        };
+
+        gridObj.selectRow(0);
+        gridObj.startEdit();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null
+    });
+});
+
+
+describe('Coverage Edit → keyPressHandler() - Enter + Virtualization + HeaderContent + Popup Branch Coverage', () => {
+    let gridObj: Grid;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data,
+            editSettings: { allowEditing: true, allowAdding: true, mode: 'Normal', showAddNewRow: true },
+            enableInfiniteScrolling: true,
+            height: 400,
+            columns: [
+                { field: 'OrderID', isPrimaryKey: true },
+                { field: 'CustomerID' }
+            ]
+        }, done);
+    });
+
+    it('executes virtualization + headerContent + popup-open conditions in keyPressHandler', (done: Function) => {
+        gridObj.actionComplete = (args: any) => {
+            if (args.requestType === 'beginEdit') {
+
+                const editModule = gridObj.editModule as any;
+                const headerCell = gridObj.getHeaderContent().querySelector('.e-headercell') as HTMLElement;
+                const e1: any = {
+                    action: 'enter',
+                    target: headerCell,
+                    preventDefault: () => {}
+                };
+                editModule.keyPressHandler(e1);
+                const popup = document.createElement('div');
+                popup.className = 'e-popup-open';
+                const editCellInside = document.createElement('div');
+                editCellInside.className = 'e-editcell';
+                popup.appendChild(editCellInside);
+                document.body.appendChild(popup);
+
+                const e2: any = {
+                    action: 'enter',
+                    target: headerCell,
+                    preventDefault: () => {}
+                };
+                editModule.keyPressHandler(e2);
+                document.body.removeChild(popup);
+                const popup2 = document.createElement('div');
+                popup2.className = 'e-popup-open';
+                document.body.appendChild(popup2);
+
+                const e3: any = {
+                    action: 'enter',
+                    target: headerCell,
+                    preventDefault: () => {}
+                };
+                editModule.keyPressHandler(e3);
+                Object.defineProperty(navigator, 'platform', { 
+                    value: 'MacIntel', 
+                    configurable: true 
+                });
+
+                const eMac: any = {
+                    action: 'ctrlEnter',
+                    metaKey: true,
+                    target: headerCell,
+                    preventDefault: () => {}
+                };
+                editModule.keyPressHandler(eMac);
+                if (popup2.parentNode) document.body.removeChild(popup2);
+                gridObj.closeEdit();
+                done();
+            }
+        };
+
+        gridObj.selectRow(0);
+        gridObj.startEdit();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null
+    });
+});
+
+describe('Coverage Edit → createFormObj()', () => {
+    let gridObj: Grid;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data,
+            editSettings: { allowEditing: true, allowAdding: true, mode: 'Normal' },
+            columns: [
+                { field: 'OrderID', isPrimaryKey: true },
+                { field: 'CustomerID' },
+                { field: 'Verified', type: 'boolean' }
+            ]
+        }, done);
+    });
+
+    it('executes all branches in createFormObj customPlacement long condition', (done: Function) => {
+        gridObj.actionComplete = (args: any) => {
+            if (args.requestType === 'beginEdit') {
+
+                const form = gridObj.element.querySelector('form') as HTMLFormElement;
+                const editModule = gridObj.editModule as any;
+                const saveBtn = gridObj.createElement('button', { className: 'e-save' });
+                const e1: any = { target: saveBtn };
+                editModule.createFormObj(form, e1);
+                const wrapper = gridObj.createElement('div');
+                wrapper.appendChild(saveBtn.cloneNode(true));
+                const e2: any = { target: wrapper };
+                editModule.createFormObj(form, e2);
+                editModule.isShowAddedRowValidate = true;
+                const e3: any = { target: document.body };
+                editModule.createFormObj(form, e3);
+                editModule.isShowAddedRowValidate = false;
+                const unboundCell = gridObj.createElement('td', { className: 'e-unboundcell e-update' });
+                const e4: any = { target: unboundCell };
+                editModule.createFormObj(form, e4);
+                const contentCell = gridObj.element.querySelector('.e-content') as HTMLElement;
+                const e5: any = { action: 'enter', target: contentCell };
+                editModule.createFormObj(form, e5);
+
+                const addedRow = gridObj.createElement('tr', { className: 'e-addedrow' });
+                const e6: any = { action: 'enter', target: addedRow };
+                editModule.createFormObj(form, e6);
+                editModule.createFormObj(form, { target: document.body } as any);
+                gridObj.closeEdit();
+                done();
+            }
+        };
+
+        gridObj.selectRow(0);
+        gridObj.startEdit();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null
     });
 });

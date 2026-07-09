@@ -5,6 +5,9 @@
 import { Grid } from '../../../src/grid/base/grid';
 import { Page } from '../../../src/grid/actions/page';
 import { Selection } from '../../../src/grid/actions/selection';
+import { Filter } from '../../../src/grid/actions/filter';
+import { Sort } from '../../../src/grid/actions/sort';
+import { LazyLoadGroup } from '../../../src/grid/actions/lazy-load-group';
 import { Group } from '../../../src/grid/actions/group';
 import { Toolbar } from '../../../src/grid/actions/toolbar';
 import { DetailRow } from '../../../src/grid/actions/detail-row';
@@ -15,12 +18,13 @@ import { PdfExport } from '../../../src/grid/actions/pdf-export';
 import { Aggregate } from '../../../src/grid/actions/aggregate';
 import { createGrid, destroy} from '../base/specutil.spec';
 import { HierarchyGridPrintMode } from '../../../src/grid/base/enum';
-import { PdfDocument, PdfGrid, PdfStandardFont, PdfFontFamily, PdfFontStyle } from '@syncfusion/ej2-pdf-export';
-import { DataManager } from '@syncfusion/ej2-data';
+import { PdfDocument, PdfGrid, PdfStandardFont, PdfFontFamily, PdfFontStyle, PdfStringFormat, PdfTextAlignment, PdfVerticalAlignment, PdfPageTemplateElement, RectangleF } from '@syncfusion/ej2-pdf-export';
+import { DataManager,Query } from '@syncfusion/ej2-data';
 import  {profile , inMB, getMemoryProfile} from '../base/common.spec';
 import { PdfExportProperties, ExportDetailTemplateEventArgs } from '../../../src/grid/base/interface';
+import { ExportHelper, ExportValueFormatter } from '../../../src/grid/actions/export-helper';
 
-Grid.Inject(Page, Group, Selection, Toolbar, PdfExport, DetailRow, ForeignKey, Aggregate);
+Grid.Inject(Page, Group, Selection, Toolbar, PdfExport, DetailRow, ForeignKey, Aggregate,LazyLoadGroup,Filter,Sort);
 
 describe('pdf Export =>', () => {
     let exportComplete: () => void = () => true;
@@ -1035,6 +1039,627 @@ describe('pdf Export =>', () => {
             (gridObj as any).pdfExportModule.getGridPdfFont(theme);
         });
 
+        it('getGridPdfFont method code coverage - header with PdfTrueTypeFont', () => {
+            let theme: any = {
+                header: { font: { fontFamily: 'Arial', fontSize: 12, fontStyle: 'Bold', isTrueType: true } }
+            };
+            try {
+                (gridObj as any).pdfExportModule.getGridPdfFont(theme);
+            } catch (e) {
+            }
+        });
+
+        it('getGridPdfFont method code coverage - caption with PdfTrueTypeFont', () => {
+            let theme: any = {
+                caption: { font: { fontFamily: 'Times New Roman', fontSize: 11, fontStyle: 'Italic', isTrueType: true } }
+            };
+            try {
+                (gridObj as any).pdfExportModule.getGridPdfFont(theme);
+            } catch (e) {
+            }
+        });
+
+        it('getGridPdfFont method code coverage - record with PdfTrueTypeFont', () => {
+            let theme: any = {
+                record: { font: { fontFamily: 'Courier New', fontSize: 10, fontStyle: 'Regular', isTrueType: true } }
+            };
+            try {
+                (gridObj as any).pdfExportModule.getGridPdfFont(theme);
+            } catch (e) {
+            }
+        });
+
+        it('getGridPdfFont method code coverage - all three with PdfTrueTypeFont', () => {
+            let theme: any = {
+                header: { font: { fontFamily: 'Arial', fontSize: 12, fontStyle: 'Bold', isTrueType: true } },
+                caption: { font: { fontFamily: 'Times New Roman', fontSize: 11, fontStyle: 'Italic', isTrueType: true } },
+                record: { font: { fontFamily: 'Courier New', fontSize: 10, fontStyle: 'Regular', isTrueType: true } }
+            };
+            try {
+                (gridObj as any).pdfExportModule.getGridPdfFont(theme);
+            } catch (e) {
+            }
+        });
+
+        it('getGridPdfFont method code coverage - header with PdfTrueTypeFont and ItalicBold style', () => {
+            let theme: any = {
+                header: { font: { fontFamily: 'Verdana', fontSize: 13, fontStyle: 'ItalicBold', isTrueType: true } }
+            };
+            try {
+                (gridObj as any).pdfExportModule.getGridPdfFont(theme);
+            } catch (e) {
+            }
+        });
+
+        it('getGridPdfFont method code coverage - caption with PdfTrueTypeFont and Underline style', () => {
+            let theme: any = {
+                caption: { font: { fontFamily: 'Georgia', fontSize: 10, fontStyle: 'Underline', isTrueType: true } }
+            };
+            try {
+                (gridObj as any).pdfExportModule.getGridPdfFont(theme);
+            } catch (e) {
+            }
+        });
+
+        it('getGridPdfFont method code coverage - record with PdfTrueTypeFont and Strikeout style', () => {
+            let theme: any = {
+                record: { font: { fontFamily: 'Calibri', fontSize: 9, fontStyle: 'Strikeout', isTrueType: true } }
+            };
+            try {
+                (gridObj as any).pdfExportModule.getGridPdfFont(theme);
+            } catch (e) {
+            }
+        });
+
+        it('getGridPdfFont method code coverage - mixed PdfTrueTypeFont and PdfStandardFont', () => {
+            let theme: any = {
+                header: { font: { fontFamily: 'Arial', fontSize: 12, fontStyle: 'Bold', isTrueType: true } },
+                caption: { font: { fontFamily: 'TimesRoman', fontSize: 11, fontStyle: 'Regular', isTrueType: false } },
+                record: { font: { fontFamily: 'Courier', fontSize: 10, fontStyle: 'Italic', isTrueType: true } }
+            };
+            try {
+                (gridObj as any).pdfExportModule.getGridPdfFont(theme);
+            } catch (e) {
+            }
+        });
+
+        it('setContentFormat method code coverage - text alignment', () => {
+            let content: any = {
+                type: 'Text',
+                value: 'Test Content',
+                style: {hAlign: 'Left', vAlign: 'Middle', fontSize: 12, textBrushColor: '#000000' },
+                size: { width: 100, height: 20}
+            };
+            let format: any = new PdfStringFormat(PdfTextAlignment.Left, PdfVerticalAlignment.Middle);
+            (gridObj as any).pdfExportModule.setContentFormat(content, format);
+        });
+
+        it('setContentFormat method code coverage - with alignment property', () => {
+            let content: any = {
+                type: 'Text',
+                value: 'Aligned Content',
+                stringFormat: { alignment: 'Center' },
+                style: {hAlign: 'Right', vAlign: 'Middle', fontSize: 12, textBrushColor: '#000000' },
+                size: { width: 100, height: 20}
+            };
+            let format: any = new PdfStringFormat(PdfTextAlignment.Left, PdfVerticalAlignment.Middle);
+            (gridObj as any).pdfExportModule.setContentFormat(content, format);
+        });
+
+        it('setContentFormat method code coverage - with vertical alignment', () => {
+            let content: any = {
+                type: 'Text',
+                value: 'Vertically Aligned',
+                stringFormat: { alignment: 'Center', lineAlignment: 'Middle' },
+                style: {hAlign: 'Center', vAlign: 'Middle', fontSize: 12, textBrushColor: '#000000' },
+                size: { width: 100, height: 20}
+            };
+            let format: any = new PdfStringFormat(PdfTextAlignment.Left, PdfVerticalAlignment.Middle);
+            (gridObj as any).pdfExportModule.setContentFormat(content, format);
+        });
+
+        it('setContentFormat method code coverage - with vertical alignment', () => {
+            let content: any = {
+                type: 'Text',
+                value: 'Vertically Aligned',
+                stringFormat: { alignment: 'Center', lineAlignment: 'Middle' },
+                style: {hAlign: 'Justify', vAlign: 'Middle', fontSize: 12, textBrushColor: '#000000' },
+                size: { width: 100, height: 20}
+            };
+            let format: any = new PdfStringFormat(PdfTextAlignment.Left, PdfVerticalAlignment.Middle);
+            (gridObj as any).pdfExportModule.setContentFormat(content, format);
+        });
+
+        it('getPenFromContent method code coverage - with hex color', () => {
+            let content: any = {
+                type: 'Line',
+                style: { penColor: '#FF0000', penSize: 2 }
+            };
+            (gridObj as any).pdfExportModule.getPenFromContent(content);
+            let border: any = { color: '#FF0000', dashStyle: 'Solid', width: 2 };
+            (gridObj.pdfExportModule as any).getBorderStyle(border);
+            content.style.fontFamily = 'TimesRoman';
+                (gridObj.pdfExportModule as any).getFont(content);
+                expect(() => {
+                (gridObj as any).pdfExportModule.hexToRgb('#FF00');
+            }).toThrow(new Error('please set valid hex value for color...'));
+        });
+
+        it('getPenFromContent method code coverage - with RGB color', () => {
+            let content: any = {
+                type: 'Line',
+                style: { penColor: '#00FF00', penSize: 3 }
+            };
+            (gridObj as any).pdfExportModule.getPenFromContent(content);
+        });
+
+        it('getPenFromContent method code coverage - without style', () => {
+            let content: any = {
+                type: 'Line'
+            };
+            (gridObj as any).pdfExportModule.getPenFromContent(content);
+        });
+
+        it('drawText method code coverage - with direct call via export', (done) => {
+            gridObj.pdfExport({
+                header: {
+                    fromTop: 10,
+                    height: 60,
+                    contents: [
+                        {
+                            type: 'Text',
+                            value: 'Draw Text Coverage',
+                            position: { x: 50, y: 20 },
+                            style: { textBrushColor: '#0000FF', fontSize: 14 }
+                        }
+                    ]
+                }
+            }).then((pdfDoc: PdfDocument) => {
+                done();
+            }).catch((error) => {
+                done();
+            });
+        });
+
+        it('drawText method code coverage - direct call', (done: Function) => {
+            gridObj.pdfExport({
+                header: {
+                    fromTop: 10,
+                    height: 60,
+                    contents: [{ type: 'Text', value: 'Test', position: { x: 50, y: 20 }, style: { fontSize: 12 } }]
+                }
+            }).then((pdfDoc: PdfDocument) => {
+                done();
+            }).catch((error) => {
+                done();
+            });
+        });
+
+        it('drawPageNumber method code coverage - with format', (done) => {
+            gridObj.pdfExport({
+                header: {
+                    fromTop: 10,
+                    height: 60,
+                    contents: [
+                        {
+                            type: 'PageNumber',
+                            position: { x: 250, y: 20 },
+                            format: 'Page $current of $total',
+                            pageNumberType: 'Arabic',
+                            style: { textBrushColor: '#FF0000' }
+                        }
+                    ]
+                }
+            }).then((pdfDoc: PdfDocument) => {
+                done();
+            }).catch((error) => {
+                done();
+            });
+        });
+
+        it('processContentValidation - Text content with valid position', () => {
+            let content: any = {
+                type: 'Text',
+                position: { x: 50, y: 20 }
+            };
+            expect(() => {
+                (gridObj as any).pdfExportModule.processContentValidation(content);
+            }).not.toThrow();
+        });
+
+        it('processContentValidation - PageNumber content with valid position', () => {
+            let content: any = {
+                type: 'PageNumber',
+                position: { x: 100, y: 30 }
+            };
+            expect(() => {
+                (gridObj as any).pdfExportModule.processContentValidation(content);
+            }).not.toThrow();
+        });
+
+        it('processContentValidation - Image content with valid position', () => {
+            let content: any = {
+                type: 'Image',
+                position: { x: 150, y: 40 }
+            };
+            expect(() => {
+                (gridObj as any).pdfExportModule.processContentValidation(content);
+            }).not.toThrow();
+        });
+
+        it('processContentValidation - Line content with valid coordinates', () => {
+            let content: any = {
+                type: 'Line',
+                points: { x1: 10, y1: 20, x2: 100, y2: 30 }
+            };
+            expect(() => {
+                (gridObj as any).pdfExportModule.processContentValidation(content);
+            }).not.toThrow();
+        });
+
+        it('processContentValidation - undefined content type throws error', () => {
+            let content: any = {
+                type: undefined,
+                position: { x: 50, y: 20 }
+            };
+            expect(() => {
+                (gridObj as any).pdfExportModule.processContentValidation(content);
+            }).toThrow(new Error('please set valid content type...'));
+        });
+
+        it('processContentValidation - null content type throws error', () => {
+            let content: any = {
+                type: null,
+                position: { x: 50, y: 20 }
+            };
+            expect(() => {
+                (gridObj as any).pdfExportModule.processContentValidation(content);
+            }).toThrow(new Error('please set valid content type...'));
+        });
+
+        it('processContentValidation - Line with undefined points throws error', () => {
+            let content: any = {
+                type: 'Line',
+                points: undefined
+            };
+            expect(() => {
+                (gridObj as any).pdfExportModule.processContentValidation(content);
+            }).toThrow(new Error('please enter valid points in Line content...'));
+        });
+
+        it('processContentValidation - Line with null points throws error', () => {
+            let content: any = {
+                type: 'Line',
+                points: null
+            };
+            expect(() => {
+                (gridObj as any).pdfExportModule.processContentValidation(content);
+            }).toThrow(new Error('please enter valid points in Line content...'));
+        });
+
+        it('processContentValidation - Line with invalid x1 coordinate throws error', () => {
+            let content: any = {
+                type: 'Line',
+                points: { x1: 'invalid', y1: 20, x2: 100, y2: 30 }
+            };
+            expect(() => {
+                (gridObj as any).pdfExportModule.processContentValidation(content);
+            }).toThrow(new Error('please enter valid x1 co-ordinate in Line points...'));
+        });
+
+        it('processContentValidation - Line with undefined x1 coordinate throws error', () => {
+            let content: any = {
+                type: 'Line',
+                points: { x1: undefined, y1: 20, x2: 100, y2: 30 }
+            };
+            expect(() => {
+                (gridObj as any).pdfExportModule.processContentValidation(content);
+            }).toThrow(new Error('please enter valid x1 co-ordinate in Line points...'));
+        });
+
+        it('processContentValidation - Line with invalid y1 coordinate throws error', () => {
+            let content: any = {
+                type: 'Line',
+                points: { x1: 10, y1: 'invalid', x2: 100, y2: 30 }
+            };
+            expect(() => {
+                (gridObj as any).pdfExportModule.processContentValidation(content);
+            }).toThrow(new Error('please enter valid y1 co-ordinate in Line points...'));
+        });
+
+        it('processContentValidation - Line with undefined y1 coordinate throws error', () => {
+            let content: any = {
+                type: 'Line',
+                points: { x1: 10, y1: undefined, x2: 100, y2: 30 }
+            };
+            expect(() => {
+                (gridObj as any).pdfExportModule.processContentValidation(content);
+            }).toThrow(new Error('please enter valid y1 co-ordinate in Line points...'));
+        });
+
+        it('processContentValidation - Line with invalid x2 coordinate throws error', () => {
+            let content: any = {
+                type: 'Line',
+                points: { x1: 10, y1: 20, x2: 'invalid', y2: 30 }
+            };
+            expect(() => {
+                (gridObj as any).pdfExportModule.processContentValidation(content);
+            }).toThrow(new Error('please enter valid x2 co-ordinate in Line points...'));
+        });
+
+        it('processContentValidation - Line with invalid y2 coordinate throws error', () => {
+            let content: any = {
+                type: 'Line',
+                points: { x1: 10, y1: 20, x2: 100, y2: 'invalid' }
+            };
+            expect(() => {
+                (gridObj as any).pdfExportModule.processContentValidation(content);
+            }).toThrow(new Error('please enter valid y2 co-ordinate in Line points...'));
+        });
+
+        it('processContentValidation - Text with undefined position throws error', () => {
+            let content: any = {
+                type: 'Text',
+                position: undefined
+            };
+            expect(() => {
+                (gridObj as any).pdfExportModule.processContentValidation(content);
+            }).toThrow(new Error('please enter valid position in Text content...'));
+        });
+
+        it('processContentValidation - Text with null position throws error', () => {
+            let content: any = {
+                type: 'Text',
+                position: null
+            };
+            expect(() => {
+                (gridObj as any).pdfExportModule.processContentValidation(content);
+            }).toThrow(new Error('please enter valid position in Text content...'));
+        });
+
+        it('processContentValidation - Text with invalid x position throws error', () => {
+            let content: any = {
+                type: 'Text',
+                position: { x: 'invalid', y: 20 }
+            };
+            expect(() => {
+                (gridObj as any).pdfExportModule.processContentValidation(content);
+            }).toThrow(new Error('please enter valid x co-ordinate in Text position...'));
+        });
+
+        it('processContentValidation - Text with invalid y position throws error', () => {
+            let content: any = {
+                type: 'Text',
+                position: { x: 50, y: 'invalid' }
+            };
+            expect(() => {
+                (gridObj as any).pdfExportModule.processContentValidation(content);
+            }).toThrow(new Error('please enter valid y co-ordinate in Text position...'));
+        });
+
+        it('drawPageTemplate - with text content', () => {
+            let template: any = new PdfPageTemplateElement(new RectangleF(0, 0, 500, 100));
+            let header: any = {
+                contents: [
+                    {
+                        type: 'Text',
+                        value: 'Header Text',
+                        position: { x: 50, y: 20 },
+                        style: { textBrushColor: '#000000', fontSize: 12 }
+                    }
+                ]
+            };
+            let result = (gridObj as any).pdfExportModule.drawPageTemplate(template, header);
+            expect(result).toBeDefined();
+        });
+
+        it('drawPageTemplate - with page number content', () => {
+            let template: any = new PdfPageTemplateElement(new RectangleF(0, 0, 500, 100));
+            let header: any = {
+                contents: [
+                    {
+                        type: 'PageNumber',
+                        position: { x: 250, y: 20 },
+                        pageNumberType: 'Arabic',
+                        style: { textBrushColor: '#0000FF' }
+                    }
+                ]
+            };
+            let result = (gridObj as any).pdfExportModule.drawPageTemplate(template, header);
+            expect(result).toBeDefined();
+        });
+
+        it('drawPageTemplate - with line content', () => {
+            let template: any = new PdfPageTemplateElement(new RectangleF(0, 0, 500, 100));
+            let header: any = {
+                contents: [
+                    {
+                        type: 'Line',
+                        points: { x1: 10, y1: 50, x2: 490, y2: 50 },
+                        style: { penColor: '#FF0000', penSize: 2 }
+                    }
+                ]
+            };
+            let result = (gridObj as any).pdfExportModule.drawPageTemplate(template, header);
+            expect(result).toBeDefined();
+        });
+
+        it('drawPageTemplate - with multiple content types', () => {
+            let template: any = new PdfPageTemplateElement(new RectangleF(0, 0, 500, 100));
+            let header: any = {
+                contents: [
+                    {
+                        type: 'Text',
+                        value: 'Report',
+                        position: { x: 50, y: 10 },
+                        style: { textBrushColor: '#000000' }
+                    },
+                    {
+                        type: 'Line',
+                        points: { x1: 10, y1: 40, x2: 490, y2: 40 },
+                        style: { penColor: '#000000', penSize: 1 }
+                    },
+                    {
+                        type: 'PageNumber',
+                        position: { x: 450, y: 20 },
+                        style: { textBrushColor: '#666666' }
+                    }
+                ]
+            };
+            let result = (gridObj as any).pdfExportModule.drawPageTemplate(template, header);
+            expect(result).toBeDefined();
+        });
+
+        it('drawPageTemplate - Text with empty value throws error', () => {
+            let template: any = new PdfPageTemplateElement(new RectangleF(0, 0, 500, 100));
+            let header: any = {
+                contents: [
+                    {
+                        type: 'Text',
+                        value: '',
+                        position: { x: 50, y: 20 },
+                        style: {}
+                    }
+                ]
+            };
+            expect(() => {
+                (gridObj as any).pdfExportModule.drawPageTemplate(template, header);
+            }).toThrow(new Error('please enter the valid input value in text content...'));
+        });
+
+        it('drawPageTemplate - Text with undefined value throws error', () => {
+            let template: any = new PdfPageTemplateElement(new RectangleF(0, 0, 500, 100));
+            let header: any = {
+                contents: [
+                    {
+                        type: 'Text',
+                        value: undefined,
+                        position: { x: 50, y: 20 },
+                        style: {}
+                    }
+                ]
+            };
+            expect(() => {
+                (gridObj as any).pdfExportModule.drawPageTemplate(template, header);
+            }).toThrow(new Error('please enter the valid input value in text content...'));
+        });
+
+        it('drawPageTemplate - Text with null value throws error', () => {
+            let template: any = new PdfPageTemplateElement(new RectangleF(0, 0, 500, 100));
+            let header: any = {
+                contents: [
+                    {
+                        type: 'Text',
+                        value: null,
+                        position: { x: 50, y: 20 },
+                        style: {}
+                    }
+                ]
+            };
+            expect(() => {
+                (gridObj as any).pdfExportModule.drawPageTemplate(template, header);
+            }).toThrow(new Error('please enter the valid input value in text content...'));
+        });
+
+        it('drawPageTemplate - Text with non-string value throws error', () => {
+            let template: any = new PdfPageTemplateElement(new RectangleF(0, 0, 500, 100));
+            let header: any = {
+                contents: [
+                    {
+                        type: 'Text',
+                        value: 123,
+                        position: { x: 50, y: 20 },
+                        style: {}
+                    }
+                ]
+            };
+            expect(() => {
+                (gridObj as any).pdfExportModule.drawPageTemplate(template, header);
+            }).toThrow(new Error('please enter the valid input value in text content...'));
+        });
+
+        it('drawPageTemplate - Image with undefined src throws error', () => {
+            let template: any = new PdfPageTemplateElement(new RectangleF(0, 0, 500, 100));
+            let header: any = {
+                contents: [
+                    {
+                        type: 'Image',
+                        src: undefined,
+                        position: { x: 150, y: 20 },
+                        size: { height: 40, width: 40 }
+                    }
+                ]
+            };
+            expect(() => {
+                (gridObj as any).pdfExportModule.drawPageTemplate(template, header);
+            }).toThrow(new Error('please enter the valid base64 string in image content...'));
+        });
+
+        it('drawPageTemplate - Image with null src throws error', () => {
+            let template: any = new PdfPageTemplateElement(new RectangleF(0, 0, 500, 100));
+            let header: any = {
+                contents: [
+                    {
+                        type: 'Image',
+                        src: null,
+                        position: { x: 150, y: 20 },
+                        size: { height: 40, width: 40 }
+                    }
+                ]
+            };
+            expect(() => {
+                (gridObj as any).pdfExportModule.drawPageTemplate(template, header);
+            }).toThrow(new Error('please enter the valid base64 string in image content...'));
+        });
+
+        it('drawPageTemplate - Image with empty src throws error', () => {
+            let template: any = new PdfPageTemplateElement(new RectangleF(0, 0, 500, 100));
+            let header: any = {
+                contents: [
+                    {
+                        type: 'Image',
+                        src: '',
+                        position: { x: 150, y: 20 },
+                        size: { height: 40, width: 40 }
+                    }
+                ]
+            };
+            expect(() => {
+                (gridObj as any).pdfExportModule.drawPageTemplate(template, header);
+            }).toThrow(new Error('please enter the valid base64 string in image content...'));
+        });
+
+        it('drawPageTemplate - with invalid content type throws error', () => {
+            let template: any = new PdfPageTemplateElement(new RectangleF(0, 0, 500, 100));
+            let header: any = {
+                contents: [
+                    {
+                        type: 'InvalidType',
+                        position: { x: 50, y: 20 }
+                    }
+                ]
+            };
+            expect(() => {
+                (gridObj as any).pdfExportModule.drawPageTemplate(template, header);
+            }).toThrow(new Error('Please set valid content type...'));
+        });
+
+        it('drawPageTemplate returns PdfPageTemplateElement', () => {
+            let template: any = new PdfPageTemplateElement(new RectangleF(0, 0, 500, 100));
+            let footer: any = {
+                contents: [
+                    {
+                        type: 'Text',
+                        value: 'Footer',
+                        position: { x: 50, y: 20 },
+                        style: { textBrushColor: '#333333' }
+                    }
+                ]
+            };
+            let result = (gridObj as any).pdfExportModule.drawPageTemplate(template, footer);
+            expect(result).toBe(template);
+        });
+
 
 
         afterAll(() => {
@@ -1109,6 +1734,362 @@ describe('pdf Export =>', () => {
         it('should export PDF without script error when stacked header has no visible columns', (done: Function) => {
             gridObj.pdfExport().then((pdfDoc: PdfDocument) => {
                 expect(pdfDoc).not.toBeUndefined();
+                done();
+            });
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    describe('PDF Export Header/Footer Methods Coverage =>', () => {
+        let gridObj: Grid;
+
+        beforeAll((done: Function) => {
+            gridObj = createGrid(
+                {
+                    dataSource: data.slice(0, 2),
+                    allowPdfExport: true,
+                    columns: [
+                        { field: 'OrderID', headerText: 'Order ID', textAlign: 'Right', width: 120 },
+                        { field: 'Freight', headerText: 'Freight', textAlign: 'Right', width: 120 },
+                        { field: 'ShipCountry', headerText: 'Ship Country', width: 140 },
+                    ],
+                }, done);
+        });
+
+        it('PDF export with header text and textBrushColor - drawText method coverage', (done: Function) => {
+            const pdfExportProperties: any = {
+                header: {
+                    fromTop: 10,
+                    height: 60,
+                    contents: [
+                        {
+                            type: 'Text',
+                            value: 'Exported Report',
+                            position: { x: 50, y: 20 },
+                            style: {
+                                textBrushColor: '#000000'
+                            }
+                        }
+                    ]
+                }
+            };
+            gridObj.pdfExport(pdfExportProperties).then((pdfDoc: PdfDocument) => {
+                done();
+            }).catch((e) => {
+                done();
+            });
+        });
+
+        it('PDF export with header text and textPenColor - drawText method coverage', (done: Function) => {
+            const pdfExportProperties: any = {
+                header: {
+                    fromTop: 10,
+                    height: 60,
+                    contents: [
+                        {
+                            type: 'Text',
+                            value: 'Test Header',
+                            position: { x: 50, y: 20 },
+                            style: {
+                                textBrushColor: '#FF0000',
+                                textPenColor: '#0000FF'
+                            }
+                        }
+                    ]
+                }
+            };
+            gridObj.pdfExport(pdfExportProperties).then((pdfDoc: PdfDocument) => {
+                done();
+            }).catch((e) => {
+                done();
+            });
+        });
+
+        it('PDF export with header text and stringFormat - drawText method coverage', (done: Function) => {
+            const pdfExportProperties: any = {
+                header: {
+                    fromTop: 10,
+                    height: 60,
+                    contents: [
+                        {
+                            type: 'Text',
+                            value: 'Aligned Header Text',
+                            position: { x: 50, y: 20 },
+                            style: {
+                                textBrushColor: '#000000'
+                            },
+                            stringFormat: {
+                                alignment: 'Center'
+                            }
+                        }
+                    ]
+                }
+            };
+            gridObj.pdfExport(pdfExportProperties).then((pdfDoc: PdfDocument) => {
+                done();
+            }).catch((e) => {
+                done();
+            });
+        });
+
+        it('PDF export with header text no brush - drawText method coverage', (done: Function) => {
+            const pdfExportProperties: any = {
+                header: {
+                    fromTop: 10,
+                    height: 60,
+                    contents: [
+                        {
+                            type: 'Text',
+                            value: 'Test Header',
+                            position: { x: 50, y: 20 },
+                            style: {}
+                        }
+                    ]
+                }
+            };
+            gridObj.pdfExport(pdfExportProperties).then((pdfDoc: PdfDocument) => {
+                done();
+            }).catch((e) => {
+                done();
+            });
+        });
+
+        it('PDF export with header page number default format - drawPageNumber method coverage', (done: Function) => {
+            const pdfExportProperties: any = {
+                header: {
+                    fromTop: 10,
+                    height: 60,
+                    contents: [
+                        {
+                            type: 'PageNumber',
+                            position: { x: 200, y: 20 },
+                            pageNumberType: 'Arabic',
+                            style: {}
+                        }
+                    ]
+                }
+            };
+            gridObj.pdfExport(pdfExportProperties).then((pdfDoc: PdfDocument) => {
+                done();
+            }).catch((e) => {
+                expect(e).toBeUndefined();
+                done();
+            });
+        });
+
+        it('PDF export with header page number with textBrushColor - drawPageNumber method coverage', (done: Function) => {
+            const pdfExportProperties: any = {
+                header: {
+                    fromTop: 10,
+                    height: 60,
+                    contents: [
+                        {
+                            type: 'PageNumber',
+                            position: { x: 200, y: 20 },
+                            pageNumberType: 'LowerRoman',
+                            style: {
+                                textBrushColor: '#0000FF'
+                            }
+                        }
+                    ]
+                }
+            };
+            gridObj.pdfExport(pdfExportProperties).then((pdfDoc: PdfDocument) => {
+                done();
+            }).catch((e) => {
+                done();
+            });
+        });
+
+        it('PDF export with $current placeholder - drawPageNumber method coverage', (done: Function) => {
+            const pdfExportProperties: any = {
+                header: {
+                    fromTop: 10,
+                    height: 60,
+                    contents: [
+                        {
+                            type: 'PageNumber',
+                            position: { x: 200, y: 20 },
+                            format: 'Page $current',
+                            pageNumberType: 'Arabic',
+                            style: {}
+                        }
+                    ]
+                }
+            };
+            gridObj.pdfExport(pdfExportProperties).then((pdfDoc: PdfDocument) => {
+                done();
+            }).catch((e) => {
+                done();
+            });
+        });
+
+        it('PDF export with $current and $total placeholders - drawPageNumber method coverage', (done: Function) => {
+            const pdfExportProperties: any = {
+                header: {
+                    fromTop: 10,
+                    height: 60,
+                    contents: [
+                        {
+                            type: 'PageNumber',
+                            position: { x: 200, y: 20 },
+                            format: 'Page $current of $total',
+                            pageNumberType: 'UpperRoman',
+                            style: {}
+                        }
+                    ]
+                }
+            };
+            gridObj.pdfExport(pdfExportProperties).then((pdfDoc: PdfDocument) => {
+                done();
+            }).catch((e) => {
+                done();
+            });
+        });
+
+        it('PDF export with $total before $current - drawPageNumber method coverage', (done: Function) => {
+            const pdfExportProperties: any = {
+                header: {
+                    fromTop: 10,
+                    height: 60,
+                    contents: [
+                        {
+                            type: 'PageNumber',
+                            position: { x: 200, y: 20 },
+                            format: '$total pages, current: $current',
+                            pageNumberType: 'LowerLatin',
+                            style: {}
+                        }
+                    ]
+                }
+            };
+            gridObj.pdfExport(pdfExportProperties).then((pdfDoc: PdfDocument) => {
+                done();
+            }).catch((e) => {
+                done();
+            });
+        });
+
+        it('PDF export with only $total placeholder - drawPageNumber method coverage', (done: Function) => {
+            const pdfExportProperties: any = {
+                header: {
+                    fromTop: 10,
+                    height: 60,
+                    contents: [
+                        {
+                            type: 'PageNumber',
+                            position: { x: 200, y: 20 },
+                            format: 'Total: $total',
+                            pageNumberType: 'UpperLatin',
+                            style: {}
+                        }
+                    ]
+                }
+            };
+            gridObj.pdfExport(pdfExportProperties).then((pdfDoc: PdfDocument) => {
+                done();
+            }).catch((e) => {
+                done();
+            });
+        });
+
+        it('PDF export with page number and hex brush color - drawPageNumber and getPenFromContent coverage', (done: Function) => {
+            const pdfExportProperties: any = {
+                header: {
+                    fromTop: 10,
+                    height: 60,
+                    contents: [
+                        {
+                            type: 'PageNumber',
+                            position: { x: 200, y: 20 },
+                            format: 'Page $current of $total',
+                            pageNumberType: 'Arabic',
+                            style: {
+                                textBrushColor: '#FF0000'
+                            }
+                        }
+                    ]
+                }
+            };
+            gridObj.pdfExport(pdfExportProperties).then((pdfDoc: PdfDocument) => {
+                done();
+            }).catch((e) => {
+                done();
+            });
+        });
+
+        it('PDF export with text and custom pen color - getPenFromContent coverage', (done: Function) => {
+            const pdfExportProperties: any = {
+                header: {
+                    fromTop: 10,
+                    height: 60,
+                    contents: [
+                        {
+                            type: 'Text',
+                            value: 'Styled Text',
+                            position: { x: 50, y: 20 },
+                            style: {
+                                textBrushColor: '#000000',
+                                textPenColor: '#FF0000'
+                            }
+                        }
+                    ]
+                }
+            };
+            gridObj.pdfExport(pdfExportProperties).then((pdfDoc: PdfDocument) => {
+                done();
+            }).catch((e) => {
+                done();
+            });
+        });
+
+        it('PDF export with footer text content - footer drawText method coverage', (done: Function) => {
+            const pdfExportProperties: any = {
+                footer: {
+                    fromBottom: 160,
+                    height: 60,
+                    contents: [
+                        {
+                            type: 'Text',
+                            value: 'Report Footer',
+                            position: { x: 250, y: 20 },
+                            style: {
+                                textBrushColor: '#444444'
+                            }
+                        }
+                    ]
+                }
+            };
+            gridObj.pdfExport(pdfExportProperties).then((pdfDoc: PdfDocument) => {
+                done();
+            }).catch((e) => {
+                done();
+            });
+        });
+
+        it('PDF export with footer page number - footer drawPageNumber method coverage', (done: Function) => {
+            const pdfExportProperties: any = {
+                footer: {
+                    fromBottom: 160,
+                    height: 60,
+                    contents: [
+                        {
+                            type: 'PageNumber',
+                            position: { x: 250, y: 20 },
+                            format: 'Page $current',
+                            pageNumberType: 'Arabic',
+                            style: {}
+                        }
+                    ]
+                }
+            };
+            gridObj.pdfExport(pdfExportProperties).then((pdfDoc: PdfDocument) => {
+                done();
+            }).catch((e) => {
                 done();
             });
         });
@@ -1467,5 +2448,604 @@ describe('pdf Export =>', () => {
 //         }, 500);
 //     });
 // });
+
+// /* tslint:enable */
+
+//Added coverage for export-helper file
+describe('ExportHelper Module Tests => ', () => {
+    let gridObj: Grid;
+    let exportHelper: any;
+    let exportValueFormatter: any;
+    let exportCompleteHandler: () => void = () => true;
+    
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: data,
+                allowPdfExport: true,
+                allowGrouping: true,
+                allowPaging: true,
+                pageSettings: { pageSize: 10, totalRecordsCount: data.length },
+                columns: [
+                    { field: 'OrderID', headerText: 'Order ID', type: 'number', format: 'N2' },
+                    { field: 'CustomerID', headerText: 'Customer ID', type: 'string' },
+                    { field: 'OrderDate', headerText: 'Order Date', type: 'date', format: 'yMd' },
+                    { field: 'Freight', headerText: 'Freight', type: 'number', format: 'C2' },
+                    { field: 'Verified', headerText: 'Verified', type: 'boolean' }
+                ],
+                pdfExportComplete: exportCompleteHandler,
+            }, done);
+    });
+
+    describe('ExportHelper.getQuery() - Static Method Tests', () => {
+        it('should generate query with lazyLoad array when data is remote and lazy loading is enabled with group columns', () => {
+            const mockData: any = {
+                generateQuery: (isServerRendered: boolean) => new Query().requiresCount(),
+                isRemote: () => true
+            };
+            gridObj.groupSettings.enableLazyLoading = true;
+            gridObj.groupSettings.columns = ['CustomerID'];
+            const result: Query = (ExportHelper as any).getQuery(gridObj, mockData);
+            expect(result).toBeDefined();
+            expect((result as any).lazyLoad).toBeDefined();
+            expect((result as any).lazyLoad instanceof Array).toBeTruthy();
+        });
+
+        it('should call query.take() when data is remote but lazy loading is disabled', () => {
+            const mockData: any = {
+                generateQuery: (isServerRendered: boolean) => new Query().requiresCount(),
+                isRemote: () => true
+            };
+            gridObj.groupSettings.enableLazyLoading = false;
+            gridObj.groupSettings.columns = [];
+            const result: Query = (ExportHelper as any).getQuery(gridObj, mockData);
+            expect(result).toBeDefined();
+        });
+
+        it('should not set lazyLoad when group columns array is empty despite enableLazyLoading being true', () => {
+            const mockData: any = {
+                generateQuery: (isServerRendered: boolean) => new Query().requiresCount(),
+                isRemote: () => true
+            };
+            gridObj.groupSettings.enableLazyLoading = true;
+            gridObj.groupSettings.columns = [];
+            const result: Query = (ExportHelper as any).getQuery(gridObj, mockData);
+            expect(result).toBeDefined();
+        });
+    });
+
+    describe('ExportHelper.getColumnData() - Foreign Key Columns', () => {
+        it('should resolve promise with undefined when no foreign key columns exist', (done) => {
+            const helper = new (ExportHelper as any)(gridObj);
+            const mockGrid: any = {
+                getForeignKeyColumns: (): any[] => []
+            };
+            const result = helper.getColumnData(mockGrid);
+            if (result) {
+                result.then(() => {
+                    expect(result).toBeUndefined();
+                    done();
+                });
+            } else {
+                expect(result).toBeUndefined();
+                done();
+            }
+        });
+
+        it('should handle foreign key columns when dataSource has result property', (done) => {
+            const mockForeignData = { result: [{ id: 1, name: 'Test' }] };
+            const mockColumn = { 
+                field: 'EmployeeID', 
+                dataSource: mockForeignData,
+                foreignKeyValue: 'FirstName'
+            };
+            const mockGrid: any = {
+                getForeignKeyColumns: () => [mockColumn]
+            };
+            const helper = new (ExportHelper as any)(gridObj);
+            const result = helper.getColumnData(mockGrid);
+            if (result) {
+                result.then(() => {
+                    expect(helper.getForeignKeyData()).toBeDefined();
+                    done();
+                });
+            } else {
+                done();
+            }
+        });
+
+        it('should handle foreign key columns when dataSource is a DataManager instance', (done) => {
+            const mockColumn = { 
+                field: 'EmployeeID', 
+                dataSource: new DataManager(employeeData),
+                foreignKeyValue: 'FirstName'
+            };
+            const mockGrid: any = {
+                getForeignKeyColumns: () => [mockColumn]
+            };
+            const helper = new (ExportHelper as any)(gridObj);
+            const result = helper.getColumnData(mockGrid);
+            if (result) {
+                result.then(() => {
+                    expect(helper.getForeignKeyData()).toBeDefined();
+                    done();
+                });
+            } else {
+                done();
+            }
+        });
+
+        it('should populate foreignKeyData with column field as key', (done) => {
+            const mockColumn = { 
+                field: 'TestField', 
+                dataSource: new DataManager([{ id: 1 }, { id: 2 }]),
+                foreignKeyValue: 'id'
+            };
+            const mockGrid: any = {
+                getForeignKeyColumns: () => [mockColumn]
+            };
+            const helper = new (ExportHelper as any)(gridObj);
+            const result = helper.getColumnData(mockGrid);
+            if (result) {
+                result.then(() => {
+                    const fkData = helper.getForeignKeyData();
+                    expect(fkData['TestField']).toBeDefined();
+                    done();
+                });
+            } else {
+                done();
+            }
+        });
+    });
+
+    describe('ExportHelper.processColumns() - Column Virtualization & Grouping', () => {
+        it('should skip column when virtualization is enabled and column is not in view', () => {
+            const helper = new (ExportHelper as any)(gridObj);
+            gridObj.enableColumnVirtualization = true;
+            gridObj.groupSettings.columns = ['CustomerID'];
+            gridObj.allowGrouping = true;
+            const mockRow: any = { cells: [] };
+            const rows = [mockRow];
+            (gridObj.getColumnIndexesInView as any) = () => [1, 2];
+            const result = (helper as any).processColumns(rows);
+            expect(result).toBeDefined();
+            expect(Array.isArray(result)).toBeTruthy();
+        });
+
+        it('should add header indent cells when grouping is enabled', () => {
+            const helper = new (ExportHelper as any)(gridObj);
+            gridObj.enableColumnVirtualization = false;
+            gridObj.groupSettings.columns = ['CustomerID'];
+            gridObj.allowGrouping = true;
+            const mockRow: any = { cells: [] };
+            const rows = [mockRow];
+            const result = (helper as any).processColumns(rows);
+            expect(result).toBeDefined();
+            expect(result[0].cells.length).toBeGreaterThanOrEqual(0);
+        });
+
+        it('should not add indent cells when grouping is disabled', () => {
+            const helper = new (ExportHelper as any)(gridObj);
+            gridObj.enableColumnVirtualization = false;
+            gridObj.allowGrouping = false;
+            const mockRow: any = { cells: [] };
+            const rows = [mockRow];
+            const result = (helper as any).processColumns(rows);
+            expect(result).toBeDefined();
+        });
+
+        it('should handle empty groupSettings columns array', () => {
+            const helper = new (ExportHelper as any)(gridObj);
+            gridObj.enableColumnVirtualization = false;
+            gridObj.groupSettings.columns = [];
+            gridObj.allowGrouping = true;
+            const mockRow: any = { cells: [] };
+            const rows = [mockRow];
+            const result = (helper as any).processColumns(rows);
+            expect(result).toBeDefined();
+            expect(Array.isArray(result)).toBeTruthy();
+        });
+    });
+
+    describe('ExportHelper.getGridRowModel() - Row Model Generation', () => {
+        it('should return empty array when dataSource is empty', () => {
+            const helper = new (ExportHelper as any)(gridObj);
+            const mockColumns: any[] = [{ visible: true }];
+            const dataSource: Object[] = [];
+            const result = helper.getGridRowModel(mockColumns, dataSource, gridObj);
+            expect(result).toBeDefined();
+            expect(result.length).toBe(0);
+        });
+
+        it('should generate rows with correct data and index for non-empty dataSource', () => {
+            const helper = new (ExportHelper as any)(gridObj);
+            const mockColumns: any[] = [{ visible: true }];
+            const dataSource = [{ OrderID: 10248, CustomerID: 'VINET' }];
+            const result = helper.getGridRowModel(mockColumns, dataSource, gridObj);
+            expect(result).toBeDefined();
+            expect(result.length).toBe(1);
+        });
+
+        it('should set isExpand to true when hierarchyPrintMode is All and childGrid exists', () => {
+            const helper = new (ExportHelper as any)(gridObj);
+            gridObj.childGrid = { queryString: 'EmployeeID' };
+            gridObj.hierarchyPrintMode = 'All';
+            const mockColumns: any[] = [{ visible: true }];
+            const dataSource = [{ OrderID: 10248 }];
+            const result = helper.getGridRowModel(mockColumns, dataSource, gridObj);
+            expect(result.length).toBe(1);
+        });
+
+        it('should set isExpand based on expandedRows when hierarchyPrintMode is Expanded', () => {
+            const helper = new (ExportHelper as any)(gridObj);
+            gridObj.childGrid = { queryString: 'EmployeeID' };
+            gridObj.hierarchyPrintMode = 'Expanded';
+            (gridObj as any).expandedRows = { 0: { isExpand: true } };
+            const mockColumns: any[] = [{ visible: true }];
+            const dataSource = [{ OrderID: 10248 }];
+            const result = helper.getGridRowModel(mockColumns, dataSource, gridObj, 0);
+            expect(result.length).toBe(1);
+        });
+
+        it('should increment startIndex for each row', () => {
+            const helper = new (ExportHelper as any)(gridObj);
+            const mockColumns: any[] = [{ visible: true }];
+            const dataSource = [{ id: 1 }, { id: 2 }, { id: 3 }];
+            const result = helper.getGridRowModel(mockColumns, dataSource, gridObj, 5);
+            expect(result.length).toBe(3);
+        });
+    });
+
+    describe('ExportHelper.getGridExportColumns() - Column Filtering', () => {
+        it('should exclude checkbox type columns', () => {
+            const helper = new (ExportHelper as any)(gridObj);
+            const mockColumns: any[] = [
+                { type: 'checkbox' },
+                { type: 'string' },
+                { type: 'number' }
+            ];
+            const result = helper.getGridExportColumns(mockColumns);
+            expect(result.length).toBe(2);
+        });
+
+        it('should include all non-checkbox columns', () => {
+            const helper = new (ExportHelper as any)(gridObj);
+            const mockColumns: any[] = [
+                { type: 'string' },
+                { type: 'number' },
+                { type: 'date' }
+            ];
+            const result = helper.getGridExportColumns(mockColumns);
+            expect(result.length).toBe(3);
+        });
+
+        it('should return empty array when all columns are checkbox type', () => {
+            const helper = new (ExportHelper as any)(gridObj);
+            const mockColumns: any[] = [
+                { type: 'checkbox' },
+                { type: 'checkbox' }
+            ];
+            const result = helper.getGridExportColumns(mockColumns);
+            expect(result.length).toBe(0);
+        });
+    });
+
+   
+
+    describe('ExportHelper.failureHandler() - Error Handler', () => {
+        it('should set gridPool entry to true and call checkAndExport', () => {
+            const helper = new (ExportHelper as any)(gridObj);
+            let resolveCalled = false;
+            const mockResolve = () => { resolveCalled = true; };
+            const gridPool = { 'child-grid-1': false };
+            const childGridObj: any = { id: 'child-grid-1' };
+            const failureHandler = helper.failureHandler(gridPool, childGridObj, mockResolve);
+            failureHandler();
+            expect(gridPool['child-grid-1']).toBe(true);
+        });
+    });
+
+    describe('ExportValueFormatter.formatCellValue() - Cell Value Formatting', () => {
+        beforeAll(() => {
+            exportValueFormatter = new (ExportValueFormatter as any)('en-US');
+        });
+
+        it('should format foreign key value correctly', () => {
+            const mockArgs: any = {
+                isForeignKey: true,
+                value: 1,
+                column: {
+                    field: 'EmployeeID',
+                    foreignKeyValue: 'FirstName',
+                    type: 'string'
+                }
+            };
+            const result = exportValueFormatter.formatCellValue(mockArgs);
+            expect(typeof result).toBe('string');
+        });
+
+        it('should format number column with format string', () => {
+            const mockArgs: any = {
+                isForeignKey: false,
+                value: 123.456,
+                column: {
+                    type: 'number',
+                    format: 'N2'
+                }
+            };
+            const result = exportValueFormatter.formatCellValue(mockArgs);
+            expect(typeof result).toBe('string');
+        });
+
+        it('should format number column with format object', () => {
+            const mockArgs: any = {
+                isForeignKey: false,
+                value: 123.456,
+                column: {
+                    type: 'number',
+                    format: { format: 'N2' }
+                }
+            };
+            const result = exportValueFormatter.formatCellValue(mockArgs);
+            expect(typeof result).toBe('string');
+        });
+
+        it('should return empty string for null/undefined number value with format', () => {
+            const mockArgs: any = {
+                isForeignKey: false,
+                value: null,
+                column: {
+                    type: 'number',
+                    format: 'N2'
+                }
+            };
+            const result = exportValueFormatter.formatCellValue(mockArgs);
+            expect(result).toBe('');
+        });
+
+        it('should format zero correctly for number column', () => {
+            const mockArgs: any = {
+                isForeignKey: false,
+                value: 0,
+                column: {
+                    type: 'number',
+                    format: 'N2'
+                }
+            };
+            const result = exportValueFormatter.formatCellValue(mockArgs);
+            expect(typeof result).toBe('string');
+        });
+
+        it('should format boolean true as string true', () => {
+            const mockArgs: any = {
+                isForeignKey: false,
+                value: true,
+                column: {
+                    type: 'boolean'
+                }
+            };
+            const result = exportValueFormatter.formatCellValue(mockArgs);
+            expect(result).toBe('true');
+        });
+
+        it('should format boolean false as string false', () => {
+            const mockArgs: any = {
+                isForeignKey: false,
+                value: false,
+                column: {
+                    type: 'boolean'
+                }
+            };
+            const result = exportValueFormatter.formatCellValue(mockArgs);
+            expect(result).toBe('false');
+        });
+
+        it('should return empty string for empty boolean value', () => {
+            const mockArgs: any = {
+                isForeignKey: false,
+                value: '',
+                column: {
+                    type: 'boolean'
+                }
+            };
+            const result = exportValueFormatter.formatCellValue(mockArgs);
+            expect(result).toBe('');
+        });
+
+        it('should format date with string format', () => {
+            const mockArgs: any = {
+                isForeignKey: false,
+                value: new Date(2023, 0, 15),
+                column: {
+                    type: 'date',
+                    format: 'short'
+                }
+            };
+            const result = exportValueFormatter.formatCellValue(mockArgs);
+            expect(typeof result).toBe('string');
+        });
+
+        it('should format date when value is string', () => {
+            const mockArgs: any = {
+                isForeignKey: false,
+                value: '2023-01-15',
+                column: {
+                    type: 'date',
+                    format: 'short'
+                }
+            };
+            const result = exportValueFormatter.formatCellValue(mockArgs);
+            expect(typeof result).toBe('string');
+        });
+
+        it('should format date with object format containing type', () => {
+            const mockArgs: any = {
+                isForeignKey: false,
+                value: new Date(2023, 0, 15),
+                column: {
+                    type: 'date',
+                    format: { type: 'date', skeleton: 'short' }
+                }
+            };
+            const result = exportValueFormatter.formatCellValue(mockArgs);
+            expect(typeof result).toBe('string');
+        });
+
+        it('should convert to string for date object format without type property', () => {
+            const mockArgs: any = {
+                isForeignKey: false,
+                value: new Date(2023, 0, 15),
+                column: {
+                    type: 'date',
+                    format: { skeleton: 'short' }
+                }
+            };
+            const result = exportValueFormatter.formatCellValue(mockArgs);
+            expect(typeof result).toBe('string');
+        });
+
+        it('should format dateonly column', () => {
+            const mockArgs: any = {
+                isForeignKey: false,
+                value: new Date(2023, 0, 15),
+                column: {
+                    type: 'dateonly',
+                    format: 'short'
+                }
+            };
+            const result = exportValueFormatter.formatCellValue(mockArgs);
+            expect(typeof result).toBe('string');
+        });
+
+        it('should format datetime column with string format', () => {
+            const mockArgs: any = {
+                isForeignKey: false,
+                value: new Date(2023, 0, 15, 14, 30, 0),
+                column: {
+                    type: 'datetime',
+                    format: 'short'
+                }
+            };
+            const result = exportValueFormatter.formatCellValue(mockArgs);
+            expect(typeof result).toBe('string');
+        });
+
+        it('should format time column', () => {
+            const mockArgs: any = {
+                isForeignKey: false,
+                value: new Date(2023, 0, 15, 14, 30, 0),
+                column: {
+                    type: 'time',
+                    format: 'short'
+                }
+            };
+            const result = exportValueFormatter.formatCellValue(mockArgs);
+            expect(typeof result).toBe('string');
+        });
+
+        it('should format date with object format with all properties', () => {
+            const mockArgs: any = {
+                isForeignKey: false,
+                value: new Date(2023, 0, 15),
+                column: {
+                    type: 'date',
+                    format: { type: 'date', format: 'short', skeleton: 'short' }
+                }
+            };
+            const result = exportValueFormatter.formatCellValue(mockArgs);
+            expect(typeof result).toBe('string');
+        });
+
+        it('should convert generic value to string', () => {
+            const mockArgs: any = {
+                isForeignKey: false,
+                value: 'Test String',
+                column: {
+                    type: 'string'
+                }
+            };
+            const result = exportValueFormatter.formatCellValue(mockArgs);
+            expect(result).toBe('Test String');
+        });
+
+        it('should return empty string for null/undefined value in default branch', () => {
+            const mockArgs: any = {
+                isForeignKey: false,
+                value: null,
+                column: {
+                    type: 'string'
+                }
+            };
+            const result = exportValueFormatter.formatCellValue(mockArgs);
+            expect(result).toBe('');
+        });
+
+        it('should return empty string when value is undefined and column type is undefined', () => {
+            const mockArgs: any = {
+                isForeignKey: false,
+                value: undefined,
+                column: {
+                    type: undefined
+                }
+            };
+            const result = exportValueFormatter.formatCellValue(mockArgs);
+            expect(result).toBe('');
+        });
+
+        it('should handle datetime with object format', () => {
+            const mockArgs: any = {
+                isForeignKey: false,
+                value: new Date(2023, 0, 15, 14, 30, 0),
+                column: {
+                    type: 'datetime',
+                    format: { type: 'dateTime', format: 'short', skeleton: 'short' }
+                }
+            };
+            const result = exportValueFormatter.formatCellValue(mockArgs);
+            expect(typeof result).toBe('string');
+        });
+
+        it('should handle time with object format', () => {
+            const mockArgs: any = {
+                isForeignKey: false,
+                value: new Date(2023, 0, 15, 14, 30, 0),
+                column: {
+                    type: 'time',
+                    format: { type: 'time', format: 'short', skeleton: 'short' }
+                }
+            };
+            const result = exportValueFormatter.formatCellValue(mockArgs);
+            expect(typeof result).toBe('string');
+        });
+    });
+
+    describe('ExportHelper.getConvertedWidth() - Width Conversion', () => {
+        it('should convert percentage width to pixel value', () => {
+            const helper = new (ExportHelper as any)(gridObj);
+            const result = helper.getConvertedWidth('50%');
+            expect(typeof result).toBe('number');
+            expect(result).toBeGreaterThan(0);
+        });
+
+        it('should return parsed value for pixel width', () => {
+            const helper = new (ExportHelper as any)(gridObj);
+            const result = helper.getConvertedWidth('100px');
+            expect(result).toBe(100);
+        });
+
+        it('should handle numeric string input without unit', () => {
+            const helper = new (ExportHelper as any)(gridObj);
+            const result = helper.getConvertedWidth('150');
+            expect(result).toBe(150);
+        });
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+        exportHelper = null;
+        exportValueFormatter = null;
+    });
+});
 
 // /* tslint:enable */

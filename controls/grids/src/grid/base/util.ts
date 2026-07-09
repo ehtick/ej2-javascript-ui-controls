@@ -1534,10 +1534,15 @@ export function ensureLastRow(row: Element, gridObj: IGrid): boolean {
 /**
  * @param {Element} row - Defines row element
  * @param {number} rowTop - Defines row top number
+ * @param {IGrid} gridObj - Defines grid object
  * @returns {boolean} Returns first row is true
  * @hidden
  */
-export function ensureFirstRow(row: Element, rowTop: number): boolean {
+export function ensureFirstRow(row: Element, rowTop: number, gridObj?: IGrid): boolean {
+    if ( gridObj && gridObj.isRowDomVirtualization()) {
+        const content: HTMLElement = gridObj.getContent().firstElementChild as HTMLElement;
+        return row && (row.getBoundingClientRect().top - content.getBoundingClientRect().top) < 0;
+    }
     return row && row.getBoundingClientRect().top < rowTop;
 }
 
@@ -1841,7 +1846,7 @@ export function resetDialogAppend(gObj: IGrid, dlgObj: Dialog, dlgWidth?: number
     element.style.zIndex = (dlgObj.zIndex).toString();
     element.style.width = !isNullOrUndefined(dlgWidth) ? dlgWidth + 'px' : dlgObj.element.offsetWidth + 'px';
     element.appendChild(dlgObj.element);
-    const sbPanel: HTMLElement = document.querySelector('.sb-demo-section,.e-grid-dialog-fixed');
+    const sbPanel: HTMLElement = gObj.element.closest('.sb-demo-section,.e-grid-dialog-fixed') as HTMLElement;
     if (sbPanel) {
         const sbPos: { left: number; top: number; } = calculateRelativeBasedPosition(gObj.element, sbPanel);
         element.style.top = sbPos.top + 'px';
@@ -2660,4 +2665,18 @@ export function isEnableSeamlessScrolling(): boolean {
  */
 export function setEnableSeamlessScrolling(value: boolean): void {
     enableSeamlessScrolling = value;
+}
+
+/**
+ * Parse height value and compute pixel height for virtualization
+ *
+ * @param {string | number} height - Height value from Grid.height property
+ * @returns {number} - Computed height in pixels (minimum 240px)
+ * @hidden
+ */
+export function parseViewportHeight( height: string | number ): number {
+    const heightValue: string = height.toString().trim();
+    const viewportMatch: RegExpMatchArray = heightValue.match(/^([\d.]+)(vh)?$/i);
+    const viewportBasedHeight: number = (window.innerHeight * parseFloat(viewportMatch[1])) / 100;
+    return viewportBasedHeight;
 }

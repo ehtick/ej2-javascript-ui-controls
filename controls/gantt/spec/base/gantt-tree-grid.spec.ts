@@ -380,7 +380,82 @@ describe('Gantt base module', () => {
         }
     });
 });
-
+describe('MT1014886: Tree-grid file code coverage', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: [
+                {
+                    taskID: 1, taskName: "Software Specification", startDate: new Date("02/11/2017"), endDate: new Date("02/16/2017"), duration: 5, progress: "60"
+                }
+            ],
+            taskFields: {
+                id: 'taskID',
+                name: 'taskName',
+                startDate: 'startDate',
+                endDate: 'endDate',
+                duration: 'duration',
+                progress: 'progress',
+                child: 'subtasks'
+            },
+            editSettings: {
+                allowAdding: true,
+                allowEditing: true,
+                allowDeleting: true,
+                allowTaskbarEditing: true,
+                showDeleteConfirmDialog: true
+            },
+            columns: [
+                { field: 'TaskID', headerText: 'Task ID' },
+                { field: 'TaskName', headerText: 'Task Name', allowReordering: false },
+                { field: 'StartDate', headerText: 'Start Date', allowSorting: false },
+                { field: 'Duration', headerText: 'Duration', allowEditing: false },
+                { field: 'Progress', headerText: 'Progress', allowFiltering: false },
+                { field: 'CustomColumn', headerText: 'CustomColumn' }
+            ],
+            splitterSettings: {
+                position: "50%",
+            },
+            gridLines: "Both",
+            highlightWeekends: true,
+            timelineSettings: {
+                showTooltip: true,
+                topTier: {
+                    unit: 'Week',
+                    format: 'dd/MM/yyyy'
+                },
+                bottomTier: {
+                    unit: 'Day',
+                    count: 1
+                }
+            },
+            enableContextMenu: true,
+            labelSettings: {
+                leftLabel: 'taskID',
+                rightLabel: 'task Name: ${taskData.TaskName}',
+                taskLabel: '${progress}%'
+            },
+            height: '550px'
+        }, done);
+    });
+    it('spec to cover branch for tree-grid file', () => {
+        ganttObj.treeGridModule['resourceValueAccessor'](null, null, null);
+        ganttObj.treeGridModule['workValueAccessor'](null, null, null);
+        ganttObj.treeGridModule['taskTypeValueAccessor'](null, null, null);
+        ganttObj.contextMenuModule.isOpen = true;
+        let args = {};
+        ganttObj.treeGridModule['updateScrollTop'](args);
+        let args1 = {};
+        ganttObj.treeGridModule['setPartialSelectionForGrid'](args1);
+        ganttObj.treeGridModule['baselineDurationValueAccessor'](null, null, null);
+        ganttObj.treeGridModule.renderTreeGrid();
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
 describe('T1014886: Coverage for Tree-grid file', () => {
         let ganttObj: Gantt;
         let dataSource: DataManager = new DataManager({
@@ -446,7 +521,6 @@ describe('T1014886: Coverage for Tree-grid file', () => {
         }
     });
 });
-
 describe('MT1014886: Tree-grid file code coverage', () => {
     let ganttObj: Gantt;
     beforeAll((done: Function) => {
@@ -520,7 +594,6 @@ describe('MT1014886: Tree-grid file code coverage', () => {
         }
     });
 });
-
 describe('MT1014886: Tree-grid file code coverage', () => {
     let ganttObj: Gantt;
     beforeAll((done: Function) => {
@@ -620,7 +693,6 @@ describe('MT1014886: Tree-grid file code coverage', () => {
         }
     });
 });
-
 describe('MT1014886: Tree-grid file code coverage', () => {
     let ganttObj: Gantt;
     beforeAll((done: Function) => {

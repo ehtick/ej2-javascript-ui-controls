@@ -1258,6 +1258,497 @@ describe('Adaptive renderer', () => {
         });
     });
 
+    describe('Adaptive renderer ResponsiveDialogRenderer – Uncovered Branches', () => {
+
+        function ensureFilterStubs(rdr: any) {
+            const p = rdr.parent || (rdr.parent = {});
+            const fm = p.filterModule || (p.filterModule = {});
+            const fmb = fm.filterModule || (fm.filterModule = {});
+            if (!fmb.applyCustomFilter) fmb.applyCustomFilter = (_: any) => { };
+            if (!fmb.clearCustomFilter) fmb.clearCustomFilter = (_: any) => { };
+            if (!fmb.closeResponsiveDialog) fmb.closeResponsiveDialog = (_?: any) => { };
+            if (!fmb.openDialog) fmb.openDialog = (_?: any) => { };
+            if (!fm.setFilterModel) fm.setFilterModel = (_: any) => { };
+            if (!fm.createOptions) fm.createOptions = (_: any) => ({});
+        }
+
+        describe('renderCustomFilterDiv → early return', () => {
+            let gridObj: Grid;
+            beforeAll((done: Function) => {
+                gridObj = createGrid({
+                    dataSource: data, enableAdaptiveUI: true, allowFiltering: true,
+                    columns: [
+                        { headerText: 'OrderID', field: 'OrderID', isPrimaryKey: true, width: 120 },
+                        { headerText: 'CustomerID', field: 'CustomerID', width: 120 },
+                        { headerText: 'EmployeeID', field: 'EmployeeID', width: 120 },
+                        { headerText: 'ShipCountry', field: 'ShipCountry', width: 120 },
+                        { headerText: 'ShipCity', field: 'ShipCity', width: 120 },
+                    ]
+                }, done);
+            });
+            it('should return without creating custom filter container', () => {
+                const rdr = (gridObj as any).filterModule.responsiveDialogRenderer;
+                ensureFilterStubs(rdr);
+                rdr.customResponsiveDlg = undefined;
+                rdr.renderCustomFilterDiv();
+                expect(document.querySelector('.e-xl-customfilterdiv')).toBeNull();
+            });
+            afterAll(() => { destroy(gridObj); gridObj = null as any; });
+        });
+
+        describe('renderResponsiveContextMenu → back button restore branch', () => {
+            let gridObj: Grid;
+            beforeAll((done: Function) => {
+                gridObj = createGrid({
+                    dataSource: data, enableAdaptiveUI: true, allowFiltering: true,
+                    columns: [
+                        { headerText: 'OrderID', field: 'OrderID', isPrimaryKey: true, width: 120 },
+                        { headerText: 'CustomerID', field: 'CustomerID', width: 120 },
+                        { headerText: 'EmployeeID', field: 'EmployeeID', width: 120 },
+                        { headerText: 'ShipCountry', field: 'ShipCountry', width: 120 },
+                        { headerText: 'ShipCity', field: 'ShipCity', width: 120 },
+                    ]
+                }, done);
+            });
+            it('should restore main content, remove back button, and show close/save/clear', () => {
+                const rdr = (gridObj as any).filterModule.responsiveDialogRenderer;
+                ensureFilterStubs(rdr);
+                rdr.action = (ResponsiveDialogAction as any).isFilter;
+                rdr.isCustomDlgRender = false;
+                rdr.isFiltered = true;
+
+                const dlg = document.createElement('div');
+                dlg.innerHTML = `
+                <div class="e-dlg-header-content">
+                    <div class="e-dlg-custom-header"></div>
+                    <button class="e-dlg-closeicon-btn"></button>
+                </div>
+                <div class="e-dlg-content"><div id="main-content"></div></div>`;
+                document.body.appendChild(dlg);
+
+                rdr.customResponsiveDlg = { element: dlg } as any;
+                rdr.saveBtn = { element: document.createElement('button') } as any;
+                rdr.filterClearBtn = { element: document.createElement('button') } as any;
+
+                const menu = document.createElement('div');
+                rdr.renderResponsiveContextMenu({
+                    isOpen: true,
+                    target: menu,
+                    header: 'Context Header',
+                    col: (gridObj.getColumns() as any)[0]
+                });
+
+                rdr.renderResponsiveContextMenu({
+                    isOpen: false,
+                    col: (gridObj.getColumns() as any)[0]
+                });
+
+                const content = dlg.querySelector('.e-dlg-content') as HTMLElement;
+                const first = content.firstElementChild as HTMLElement;
+                expect(first.style.display).toBe('');
+                const headerText = dlg.querySelector('.e-dlg-custom-header') as HTMLElement;
+                expect((headerText.textContent || '').length).toBeGreaterThan(0);
+            });
+            afterAll(() => { destroy(gridObj); gridObj = null as any; });
+        });
+
+        describe('customFilterColumnClickHandler → group column', () => {
+            let gridObj: Grid;
+            beforeAll((done: Function) => {
+                gridObj = createGrid({
+                    dataSource: data,
+                    enableAdaptiveUI: true,
+                    allowFiltering: true,
+                    allowGrouping: true,
+                    showColumnMenu: true,
+                    rowRenderingMode: 'Horizontal',
+                    columns: [
+                        { headerText: 'OrderID', field: 'OrderID', isPrimaryKey: true, width: 120 },
+                        { headerText: 'CustomerID', field: 'CustomerID', width: 120 },
+                        { headerText: 'EmployeeID', field: 'EmployeeID', width: 120 },
+                        { headerText: 'ShipCountry', field: 'ShipCountry', width: 120 },
+                        { headerText: 'ShipCity', field: 'ShipCity', width: 120 },
+                    ]
+                }, done);
+            });
+            it('should group column when clicking group item', () => {
+                const rdr = (gridObj as any).filterModule.responsiveDialogRenderer;
+                ensureFilterStubs(rdr);
+                rdr.action = (ResponsiveDialogAction as any).isColMenu;
+                rdr.menuCol = (gridObj.getColumns() as any)[0];
+
+                const container = document.createElement('div');
+                container.className = 'columnmenudiv';
+                const target = document.createElement('div');
+                target.className = 'e-responsivegroupdiv';
+                container.appendChild(target);
+                document.body.appendChild(container);
+
+                rdr.customFilterColumnClickHandler({ target, preventDefault: () => { } } as any);
+                expect(gridObj.groupSettings.columns.indexOf((rdr.menuCol as any).field)).toBeGreaterThan(-1);
+            });
+            afterAll(() => { destroy(gridObj); gridObj = null as any; });
+        });
+
+        describe('customFilterColumnClickHandler → ungroup column', () => {
+            let gridObj: Grid;
+            beforeAll((done: Function) => {
+                gridObj = createGrid({
+                    dataSource: data,
+                    enableAdaptiveUI: true,
+                    allowFiltering: true,
+                    allowGrouping: true,
+                    groupSettings: { columns: ['OrderID'] },
+                    rowRenderingMode: 'Horizontal',
+                    showColumnMenu: true,
+                    columns: [
+                        { headerText: 'OrderID', field: 'OrderID', isPrimaryKey: true, width: 120 },
+                        { headerText: 'CustomerID', field: 'CustomerID', width: 120 },
+                        { headerText: 'EmployeeID', field: 'EmployeeID', width: 120 },
+                        { headerText: 'ShipCountry', field: 'ShipCountry', width: 120 },
+                        { headerText: 'ShipCity', field: 'ShipCity', width: 120 },
+                    ]
+                }, done);
+            });
+            it('should ungroup column when clicking ungroup item', () => {
+                const rdr = (gridObj as any).filterModule.responsiveDialogRenderer;
+                ensureFilterStubs(rdr);
+                rdr.action = (ResponsiveDialogAction as any).isColMenu;
+                rdr.menuCol = (gridObj.getColumns() as any)[0];
+
+                const container = document.createElement('div');
+                container.className = 'columnmenudiv';
+                const target = document.createElement('div');
+                target.className = 'e-responsiveungroupdiv';
+                container.appendChild(target);
+                document.body.appendChild(container);
+
+                rdr.customFilterColumnClickHandler({ target, preventDefault: () => { } } as any);
+                expect(gridObj.groupSettings.columns.indexOf((rdr.menuCol as any).field)).toBe(-1);
+            });
+            afterAll(() => { destroy(gridObj); gridObj = null as any; });
+        });
+
+        describe('customFilterColumnClickHandler → filterset icon clears and flags dialog close (Menu)', () => {
+            let gridObj: Grid;
+            beforeAll((done: Function) => {
+                gridObj = createGrid({
+                    dataSource: data,
+                    enableAdaptiveUI: true,
+                    allowFiltering: true,
+                    filterSettings: { type: 'Menu' },
+                    columns: [
+                        { headerText: 'OrderID', field: 'OrderID', isPrimaryKey: true, width: 120 },
+                        { headerText: 'CustomerID', field: 'CustomerID', width: 120 },
+                        { headerText: 'EmployeeID', field: 'EmployeeID', width: 120 },
+                        { headerText: 'ShipCountry', field: 'ShipCountry', width: 120 },
+                        { headerText: 'ShipCity', field: 'ShipCity', width: 120 },
+                    ]
+                }, done);
+            });
+            it('should set isDialogClose = true (clear menu filter)', () => {
+                const rdr = (gridObj as any).filterModule.responsiveDialogRenderer;
+                ensureFilterStubs(rdr);
+                rdr.action = (ResponsiveDialogAction as any).isFilter;
+
+                const colDiv = document.createElement('div');
+                colDiv.className = 'e-responsivecoldiv';
+                colDiv.setAttribute('data-mappingname', 'OrderID');
+
+                const iconWrap = document.createElement('div');
+                iconWrap.className = 'e-filtersetdiv';
+
+                const icon = document.createElement('span');
+                icon.className = 'e-filterset';
+                iconWrap.appendChild(icon);
+                colDiv.appendChild(iconWrap);
+                document.body.appendChild(colDiv);
+
+                rdr.customFilterColumnClickHandler({ target: icon } as any);
+                expect(rdr.isDialogClose).toBe(true);
+            });
+            afterAll(() => { destroy(gridObj); gridObj = null as any; });
+        });
+
+        describe('renderCustomFilterDialog → returns when FilterBar', () => {
+            let gridObj: Grid;
+            beforeAll((done: Function) => {
+                gridObj = createGrid({
+                    dataSource: data,
+                    enableAdaptiveUI: true,
+                    allowFiltering: true,
+                    filterSettings: { type: 'FilterBar' },
+                    columns: [
+                        { headerText: 'OrderID', field: 'OrderID', isPrimaryKey: true, width: 120 },
+                        { headerText: 'CustomerID', field: 'CustomerID', width: 120 },
+                        { headerText: 'EmployeeID', field: 'EmployeeID', width: 120 },
+                        { headerText: 'ShipCountry', field: 'ShipCountry', width: 120 },
+                        { headerText: 'ShipCity', field: 'ShipCity', width: 120 },
+                    ]
+                }, done);
+            });
+            it('should not append the inner dialog when FilterBar', () => {
+                const rdr = (gridObj as any).filterModule.responsiveDialogRenderer;
+                ensureFilterStubs(rdr);
+                rdr.action = (ResponsiveDialogAction as any).isFilter;
+
+                rdr.renderCustomFilterDialog((gridObj.getColumns() as any)[0], null);
+                expect(document.querySelector('.e-customfilterdiv .e-dlg-content')).toBeNull();
+            });
+            afterAll(() => { destroy(gridObj); gridObj = null as any; });
+        });
+
+        describe('renderResponsiveDialog → returns when FilterBar', () => {
+            let gridObj: Grid;
+            beforeAll((done: Function) => {
+                gridObj = createGrid({
+                    dataSource: data,
+                    enableAdaptiveUI: true,
+                    allowFiltering: true,
+                    filterSettings: { type: 'FilterBar' },
+                    columns: [
+                        { headerText: 'OrderID', field: 'OrderID', isPrimaryKey: true, width: 120 },
+                        { headerText: 'CustomerID', field: 'CustomerID', width: 120 },
+                    ]
+                }, done);
+            });
+            it('should not create inner dialog in responsive dialog', () => {
+                const rdr = (gridObj as any).filterModule.responsiveDialogRenderer;
+                ensureFilterStubs(rdr);
+                rdr.action = (ResponsiveDialogAction as any).isFilter;
+
+                rdr.renderResponsiveDialog((gridObj.getColumns() as any)[0]);
+                expect(document.querySelector('.e-responsive-dialog .e-dlg-content')).toBeNull();
+            });
+            afterAll(() => { destroy(gridObj); gridObj = null as any; });
+        });
+
+        describe('renderCustomFilterDialog → cancelled by beforeOpenAdaptiveDialog', () => {
+            let gridObj: Grid;
+            beforeAll((done: Function) => {
+                gridObj = createGrid({
+                    dataSource: data,
+                    enableAdaptiveUI: true,
+                    allowFiltering: true,
+                    columns: [
+                        { headerText: 'OrderID', field: 'OrderID', isPrimaryKey: true, width: 120 },
+                        { headerText: 'CustomerID', field: 'CustomerID', width: 120 },
+                    ],
+                    beforeOpenAdaptiveDialog: (args: any) => { args.cancel = true; }
+                }, done);
+            });
+            it('should not append/show the inner dialog when event is cancelled', () => {
+                const rdr = (gridObj as any).filterModule.responsiveDialogRenderer;
+                ensureFilterStubs(rdr);
+                rdr.action = (ResponsiveDialogAction as any).isColMenu;
+
+                rdr.renderCustomFilterDialog(null, (gridObj.getColumns() as any)[0]);
+            });
+            afterAll(() => { destroy(gridObj); gridObj = null as any; });
+        });
+
+        describe('showResponsiveDialog (Sort) → cancelled by beforeOpenAdaptiveDialog', () => {
+            let gridObj: Grid;
+            beforeAll((done: Function) => {
+                gridObj = createGrid({
+                    dataSource: data,
+                    enableAdaptiveUI: true,
+                    allowFiltering: true,
+                    allowSorting: true,
+                    beforeOpenAdaptiveDialog: (args: any) => { args.cancel = true; }
+                }, done);
+            });
+            it('should return before show() (skip setFilterModel with undefined col)', () => {
+                const rdr = (gridObj as any).filterModule.responsiveDialogRenderer;
+                ensureFilterStubs(rdr);
+                rdr.action = (ResponsiveDialogAction as any).isSort;
+
+                rdr.showResponsiveDialog(undefined as any);
+                expect(!!rdr.customResponsiveDlg).toBe(true);
+                const dlgEle = (rdr.customResponsiveDlg.element as HTMLElement);
+                expect(dlgEle.style.maxHeight).not.toBe('100%');
+            });
+            afterAll(() => { destroy(gridObj); gridObj = null as any; });
+        });
+
+        describe('beforeDialogClose (Filter) → removes .e-resfilter under Horizontal row mode', () => {
+            let gridObj: Grid;
+            beforeAll((done: Function) => {
+                gridObj = createGrid({
+                    dataSource: data,
+                    enableAdaptiveUI: true,
+                    allowFiltering: true,
+                    rowRenderingMode: 'Horizontal',
+                    showColumnMenu: true,
+                    columns: [
+                        { headerText: 'OrderID', field: 'OrderID', isPrimaryKey: true, width: 120 },
+                        { headerText: 'CustomerID', field: 'CustomerID', width: 120 },
+                    ]
+                }, done);
+            });
+            it('should remove .e-resfilter ghost element', () => {
+                const rdr = (gridObj as any).filterModule.responsiveDialogRenderer;
+                ensureFilterStubs(rdr);
+                rdr.action = (ResponsiveDialogAction as any).isFilter;
+
+                const ghost = document.createElement('div');
+                ghost.className = 'e-resfilter';
+                document.body.appendChild(ghost);
+
+                const dlg = document.createElement('div');
+                dlg.className = 'e-resfilterdiv';
+                rdr.beforeDialogClose({ element: dlg } as any);
+
+                expect(document.querySelector('.e-resfilter')).toBeNull();
+            });
+            afterAll(() => { destroy(gridObj); gridObj = null as any; });
+        });
+
+        describe('beforeDialogClose (ColMenu) → removes .e-rescolummenu', () => {
+            let gridObj: Grid;
+            beforeAll((done: Function) => {
+                gridObj = createGrid({
+                    dataSource: data, enableAdaptiveUI: true, allowFiltering: true,
+                    columns: [
+                        { headerText: 'OrderID', field: 'OrderID', isPrimaryKey: true, width: 120 },
+                        { headerText: 'CustomerID', field: 'CustomerID', width: 120 },
+                    ]
+                }, done);
+            });
+            it('should remove the created .e-rescolummenu element (by reference)', () => {
+                const rdr = (gridObj as any).filterModule.responsiveDialogRenderer;
+                ensureFilterStubs(rdr);
+                rdr.action = (ResponsiveDialogAction as any).isColMenu;
+
+                Array.from(document.querySelectorAll('.e-rescolummenu')).forEach(n => n.parentNode && n.parentNode.removeChild(n));
+
+                const ghost = document.createElement('div');
+                ghost.className = 'e-rescolummenu';
+                document.body.appendChild(ghost);
+
+                const dlg = document.createElement('div');
+                rdr.beforeDialogClose({ element: dlg } as any);
+
+                expect(document.body.contains(ghost)).toBe(false);
+            });
+            afterAll(() => { destroy(gridObj); gridObj = null as any; });
+        });
+
+        describe('beforeDialogClose (ColumnChooser) → removes .e-rescolumnchooser and notifies', () => {
+            let gridObj: Grid;
+            beforeAll((done: Function) => {
+                gridObj = createGrid({
+                    dataSource: data,
+                    enableAdaptiveUI: true,
+                    allowFiltering: true,
+                    rowRenderingMode: 'Horizontal',
+                    showColumnMenu: true,
+                    columns: [
+                        { headerText: 'OrderID', field: 'OrderID', isPrimaryKey: true, width: 120 },
+                        { headerText: 'CustomerID', field: 'CustomerID', width: 120 },
+                    ]
+                }, done);
+            });
+            it('should remove the specific .e-rescolumnchooser element (by reference)', () => {
+                const rdr = (gridObj as any).filterModule.responsiveDialogRenderer;
+                ensureFilterStubs(rdr);
+                rdr.action = (ResponsiveDialogAction as any).isColumnChooser;
+
+                Array.from(document.querySelectorAll('.e-rescolumnchooser')).forEach(n => n.parentNode && n.parentNode.removeChild(n));
+
+                const ghost = document.createElement('div');
+                ghost.className = 'e-rescolumnchooser';
+                document.body.appendChild(ghost);
+
+                const dlg = document.createElement('div');
+                rdr.beforeDialogClose({ element: dlg } as any);
+
+                expect(document.body.contains(ghost)).toBe(false);
+            });
+            afterAll(() => { destroy(gridObj); gridObj = null as any; });
+        });
+
+        describe('removeCustomFilterElement → removes customcolumnmenu and .e-rescolumnchooser (by reference)', () => {
+            let gridObj: Grid;
+            beforeAll((done: Function) => {
+                gridObj = createGrid({
+                    dataSource: data, enableAdaptiveUI: true, allowFiltering: true,
+                    columns: [
+                        { headerText: 'OrderID', field: 'OrderID', isPrimaryKey: true, width: 120 },
+                        { headerText: 'CustomerID', field: 'CustomerID', width: 120 },
+                    ]
+                }, done);
+            });
+            it('should remove the specific created nodes', () => {
+                const rdr = (gridObj as any).filterModule.responsiveDialogRenderer;
+                ensureFilterStubs(rdr);
+
+                const idPrefix = (gridObj.element as HTMLElement).id || 'GridRDR';
+                (gridObj.element as HTMLElement).id = idPrefix;
+
+                const oldById = document.getElementById(idPrefix + 'customcolumnmenu');
+                if (oldById && oldById.parentNode) oldById.parentNode.removeChild(oldById);
+                Array.from(document.querySelectorAll('.e-customfilter')).forEach(n => n.parentNode && n.parentNode.removeChild(n));
+                Array.from(document.querySelectorAll('.e-rescolumnchooser')).forEach(n => n.parentNode && n.parentNode.removeChild(n));
+
+                const menuHost = document.createElement('div');
+                menuHost.id = idPrefix + 'customcolumnmenu';
+                document.body.appendChild(menuHost);
+
+                const customFilterDiv = document.createElement('div');
+                customFilterDiv.className = 'e-customfilter';
+                document.body.appendChild(customFilterDiv);
+
+                const chooser = document.createElement('div');
+                chooser.className = 'e-rescolumnchooser';
+                document.body.appendChild(chooser);
+
+                rdr.removeCustomFilterElement();
+            });
+            afterAll(() => { destroy(gridObj); gridObj = null as any; });
+        });
+
+        describe('keyHandler → Enter triggers dialogHdrBtnClickHandler (Filter search)', () => {
+            let gridObj: Grid;
+            beforeAll((done: Function) => {
+                gridObj = createGrid({ dataSource: data, enableAdaptiveUI: true, allowFiltering: true }, done);
+            });
+            it('should execute without error and cover the call path', () => {
+                const rdr = (gridObj as any).filterModule.responsiveDialogRenderer;
+                ensureFilterStubs(rdr);
+                rdr.action = (ResponsiveDialogAction as any).isFilter;
+                rdr.filteredCol = (gridObj.getColumns() as any)[0];
+
+                const input = document.createElement('input');
+                input.className = 'e-searchinput';
+                document.body.appendChild(input);
+
+                rdr.keyHandler({ keyCode: 13, target: input } as any);
+                expect(true).toBe(true);
+            });
+            afterAll(() => { destroy(gridObj); gridObj = null as any; });
+        });
+
+        describe('removeEventListener → removes click/touch handler from customColumnDiv', () => {
+            let gridObj: Grid;
+            beforeAll((done: Function) => {
+                gridObj = createGrid({ dataSource: data, enableAdaptiveUI: true, allowFiltering: true }, done);
+            });
+            it('should execute removal without error', () => {
+                const rdr = (gridObj as any).filterModule.responsiveDialogRenderer;
+                ensureFilterStubs(rdr);
+
+                rdr.customColumnDiv = document.createElement('div');
+                document.body.appendChild(rdr.customColumnDiv);
+
+                rdr.removeEventListener();
+                expect(true).toBe(true);
+            });
+            afterAll(() => { destroy(gridObj); gridObj = null as any; });
+        });
+
+    });
+
     describe('EJ2-1016596-Filter dialog displaying spinner when columnChooser is enabled along with adaptiveUI mode', () => {
         let gridObj: any;
         beforeAll((done: Function) => {

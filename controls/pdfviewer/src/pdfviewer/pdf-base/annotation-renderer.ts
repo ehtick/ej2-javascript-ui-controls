@@ -1555,8 +1555,10 @@ export class AnnotationRenderer {
         const rotationAngle: number = this.getInkRotateAngle(page.rotation.toString());
         const left: number = this.convertPixelToPoint(bounds.x);
         const top: number = this.convertPixelToPoint(bounds.y);
-        const width: number = this.convertPixelToPoint(bounds.width);
-        const height: number = this.convertPixelToPoint(bounds.height);
+        let width: number = this.convertPixelToPoint(bounds.width);
+        let height: number = this.convertPixelToPoint(bounds.height);
+        width = width > 0 ? width : 1;
+        height = height > 0 ? height : 1;
         const opacity: number = inkSignatureAnnotation.opacity;
         const thickness: number = parseInt(inkSignatureAnnotation.thickness.toString(), 10);
         if (!isNullOrUndefined(inkSignatureAnnotation.strokeColor)) {
@@ -1601,10 +1603,10 @@ export class AnnotationRenderer {
         }
         let newDifferenceX: number = (maximumX - minimumX) / width;
         let newDifferenceY: number = (maximumY - minimumY) / height;
-        if (newDifferenceX === 0) {
+        if (newDifferenceX === 0 || isNaN(newDifferenceX)) {
             newDifferenceX = 1;
         }
-        else if (newDifferenceY === 0) {
+        if (newDifferenceY === 0 || isNaN(newDifferenceY)) {
             newDifferenceY = 1;
         }
         let linePoints: Point[] = [];
@@ -1782,8 +1784,10 @@ export class AnnotationRenderer {
         const rotationAngle: number = this.getInkRotateAngle(page.rotation.toString());
         const left: number = this.convertPixelToPoint(bounds.x);
         const top: number = this.convertPixelToPoint(bounds.y);
-        const width: number = this.convertPixelToPoint(bounds.width);
-        const height: number = this.convertPixelToPoint(bounds.height);
+        let width: number = this.convertPixelToPoint(bounds.width);
+        let height: number = this.convertPixelToPoint(bounds.height);
+        width = width > 0 ? width : 1;
+        height = height > 0 ? height : 1;
         const opacity: number = inkSignatureAnnotation.opacity;
         const thickness: number = parseInt(inkSignatureAnnotation.thickness.toString(), 10);
         if (!isNullOrUndefined(inkSignatureAnnotation.strokeColor)) {
@@ -1828,10 +1832,10 @@ export class AnnotationRenderer {
         }
         let newDifferenceX: number = (maximumX - minimumX) / width;
         let newDifferenceY: number = (maximumY - minimumY) / height;
-        if (newDifferenceX === 0) {
+        if (newDifferenceX === 0 || isNaN(newDifferenceX)) {
             newDifferenceX = 1;
         }
-        else if (newDifferenceY === 0) {
+        if (newDifferenceY === 0 || isNaN(newDifferenceY)) {
             newDifferenceY = 1;
         }
         let linePoints: Point[] = [];

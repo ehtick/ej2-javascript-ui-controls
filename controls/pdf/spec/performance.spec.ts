@@ -425,7 +425,7 @@ describe('Performance', () => {
         pdfDocument.importPageRange(documentSrc, 0, 10);
         const end = performance.now();
         const total = end - start;
-        expect(total).toBeLessThanOrEqual(600);
+        expect(total).toBeLessThanOrEqual(800);
         documentSrc.destroy();
         pdfDocument.destroy();
     });

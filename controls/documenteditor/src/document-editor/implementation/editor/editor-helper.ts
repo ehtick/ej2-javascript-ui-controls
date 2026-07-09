@@ -2340,6 +2340,22 @@ export interface FieldResultInfo {
 /**
  * @private
  */
+export interface ListCounterInfo {
+    /**
+     * Specifies the first counter
+     * @private
+     */
+    first: number;
+    /**
+     * Specifies the second counter
+     * @private
+     */
+    second: number;
+}
+
+/**
+ * @private
+ */
 export interface AbsoluteParagraphInfo {
     offset: number,
     currentLength: number,

@@ -16583,6 +16583,13 @@ export class Editor {
         paragraph.characterFormat = new WCharacterFormat(paragraph, this.owner);
         paragraph.paragraphFormat.copyFormat(paragraphAdv.paragraphFormat);
         paragraph.characterFormat.copyFormat(paragraphAdv.characterFormat);
+        let isFollowedListLayoutRequired: boolean = false;
+        if (!isNullOrUndefined(paragraph.paragraphFormat) && paragraph.characterFormat.removedIds.length > 0
+            && !isNullOrUndefined(paragraph.paragraphFormat.listFormat)
+            && !isNullOrUndefined(this.documentHelper.getListById(paragraph.paragraphFormat.listFormat.listId))
+            && paragraph.paragraphFormat.listFormat.listLevel.listLevelPattern !== 'Bullet') {
+            isFollowedListLayoutRequired = true;
+        }
         paragraph.characterFormat.removedIds = [];
         let lineWidget: LineWidget = new LineWidget(paragraph);
         paragraph.childWidgets.push(lineWidget);
@@ -16635,7 +16642,7 @@ export class Editor {
         if (removeBlock) {
             this.removeBlock(paragraphAdv, undefined, skipElementRemoval, isSelectionInsideTable);
         }
-
+        this.documentHelper.isFollowedListLayoutRequired = isFollowedListLayoutRequired;
         this.documentHelper.layout.layoutBodyWidgetCollection(blockIndex, paragraph.containerWidget as BodyWidget, paragraph, false);
         return paragraph;
     }
@@ -21377,6 +21384,10 @@ export class Editor {
                             if (this.owner.editorHistory && this.owner.editorHistory.currentBaseHistoryInfo) {
                                 this.owner.editorHistory.currentBaseHistoryInfo.action = 'AddRevision';
                                 this.owner.editorHistory.currentBaseHistoryInfo.modifiedProperties.push(revision.revisionID);
+                                if (this.owner.documentHelper.isFollowedListLayoutRequired) {
+                                    paragraph = paragraph.combineWidget(this.owner.viewer) as ParagraphWidget;
+                                    this.owner.documentHelper.layout.reLayoutParagraph(paragraph, 0, 0, undefined, undefined);
+                                }
                             }
                         }
                     }
@@ -21434,6 +21445,10 @@ export class Editor {
                             if (this.owner.editorHistory && this.owner.editorHistory.currentBaseHistoryInfo) {
                                 this.owner.editorHistory.currentBaseHistoryInfo.action = 'AddRevision';
                                 this.owner.editorHistory.currentBaseHistoryInfo.modifiedProperties.push(revision.revisionID);
+                                if (this.owner.documentHelper.isFollowedListLayoutRequired) {
+                                    paragraph = paragraph.combineWidget(this.owner.viewer) as ParagraphWidget;
+                                    this.owner.documentHelper.layout.reLayoutParagraph(paragraph, 0, 0, undefined, undefined);
+                                }
                             }
                         }
                     }
@@ -22438,7 +22453,20 @@ export class Editor {
                         element.text = listText;
                     }
                 }
-                const currentWidth: number = this.documentHelper.textHelper.getTextSize(element, element.characterFormat);
+                let currentWidth: number = this.documentHelper.textHelper.getTextSize(element, element.characterFormat);
+                // Calculate and cache dual widths for delimiter-separated list text (e.g., "2.|6.")
+                if (element.text && element.text.indexOf('\u001F') > -1) {
+                    const parts: string[] = element.text.split('\u001F');
+                    if (parts.length === 2) {
+                        const w1: number = this.documentHelper.textHelper.getWidth(parts[0], paragraph.characterFormat);
+                        const w2: number = this.documentHelper.textHelper.getWidth(parts[1], paragraph.characterFormat);
+                        element.dualWidths = { w1, w2 };
+                        currentWidth = w1 + w2;
+                    }
+                } else {
+                    // Clear dualWidths when converting from dual to single list
+                    element.dualWidths = undefined;
+                }
                 if (currentWidth > prevWidth) {
                     element.width = currentWidth;
                 }

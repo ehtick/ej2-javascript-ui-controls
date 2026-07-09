@@ -371,7 +371,7 @@ describe('Diagram Control', () => {
             diagram.clearSelection();
 
             let offsetX: number = diagram.nodes[0].offsetX;
-            let offsetY: number = diagram.nodes[0].offsetY;
+            let offsetY: number = diagram.nodes[0].offsetY - 25;
 
             //just for coverage
             mouseEvents.mouseMoveEvent(diagramCanvas, offsetX, offsetY, true);
@@ -383,7 +383,7 @@ describe('Diagram Control', () => {
             mouseEvents.dragAndDropEvent(diagramCanvas, offsetX, offsetY, offsetX - 200, offsetY - 200);
 
             expect(diagram.selectedItems.nodes.length == 1 && offsetX - diagram.selectedItems.nodes[0].offsetX == 200 &&
-                offsetY - diagram.selectedItems.nodes[0].offsetY == 200).toBe(true);
+                offsetY - diagram.selectedItems.nodes[0].offsetY == 175).toBe(true);
             done();
         });
 

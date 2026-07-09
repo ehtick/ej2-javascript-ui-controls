@@ -1554,7 +1554,7 @@ describe('Infinite scroll with grouping collapse testing => ', () => {
                 allowGrouping: true,
                 enableInfiniteScrolling: true,
                 groupSettings: { columns: ['ProductName'] },
-                height: 400,
+                height: 200,
                 columns: [
                     { field: 'OrderID', headerText: 'Employee ID', textAlign: 'Right', width: 125, isPrimaryKey: true },
                     { field: 'CustomerID', headerText: 'Customer ID', width: 125, editType: 'dropdownedit' },
@@ -1630,6 +1630,7 @@ describe('Infinite scroll with grouping collapse testing => ', () => {
         };
         gridObj.dataBound = dataBound;
         gridObj.groupModule.expandCollapseRows(gridObj.getContent().querySelectorAll('.e-recordplusexpand')[2])
+        done();
     });
 
     afterAll(() => {
@@ -2570,6 +2571,42 @@ describe('Infinite scroll normal mode with edit feature teating => ', () => {
         (gridObj as any).infiniteScrollModule.getEditedRowObject();
         done();
     })
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('EJ2-1026684: Implement Automatic PageSize Calculation in infinitescrolling Using Grid Height and Row Height => ', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: virtualData,
+                enableInfiniteScrolling: true,
+                editSettings: { allowAdding: true, allowEditing: true, allowDeleting: true },
+                toolbar: ['Add', 'Edit', 'Delete', 'Update', 'Cancel'],
+                height: 400,
+                columns: [
+                    { field: 'FIELD2', headerText: 'FIELD2', isPrimaryKey: true, width: 120 },
+                    { field: 'FIELD1', headerText: 'FIELD1', width: 100 },
+                    { field: 'FIELD3', headerText: 'FIELD3', width: 120 },
+                    { field: 'FIELD4', headerText: 'FIELD4', width: 120 },
+                    { field: 'FIELD5', headerText: 'FIELD5', width: 120 }
+                ]
+            }, () => {
+                setTimeout(done, 200);
+            });
+    });
+    it('get the pageSize', (done: Function)=> {
+        expect((gridObj as any).pageSettings.pageSize).toBe(20);
+        done();
+    });
+    it('coverage for vh height', (done: Function)=> {
+        gridObj.height = '60vh';
+        (gridObj as any).infiniteScrollModule.calculateAutoPageSize();
+        done();
+    });
     afterAll(() => {
         destroy(gridObj);
         gridObj = null;

@@ -137,8 +137,10 @@ export class Revision {
      * @private
      */
     public handleAcceptReject(isFromAccept: boolean, isGroupAcceptOrReject?: boolean): void {
-        let start: TextPosition = this.owner.selection.start.clone();
-        let end: TextPosition = this.owner.selectionModule.end.clone();
+        let paragraphInfo: ParagraphInfo = this.owner.selection.getParagraphInfo(this.owner.selection.start);
+        let endParagraphInfo: ParagraphInfo = this.owner.selection.getParagraphInfo(this.owner.selectionModule.end);
+        const startIndex: string = this.owner.selection.getHierarchicalIndex(paragraphInfo.paragraph, paragraphInfo.offset.toString());
+        const endIndex: string = this.owner.selection.getHierarchicalIndex(endParagraphInfo.paragraph, endParagraphInfo.offset.toString());
         this.owner.selectionModule.selectRevision(this, undefined, undefined, true);
         const selection: Selection = this.owner.selectionModule;
         let startPos: TextPosition = selection.start;
@@ -207,6 +209,8 @@ export class Revision {
             selection.selectRange(startPos, endPos);
             this.owner.editorModule.updateHistoryPosition(endPos, false);
             if (!isNullOrUndefined(this.owner.editorHistory) && !isNullOrUndefined(this.owner.editorHistory.currentHistoryInfo) && (this.owner.editorHistory.currentHistoryInfo.action === 'Accept All' || this.owner.editorHistory.currentHistoryInfo.action === 'Reject All') && !blockInfo.paragraph.isInHeaderFooter) {
+                const start: TextPosition = this.owner.selection.getTextPosBasedOnLogicalIndex(startIndex);
+                const end: TextPosition = this.owner.selection.getTextPosBasedOnLogicalIndex(endIndex);
                 this.owner.selection.selectPosition(start, end, true);
                 this.owner.editorHistory.currentHistoryInfo.insertPosition = this.owner.selection.startOffset;
                 this.owner.editorHistory.currentHistoryInfo.endPosition = this.owner.selection.endOffset;
@@ -467,6 +471,18 @@ export class Revision {
             this.owner.editorHistoryModule.currentBaseHistoryInfo.action = 'ClearRevisions';
             this.updateRevisionID();
             this.removeRevisionFromPara(start, end);
+            let paragraphInfo: ParagraphInfo = this.owner.selection.getParagraphInfo(start);
+            let endParagraphInfo: ParagraphInfo = this.owner.selection.getParagraphInfo(end);
+            const startIndex: string = this.owner.selection.getHierarchicalIndex(paragraphInfo.paragraph, paragraphInfo.offset.toString());
+            const endIndex: string = this.owner.selection.getHierarchicalIndex(endParagraphInfo.paragraph, endParagraphInfo.offset.toString());
+            if (this.owner.documentHelper.isFollowedListLayoutRequired) {
+                let paragraph: ParagraphWidget = paragraphInfo.paragraph.combineWidget(this.owner.viewer) as ParagraphWidget;
+                this.owner.documentHelper.layout.reLayoutParagraph(paragraph, 0, 0, undefined, undefined);
+                const startPos: TextPosition = this.owner.selection.getTextPosBasedOnLogicalIndex(startIndex);
+                start.setPositionInternal(startPos);
+                const endPos: TextPosition = this.owner.selection.getTextPosBasedOnLogicalIndex(endIndex);
+                end.setPositionInternal(endPos);
+            }
         } else if (item instanceof WRowFormat && !removeChanges) {
             this.isTableRevision = true;
             let tableWidget: TableWidget = (item as WRowFormat).ownerBase.ownerTable;

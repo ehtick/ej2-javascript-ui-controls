@@ -14,12 +14,13 @@ import { ServiceLocator } from '../services/service-locator';
 import { InterSectionObserver, ScrollDirection } from '../services/intersection-observer';
 import { RendererFactory } from '../services/renderer-factory';
 import { VirtualRowModelGenerator } from '../services/virtual-row-model-generator';
-import { isGroupAdaptive, ensureLastRow, ensureFirstRow, getEditedDataIndex, getTransformValues, checkIsVirtual, getVisiblePage, parentsUntil, getScrollBarWidth, isEnableSeamlessScrolling } from '../base/util';
+import { isGroupAdaptive, ensureLastRow, ensureFirstRow, getEditedDataIndex, getTransformValues, checkIsVirtual, getVisiblePage, parentsUntil, getScrollBarWidth, isEnableSeamlessScrolling, parseViewportHeight } from '../base/util';
 import { setStyleAttribute } from '@syncfusion/ej2-base';
 import { ColumnWidthService } from '../services/width-controller';
 import { Grid } from '../base/grid';
 import * as literals from '../base/string-literals';
 import { FocusStrategy } from '../services/focus-strategy';
+import { VirtualFooterRenderer } from './virtual-footer-renderer';
 /**
  * VirtualContentRenderer
  *
@@ -146,6 +147,9 @@ export class VirtualContentRenderer extends ContentRender implements IRenderer {
     }
 
     public getReorderedFrozenRows(args: NotifyArgs): Row<Column>[] {
+        if (isNullOrUndefined(args.virtualInfo)) {
+            return [];
+        }
         const blockIndex: number[] = args.virtualInfo.blockIndexes;
         const colsIndex: number[] = args.virtualInfo.columnIndexes;
         const page: number = args.virtualInfo.page;
@@ -376,11 +380,15 @@ export class VirtualContentRenderer extends ContentRender implements IRenderer {
         if (this.parent.groupSettings.columns.length) {
             this.refreshOffsets();
         }
-        if (this.parent.height === '100%') {
-            this.parent.element.style.height = '100%';
+        if (this.parent.height === '100%' || (typeof this.parent.height === 'string' &&
+                    this.parent.height.toLowerCase().indexOf('vh') !== -1)) {
+            this.parent.element.style.height = this.parent.height;
         }
         let vHeight: string | number = this.parent.height.toString().indexOf('%') < 0 ? this.content.getBoundingClientRect().height :
             this.parent.element.getBoundingClientRect().height;
+        if (typeof this.parent.height === 'string' && this.parent.height.toLowerCase().indexOf('vh') !== -1) {
+            vHeight = parseViewportHeight(this.parent.height);
+        }
         if (!this.parent.enableVirtualization && this.parent.enableColumnVirtualization) {
             vHeight = 0;
         }
@@ -413,6 +421,9 @@ export class VirtualContentRenderer extends ContentRender implements IRenderer {
         }
         if (this.parent.enableColumnVirtualization) {
             this.header.virtualEle.adjustTable(cOffset, 0);
+            if (this.parent.aggregates.length) {
+                this.updateVirtualFooterPosition(cOffset);
+            }
         }
 
         if (this.parent.enableColumnVirtualization) {
@@ -426,6 +437,12 @@ export class VirtualContentRenderer extends ContentRender implements IRenderer {
                 }
             }
             this.header.virtualEle.setWrapperWidth(width);
+            if (this.parent.aggregateModule && this.parent.aggregates && this.parent.aggregates.length) {
+                const footerRendererObj: VirtualFooterRenderer = this.parent.aggregateModule['footerRenderer'] as VirtualFooterRenderer;
+                if (footerRendererObj && footerRendererObj.virtualElement) {
+                    footerRendererObj.virtualElement.setWrapperWidth(width);
+                }
+            }
         }
         this.virtualEle.setWrapperWidth(width, <boolean>Browser.isIE || Browser.info.name === 'edge');
         if (this.parent.enableColumnVirtualization && isNullOrUndefined(target) && isNullOrUndefined(newChild) ) {
@@ -651,11 +668,11 @@ export class VirtualContentRenderer extends ContentRender implements IRenderer {
     }
 
     private updateVirtualScrollbar(virtualHeight: number, width: string): void {
+        this.virtualEle.gridContent.style.position = 'relative';
         if (this.parent.enableVirtualization && !isNullOrUndefined(this.virtualEle.verticalScrollbar) &&
             !isNullOrUndefined(this.virtualEle.verticalScrollerContainer) && !isNullOrUndefined(this.content)) {
             this.virtualEle.verticalScrollbar.style.overflowX = this.parent.enableVirtualization &&
                 parseInt(width, 10) > this.virtualEle.wrapper.clientWidth ? 'scroll' : 'hidden';
-            this.virtualEle.gridContent.style.position = 'relative';
             this.virtualEle.verticalScrollerContainer.style.height = !isNullOrUndefined(virtualHeight) ? virtualHeight + 'px' : '0px';
             this.virtualEle.verticalScrollbar.style.width = getScrollBarWidth() + 1 + 'px';
         }
@@ -713,6 +730,12 @@ export class VirtualContentRenderer extends ContentRender implements IRenderer {
         }
         if (this.parent.enableColumnVirtualization && this.header.virtualEle) {
             this.header.virtualEle.setVirtualHeight(1, width);
+            if (this.parent.aggregateModule && this.parent.aggregates && this.parent.aggregates.length) {
+                const footerRendererObj: VirtualFooterRenderer = this.parent.aggregateModule['footerRenderer'] as VirtualFooterRenderer;
+                if (footerRendererObj && footerRendererObj.virtualElement) {
+                    footerRendererObj.virtualElement.setVirtualHeight(1, width);
+                }
+            }
         }
         if (this.parent.enableSeamlessScrolling) {
             this.updateVirtualScrollbar(virtualHeight, width);
@@ -848,6 +871,9 @@ export class VirtualContentRenderer extends ContentRender implements IRenderer {
             }
             if (this.parent.enableColumnVirtualization) {
                 this.header.virtualEle.adjustTable(x, 0);
+                if (this.parent.aggregates.length) {
+                    this.updateVirtualFooterPosition(x);
+                }
                 if (this.parent.isFrozenGrid()) {
                     this.resetStickyLeftPos(x);
                 }
@@ -874,9 +900,17 @@ export class VirtualContentRenderer extends ContentRender implements IRenderer {
      * @hidden
      */
     public resetStickyLeftPos(valueX?: number, newChild?: DocumentFragment | HTMLElement): void {
-        const cells: HTMLElement[] = [].slice.call(this.parent.getHeaderContent().querySelectorAll(
+        let cells: HTMLElement[] = [].slice.call(this.parent.getHeaderContent().querySelectorAll(
             '.e-leftfreeze,.e-rightfreeze,.e-fixedfreeze')).concat([].slice.call(
             (newChild ? newChild : this.parent.getContent()).querySelectorAll('.e-leftfreeze,.e-rightfreeze,.e-fixedfreeze')));
+        if (this.parent.getFooterContent()) {
+            cells = cells.concat(
+                [].slice.call(
+                    this.parent.getFooterContent()
+                        .querySelectorAll('.e-leftfreeze,.e-rightfreeze,.e-fixedfreeze')
+                )
+            );
+        }
         let frzLeftWidth: number = 0;
         let frzRightWidth: number = 0;
         if (this.parent.getHeaderContent().querySelectorAll('.e-fixedfreeze').length) {
@@ -896,8 +930,10 @@ export class VirtualContentRenderer extends ContentRender implements IRenderer {
                         col = this.parent.getColumnByIndex(parseInt(idx.toString(), 10));
                     }
                 } else {
-                    if (cell.classList.contains('e-headercell') || cell.classList.contains('e-filterbarcell')) {
-                        const uid: string = cell.classList.contains('e-filterbarcell') ? cell.getAttribute('data-mappinguid') :
+                    if (cell.classList.contains('e-headercell') || cell.classList.contains('e-filterbarcell')
+                        || cell.classList.contains('e-summarycell')) {
+                        const uid: string = cell.classList.contains('e-filterbarcell') || cell.classList.contains('e-summarycell') ?
+                            cell.getAttribute('data-mappinguid') :
                             cell.querySelector('[data-mappinguid]').getAttribute('data-mappinguid');
                         col = this.parent.getColumnByUid(uid);
                     }
@@ -1044,6 +1080,19 @@ export class VirtualContentRenderer extends ContentRender implements IRenderer {
         this.parent.on(contentReady, fn, this);
     }
 
+    /**
+     * Updates the position of the virtual footer element.
+     *
+     * @param {number} xOffset - X position offset
+     * @returns {void}
+     */
+    private updateVirtualFooterPosition(xOffset: number): void {
+        const footerRendererObj: VirtualFooterRenderer = this.parent.aggregateModule['footerRenderer'] as VirtualFooterRenderer;
+        if (footerRendererObj && footerRendererObj.virtualElement) {
+            footerRendererObj.virtualElement.adjustTable(xOffset, 0);
+        }
+    }
+
     public destroy(): void {
         this.removeEventListener();
     }
@@ -1187,6 +1236,8 @@ export class VirtualContentRenderer extends ContentRender implements IRenderer {
     }
 
     private virtualCellFocus(e: KeyboardEventArgs): void {
+        if (e && (e.action === 'enter' || e.action === 'shiftEnter') && this.parent.editSettings &&
+            this.parent.editSettings.mode === 'Cell') { return; }
         // To decide the action (select or scroll), when using arrow keys for cell focus
         let ele: Element = document.activeElement;
         if (!ele.classList.contains(literals.rowCell) && (ele instanceof HTMLInputElement
@@ -1502,7 +1553,8 @@ export class VirtualContentRenderer extends ContentRender implements IRenderer {
         const rowCollection: Element[] = this.parent.getDataRows();
         const pinnedRows: Row<Column>[] = this.parent.pinnedTopRowModels;
         let collection: Element[] | Object[] = isRowObject ? this.parent.getCurrentViewRecords() : rowCollection;
-        if (isRowObject && this.parent.allowGrouping && this.parent.groupSettings.columns.length) {
+        if (isRowObject && this.parent.allowGrouping && this.parent.groupSettings.columns.length &&
+            !this.parent.groupSettings.enableLazyLoading) {
             startIdx = parseInt(this.parent.getRows()[0].getAttribute(literals.ariaRowIndex), 10) - 1;
             collection = collection.filter((m: object) => { return isNullOrUndefined((<{items?: object }>m).items); });
         }

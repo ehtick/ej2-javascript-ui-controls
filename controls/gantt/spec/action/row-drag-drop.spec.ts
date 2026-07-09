@@ -2,7 +2,7 @@
  * Gantt Drag and drop spec
  */
 import { Gantt, Edit, Selection, IGanttData, RowDD, Filter, Toolbar, ColumnMenu, CriticalPath, UndoRedo} from '../../src/index';
-import { dragSelfReferenceData, normalResourceData, resourceCollection, editingData, projectData,projectResources, dubnormalResourceData, dubmilnormalResourceData, selfReferenceResource, selfReferenceResourceView } from '../base/data-source.spec';
+import { dragSelfReferenceData, normalResourceData, resourceCollection, editingData, projectData,projectResources, dubnormalResourceData, dubmilnormalResourceData, selfReferenceResource, selfReferenceResourceView, multiTaskbarData } from '../base/data-source.spec';
 import { createGantt, destroyGantt, triggerMouseEvent } from '../base/gantt-util.spec';
 
 function mouseMoveFunction(eventType: any, clientX: any, clientY:any) {
@@ -3997,6 +3997,406 @@ describe('Gantt Drag and Drop Functionality', () => {
         ganttObj.reorderRows([2], 1, 'child');
       });
   
+    afterAll(() => {
+      if (ganttObj) {
+        destroyGantt(ganttObj);
+      }
+    });
+  });
+
+  describe('Check datasource position after Drag drop in resource view', () => {
+    let ganttObj_self: Gantt;
+    let resources = [
+        { resourceId: 1, resourceName: 'Martin Tamer', resourceGroup: 'Planning Team', isExpand: false },
+        { resourceId: 2, resourceName: 'Rose Fuller', resourceGroup: 'Testing Team', isExpand: true },
+        { resourceId: 3, resourceName: 'Margaret Buchanan', resourceGroup: 'Approval Team', isExpand: false },
+        { resourceId: 4, resourceName: 'Fuller King', resourceGroup: 'Development Team', isExpand: false },
+        { resourceId: 5, resourceName: 'Davolio Fuller', resourceGroup: 'Approval Team', isExpand: true }
+    ];
+    beforeAll((done: Function) => {
+        ganttObj_self = createGantt(
+            {
+                dataSource: multiTaskbarData,
+                resources: resources,
+                allowRowDragAndDrop: true,
+                viewType: 'ResourceView',
+                enableMultiTaskbar: true,
+                showOverAllocation: true,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    endDate: 'EndDate',
+                    duration: 'Duration',
+                    dependency: 'Predecessor',
+                    progress: 'Progress',
+                    resourceInfo: 'resources',
+                    work: 'work',
+                    expandState: 'isExpand',
+                    child: 'subtasks'
+                },
+                resourceFields: {
+                    id: 'resourceId',
+                    name: 'resourceName',
+                    unit: 'resourceUnit',
+                    group: 'resourceGroup'
+                },
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true,
+                    showDeleteConfirmDialog: true
+                },
+                enableUndoRedo: true,
+                columns: [
+                    { field: 'TaskID', visible: false },
+                    { field: 'TaskName', headerText: 'Name', width: 250 },
+                    { field: 'work', headerText: 'Work' },
+                    { field: 'Progress' },
+                    { field: 'resourceGroup', headerText: 'Group' },
+                    { field: 'StartDate' },
+                    { field: 'Duration' },
+                ],
+                toolbar: ['Add', 'Edit', 'Update', 'Delete', 'Cancel', 'ExpandAll', 'CollapseAll'],
+                labelSettings: {
+                    taskLabel: 'TaskName'
+                },
+                splitterSettings: {
+                    columnIndex: 2
+                },
+                allowResizing: true,
+                allowSelection: true,
+                highlightWeekends: true,
+                treeColumnIndex: 1,
+                allowTaskbarDragAndDrop: true,
+                height: '450px',
+                projectStartDate: new Date('03/28/2019'),
+                projectEndDate: new Date('05/18/2019')
+    }, done);
+    });
+    afterAll(() => {
+        if (ganttObj_self) {
+            destroyGantt(ganttObj_self);
+        }
+    });
+    it('Drag drop parent item', function () {
+        ganttObj_self.reorderRows([0],4, 'below');
+        ganttObj_self.undo();
+    });
+});
+
+describe('drag drop record coverage', () => {
+    let ganttObj_self: Gantt;
+    let resources = [
+        { resourceId: 1, resourceName: 'Martin Tamer', resourceGroup: 'Planning Team', isExpand: false },
+        { resourceId: 2, resourceName: 'Rose Fuller', resourceGroup: 'Testing Team', isExpand: true },
+        { resourceId: 3, resourceName: 'Margaret Buchanan', resourceGroup: 'Approval Team', isExpand: false },
+        { resourceId: 4, resourceName: 'Fuller King', resourceGroup: 'Development Team', isExpand: false },
+        { resourceId: 5, resourceName: 'Davolio Fuller', resourceGroup: 'Approval Team', isExpand: true }
+    ];
+    beforeAll((done: Function) => {
+        ganttObj_self = createGantt({
+                dataSource: multiTaskbarData,
+                resources: resources,
+                viewType: 'ResourceView',
+                showOverAllocation: true,
+                enableContextMenu: true,
+                allowSorting: true,
+                allowReordering: true,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    endDate: 'EndDate',
+                    duration: 'Duration',
+                    progress: 'Progress',
+                    dependency: 'Predecessor',
+                    resourceInfo: 'resources',
+                    work: 'work',
+                    child: 'subtasks'
+                },
+                resourceFields: {
+                    id: 'resourceId',
+                    name: 'resourceName',
+                    unit: 'resourceUnit',
+                    group: 'resourceGroup'
+                },
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true,
+                    showDeleteConfirmDialog: true
+                },
+                columns: [
+                    { field: 'TaskID', visible: false },
+                    { field: 'TaskName', headerText: 'Name', width: 250 },
+                    { field: 'work', headerText: 'Work' },
+                    { field: 'Progress' },
+                    { field: 'resourceGroup', headerText: 'Group' },
+                    { field: 'StartDate' },
+                    { field: 'Duration' },
+                ],
+                toolbar: ['Add', 'Edit', 'Update', 'Delete', 'Cancel', 'ExpandAll', 'CollapseAll',
+                'Search', 'ZoomIn', 'ZoomOut', 'ZoomToFit',  'PrevTimeSpan', 'NextTimeSpan','ExcelExport', 'CsvExport', 'PdfExport'],
+                labelSettings: {
+                    rightLabel: 'resources',
+                    taskLabel: 'Progress'
+                },
+                splitterSettings: {
+                    columnIndex: 3
+                },
+                selectionSettings: {
+                    mode: 'Row',
+                    type: 'Single',
+                    enableToggle: false
+                },
+                tooltipSettings: {
+                    showTooltip: true
+                },
+                timelineSettings: {
+                    showTooltip: true,
+                    topTier: {
+                        unit: 'Week',
+                        format: 'dd/MM/yyyy'
+                    },
+                    bottomTier: {
+                        unit: 'Day',
+                        count: 1
+                    }
+                },
+                //gridLines: "Both",
+                enableUndoRedo: true,
+                allowRowDragAndDrop: true,
+                allowResizing: true,
+                allowFiltering: true,
+                allowSelection: true,
+                highlightWeekends: true,
+                treeColumnIndex: 1,
+                taskbarHeight: 20,
+                rowHeight: 40,
+                height: '550px',
+                projectStartDate: new Date('03/28/2019'),
+                projectEndDate: new Date('05/18/2019')
+        }, done);
+    });
+    afterAll(() => {
+        if (ganttObj_self) {
+            destroyGantt(ganttObj_self);
+        }
+    });
+    it('row drop coverage', function () {
+        let args: any = {cancel: false, draggableType: "rows", data: [ganttObj_self.flatData[1]], dropIndex: 4, dropPosition: "bottomSegment", dropRecord: ganttObj_self.flatData[4], fromIndex: 1, name: "rowDrop", target: document.querySelector('.e-left-label-container')};
+        ganttObj_self.rowDragAndDropModule['rowDrop'](args);
+    });
+    it('Drag drop - Undo redo module args coverage', function () {
+        let dragElement: HTMLElement = document.getElementsByClassName('e-icon-rowdragicon')[4] as HTMLElement;
+        let args: any = {cancel: false, draggableType: "rows", data: [ganttObj_self.flatData[1]], dropIndex: 5, dropPosition: "bottomSegment", dropRecord: ganttObj_self.flatData[5], fromIndex: 1, name: "rowDrop", target: dragElement};
+        ganttObj_self.rowDragAndDropModule['dropRows'](args, true);
+    });
+    it('Drag drop - taskbar edit args coverage', function () {
+        ganttObj_self.editModule.taskbarEditModule.taskBarEditAction = 'childDrag';
+        let args: any = { cancel: false, draggableType: "rows", data: ganttObj_self.flatData[1], dropIndex: 5, dropPosition: "bottomSegment", dropRecord: ganttObj_self.flatData[5], fromIndex: 1, name: "rowDrop", target: null };
+        ganttObj_self.rowDragAndDropModule['dropRows'](args, true);
+    });
+  });
+
+describe('RowDD deleteDragRow result branch', () => {
+  let ganttObj: Gantt;
+  beforeAll((done: Function) => {
+    const data = [
+      { TaskID: 1, TaskName: 'Task 1', StartDate: new Date('04/02/2019'), Duration: 1 },
+      { TaskID: 2, TaskName: 'Task 2', StartDate: new Date('04/03/2019'), Duration: 2 }
+    ];
+    // dataSource is an object with `result` to trigger isCountRequired === true
+    const dataSource = { result: data } as any;
+
+    ganttObj = createGantt({
+      dataSource: dataSource,
+      allowRowDragAndDrop: true,
+      taskFields: { id: 'TaskID', name: 'TaskName', startDate: 'StartDate', duration: 'Duration'},
+      height: '400px'
+    }, done);
+  });
+
+  it('should remove record from dataSource.result when deleteDragRow called', (done) => {
+    const rowDD: any = ganttObj.rowDragAndDropModule;
+    // set draggedRecord to first rendered flat data record
+    rowDD.draggedRecord = ganttObj.flatData[0];
+    // call private method via any
+    (rowDD as any).deleteDragRow();
+    done();
+  });
+
+  afterAll(() => {
+    if (ganttObj) {
+      ganttObj.destroy();
+    }
+  });
+});
+
+describe('RowDD add Error element', () => {
+  let ganttObj: Gantt;
+  beforeAll((done: Function) => {
+    const data = [
+      { TaskID: 1, TaskName: 'Task 1', StartDate: new Date('04/02/2019'), Duration: 1 },
+      { TaskID: 2, TaskName: 'Task 2', StartDate: new Date('04/03/2019'), Duration: 2, ParentID: 1 }
+    ];
+    // dataSource is an object with `result` to trigger isCountRequired === true
+    const dataSource = { result: data } as any;
+
+    ganttObj = createGantt({
+      dataSource: dataSource,
+      allowRowDragAndDrop: true,
+      taskFields: { id: 'TaskID', name: 'TaskName', startDate: 'StartDate', duration: 'Duration', parentID: 'ParentID' },
+      height: '400px'
+    }, done);
+  });
+  it('add Error element coverage', (done) => {
+    ganttObj.rowDragAndDropModule['addErrorElem']();
+    ganttObj.reorderRows([2], 2, 'above');
+    done();
+  });
+  it('add Error element coverage', (done) => {
+    document.querySelector('.e-row').classList.add('e-ganttdrag');
+    ganttObj.rowDragAndDropModule['addErrorElem']();
+    ganttObj.rowDragAndDropModule['removeErrorElem']();
+    done();
+  });
+  it('refresh datasource coverage', (done) => {
+    ganttObj.rowDragAndDropModule['draggedRecord'] = ganttObj.flatData[0];
+    ganttObj.rowDragAndDropModule['refreshDataSource']();
+    done();
+  });
+
+  afterAll(() => {
+    if (ganttObj) {
+      ganttObj.destroy();
+    }
+  });
+});
+
+describe('Improve coverage', () => {
+    let ganttObj: Gantt;
+    const splitTasksData = [
+      { TaskID: 1, TaskName: 'Task 1', StartDate: new Date('04/02/2024'), Duration: 1 },
+      { TaskID: 2, TaskName: 'Task 2', StartDate: new Date('04/02/2024'), Duration: 2 },
+      { TaskID: 3, TaskName: 'Task 3', StartDate: new Date('04/02/2024'), Duration: 2 },
+      { TaskID: 4, TaskName: 'Task 4', StartDate: new Date('04/02/2024'), Duration: 3 },
+      { TaskID: 5, TaskName: 'Task 5', StartDate: new Date('04/02/2024'), Duration: 3 },
+      { TaskID: 6, TaskName: 'Task 6', StartDate: new Date('04/02/2024'), Duration: 4 },
+    ];
+    
+    beforeAll((done: Function) => {
+      ganttObj = createGantt(
+        {
+          dataSource: splitTasksData,
+          taskFields: {
+            id: 'TaskID',
+            name: 'TaskName',
+            startDate: 'StartDate',
+            endDate: 'EndDate',
+            duration: 'Duration',
+            progress: 'Progress',
+            parentID: 'ParentID'
+          },
+          editSettings: {
+            allowEditing: true,
+            allowTaskbarEditing: true,
+          },
+          allowSelection: true,
+          allowRowDragAndDrop: true,
+          highlightWeekends: true,
+          allowTaskbarDragAndDrop: true,
+          labelSettings: {
+            leftLabel: 'TaskName',
+            taskLabel: 'Progress'
+          },
+          height: '550px',
+          allowUnscheduledTasks: true,
+          projectStartDate: new Date('04/01/2024'),
+          projectEndDate: new Date('07/06/2024')
+        },
+        done
+      );
+    });
+    it('rowDragStartHelper method', () => {
+        ganttObj.readOnly = true;
+        var args = {cancel: false} 
+        ganttObj.rowDragAndDropModule['rowDragStartHelper'](args);
+    });
+    it('updateChildRecordLevel method', () => {
+        ganttObj.rowDragAndDropModule['updateChildRecordLevel'](ganttObj.flatData[0],0)
+    });
+    it('updateChildRecord method', () => {
+        ganttObj.rowDragAndDropModule['updateChildRecord'](ganttObj.flatData[0],0,false)
+    });
+    afterAll(() => {
+      if (ganttObj) {
+        destroyGantt(ganttObj);
+      }
+    });
+  });
+
+  describe('Improve coverage', () => {
+    let ganttObj: Gantt;
+    const splitTasksData = [
+            {
+                 TaskID: 1, TaskName: 'Task 1', StartDate: new Date('04/02/2024'), Duration: 1,
+                 subtasks: [
+                    { TaskID: 2, TaskName: 'Task 2', StartDate: new Date('04/02/2024'), Duration: 2,
+                        subtasks: [{TaskID: 3, TaskName: 'Task 3', StartDate: new Date('04/02/2024'), Duration: 2 }]
+                     },
+                 ] 
+            },
+            
+        ];
+    
+    beforeAll((done: Function) => {
+      ganttObj = createGantt(
+        {
+          dataSource: splitTasksData,
+          taskFields: {
+            id: 'TaskID',
+            name: 'TaskName',
+            startDate: 'StartDate',
+            endDate: 'EndDate',
+            duration: 'Duration',
+            progress: 'Progress',
+            child: 'subtasks'
+          },
+          editSettings: {
+            allowEditing: true,
+            allowTaskbarEditing: true,
+          },
+          allowSelection: true,
+          allowRowDragAndDrop: true,
+          highlightWeekends: true,
+          allowTaskbarDragAndDrop: true,
+          labelSettings: {
+            leftLabel: 'TaskName',
+            taskLabel: 'Progress'
+          },
+          height: '550px',
+          allowUnscheduledTasks: true,
+          projectStartDate: new Date('04/01/2024'),
+          projectEndDate: new Date('07/06/2024')
+        },
+        done
+      );
+    });
+    it('updateChildRecordLevel method', () => {
+        ganttObj.rowDragAndDropModule['updateChildRecordLevel'](ganttObj.flatData[0],0)
+    });
+    it('updateChildRecord method', () => {
+        ganttObj.rowDragAndDropModule['updateChildRecord'](ganttObj.flatData[0],0)
+    });
+    it('removeChildItem method', () => {
+        ganttObj.rowDragAndDropModule['treeGridData'] = []
+        ganttObj.viewType = 'ResourceView'
+        ganttObj.rowDragAndDropModule['removeChildItem'](ganttObj.flatData[0])
+    });
     afterAll(() => {
       if (ganttObj) {
         destroyGantt(ganttObj);

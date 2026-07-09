@@ -171,7 +171,12 @@ export class UndoRedo {
                     else {
                         index = this.parent.undoRedoModule['getResourceViewRowIndex'](updateAction['modifiedRecords'][i as number]);
                     }
-                    previousActions['modifiedRecords'].push(extend([], [this.parent.flatData[index as number]], [], true)[0]);
+                    if (this.parent.sortSettings.columns.length > 0) {
+                        previousActions['modifiedRecords'].push(extend([], [this.parent.updatedRecords[index as number]], [], true)[0]);
+                    }
+                    else {
+                        previousActions['modifiedRecords'].push(extend([], [this.parent.flatData[index as number]], [], true)[0]);
+                    }
                 }
             }
             this.getRedoCollection.push(previousActions);
@@ -194,7 +199,7 @@ export class UndoRedo {
                 this.isUndoRedoPerformed = false;
             }
             else if (updateAction['action'] === 'NextTimeSpan' || updateAction['action'] === 'PreviousTimeSpan') {
-                this.parent.updateProjectDates(updateAction['previousTimelineStartDate'], updateAction['previousTimelineEndDate'], false);
+                this.parent.updateTimelineDates(updateAction['previousTimelineStartDate'], updateAction['previousTimelineEndDate'], false);
                 this.isUndoRedoPerformed = false;
             }
             else if (updateAction['action'] === 'Sorting') {
@@ -347,6 +352,7 @@ export class UndoRedo {
                 this.parent.toolbarModule.enableItems([this.parent.controlId + '_undo'], false);
             }
         }
+        this.parent.timelineModule.isZoomedToFit = false;
     }
 
     /**
@@ -451,7 +457,12 @@ export class UndoRedo {
                 previousActions['modifiedRecords'] = [];
                 for (let i: number = 0; i < updateAction['modifiedRecords'].length; i++) {
                     const index: number = this.findTaskRowIndex(updateAction['modifiedRecords'][i as number].ganttProperties.taskId.toString());
-                    previousActions['modifiedRecords'].push(extend([], [this.parent.flatData[index as number]], [], true)[0]);
+                    if (this.parent.sortSettings.columns.length > 0) {
+                        previousActions['modifiedRecords'].push(extend([], [this.parent.updatedRecords[index as number]], [], true)[0]);
+                    }
+                    else {
+                        previousActions['modifiedRecords'].push(extend([], [this.parent.flatData[index as number]], [], true)[0]);
+                    }
                 }
             }
             this.getUndoCollection.push(previousActions);
@@ -478,7 +489,7 @@ export class UndoRedo {
                 this.isUndoRedoPerformed = false;
             }
             else if (updateAction['action'] === 'NextTimeSpan' || updateAction['action'] === 'PreviousTimeSpan') {
-                this.parent.updateProjectDates(updateAction['previousTimelineStartDate'], updateAction['previousTimelineEndDate'], false);
+                this.parent.updateTimelineDates(updateAction['previousTimelineStartDate'], updateAction['previousTimelineEndDate'], false);
                 this.isUndoRedoPerformed = false;
             }
             else if (updateAction['action'] === 'Sorting') {
@@ -863,12 +874,7 @@ export class UndoRedo {
                                 while (!record['id']);
                             }
                             else {
-                                if (currentIndex === parentRecord.childRecords.length - 1) {
-                                    record['position'] = 'below';
-                                }
-                                else {
-                                    record['position'] = 'above';
-                                }
+                                record['position'] = 'below';
                                 record['id'] = 'T' + parentRecord.childRecords[currentIndex - 1].ganttProperties.taskId;
                                 if (detail === 'deletedIndexes') {
                                     record['index'] = parentRecord.childRecords[currentIndex - 1].index;

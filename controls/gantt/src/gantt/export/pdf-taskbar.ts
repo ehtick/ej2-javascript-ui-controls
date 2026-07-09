@@ -160,6 +160,32 @@ export class PdfGanttTaskbarCollection {
             this.parent.pdfExportModule.helper.exportProps.fitToWidthSettings.isFitToWidth) ||
             this.parent.timelineModule.isZoomedToFit) ? true : false;
     }
+    private safeDrawString(
+        taskbar: PdfGanttTaskbarCollection,
+        taskGraphics: PdfGraphics,
+        customizedFont: PdfFont,
+        customizedFontColor: PdfPen,
+        customizedFontBrush: PdfBrush,
+        startPointX: number,
+        startPointY: number,
+        pixelToPointWidth: number,
+        pixelToPointHeight: number,
+        progressFormat: PdfStringFormat
+    ): void {
+        if (!isNullOrUndefined(taskbar.taskbarTemplate.value)) {
+            taskGraphics.drawString(
+                taskbar.taskbarTemplate.value,
+                customizedFont,
+                customizedFontColor,
+                customizedFontBrush,
+                startPointX,
+                startPointY,
+                pixelToPointWidth,
+                pixelToPointHeight,
+                progressFormat
+            );
+        }
+    }
     /**
      * Draw the taskbar, chart back ground
      *
@@ -298,7 +324,7 @@ export class PdfGanttTaskbarCollection {
             //Task start and end date both are in the range of header split up start and end date
             if (detail.startDate <= startDate && endDate <= detail.endDate) {
                 if (!this.isStartPoint) {
-                    this.taskStartPoint = { ...startPoint };
+                    this.taskStartPoint = Object.assign({}, startPoint);
                     this.isStartPoint = true;
                 }
                 if (!this.isScheduledTask && this.unscheduledTaskBy === 'duration') {
@@ -330,7 +356,7 @@ export class PdfGanttTaskbarCollection {
                             else {
                                 imageWidth = 0;
                             }
-                            !isNullOrUndefined(taskbar.taskbarTemplate.value) ? taskGraphics.drawString(taskbar.taskbarTemplate.value, customizedFont, customizedFontColor, customizedFontBrush, startPoint.x + (this.left - cumulativeWidth) + 0.5 + imageWidth, startPoint.y + adjustHeight, pixelToPoint(taskbar.width), pixelToPoint(this.height), progressFormat) : '';
+                            this.safeDrawString(taskbar, taskGraphics, customizedFont, customizedFontColor, customizedFontBrush, (startPoint.x + (this.left - cumulativeWidth) + 0.5 + imageWidth), (startPoint.y + adjustHeight), pixelToPoint(taskbar.width), pixelToPoint(this.height), progressFormat);
                         }
                     }
                     else {
@@ -359,7 +385,18 @@ export class PdfGanttTaskbarCollection {
                             else {
                                 imageWidth = 0;
                             }
-                            !isNullOrUndefined(taskbar.taskbarTemplate.value) ? taskGraphics.drawString(taskbar.taskbarTemplate.value, customizedFont, customizedFontColor, customizedFontBrush, startPoint.x + pixelToPoint(this.left - cumulativeWidth) + 0.5 + imageWidth, startPoint.y + adjustHeight, pixelToPoint(taskbar.width), pixelToPoint(this.height), progressFormat): '';
+                            this.safeDrawString(
+                                taskbar,
+                                taskGraphics,
+                                customizedFont,
+                                customizedFontColor,
+                                customizedFontBrush,
+                                startPoint.x + pixelToPoint(this.left - cumulativeWidth) + 0.5 + imageWidth,
+                                startPoint.y + adjustHeight,
+                                pixelToPoint(taskbar.width),
+                                pixelToPoint(this.height),
+                                progressFormat
+                            );
                         }
                     }
                 }
@@ -393,7 +430,18 @@ export class PdfGanttTaskbarCollection {
                                     else {
                                         imageWidth = 0;
                                     }
-                                    !isNullOrUndefined(taskbar.taskbarTemplate.value) ? taskGraphics.drawString(taskbar.taskbarTemplate.value, customizedFont, customizedFontColor, customizedFontBrush, startPoint.x + (this.left + data.left - cumulativeWidth) + 0.5 + imageWidth, startPoint.y + adjustHeight, pixelToPoint(data.width), pixelToPoint(taskbar.height), progressFormat) : '';
+                                    this.safeDrawString(
+                                        taskbar,
+                                        taskGraphics,
+                                        customizedFont,
+                                        customizedFontColor,
+                                        customizedFontBrush,
+                                        startPoint.x + (this.left + data.left - cumulativeWidth) + 0.5 + imageWidth,
+                                        startPoint.y + adjustHeight,
+                                        pixelToPoint(data.width),
+                                        pixelToPoint(taskbar.height),
+                                        progressFormat
+                                    );
                                 }
                             }
                             else {  
@@ -408,7 +456,18 @@ export class PdfGanttTaskbarCollection {
                                     else {
                                         imageWidth = 0;
                                     }
-                                    !isNullOrUndefined(taskbar.taskbarTemplate.value) ? taskGraphics.drawString(taskbar.taskbarTemplate.value, customizedFont, customizedFontColor, customizedFontBrush, startPoint.x + pixelToPoint(this.left + data.left - cumulativeWidth) + 0.5 + imageWidth, startPoint.y + adjustHeight, pixelToPoint(data.width), pixelToPoint(taskbar.height), progressFormat) : '';
+                                    this.safeDrawString(
+                                        taskbar,
+                                        taskGraphics,
+                                        customizedFont,
+                                        customizedFontColor,
+                                        customizedFontBrush,
+                                        startPoint.x + pixelToPoint(this.left + data.left - cumulativeWidth) + 0.5 + imageWidth,
+                                        startPoint.y + adjustHeight,
+                                        pixelToPoint(data.width),
+                                        pixelToPoint(taskbar.height),
+                                        progressFormat
+                                    );
                                 }
                             }
                         })
@@ -501,7 +560,18 @@ export class PdfGanttTaskbarCollection {
                                 else {
                                     imageWidth = 0;
                                 }
-                                !isNullOrUndefined(taskbar.taskbarTemplate.value) ? taskGraphics.drawString(taskbar.taskbarTemplate.value,customizedFont, customizedFontColor, customizedFontBrush, startPoint.x + pixelToPoint(this.left - cumulativeWidth) + imageWidth, startPoint.y + adjustHeight, pixelToPoint(updatedWidth), pixelToPoint(this.height), progressFormat) : '';
+                                this.safeDrawString(
+                                    taskbar,
+                                    taskGraphics,
+                                    customizedFont,
+                                    customizedFontColor,
+                                    customizedFontBrush,
+                                    startPoint.x + pixelToPoint(this.left - cumulativeWidth) + imageWidth,
+                                    startPoint.y + adjustHeight,
+                                    pixelToPoint(updatedWidth),
+                                    pixelToPoint(this.height),
+                                    progressFormat
+                                );
                             }
                         }
                     }
@@ -550,7 +620,7 @@ export class PdfGanttTaskbarCollection {
             //Task start date is in the range of header split up start and end date
             else if (detail.startDate <= startDate && detail.endDate >= startDate && (endDate >= detail.endDate)) {
                 if (!this.isStartPoint) {
-                    this.taskStartPoint = { ...startPoint };
+                    this.taskStartPoint = Object.assign({}, startPoint);
                     this.isStartPoint = true;
                 }
                 let width = this.width;
@@ -590,7 +660,18 @@ export class PdfGanttTaskbarCollection {
                             else {
                                 imageWidth = 0;
                             }
-                            !isNullOrUndefined(taskbar.taskbarTemplate.value) ? taskGraphics.drawString(taskbar.taskbarTemplate.value, customizedFont, customizedFontColor, customizedFontBrush, startPoint.x + (this.left - cumulativeWidth) + 0.5 + imageWidth, startPoint.y + adjustHeight, pixelToPoint(taskbar.width), pixelToPoint(this.height), progressFormat) : '';
+                            this.safeDrawString(
+                                taskbar,
+                                taskGraphics,
+                                customizedFont,
+                                customizedFontColor,
+                                customizedFontBrush,
+                                startPoint.x + (this.left - cumulativeWidth) + 0.5 + imageWidth,
+                                startPoint.y + adjustHeight,
+                                pixelToPoint(taskbar.width),
+                                pixelToPoint(this.height),
+                                progressFormat
+                            );
                         }
                     }
                     else {
@@ -711,7 +792,18 @@ export class PdfGanttTaskbarCollection {
                                         else {
                                             imageWidth = 0;
                                         }
-                                        !isNullOrUndefined(taskbar.taskbarTemplate.value) ? taskGraphics.drawString(taskbar.taskbarTemplate.value, customizedFont, customizedFontColor, customizedFontBrush,startPoint.x + (this.left - cumulativeWidth) + 0.5 + (data.left) + imageWidth, startPoint.y + adjustHeight, (data.width), (taskbar.height), progressFormat) : '';
+                                        this.safeDrawString(
+                                            taskbar,
+                                            taskGraphics,
+                                            customizedFont,
+                                            customizedFontColor,
+                                            customizedFontBrush,
+                                            startPoint.x + (this.left - cumulativeWidth) + 0.5 + data.left + imageWidth,
+                                            startPoint.y + adjustHeight,
+                                            data.width,
+                                            taskbar.height,
+                                            progressFormat
+                                        );
                                     }
                                 }
                                 else {
@@ -727,7 +819,18 @@ export class PdfGanttTaskbarCollection {
                                         else {
                                             imageWidth = 0;
                                         }
-                                        !isNullOrUndefined(taskbar.taskbarTemplate.value) ? taskGraphics.drawString(taskbar.taskbarTemplate.value, customizedFont, customizedFontColor, customizedFontBrush,startPoint.x + pixelToPoint(this.left - cumulativeWidth) + 0.5 + pixelToPoint(data.left) + imageWidth, startPoint.y + adjustHeight, pixelToPoint(data.width), pixelToPoint(taskbar.height), progressFormat) : '';
+                                        this.safeDrawString(
+                                            taskbar,
+                                            taskGraphics,
+                                            customizedFont,
+                                            customizedFontColor,
+                                            customizedFontBrush,
+                                            startPoint.x + pixelToPoint(this.left - cumulativeWidth) + 0.5 + pixelToPoint(data.left) + imageWidth,
+                                            startPoint.y + adjustHeight,
+                                            pixelToPoint(data.width),
+                                            pixelToPoint(taskbar.height),
+                                            progressFormat
+                                        );
                                     }
                                 }
                                 if (this.segmentCollection[parseInt(index.toString(), 10)].width === 0) {
@@ -853,7 +956,7 @@ export class PdfGanttTaskbarCollection {
             //Task end date is in the range of header split up start and end date
             else if (endDate <= detail.endDate && detail.startDate <= endDate && !this.isCompleted) {
                 if (!this.isStartPoint) {
-                    this.taskStartPoint = { ...startPoint };
+                    this.taskStartPoint = Object.assign({}, startPoint);
                     this.isStartPoint = true;
                 }
                 if (!this.isScheduledTask && this.unscheduledTaskBy === 'duration') {
@@ -884,7 +987,18 @@ export class PdfGanttTaskbarCollection {
                             else {
                                 imageWidth = 0;
                             }
-                            !isNullOrUndefined(taskbar.taskbarTemplate.value) ? taskGraphics.drawString(taskbar.taskbarTemplate.value, customizedFont, customizedFontColor, customizedFontBrush,startPoint.x + pixelToPoint(taskbar.left + 0.5) + imageWidth, startPoint.y + adjustHeight, pixelToPoint(taskbar.width), pixelToPoint(this.height), progressFormat) : '';
+                            this.safeDrawString(
+                                taskbar,
+                                taskGraphics,
+                                customizedFont,
+                                customizedFontColor,
+                                customizedFontBrush,
+                                startPoint.x + pixelToPoint(taskbar.left + 0.5) + imageWidth,
+                                startPoint.y + adjustHeight,
+                                pixelToPoint(taskbar.width),
+                                pixelToPoint(this.height),
+                                progressFormat
+                            );
                         }
                 }
                 else if (!taskbar.isAutoSchedule && taskbar.isParentTask) {
@@ -945,7 +1059,18 @@ export class PdfGanttTaskbarCollection {
                                     else {
                                         imageWidth = 0;
                                     }
-                                    !isNullOrUndefined(taskbar.taskbarTemplate.value) ? taskGraphics.drawString(taskbar.taskbarTemplate.value, customizedFont, customizedFontColor, customizedFontBrush, startPoint.x + pixelToPoint(taskbar.left + 0.5 + data.left) + imageWidth, startPoint.y + adjustHeight, pixelToPoint(data.width), pixelToPoint(taskbar.height), progressFormat) : '';
+                                    this.safeDrawString(
+                                        taskbar,
+                                        taskGraphics,
+                                        customizedFont,
+                                        customizedFontColor,
+                                        customizedFontBrush,
+                                        startPoint.x + pixelToPoint(taskbar.left + 0.5 + data.left) + imageWidth,
+                                        startPoint.y + adjustHeight,
+                                        pixelToPoint(data.width),
+                                        pixelToPoint(taskbar.height),
+                                        progressFormat
+                                    );
                                 }
                             }
                         }
@@ -986,7 +1111,7 @@ export class PdfGanttTaskbarCollection {
             //So the task is takes entire width of page.
             else if (startDate < detail.startDate && endDate > detail.endDate) {
                 if (!this.isStartPoint) {
-                    this.taskStartPoint = { ...startPoint };
+                    this.taskStartPoint = Object.assign({}, startPoint);
                     this.isStartPoint = true;
                 }
                 if (!this.isScheduledTask && this.unscheduledTaskBy === 'duration') {
@@ -1118,7 +1243,7 @@ export class PdfGanttTaskbarCollection {
 
                 if (detail.startDate <= taskbar.baselineStartDate && taskbar.baselineEndDate <= detail.endDate) {
                     if (!this.isStartPoint) {
-                        this.taskStartPoint = { ...startPoint };
+                        this.taskStartPoint = Object.assign({}, startPoint);
                         this.isStartPoint = true;
                     }
 
@@ -1136,7 +1261,7 @@ export class PdfGanttTaskbarCollection {
                 }
                 else if (detail.startDate <= taskbar.baselineStartDate && detail.endDate >= taskbar.baselineStartDate && (taskbar.baselineEndDate >= detail.endDate)) {
                     if (!this.isStartPoint) {
-                        this.taskStartPoint = { ...startPoint };
+                        this.taskStartPoint = Object.assign({}, startPoint);
                         this.isStartPoint = true;
                     }
                     let width = this.baselineWidth;
@@ -1195,7 +1320,7 @@ export class PdfGanttTaskbarCollection {
             if(!this.isAutoSchedule && taskbar.isParentTask){
                 if (detail.startDate <= taskbar.autoStartDate && taskbar.autoEndDate<= detail.endDate) {     
                     if (!this.isStartPoint) {
-                        this.taskStartPoint = { ...startPoint };
+                        this.taskStartPoint = Object.assign({}, startPoint);
                         this.isStartPoint = true;
                     }
                     if (!taskbar.isAutoSchedule && taskbar.isParentTask) {
@@ -1235,7 +1360,7 @@ export class PdfGanttTaskbarCollection {
                 }
                 else if (detail.startDate <= taskbar.autoStartDate && detail.endDate >= taskbar.autoStartDate && (taskbar.autoEndDate >= detail.endDate)) {
                     if (!this.isStartPoint) {
-                        this.taskStartPoint = { ...startPoint };
+                        this.taskStartPoint = Object.assign({}, startPoint);
                         this.isStartPoint = true;
                     }
                     let renderWidth: number = 0;
@@ -1293,7 +1418,7 @@ export class PdfGanttTaskbarCollection {
                 }
                 else if (taskbar.autoEndDate <= detail.endDate && detail.startDate <= taskbar.autoEndDate && !this.isCompletedAutotask) {
                     if (!this.isStartPoint) {
-                        this.taskStartPoint = { ...startPoint };
+                        this.taskStartPoint = Object.assign({}, startPoint);
                         this.isStartPoint = true;
                     }
                     else if(!taskbar.isAutoSchedule && taskbar.isParentTask){
@@ -1321,7 +1446,7 @@ export class PdfGanttTaskbarCollection {
                 }
                 else if (taskbar.autoStartDate < detail.startDate && taskbar.autoEndDate > detail.endDate) {
                     if (!this.isStartPoint) {
-                        this.taskStartPoint = { ...startPoint };
+                        this.taskStartPoint = Object.assign({}, startPoint);
                         this.isStartPoint = true;
                     }
                     if (!taskbar.isAutoSchedule && taskbar.isParentTask) {
@@ -1371,18 +1496,20 @@ export class PdfGanttTaskbarCollection {
                         const leftValue: number = this.parent.chartRowsModule.getIndicatorleft(items.date);
                         if (!isNullOrUndefined(items.base64)) {
                             const image: PdfBitmap = new PdfBitmap(items.base64);
+                            const indicatorFormat: PdfStringFormat = new PdfStringFormat();
+                            indicatorFormat.wordWrap = PdfWordWrapType.None;
                             if (this.isAutoFit()) {
                                 taskGraphics.drawImage(image, (startPoint.x + (leftValue - cumulativeWidth) + 0.5 + 10) - this.parent.perDayWidth / 2, startPoint.y + adjustHeight, imageSize, imageSize)
                                 let state = taskGraphics.save();
                                 taskGraphics.setClip(new RectangleF(startPoint.x, startPoint.y, page['contentWidth'], rowHeight));
-                                taskGraphics.drawString(items.name, font, null, PdfBrushes.Black, (startPoint.x + (leftValue - cumulativeWidth) + 0.5 + 15 + imageSize) - this.parent.perDayWidth / 2, startPoint.y + adjustHeight, null);
+                                taskGraphics.drawString(items.name, font, null, PdfBrushes.Black, (startPoint.x + (leftValue - cumulativeWidth) + 0.5 + 15 + imageSize) - this.parent.perDayWidth / 2, startPoint.y + adjustHeight, indicatorFormat);
                                 taskGraphics.restore(state);
                             }
                             else {
                                 taskGraphics.drawImage(image, startPoint.x + pixelToPoint(leftValue - cumulativeWidth) + 0.5 + 10, startPoint.y + adjustHeight, imageSize, imageSize)
                                 let state = taskGraphics.save();
                                 taskGraphics.setClip(new RectangleF(startPoint.x, startPoint.y, page['contentWidth'], rowHeight));
-                                taskGraphics.drawString(items.name, font, null, PdfBrushes.Black, startPoint.x + pixelToPoint(leftValue - cumulativeWidth) + 0.5 + 15 + imageSize, startPoint.y + adjustHeight, null);
+                                taskGraphics.drawString(items.name, font, null, PdfBrushes.Black, startPoint.x + pixelToPoint(leftValue - cumulativeWidth) + 0.5 + 15 + imageSize, startPoint.y + adjustHeight, indicatorFormat);
                                 taskGraphics.restore(state);
                             }
                         }
@@ -2167,7 +2294,7 @@ export class PdfGanttTaskbarCollection {
         if (detail.startDate <= this.startDate && this.startDate <= detail.endDate) {
             const taskGraphics: PdfGraphics = page.graphics;
             const pageIndex: number = page.section.indexOf(page);
-            this.taskStartPoint = { ...startPoint };
+            this.taskStartPoint = Object.assign({}, startPoint);
             const milestonePen: PdfPen = new PdfPen(this.milestoneColor);
             const adjustHeightforBaselineMilesone: number = pixelToPoint(((this.parent.rowHeight - this.height) / 3.0));
             const adjustHeightforMilesone: number = pixelToPoint(((this.parent.rowHeight - this.height) / 2.0));

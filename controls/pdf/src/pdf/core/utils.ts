@@ -2229,10 +2229,10 @@ export function _getColorValue(colorName: string): number[] {
  * @private
  * @param {PdfTemplate} template Template object.
  * @param {number} angle Angle value.
- * @param {PdfRubberStampAnnotation} annotation Rubberstamp annotation.
+ * @param {PdfAnnotation} annotation annotation instance.
  * @returns {void} Nothing.
  */
-export function _setMatrix(template: PdfTemplate, angle?: number, annotation?: PdfRubberStampAnnotation): void {
+export function _setMatrix(template: PdfTemplate, angle?: number, annotation?: PdfAnnotation): void {
     const box: number[] = template._content.dictionary.getArray('BBox');
     let centerX: number = 0.1;
     let centerY: number = 0.1;
@@ -2246,7 +2246,11 @@ export function _setMatrix(template: PdfTemplate, angle?: number, annotation?: P
             } else if (angle === 180) {
                 matrix._translate(box[2], box[3]);
             } else if (angle === 270) {
-                matrix._translate(-box[1], box[2]);
+                if (annotation) {
+                    matrix._translate(-box[1], box[2]);
+                } else {
+                    matrix._translate(-box[1], box[3]);
+                }
             }
             if (angle % 90 !== 0 && annotation && annotation instanceof PdfRubberStampAnnotation) {
                 let box0: number;
@@ -4216,7 +4220,7 @@ export function _obtainFontDetails(form: PdfForm, widget: PdfWidgetAnnotation, f
     if ((font === null || typeof font === 'undefined') || (font && font.size === 1)) {
         if (widget && !(widget._field instanceof PdfComboBoxField)) {
             font = widget._circleCaptionFont;
-        } else if (field && !(field instanceof PdfComboBoxField) ) {
+        } else if (field) {
             font = field._circleCaptionFont;
         }
     }

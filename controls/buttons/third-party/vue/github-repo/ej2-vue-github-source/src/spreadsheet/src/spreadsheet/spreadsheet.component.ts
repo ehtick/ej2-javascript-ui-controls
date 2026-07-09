@@ -108,8 +108,8 @@ export let SpreadsheetComponent: DefineVueComponent<SpreadsheetModel> =  vueDefi
         addContextMenuItems(items: Object[], text: string, insertAfter: boolean, isUniqueId?: boolean): void {
             return this.ej2Instances.addContextMenuItems(items, text, insertAfter, isUniqueId);
         },
-        addCustomFunction(functionHandler: string | Object, functionName?: string, formulaDescription?: string): void {
-            return this.ej2Instances.addCustomFunction(functionHandler, functionName, formulaDescription);
+        addCustomFunction(functionHandler: string | Object, functionName?: string, formulaDescription?: string, category?: string): void {
+            return this.ej2Instances.addCustomFunction(functionHandler, functionName, formulaDescription, category);
         },
         addDataValidation(rules: Object, range?: string): void {
             return this.ej2Instances.addDataValidation(rules, range);
@@ -420,7 +420,7 @@ export type SpreadsheetComponent = typeof ComponentBase & {
     }, successHandler?: Function): void;
     Unfreeze(sheet?: number | string): void;
     addContextMenuItems(items: Object[], text: string, insertAfter: boolean, isUniqueId?: boolean): void;
-    addCustomFunction(functionHandler: string | Object, functionName?: string, formulaDescription?: string): void;
+    addCustomFunction(functionHandler: string | Object, functionName?: string, formulaDescription?: string, category?: string): void;
     addDataValidation(rules: Object, range?: string): void;
     addDefinedName(definedName: Object): boolean;
     addFileMenuItems(items: Object[], text: string, insertAfter: boolean, isUniqueId?: boolean): void;

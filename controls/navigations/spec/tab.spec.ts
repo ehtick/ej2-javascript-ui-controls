@@ -13143,28 +13143,6 @@ describe('Tab Control', () => {
                 document.body.style.overflow = '';
             });
 
-            it('should use 100vh fallback and prevent scrollbars when parent has NO explicit height', () => {
-                // Arrange & Act
-                tab = new Tab({
-                    heightAdjustMode: 'Fill',
-                    items: [
-                        { header: { text: 'Tab 1' }, content: 'Content 1' },
-                        { header: { text: 'Tab 2' }, content: 'Content 2' }
-                    ]
-                }, tabEle);
-
-                const headerEle = tab.element.querySelector('.e-tab-header') as HTMLElement;
-                const contentEle = tab.element.querySelector('.e-content') as HTMLElement;
-                const headerHeight = headerEle.offsetHeight;
-
-                // Assert - The FIX: Should use 100vh, NOT 100%
-                expect((tab.element as HTMLElement).style.height).toBe('100%');
-                expect(contentEle.style.height).toContain('100vh');
-                
-                // Body overflow should be empty
-                expect(document.body.style.overflow).toBe("");
-            });
-
             it('should NOT introduce scrollbars in deeply nested structure', () => {
                 // Arrange & Act
                 tab = new Tab({

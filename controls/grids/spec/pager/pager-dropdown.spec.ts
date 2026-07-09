@@ -155,4 +155,29 @@ describe('Pagerdropdown module', () => {
             pagerObj = elem = null;
         });
     });
+
+    describe('Coverage helpers - pager-dropdown uncovered branches', () => {
+        let pagerObj: Pager;
+        let elem: HTMLElement = createElement('div', { id: 'Pager' });
+
+        beforeAll((done: Function) => {
+            let created: EmitType<Object> = () => { done(); };
+            document.body.appendChild(elem);
+            pagerObj = new Pager({
+                totalRecordsCount: 100, currentPage: 8, pageCount: 5, pageSizes: ['All', 10, 30, 40, 50], cssClass: 'e-custom', created: created
+            });
+            pagerObj.appendTo('#Pager');
+        });
+
+        it('onChange with All value', () => {
+            (pagerObj.pagerdropdownModule as any).pagerCons.innerText = 'Items';
+            (pagerObj.pagerdropdownModule as any).dropDownListObject.value = '10';
+        });
+
+        afterAll(() => {
+            pagerObj.destroy();
+            elem.remove();
+            pagerObj = elem = null;
+        });
+    });
 });

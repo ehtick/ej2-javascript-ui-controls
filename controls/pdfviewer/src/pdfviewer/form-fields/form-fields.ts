@@ -671,7 +671,8 @@ export class FormFields {
                             name: this.retriveFieldName(currentData),
                             id: this.pdfViewer.element.id + 'input_' + parseFloat(currentData['PageIndex']) + '_' + i,
                             isReadOnly: false, type: currentData.IsInitialField ? 'InitialField' : type,
-                            value: this.retriveCurrentValue(currentData), fontName: '', isRequired: currentData.IsRequired, bounds: bounds
+                            value: this.retriveCurrentValue(currentData), fontName: '', isRequired: currentData.IsRequired, bounds: bounds, pageIndex
+                            : currentData.PageIndex
                         };
                         this.pdfViewer.formFieldCollections.push(formFieldCollection);
                     }
@@ -865,6 +866,7 @@ export class FormFields {
         case 'CheckBox':
         case 'DropDown':
         case 'ListBox':
+        case 'Button':
             currentField = currentData.ActualFieldName;
             break;
         }
@@ -1973,10 +1975,10 @@ export class FormFields {
         let currentField: any;
         switch (currentData['Name']) {
         case 'Textbox':
-            currentField = this.createTextBoxField(currentData, pageIndex, 'text');
+            currentField = this.createTextBoxField(currentData, pageIndex, 'text', printContainer ? true : false);
             break;
         case 'Password':
-            currentField = this.createTextBoxField(currentData, pageIndex, 'password');
+            currentField = this.createTextBoxField(currentData, pageIndex, 'password', printContainer ? true : false);
             break;
         case 'RadioButton':
             currentField = this.createRadioBoxField(currentData, pageIndex, 'radio');
@@ -2015,11 +2017,30 @@ export class FormFields {
             }
             break;
         case 'SignatureText':
-        case 'SignatureImage':
-            if (currentData.Value && currentData.Value !== '' && !this.isSignatureRendered) {
+        case 'SignatureImage': {
+            const signatureBoundsPixels: any = {
+                X: this.ConvertPointToPixel(currentData.LineBounds.X),
+                Y: this.ConvertPointToPixel(currentData.LineBounds.Y),
+                Width: this.ConvertPointToPixel(currentData.LineBounds.Width),
+                Height: this.ConvertPointToPixel(currentData.LineBounds.Height)
+            };
+            // Filter form field collections to only Signature and Initial fields
+            const signatureFormFields: any[] = this.pdfViewer.formFieldCollections.filter((field: any) =>
+                field.type === 'SignatureField' || field.type === 'InitialField'
+            );
+            const belongsToFormField: boolean = signatureFormFields.some((field: any) =>
+                field.pageIndex === pageIndex &&
+                field.bounds && currentData.LineBounds &&
+                field.bounds.x <= signatureBoundsPixels.X &&
+                field.bounds.y <= signatureBoundsPixels.Y &&
+                (field.bounds.x + field.bounds.width) >= (signatureBoundsPixels.X + signatureBoundsPixels.Width) &&
+                (field.bounds.y + field.bounds.height) >= (signatureBoundsPixels.Y + signatureBoundsPixels.Height)
+            );
+            if (currentData.Value && currentData.Value !== '' && !this.isSignatureRendered && belongsToFormField) {
                 this.renderExistingAnnnot(currentData, index, printContainer);
             }
             break;
+        }
         }
         return {currentField, count};
     }
@@ -2101,7 +2122,7 @@ export class FormFields {
         }
     }
 
-    private createTextBoxField(data: any, pageIndex: number, type: string): any {
+    private createTextBoxField(data: any, pageIndex: number, type: string, isPrint?: boolean): any {
         let inputField: any;
         if (data.Visible === 1) {
             return;
@@ -2126,6 +2147,10 @@ export class FormFields {
             inputField.autocomplete = 'off';
         }
         inputField.name = data.FieldName;
+        if (isPrint && data.BorderWidth !== 0) {
+            inputField.style.boxSizing = 'border-box';
+            inputField.style.borderWidth = data.BorderWidth + 'px';
+        }
         return inputField;
     }
 

@@ -1,2 +1,2 @@
-@forward 'layout';
-@forward 'theme';
+@use 'layout' as *;
+@use 'theme' as *;

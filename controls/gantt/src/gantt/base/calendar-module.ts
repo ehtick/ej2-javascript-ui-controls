@@ -30,6 +30,9 @@ export class CalendarModule {
                 }
             }
         }
+        else {
+            return projectCalendar;
+        }
         return projectCalendar;
     }
     public holidays: HolidayModel[] = [];

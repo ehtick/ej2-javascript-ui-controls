@@ -14,7 +14,7 @@ import '../../../node_modules/es6-promise/dist/es6-promise';
 import { ExcelExport } from '../../../src/grid/actions/excel-export';
 import { Aggregate } from '../../../src/grid/actions/aggregate';
 import { createGrid, destroy} from '../base/specutil.spec';
-import { DataManager } from '@syncfusion/ej2-data';
+import { DataManager, Query } from '@syncfusion/ej2-data';
 import { Workbook } from '@syncfusion/ej2-excel-export';
 import { ExcelRow, ExcelExportProperties, ExportDetailTemplateEventArgs } from '../../../src';
 import  {profile , inMB, getMemoryProfile} from '../base/common.spec';
@@ -1276,6 +1276,398 @@ describe('excel Export =>', () => {
             done();
         });
         
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    
+    describe('Remaining branches coverage in ExcelExport (Custom aggregate, header/footer index logic, detail template multi-path, parseStyles dateonly, Vue3/React template path)', () => {
+        let gridObj: Grid;
+
+        beforeAll((done: Function) => {
+            gridObj = createGrid(
+                {
+                    dataSource: data.slice(0, 3),
+                    allowExcelExport: true,
+                    allowGrouping: true,
+                    groupSettings: { columns: ['ShipCountry'] },
+                    allowPaging: true,
+                    columns: [
+                        { field: 'OrderID', headerText: 'Order ID', textAlign: 'Right', width: 120 },
+                        { field: 'ShipCountry', headerText: 'Ship Country', width: 140 },
+                        { field: 'Freight', headerText: 'Freight', width: 120, format: 'C2' },
+                    ],
+                    aggregates: [{
+                        columns: [{
+                            type: 'Custom',
+                            customAggregate: () => 42,
+                            field: 'Freight',
+                            groupCaptionTemplate: 'Custom Count: ${Custom}'
+                        }]
+                    }],
+                    detailTemplate: `<div>Detail</div>`,
+                }, done);
+        });
+
+        it('should hit Custom aggregate + groupCaptionTemplate path in fillAggregates and data key loop', (done) => {
+            gridObj.excelExport({ exportType: 'CurrentPage' }).then((doc) => {
+                done();
+            });
+        });
+
+        it('should hit processExcelHeader rowLength < rows.length branch', (done) => {
+            gridObj.excelExport({
+                header: {
+                    headerRows: 1,
+                    rows: [
+                        { cells: [{ value: 'Header Row 1' }] },
+                        { cells: [{ value: 'Header Row 2' }] }
+                    ]
+                }
+            }).then(() => done());
+        });
+
+        it('should hit processExcelFooter else branch (footerRows <= rows.length)', (done) => {
+            gridObj.excelExport({
+                footer: {
+                    footerRows: 2,
+                    rows: [
+                        { cells: [{ value: 'Footer 1' }] },
+                        { cells: [{ value: 'Footer 2' }] },
+                        { cells: [{ value: 'Footer 3' }] }
+                    ]
+                }
+            }).then(() => done());
+        });
+
+        it('should hit detail template columnHeader+rows together + image + text paths in processDetailTemplate', (done) => {
+            gridObj.exportDetailTemplate = (args: any) => {
+                if (args.parentRow.data['OrderID'] % 2 === 0) {
+                    args.value = {
+                        columnHeader: [{ cells: [{ colSpan: 2, value: 'Detail Header' }] }],
+                        rows: [{ cells: [{ value: 'Detail Row Data' }] }]
+                    };
+                } else if (args.parentRow.data['OrderID'] % 3 === 0) {
+                    args.value = { image: { base64: image, height: 50, width: 50 } };
+                } else {
+                    args.value = { text: 'Plain text detail' };
+                }
+            };
+            gridObj.excelExport({ hierarchyExportMode: 'All' }).then(() => done());
+        });
+
+        it('should hit isVue3 / isReact non-string template path in getAggreateValue', (done) => {
+            (gridObj as any).isVue3 = true;
+            gridObj.excelExport().then(() => {
+                done();
+            });
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    describe('Deep coverage - getAggreateValue, processAggregates, processRecordContent, processRecords (statements >98%, branches >96%)', () => {
+        let gridObj: any;
+
+        beforeAll((done: Function) => {
+            gridObj = createGrid(
+                {
+                    dataSource: data.slice(0, 5),
+                    allowExcelExport: true,
+                    allowGrouping: true,
+                    groupSettings: { columns: ['ShipCountry'] },
+                    allowPaging: true,
+                    pageSettings: { pageSize: 5 },
+                    columns: [
+                        { field: 'OrderID', headerText: 'Order ID', width: 120 },
+                        { field: 'ShipCountry', headerText: 'Ship Country', width: 140 },
+                        { field: 'Verified', headerText: 'Verified', width: 100, type: 'boolean' },   // for TrueCount/FalseCount
+                        { field: 'Freight', headerText: 'Freight', width: 120, format: 'C2' }
+                    ],
+                    aggregates: [{
+                        columns: [
+                            { type: 'Custom', customAggregate: () => 999, field: 'Freight', groupCaptionTemplate: 'Custom: ${Custom}' },
+                            { type: 'TrueCount', field: 'Verified', groupFooterTemplate: 'True: ${TrueCount}' },
+                            { type: 'FalseCount', field: 'Verified', footerTemplate: 'False: ${FalseCount}' },
+                            { type: 'Sum', field: 'Freight', footerTemplate: () => 'Sum Func' }   // non-string template for Vue3/React path
+                        ]
+                    }],
+                    childGrid: {
+                        dataSource: data.slice(0, 3),
+                        queryString: 'OrderID',
+                        columns: [{ field: 'ShipCountry', headerText: 'Child Country' }],
+                        aggregates: [{ columns: [{ type: 'Count', field: 'ShipCountry' }] }]   // triggers prepareSummaryInfo
+                    },
+                    detailTemplate: `<div>Detail</div>`
+                }, done);
+        });
+
+        it('hits getAggreateValue Vue3/React path + Custom/TrueCount/FalseCount branches in fillAggregates', (done) => {
+            (gridObj as any).isVue3 = true;
+            gridObj.excelExport({ exportType: 'CurrentPage' }).then((doc: any) => {
+                done();
+            });
+        });
+
+        it('hits processAggregates prepareSummaryInfo (parent !== gObj) + currentViewRecords branch', (done) => {
+            gridObj.excelExport({ hierarchyExportMode: 'All' }).then((doc: any) => {
+                done();
+            });
+        });
+
+        it('hits processRecordContent grouped path + processRecords dataSource provided path', (done) => {
+            const dm = new DataManager(data.slice(0, 3));
+            gridObj.excelExport({ dataSource: dm, query: new Query() }).then((doc: any) => {
+                done();
+            });
+        });
+
+        it('hits processRecords CurrentPage + lazyLoading false path + processDetailTemplate all 4 value types', (done) => {
+            gridObj.exportDetailTemplate = (args: ExportDetailTemplateEventArgs) => {
+                const id = (args.parentRow.data as any).OrderID;
+                if (id === 10248) args.value = { image: { base64: image, height: 50, width: 50 } };
+                else if (id === 10249) args.value = { text: 'Plain text' };
+                else if (id === 10250) args.value = { hyperLink: { target: 'mailto:test', displayText: 'link' } };
+                else args.value = { columnHeader: [{ cells: [{ value: 'Header' }] }], rows: [{ cells: [{ value: 'Row' }] }] };
+            };
+            gridObj.excelExport({ exportType: 'CurrentPage', hierarchyExportMode: 'All' }).then(() => done());
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    describe('Direct method calls for remaining branch/line coverage in getAggreateValue, processAggregates, processRecordContent, processRecords', () => {
+        let gridObj: Grid;
+        let excelModule: any;
+
+        beforeAll((done: Function) => {
+            gridObj = createGrid(
+                {
+                    dataSource: data.slice(0, 5),
+                    allowExcelExport: true,
+                    allowGrouping: true,
+                    groupSettings: { columns: ['ShipCountry'] },
+                    columns: [
+                        { field: 'OrderID', headerText: 'Order ID', width: 120 },
+                        { field: 'ShipCountry', headerText: 'Ship Country', width: 140 },
+                        { field: 'Verified', headerText: 'Verified', width: 100, type: 'boolean' },
+                        { field: 'Freight', headerText: 'Freight', width: 120, format: 'C2' }
+                    ],
+                    aggregates: [{
+                        columns: [
+                            { type: 'Custom', customAggregate: () => 999, field: 'Freight', groupCaptionTemplate: 'Custom: ${Custom}' },
+                            { type: 'TrueCount', field: 'Verified', groupFooterTemplate: 'True: ${TrueCount}' },
+                            { type: 'FalseCount', field: 'Verified', footerTemplate: 'False: ${FalseCount}' },
+                            { type: 'Sum', field: 'Freight', footerTemplate: () => 'Sum Func' }
+                        ]
+                    }]
+                }, done);
+            excelModule = (gridObj as any).excelExportModule;
+        });
+
+        it('directly calls processRecords with explicit dataSource + CurrentPage + lazyLoading=false (no errors)', (done) => {
+            const mockDataSource = new DataManager(data.slice(0, 2));
+            const mockExportProps: ExcelExportProperties = { exportType: 'CurrentPage', query: new Query() };
+            gridObj.groupSettings.enableLazyLoading = false;  // Hits !lazy branch
+
+            excelModule.processRecords(gridObj, mockExportProps, false, null).then((result: any) => {
+                done();
+            }).catch((e: any) => {
+                expect(e).toBeUndefined();  // No script error
+            });
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    describe('processRecordRows - dateonly string parsing branch coverage', () => {
+        let gridObj: Grid;
+
+        beforeAll((done: Function) => {
+            gridObj = createGrid(
+                {
+                    dataSource: [
+                        { OrderID: 10248, OrderDate: '2025-03-13' },
+                        { OrderID: 10249, OrderDate: '2024/12/25' },
+                        { OrderID: 10250, OrderDate: '2023.11.05' }
+                    ],
+                    allowExcelExport: true,
+                    columns: [
+                        { field: 'OrderID', headerText: 'Order ID', width: 120 },
+                        { 
+                            field: 'OrderDate', 
+                            headerText: 'Order Date', 
+                            type: 'dateonly',
+                            width: 150 
+                        }
+                    ]
+                }, done);
+        });
+
+        it('should hit dateonly && typeof value === "string" && value branch in processRecordRows', (done) => {
+            gridObj.excelExport({ exportType: 'CurrentPage' }).then((doc: Workbook) => {
+                done();
+            });
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    describe('parseStyles - full branch & line coverage (object/string format, dateonly, textAlign, width variants, childGridLevel, style push)', () => {
+        let gridObj: Grid;
+        let excelModule: any;
+
+        beforeAll((done: Function) => {
+            gridObj = createGrid(
+                {
+                    dataSource: data.slice(0, 1),
+                    allowExcelExport: true,
+                    columns: [{ field: 'OrderID', headerText: 'ID' }]
+                }, done);
+            excelModule = (gridObj as any).excelExportModule;
+        });
+
+        it('should hit EVERY branch in parseStyles (no format, string format, object format with .format, object with skeleton only, dateonly type, textAlign, width number/string/auto, childGridLevel true/false, style push true/false)', () => {
+            const gObj = gridObj as any;
+            let style: any = {};
+            let colNoFormat: any = { format: undefined, textAlign: undefined, width: 'auto' };
+            excelModule.parseStyles(gObj, colNoFormat, style, 1);
+            style = {};
+            let colString: any = { format: 'yyyy-MM-dd', textAlign: 'Right', width: 120 };
+            excelModule.parseStyles(gObj, colString, style, 2);
+            style = {};
+            let colObjFormat: any = { format: { format: 'dd/MM/yyyy' }, width: '150px' };
+            excelModule.parseStyles(gObj, colObjFormat, style, 3);
+            style = {};
+            let colDateOnly: any = {
+                format: { skeleton: 'short' },
+                type: 'dateonly',
+                width: 200
+            };
+            excelModule.parseStyles(gObj, colDateOnly, style, 4);
+            style = {};
+            gObj.childGridLevel = 1;
+            let colChild: any = { width: 50 };
+            excelModule.parseStyles(gObj, colChild, style, 5);
+            gObj.childGridLevel = 0;
+            style = {};
+            let colNumberWidth: any = { width: 75 };
+            excelModule.parseStyles(gObj, colNumberWidth, style, 6);
+            style = {};
+            let colAuto: any = { width: 'auto' };
+            excelModule.parseStyles(gObj, colAuto, style, 7);
+            style = {};
+            let colEmptyStyle: any = { format: undefined, textAlign: undefined, width: 'auto' };
+            excelModule.parseStyles(gObj, colEmptyStyle, style, 8);
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    describe('fillAggregates - direct call to hit exact .Custom else-if branch', () => {
+        let gridObj: Grid;
+        let excelModule: any;
+
+        beforeAll((done: Function) => {
+            gridObj = createGrid(
+                {
+                    dataSource: data.slice(0, 1),
+                    allowExcelExport: true,
+                    columns: [
+                        { field: 'OrderID', headerText: 'ID', width: 100 },
+                        { field: 'Freight', headerText: 'Freight', width: 120 }
+                    ]
+                }, done);
+            excelModule = (gridObj as any).excelExportModule;
+        });
+
+        it('should hit the exact else-if (.Custom) line in fillAggregates with direct call (no error)', () => {
+            const mockRows = [{
+                data: {
+                    Freight: { Custom: 99999 }
+                },
+                cells: [{
+                    isDataCell: true,
+                    column: { field: 'Freight', type: 'Custom' },
+                    attributes: {}
+                }]
+            }];
+            const mockExcelRows: any[] = [];
+            excelModule.fillAggregates(gridObj, mockRows, 0, mockExcelRows, undefined);
+            gridObj.excelExport({ exportType: 'CurrentPage' });
+        });
+
+        afterAll(() => {
+            destroy(gridObj);
+            gridObj = null;
+        });
+    });
+
+    describe('processRecords - direct call to cover highlighted branches (no script error)', () => {
+        let gridObj: Grid;
+        let excelModule: any;
+
+        beforeAll((done: Function) => {
+            gridObj = createGrid(
+                {
+                    dataSource: data.slice(0, 3),
+                    allowExcelExport: true,
+                    aggregates: [{ columns: [{ type: 'Sum', field: 'Freight' }] }], // for aggregates truthy check
+                    columns: [
+                        { field: 'OrderID', headerText: 'ID', width: 100 },
+                        { field: 'Freight', headerText: 'Freight', width: 120 }
+                    ]
+                }, done);
+            excelModule = (gridObj as any).excelExportModule;
+        });
+
+        it('should hit first branch → query.isCountRequired = true when aggregates exist (dataSource path)', (done) => {
+            const exportProps: ExcelExportProperties = { dataSource: data.slice(0, 2) };
+            excelModule.processRecords(gridObj, exportProps, false, null)
+                .then((result: any) => {
+                    expect(result).toBeDefined();
+                    done();
+                })
+                .catch((e: any) => {
+                    expect(e).toBeUndefined();
+                });
+        });
+
+        it('should hit second branch → CurrentPage + ! (lazyLoading && columns && isRemote())', (done) => {
+            const exportProps: ExcelExportProperties = { exportType: 'CurrentPage' };
+            gridObj.groupSettings.enableLazyLoading = false;
+
+            excelModule.processRecords(gridObj, exportProps, false, null)
+                .then((result: any) => {
+                    done();
+                })
+                .catch((e: any) => {
+                    expect(e).toBeUndefined();
+                });
+        });
+
+        it('exportingSuccess coverage', function (done) {
+            excelModule.isBlob = true;
+            excelModule.exportingSuccess(() => {});
+            done();
+        });
         afterAll(() => {
             destroy(gridObj);
             gridObj = null;

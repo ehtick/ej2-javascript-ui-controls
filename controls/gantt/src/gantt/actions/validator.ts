@@ -149,21 +149,6 @@ export class cyclicValidator {
         }
     }
     /**
-     * Returns resolved predecessor edges for a given task ID.
-     *
-     * @param {string | number} taskId - Task ID (string or number) to retrieve resolved predecessors for
-     * @returns {{ fromLeaf: string; toLeaf: string; source: IPredecessor }[]} Array of resolved edges, empty if none
-     * @private
-     */
-    // eslint-disable-next-line
-    private getResolvedPredecessorsForTask(taskId: string | number): {
-        fromLeaf: string;
-        toLeaf: string;
-        source: IPredecessor;
-    }[] {
-        return this.resolvedEdgesPerTask.get(String(taskId)) || [];
-    }
-    /**
      * Creates a deep clone of the current adjacency map.
      *
      * @returns {Map<string, Set<string>>} A new Map with the same keys and independently cloned Sets
@@ -419,6 +404,10 @@ export class cyclicValidator {
         }
         return unique;
     }
+    private decrementDegree(indeg: Map<string, number>, node: string): void {
+        const currentDegree: number = indeg.has(node) ? indeg.get(node)! : 0;
+        indeg.set(node, currentDegree - 1);
+    }
     /**
      * Compute topological order using Kahn's algorithm.
      * Only valid when no cycles exist in the graph.
@@ -462,8 +451,7 @@ export class cyclicValidator {
                 let iterNext: IteratorResult<string> = iterator.next();
                 while (!iterNext.done) {
                     const nb: string = iterNext.value;  // This is exactly what you had
-                    const currentDegree: number = indeg.has(nb) ? indeg.get(nb)! : 0;
-                    indeg.set(nb, currentDegree - 1);
+                    this.decrementDegree(indeg, nb);
                     if (indeg.get(nb) === 0) {
                         q.push(nb);
                     }

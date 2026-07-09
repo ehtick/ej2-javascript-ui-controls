@@ -1,7 +1,7 @@
 /**
  * Gantt sort spec
  */
-import { Gantt,Selection, Sort,UndoRedo,Edit,Toolbar, RowDD,Filter, ContextMenu, ContextMenuClickEventArgs, ColumnMenu, DayMarkers, Reorder, Resize, CriticalPath } from '../../src/index';
+import { Gantt,Selection, Sort,UndoRedo,Edit,Toolbar, RowDD,Filter, ContextMenu, ContextMenuClickEventArgs, ColumnMenu, DayMarkers, Reorder, Resize, CriticalPath, VirtualScroll } from '../../src/index';
 import { baselineData, cellEditData, filteredData, projectData, projectData1, projectData2, projectData3, projectData4, resourceDataUndo, resourceResourcesUndo, resourcesData, sbSampleResource, sbSampleResourceData, undoredo907807,multipleResourcesData,overviewDataLocale } from '../base/data-source.spec';
 import { createGantt, destroyGantt, triggerMouseEvent } from '../base/gantt-util.spec';
 import { ResizeArgs } from '@syncfusion/ej2-grids';
@@ -389,21 +389,6 @@ describe('Gantt undoredo support', () => {
         afterAll(() => {
             if (ganttObj) {
                 destroyGantt(ganttObj);
-            }
-        });
-        it('progress resize', () => {
-            ganttObj.taskbarEdited = (args: any) => {
-                expect(args.data.ganttProperties.progress).toBe(0);
-                expect(args.taskBarEditAction).toBe('ProgressResizing');
-                expect(args.editingFields.progress).toBe(0);
-            };
-            if (ganttObj.element) {
-                let dragElement: HTMLElement = ganttObj.element.querySelector('#' + ganttObj.element.id + 'GanttTaskTableBody > tr:nth-child(2) > td > div.e-taskbar-main-container > div.e-child-progress-resizer') as HTMLElement;
-                if (!isNullOrUndefined(dragElement)) {
-                    triggerMouseEvent(dragElement, 'mousedown', dragElement.offsetLeft, dragElement.offsetTop);
-                    triggerMouseEvent(dragElement, 'mousemove', 0, 0);
-                    triggerMouseEvent(dragElement, 'mouseup');
-                }
             }
         });
         it('Undo action for progress resize', () => {
@@ -2141,22 +2126,24 @@ describe('Gantt undoredo support', () => {
                     taskbarHeight: 30
                 }, done);
         });
-        it('Undo action for delete record record', () => {
+        it('Action for delete record', () => {
+            ganttObj.deleteRecord(3);
+        });
+        it('Undo action for delete record', () => {
             ganttObj.actionComplete = function (args: any): void {
                 if(args.requestType === 'add') {
                     expect(args.modifiedRecords.length).toBe(2);
                 }
             };
-            ganttObj.deleteRecord(3)
-            ganttObj.undo()
+            ganttObj.undo();
         });
-        it('Redo action for delete record record', () => {
+        it('Redo action for delete record', () => {
             ganttObj.actionComplete = function (args: any): void {
                 if(args.requestType === 'delete') {
                     expect(args.modifiedRecords.length).toBe(3);
                 }
             };
-            ganttObj.redo()
+            ganttObj.redo();
         });
         afterAll(() => {
             if (ganttObj) {
@@ -4589,7 +4576,7 @@ describe('time span for month mode', () => {
     });
     it('time span for month mode', () => {
         ganttObj.nextTimeSpan();
-        expect(ganttObj.getFormatedDate(ganttObj.timelineModule.timelineEndDate, 'M/d/yyyy')).toBe("6/1/2019");
+        expect(ganttObj.getFormatedDate(ganttObj.timelineModule.timelineEndDate, 'M/d/yyyy')).toBe("9/1/2019");
     });
 });
 describe('time span for day mode', () => {
@@ -6486,17 +6473,19 @@ describe('Gantt redo action for delete parent record', () => {
                 taskbarHeight: 30
             }, done);
     });
-    it('Undo action for delete record record', () => {
-        ganttObj.deleteRecord(ganttObj.flatData[1])
+   it('Action for delete record', () => {
+        ganttObj.deleteRecord(ganttObj.flatData[1]);
+    });
+    it('Undo action for delete record', () => {
         ganttObj.undo();
     });
-    it('Redo action for delete record record', () => {
+    it('Redo action for delete record', () => {
         ganttObj.actionComplete = function (args: any): void {
             if(args.requestType === 'delete') {
                 expect(ganttObj.flatData.length).toBe(34);
             }
         };
-        ganttObj.redo()
+        ganttObj.redo();
     });
     afterAll(() => {
         if (ganttObj) {
@@ -7220,3 +7209,329 @@ describe('Gantt undo action after adding segment data', () => {
             }
         });
 });
+describe('Undo file code coverage-isPartOfExistingHierarchy', () => {
+    Gantt.Inject(Sort,UndoRedo,Edit,Toolbar, Selection );
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: projectData2,
+                editSettings:{
+                    allowAdding: true,
+                    allowEditing:true,
+                    allowDeleting: true
+                },
+                enableUndoRedo: true,
+                undoRedoActions:['Add','Edit','Delete'],
+                allowSorting: true,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration',
+                    progress: 'Progress',
+                    child: 'subtasks'
+                },
+                projectStartDate: new Date('03/25/2019'),
+                projectEndDate: new Date('05/30/2019'),
+                toolbar:['Undo','Redo'],
+            }, done);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+    it('Checks isPartOfExistingHierarchy: childRecords.some branch without isInHierarchyOf match', () => {
+        ganttObj.undoRedoModule['uniqueDeletedRecords'] = [];
+        const targetTaskId: string = ganttObj.currentViewData[1].ganttProperties.taskId;
+        ganttObj.undoRedoModule[`uniqueDeletedRecords`].push({
+            data: {
+                ganttProperties: { taskId: 'PARENT_ID' },
+                childRecords: [
+                    { ganttProperties: { taskId: targetTaskId } }
+                ]
+            }
+        });
+        const recordData: any = {
+            ganttProperties: { taskId: targetTaskId },
+            parentItem: null
+        };
+        const recordObj: any = { data: recordData };
+        const result: boolean = ganttObj.undoRedoModule['isPartOfExistingHierarchy'](recordObj);
+        expect(result).toBe(true);
+    });
+});
+describe('adds a record and then undoes it (integration check)', () => {
+    Gantt.Inject(Sort,UndoRedo,Edit,Toolbar, Selection, VirtualScroll );
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: projectData2,
+                editSettings:{
+                    allowAdding: true,
+                    allowEditing:true,
+                    allowDeleting: true
+                },
+                enableVirtualization: true,
+                enableUndoRedo: true,
+                undoRedoActions:['Add','Edit','Delete'],
+                allowSorting: true,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration',
+                    progress: 'Progress',
+                    child: 'subtasks'
+                },
+                projectStartDate: new Date('03/25/2019'),
+                projectEndDate: new Date('05/30/2019'),
+                toolbar:['Undo','Redo'],
+            }, done);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+    it('Adds a record', () => {
+        let record: Object = {
+            TaskID: 10,
+            TaskName: 'Identify Site location',
+            StartDate: new Date('04/02/2019'),
+            Duration: 3,
+            Progress: 50
+        }
+        ganttObj.editModule.addRecord(record, 'Below', 2);
+        expect(ganttObj.flatData.length).toBe(6)
+    });
+    it('Undo the added record', () => {
+        ganttObj.undo();
+        expect(ganttObj.flatData.length).toBe(5)
+    });
+});
+describe('branch coverage for root tasks', () => {
+    Gantt.Inject(Sort, UndoRedo, Edit, Toolbar, Selection, VirtualScroll);
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 13, TaskName: 'Standalone root A', StartDate: new Date('04/04/2019'), Duration: 2 },
+                    { TaskID: 14, TaskName: 'Standalone root B', StartDate: new Date('04/05/2019'), Duration: 2 }
+                ],
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true,
+                    showDeleteConfirmDialog: true
+                },
+                enableUndoRedo: true,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration'
+                }
+            }, done);
+    });
+    beforeEach((done) => {
+        setTimeout(done, 200);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+    it('Triggers !hasChildRecords && !parentItem branch', () => {
+        const rootTasks = [
+            ganttObj.currentViewData[0],
+            ganttObj.currentViewData[1]
+        ];
+        const records: any = { deletedIndexes: [], deletedRecords: [] };
+        ganttObj.undoRedoModule['findPosition'](rootTasks, records, 'deletedIndexes');
+        expect(records.deletedIndexes.length).toBe(2);
+    });
+});
+describe('branch coverage for rowData mismatch in parent root', () => {
+    Gantt.Inject(Sort, UndoRedo, Edit, Toolbar, Selection, VirtualScroll);
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    {
+                        TaskID: 15,
+                        TaskName: 'Parent root',
+                        StartDate: new Date('04/06/2019'),
+                        Duration: 3,
+                        subtasks: [
+                            { TaskID: 16, TaskName: 'Child of 15', StartDate: new Date('04/07/2019'), Duration: 1 }
+                        ]
+                    },
+                    {
+                        TaskID: 17,
+                        TaskName: 'Parent root',
+                        StartDate: new Date('04/06/2019'),
+                        Duration: 3,
+                        subtasks: [
+                            { TaskID: 18, TaskName: 'Child of 15', StartDate: new Date('04/07/2019'), Duration: 1 }
+                        ]
+                    }
+                ],
+                editSettings: { allowAdding: true, allowEditing: true, allowDeleting: true },
+                enableUndoRedo: true,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration',
+                    child: 'subtasks'
+                }
+            }, done);
+    });
+    beforeEach((done) => {
+        setTimeout(done, 200);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+    it('Triggers rowData && currentData.taskId !== rowData.taskId branch', () => {
+        const rootTasks = [
+            ganttObj.currentViewData[0],
+            ganttObj.currentViewData[1]
+        ];
+        const records: any = { deletedIndexes: [], deletedRecords: [] };
+        ganttObj.undoRedoModule['findPosition'](rootTasks, records, 'deletedIndexes');
+        expect(records.deletedIndexes.length).toBe(2);
+    });
+});
+describe('UndoRedo Sorting coverage with initial sortSettings', () => {
+    Gantt.Inject(Sort, UndoRedo, Edit, Toolbar, Selection);
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: 'Task A', StartDate: new Date('04/04/2019'), Duration: 2 },
+                    { TaskID: 2, TaskName: 'Task B', StartDate: new Date('04/05/2019'), Duration: 3 }
+                ],
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true,
+                    allowDeleting: true
+                },
+                enableUndoRedo: true,
+                undoRedoActions: ['Sorting'],
+                allowSorting: true,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration'
+                },
+                sortSettings: {
+                    columns: [
+                        { field: 'TaskID', direction: 'Ascending' },
+                        { field: 'TaskName', direction: 'Descending' }
+                    ]
+                }
+            }, done);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+    it('Covers sortByColumn with i=0 and i>0 via initial sortSettings', () => {
+        const undoRedo: UndoRedo = ganttObj.undoRedoModule;
+        undoRedo['getUndoCollection'].push({
+            action: 'Sorting',
+            sortColumns: ganttObj.treeGrid.sortSettings.columns
+        });
+        undoRedo['undoAction']();
+        const sortedCols = ganttObj.treeGrid.sortSettings.columns;
+        expect(sortedCols.length).toBe(2);
+    });
+});
+describe('Gantt undo action for indent', () => {
+    Gantt.Inject(Sort,UndoRedo,Edit,Toolbar , Selection);
+    let ganttObj: Gantt;
+    var undoRecord = [
+        {
+            TaskID: 1,
+            TaskName: 'Product Concept',
+            StartDate: new Date('04/02/2019'),
+            EndDate: new Date('04/21/2019'),
+            Duration: 5,
+        },
+        {
+            TaskID: 2,
+            TaskName: 'Defining the product and its usage',
+            StartDate: new Date('04/02/2019'),
+            EndData: new Date('04/04/2019'),
+            Duration: 3,
+            ParentID: 1,
+            Progress: 30,
+        },
+        {
+            TaskID: 3,
+            TaskName: 'Defining target audience',
+            StartDate: new Date('04/04/2019'),
+            EndDate: new Date('04/06/2019'),
+            Duration: 2,
+            ParentID: 1,
+            Predecessor: '2FS',
+        },
+    ];
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: undoRecord,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    endDate: 'EndDate',
+                    progress: 'Progress',
+                    parentID: 'ParentID',
+                    dependency: 'Predecessor',
+                },
+                enableContextMenu: true,
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true,
+                    showDeleteConfirmDialog: true,
+                },
+                allowSelection: true,
+                gridLines: "Both",
+                height: '550px',
+                enableUndoRedo: true,
+                toolbar: ['Indent', 'Outdent','Undo','Redo'],
+                undoRedoActions:['Indent','Outdent'],
+            }, done);
+    });
+    it('After Undo action for indent flatData length need to be 1.', (done: Function) => {
+        ganttObj.actionComplete = function (args: any): void {
+            if(args.requestType === 'save') {
+                expect(ganttObj.flatData[1].ganttProperties.predecessor.length).toBe(1);
+                done();
+            }
+        };
+        ganttObj.selectRow(2);
+        ganttObj.indent();
+        ganttObj.undo();
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+}); 

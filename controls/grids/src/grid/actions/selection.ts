@@ -4,7 +4,9 @@ import { remove, closest, select } from '@syncfusion/ej2-base';
 import { Query, DataManager } from '@syncfusion/ej2-data';
 import {
     IGrid, IAction, IIndex, ISelectedCell, IPosition, IRenderer, NotifyArgs, CellFocusArgs,
-    BeforeAutoFillEventArgs, RowDeselectingEventArgs
+    BeforeAutoFillEventArgs, RowDeselectingEventArgs,
+    ISelectedCellDetails,
+    IEdit, IValueFormatter
 } from '../base/interface';
 import { SelectionSettings } from '../base/grid';
 import { setCssInGridPopUp, getPosition, isGroupAdaptive, addRemoveActiveClasses, removeAddCboxClasses, getCellFromRow, getSerachFilteredData } from '../base/util';
@@ -19,7 +21,7 @@ import { Data } from '../actions/data';
 import { ReturnType } from '../base/type';
 import { FocusStrategy } from '../services/focus-strategy';
 import { iterateExtend, setChecked, isComplexField , getObject } from '../base/util';
-import { ColumnDeselectEventArgs, ColumnSelectEventArgs, ColumnSelectingEventArgs } from '../base/interface';
+import { ColumnDeselectEventArgs, ColumnSelectEventArgs, ColumnSelectingEventArgs, IAutoFill, IUndoRedoAction } from '../base/interface';
 import { addRemoveEventListener } from '../base/util';
 import * as literals from '../base/string-literals';
 import { GroupLazyLoadRenderer, VirtualContentRenderer } from '../renderer';
@@ -72,6 +74,7 @@ export class Selection implements IAction {
     private isMultiCtrlRequest: boolean = false;
     private isMultiCtrlRequestCell: boolean = false;
     private enableSelectMultiTouch: boolean = false;
+    private actualCtrlKeyPressed: boolean = false;
     private clearRowCheck: boolean = false;
     private selectRowCheck: boolean = false;
     private element: HTMLElement;
@@ -173,6 +176,7 @@ export class Selection implements IAction {
     private timer1: number;
     private timer2: number;
     private isFocusLastCell: boolean = false;
+    private serviceLocator: IValueFormatter;
 
     /**
      * Constructor for the Grid selection module
@@ -187,6 +191,7 @@ export class Selection implements IAction {
         this.selectionSettings = selectionSettings;
         this.factory = locator.getService<RendererFactory>('rendererFactory');
         this.focus = locator.getService<FocusStrategy>('focus');
+        this.serviceLocator = locator.getService<IValueFormatter>('valueFormatter');
         this.addEventListener();
         this.wireEvents();
     }
@@ -329,7 +334,7 @@ export class Selection implements IAction {
         }
         let selectData: Object;
         const isRemoved: boolean = false;
-        if (gObj.enableVirtualization && index > -1) {
+        if ((gObj.enableVirtualization || gObj.isRowDomVirtualization()) && index > -1) {
             const e: { selectedIndex: number, isAvailable: boolean } = { selectedIndex: index, isAvailable: true };
             this.parent.notify(events.selectVirtualRow, e);
             if (selectedRow && (gObj.getRowObjectFromUID(selectedRow.getAttribute('data-uid')))) {
@@ -469,7 +474,7 @@ export class Selection implements IAction {
                                selectableRowIndex?: number[]): void {
         for (let i: number = 0, len: number = rowIndexes.length; i < len; i++) {
             let currentRow: Element = this.parent.getDataRows()[rowIndexes[parseInt(i.toString(), 10)]];
-            if (this.parent.enableVirtualization) {
+            if (this.parent.enableVirtualization || this.parent.isRowDomVirtualization()) {
                 currentRow = this.parent.getRowByIndex(rowIndexes[parseInt(i.toString(), 10)]);
             }
             const rowObj: Row<Column> = this.getRowObj(currentRow);
@@ -514,7 +519,7 @@ export class Selection implements IAction {
             cancel: false,
             rowIndexes: selectableRowIndex, row: selectedRows, rowIndex: rowIndex, target: this.actualTarget,
             prevRow: gObj.getRows()[this.prevRowIndex], previousRowIndex: this.prevRowIndex,
-            isInteracted: this.isInteracted, isCtrlPressed: this.isMultiCtrlRequest, isShiftPressed: this.isMultiShiftRequest,
+            isInteracted: this.isInteracted, isCtrlPressed: this.actualCtrlKeyPressed, isShiftPressed: this.isMultiShiftRequest,
             data: selectedData, isHeaderCheckboxClicked: this.isHeaderCheckboxClicked, foreignKeyData: foreignKeyData
         };
         this.parent.trigger(events.rowSelecting, this.fDataUpdate(args), (args: Object) => {
@@ -532,7 +537,7 @@ export class Selection implements IAction {
             };
             if (!this.isSingleSel()) {
                 for (const rowIdx of selectableRowIndex) {
-                    selectRowFn(rowIdx, gObj.enableVirtualization ? true : false);
+                    selectRowFn(rowIdx, gObj.enableVirtualization || gObj.isRowDomVirtualization() ? true : false);
                 }
             } else {
                 selectRowFn(rowIndex);
@@ -646,7 +651,7 @@ export class Selection implements IAction {
                     cancel: false,
                     data: selectedData.length ? selectedData : rowObj.data, rowIndex: rowIndex, row: selectedRows.length ? selectedRows :
                         selectedRow, target: this.actualTarget, prevRow: gObj.getRows()[this.prevRowIndex],
-                    previousRowIndex: this.prevRowIndex, isCtrlPressed: this.isMultiCtrlRequest, isShiftPressed: this.isMultiShiftRequest,
+                    previousRowIndex: this.prevRowIndex, isCtrlPressed: this.actualCtrlKeyPressed, isShiftPressed: this.isMultiShiftRequest,
                     foreignKeyData: foreignKeyData.length ? foreignKeyData : rowObj.foreignKeyData, isInteracted: this.isInteracted,
                     isHeaderCheckboxClicked: this.isHeaderCheckboxClicked, rowIndexes: indexes
                 };
@@ -781,8 +786,8 @@ export class Selection implements IAction {
     }
 
     private updatePersistCollection(selectedRow: Element, chkState: boolean): void {
-        if (((this.parent.isRemote() && (this.parent.enableVirtualization || this.parent.enableInfiniteScrolling)) ||
-            this.parent.isPersistSelection || this.parent.selectionSettings.persistSelection &&
+        if (((this.parent.isRemote() && (this.parent.enableVirtualization || this.parent.isRowDomVirtualization() ||
+        this.parent.enableInfiniteScrolling)) || this.parent.isPersistSelection || this.parent.selectionSettings.persistSelection &&
             this.parent.getPrimaryKeyFieldNames().length > 0) && !isNullOrUndefined(selectedRow)) {
             if (!this.parent.isPersistSelection) {
                 this.ensureCheckboxFieldSelection();
@@ -876,6 +881,9 @@ export class Selection implements IAction {
             }
             if (!target || preventFocus || (this.parent.isCheckBoxSelection && this.isLazyLoadGroup() &&
                 this.parent.enableInfiniteScrolling)) { return; }
+            if (this.parent.enableVirtualization || this.parent.isRowDomVirtualization()) {
+                this.focus['suppressCellFocusEvent'] = true;
+            }
             this.focus.onClick({ target }, true, !(this.parent.contextMenuModule && this.mouseButton === 2));
         }
     }
@@ -934,7 +942,7 @@ export class Selection implements IAction {
 
             for (let i: number = 0, len: number = this.selectedRowIndexes.length; i < len; i++) {
                 let currentRow: Element;
-                if (this.parent.enableVirtualization || (this.parent.enableInfiniteScrolling
+                if (this.parent.enableVirtualization || this.parent.isRowDomVirtualization() || (this.parent.enableInfiniteScrolling
                     && this.parent.infiniteScrollSettings.enableCache)) {
                     currentRow = this.parent.getRowByIndex(this.selectedRowIndexes[parseInt(i.toString(), 10)]);
                 }
@@ -990,8 +998,9 @@ export class Selection implements IAction {
                                      }
                                      this.updateCheckBoxes(element[parseInt(j.toString(), 10)]);
                                  }
-                                 if ((this.parent.enableVirtualization || (this.parent.enableInfiniteScrolling
-                                    && this.parent.infiniteScrollSettings.enableCache)) && this.selectedRecords.length && !element.length
+                                 if ((this.parent.enableVirtualization || this.parent.isRowDomVirtualization()
+                                    || (this.parent.enableInfiniteScrolling && this.parent.infiniteScrollSettings.enableCache))
+                                    && this.selectedRecords.length && !element.length
                                     && !this.parent.selectionSettings.persistSelection && !this.disableUI
                                     && !this.parent.isCheckBoxSelection) {
                                      this.addRemoveClassesForRow(null, false, true);
@@ -1349,7 +1358,7 @@ export class Selection implements IAction {
             const args: Object = {
                 cancel: false, data: selectedData, cellIndex: cellIndexes[0],
                 isShiftPressed: this.isMultiShiftRequest,
-                currentCell: selectedCell, isCtrlPressed: this.isMultiCtrlRequest,
+                currentCell: selectedCell, isCtrlPressed: this.actualCtrlKeyPressed,
                 previousRowCell: this.prevECIdxs ?
                     gObj.getCellFromIndex(this.prevECIdxs.rowIndex, this.prevECIdxs.cellIndex) : undefined
             };
@@ -1594,8 +1603,9 @@ export class Selection implements IAction {
                 }
             }
         }
-        if (!e.ctrlKey && !e.shiftKey && !this.parent.enableVirtualization && !this.parent.enableInfiniteScrolling &&
-            !this.parent.enableColumnVirtualization && !this.parent.groupSettings.columns.length && this.isCellDrag) {
+        if (!e.ctrlKey && !e.shiftKey && !this.parent.enableVirtualization && !this.parent.isRowDomVirtualization()
+            && !this.parent.enableInfiniteScrolling && !this.parent.enableColumnVirtualization
+            && !this.parent.groupSettings.columns.length && this.isCellDrag) {
             this.updateScrollPosition(e, position, this.parent.getContent());
         }
     }
@@ -2345,15 +2355,19 @@ export class Selection implements IAction {
         }
     }
 
-    private updateValue(rIdx: number, cIdx: number, cell: HTMLElement): void {
-        const args: BeforeAutoFillEventArgs = this.createBeforeAutoFill(rIdx, cIdx, cell);
+    private updateValue(rowIndex: number, cellIndex: number, cell: HTMLElement): void {
+        const args: BeforeAutoFillEventArgs = this.createBeforeAutoFill(rowIndex, cellIndex, cell);
         if (!args.cancel) {
-            const col: Column = this.parent.getColumnByIndex(cIdx);
+            const col: Column = this.parent.getColumnByIndex(cellIndex);
             if (this.parent.editModule && cell) {
                 if (col.type === 'number') {
-                    this.parent.editModule.updateCell(rIdx, col.field, parseFloat(args.value));
+                    const value: number = this.serviceLocator.fromView(args.value as string, col.getParser(), col.type) as number;
+                    this.parent.editModule.updateCell(rowIndex, col.field, value);
                 } else {
-                    this.parent.editModule.updateCell(rIdx, col.field, args.value);
+                    this.parent.editModule.updateCell(rowIndex, col.field, args.value);
+                }
+                if (this.parent.editSettings.enableUndoRedo && this.parent.editSettings.mode === 'Batch') {
+                    this.storeCellsInStack(rowIndex, cell, col, args);
                 }
             }
         }
@@ -2374,6 +2388,81 @@ export class Selection implements IAction {
         const cls: string = '.e-cellselectionbackground';
         const cells: HTMLElement[] = [].slice.call(this.parent.getDataRows()[parseInt(rowIndex.toString(), 10)].querySelectorAll(cls));
         return cells;
+    }
+
+    /**
+     * Store the cells modified by the AutoFill action in the stack.
+     *
+     * @param {number} rowIndex - specfies the rowIndex
+     * @param {HTMLElement} cell - specfies the cell element
+     * @param {Column} col - specfies the column
+     * @param {BeforeAutoFillEventArgs} args - specifies the args
+     * @returns {void}
+     */
+    private storeCellsInStack(rowIndex: number, cell: HTMLElement, col: Column, args: BeforeAutoFillEventArgs): void {
+        const gObj: IGrid = this.parent;
+        const rowUid: string = gObj.getRows()[parseInt(rowIndex.toString(), 10)].getAttribute('data-uid');
+        const row: Row<Column> = gObj.getRowObjectFromUID(rowUid);
+        if (!row) {
+            return;
+        }
+        const currentValue: string | number | boolean | Date = row.data[col.field];
+        const newValue: string = cell.textContent ? cell.textContent.trim() : '';
+        if (currentValue === newValue) {
+            return;
+        }
+        const value: string | number | boolean | Date | undefined = col.type === 'number' ? this.serviceLocator.fromView(
+            args.value as string, col.getParser(), col.type) as number : args.value;
+        const affectedCell: IUndoRedoAction = {
+            rowIndex: rowIndex,
+            field: col.field,
+            rowUid: rowUid,
+            previousValue: currentValue,
+            newValue: value
+        };
+        const editModule: IEdit = this.parent.editModule.editModule;
+        const lastAction: IUndoRedoAction | undefined = editModule.undoStack[editModule.undoStack.length - 1];
+        let mergeCell: boolean = false;
+        if (lastAction && lastAction.type === 'auto-fill') {
+            const lastCells: IUndoRedoAction[] = (lastAction as IAutoFill).cells;
+            if (lastAction.field === col.field) {
+                let maxRow: number = lastCells[0].rowIndex;
+                for (const cell of lastCells) {
+                    if (cell.rowIndex > maxRow) {
+                        maxRow = cell.rowIndex;
+                    }
+                }
+                mergeCell = affectedCell.rowIndex === maxRow + 1;
+            } else {
+                const firstRowIndex: number = lastCells[0].rowIndex;
+                const sameRowCells: boolean = lastCells.every((cell: IUndoRedoAction) => cell.rowIndex === firstRowIndex);
+                if (sameRowCells && firstRowIndex === affectedCell.rowIndex) {
+                    const currentColIndex: number = gObj.getColumnIndexByField(col.field);
+                    let lastMaxCol: number = -1;
+                    for (const cellItem of lastCells) {
+                        const colIdx: number = gObj.getColumnIndexByField(cellItem.field);
+                        if (colIdx > lastMaxCol) {
+                            lastMaxCol = colIdx;
+                        }
+                    }
+                    if (currentColIndex === lastMaxCol + 1) {
+                        mergeCell = true;
+                    }
+                }
+            }
+        }
+        if (mergeCell) {
+            (lastAction as IAutoFill).cells.push(affectedCell);
+            return;
+        }
+        const action: IAutoFill = {
+            type: 'auto-fill',
+            field: col.field,
+            cells: [affectedCell]
+        };
+        editModule.undoStack.push(action);
+        editModule.redoStack = [];
+        this.parent.notify(events.toolbarRefresh, {});
     }
 
     private selectLikeAutoFill(e: MouseEvent, isApply?: boolean): void {
@@ -2704,10 +2793,10 @@ export class Selection implements IAction {
 
     private clearSelAfterRefresh(e: { requestType: string }): void {
         const isInfiniteScroll: boolean = this.parent.enableInfiniteScrolling && e.requestType === 'infiniteScroll';
-        if (e.requestType !== 'virtualscroll' && !this.parent.isPersistSelection && !isInfiniteScroll) {
+        if (e.requestType !== 'virtualscroll' && e.requestType !== 'dom-virtualscroll' && !this.parent.isPersistSelection && !isInfiniteScroll) {
             this.clearSelection();
         }
-        if ((e.requestType === 'virtualscroll' || isInfiniteScroll) && this.parent.isPersistSelection && !this.isPartialSelection
+        if ((e.requestType === 'virtualscroll' || isInfiniteScroll || e.requestType === 'dom-virtualscroll') && this.parent.isPersistSelection && (!this.isPartialSelection || e.requestType === 'dom-virtualscroll')
             && this.isHdrSelectAllClicked) {
             const rowObj: Row<Column>[] = this.parent.getRowsObject().filter((e: Row<Column>) => e.isSelectable);
             const indexes: number[] = [];
@@ -2937,7 +3026,7 @@ export class Selection implements IAction {
     private ensureCheckboxFieldSelection(): void {
         const gobj: IGrid = this.parent;
         this.primaryKey = this.parent.getPrimaryKeyFieldNames()[0];
-        if (!gobj.enableVirtualization && this.chkField
+        if (!gobj.enableVirtualization && !gobj.isRowDomVirtualization() && this.chkField
             && ((gobj.isPersistSelection && Object.keys(this.selectedRowState).length === 0) ||
                 !gobj.isPersistSelection)) {
             this.dataSuccess((!isNullOrUndefined(this.parent.dataSource) && (<{result: object[]}>this.parent.dataSource).result) ||
@@ -3040,7 +3129,8 @@ export class Selection implements IAction {
             this.totalRecordsCount = this.parent.pageSettings.totalRecordsCount;
         }
         if (!isNullOrUndefined(rows) && rows.length > 0 && ((this.parent.isRemote() && (this.parent.enableVirtualization ||
-            this.parent.enableInfiniteScrolling)) || this.parent.isPersistSelection || this.chkField)) {
+            this.parent.isRowDomVirtualization() || this.parent.enableInfiniteScrolling))
+            || this.parent.isPersistSelection || this.chkField)) {
             const indexes: number[] = [];
             for (let j: number = 0; j < rows.length; j++) {
                 const rowObj: Row<Column> = this.getRowObj(rows[parseInt(j.toString(), 10)]);
@@ -3144,7 +3234,9 @@ export class Selection implements IAction {
             }
             this.isHdrSelectAllClicked = false;
             this.setCheckAllState();
-            this.totalRecordsCount = this.parent.pageSettings.totalRecordsCount;
+            if (!isNullOrUndefined(this.parent.pageSettings.totalRecordsCount)) {
+                this.totalRecordsCount = this.parent.pageSettings.totalRecordsCount;
+            }
         }
         if (e.requestType === 'paging') {
             if (this.parent.isPersistSelection && this.isPartialSelection && this.isHdrSelectAllClicked) {
@@ -3173,7 +3265,7 @@ export class Selection implements IAction {
         if ( this.parent.pinnedTopRecords.length) {
             this.setPinnedSelectionIndexes();
         }
-        if (!this.parent.enableVirtualization && this.parent.isPersistSelection) {
+        if (!this.parent.enableVirtualization && !this.parent.isRowDomVirtualization() && this.parent.isPersistSelection) {
             if (this.selectedRecords.length) {
                 this.isPrevRowSelection = true;
             }
@@ -3192,12 +3284,12 @@ export class Selection implements IAction {
             this.getAvailableDataCount(this.parent.partialSelectedRecords);
         this.disableSelectableRecordsCount = this.parent.disableSelectedRecords.length &&
             this.getAvailableDataCount(this.parent.disableSelectedRecords);
-        if (this.parent.enableVirtualization) {
+        if (this.parent.enableVirtualization || this.parent.isRowDomVirtualization()) {
             this.setCheckAllState();
         }
         if (this.parent.isPersistSelection || (this.contentRenderer &&
             isNullOrUndefined((this.contentRenderer as VirtualContentRenderer).requestType) && this.parent.isRemote() &&
-            (this.parent.enableVirtualization || this.parent.enableInfiniteScrolling))) {
+            (this.parent.enableVirtualization || this.parent.isRowDomVirtualization() || this.parent.enableInfiniteScrolling))) {
             this.refreshPersistSelection();
         }
         this.initialRowSelection = this.isRowType() && this.parent.element.querySelectorAll('.e-selectionbackground') &&
@@ -3219,7 +3311,7 @@ export class Selection implements IAction {
 
     private updatePersistSelectedData(checkState: boolean): void {
         if (this.parent.isPersistSelection || (this.parent.isRemote() && (this.parent.enableVirtualization ||
-            this.parent.enableInfiniteScrolling))) {
+            this.parent.isRowDomVirtualization() || this.parent.enableInfiniteScrolling))) {
             let nonFilteredSelectedData: object[] = [];
             if (this.parent.checkAllRows === 'Check' && (this.parent.searchSettings.key.length > 0
                 || this.parent.filterSettings.columns.length > 0) && this.persistSelectedData.length
@@ -3308,7 +3400,7 @@ export class Selection implements IAction {
             this.clearSelection();
         }
         this.chkAllCollec = [];
-        if (!isNullOrUndefined(editForm)) {
+        if (!isNullOrUndefined(editForm) && !editForm.closest('.e-addedrow')) {
             const editChkBox: HTMLElement = editForm.querySelector('.e-edit-checkselect') as HTMLElement;
             if (!isNullOrUndefined(editChkBox)) {
                 removeAddCboxClasses(editChkBox.nextElementSibling as HTMLElement, checkState);
@@ -3471,15 +3563,18 @@ export class Selection implements IAction {
             checked: checkState, selectedRowIndexes: this.parent.getSelectedRowIndexes(),
             target: checkBox
         });
-        if (!this.parent.isEdit) {
+        const gridContent: Element = this.parent.getContent();
+        const isCommandColumn: boolean = gridContent && gridContent.querySelector('.e-rowcell .e-unboundcelldiv') ? true : false;
+        if (!this.parent.isEdit || (isCommandColumn && this.parent.isEdit && this.parent.editSettings.showAddNewRow &&
+            this.selectionSettings.persistSelection)) {
             this.checkedTarget = null;
         }
     }
 
     private updateSelectedRowIndexes(): void {
-        if (this.parent.isCheckBoxSelection && (this.parent.enableVirtualization || this.parent.enableInfiniteScrolling) &&
-            this.isPartialSelection && !(this.parent.getDataModule().isRemote() || (!isNullOrUndefined(this.parent.dataSource)
-             && (<{result: object[]}>this.parent.dataSource).result))
+        if (this.parent.isCheckBoxSelection && (this.parent.enableVirtualization || this.parent.isRowDomVirtualization()
+            || this.parent.enableInfiniteScrolling) && this.isPartialSelection && !(this.parent.getDataModule().isRemote()
+            || (!isNullOrUndefined(this.parent.dataSource) && (<{result: object[]}>this.parent.dataSource).result))
             && this.parent.selectionSettings.persistSelection && !this.isHdrSelectAllClicked) {
             if (this.parent.checkAllRows !== 'Uncheck') {
                 const rowObj: Row<Column>[] = this.parent.getRowsObject().filter((e: Row<Column>) => e.isSelectable);
@@ -3488,8 +3583,8 @@ export class Selection implements IAction {
                 }
             }
         }
-        if (this.parent.isCheckBoxSelection && this.parent.enableVirtualization && !this.isPartialSelection &&
-            (this.parent.getDataModule().isRemote() || (!isNullOrUndefined(this.parent.dataSource)
+        if (this.parent.isCheckBoxSelection && (this.parent.enableVirtualization || this.parent.isRowDomVirtualization())
+            && !this.isPartialSelection && (this.parent.getDataModule().isRemote() || (!isNullOrUndefined(this.parent.dataSource)
                 && (<{ result: object[] }>this.parent.dataSource).result))
             && !this.parent.isPersistSelection && this.parent.checkAllRows === 'Check') {
             const rowObj: Row<Column>[] = this.parent.getRowsObject().filter((e: Row<Column>) => e.isSelectable);
@@ -3504,9 +3599,9 @@ export class Selection implements IAction {
     }
 
     private updateSelectedRowIndex(index?: number): void {
-        if (this.parent.isCheckBoxSelection && (this.parent.enableVirtualization || this.parent.enableInfiniteScrolling)
-            && !(this.parent.getDataModule().isRemote() || (!isNullOrUndefined(this.parent.dataSource)
-             && (<{result: object[]}>this.parent.dataSource).result))) {
+        if (this.parent.isCheckBoxSelection && (this.parent.enableVirtualization || this.parent.isRowDomVirtualization()
+            || this.parent.enableInfiniteScrolling) && !(this.parent.getDataModule().isRemote()
+            || (!isNullOrUndefined(this.parent.dataSource) && (<{result: object[]}>this.parent.dataSource).result))) {
             if (this.parent.checkAllRows === 'Check' && isNullOrUndefined(index)) {
                 this.selectedRowIndexes = [];
                 if (this.isPartialSelection) {
@@ -3536,7 +3631,8 @@ export class Selection implements IAction {
         if (this.parent.getDataModule().isRemote()
             || (!isNullOrUndefined(this.parent.dataSource) && (<{result: object[]}>this.parent.dataSource).result)) {
             return this.getAvailableSelectedData(this.persistSelectedData).length === (this.parent.enableVirtualization
-            || this.parent.enableInfiniteScrolling || this.isLazyLoadGroup() ? this.parent.totalDataRecordsCount : this.totalRecordsCount);
+            || this.parent.enableInfiniteScrolling
+            || this.isLazyLoadGroup() ? this.parent.totalDataRecordsCount : this.totalRecordsCount);
         } else {
             if (this.isPartialSelection) {
                 if (this.parent.allowPaging && !this.selectionSettings.persistSelection
@@ -3603,7 +3699,8 @@ export class Selection implements IAction {
                 checkedLen === this.parent.dataSource.length && checkedLen > this.totalRecordsCount) {
                 checkedLen = this.totalRecordsCount;
             }
-            if (!this.parent.isPersistSelection && (!this.parent.isRemote() || this.parent.allowPaging)) {
+            if (!this.parent.isPersistSelection && (!this.parent.isRemote() || !(this.parent.enableVirtualization ||
+                this.parent.enableInfiniteScrolling))) {
                 checkedLen = this.selectedRowIndexes.length;
                 this.totalRecordsCount = this.getCurrentBatchRecordChanges().length;
             }
@@ -3654,7 +3751,8 @@ export class Selection implements IAction {
                         this.getRenderer().setSelection(null, true, true);
                     }
                     this.parent.checkAllRows = 'Check';
-                } else if (((!this.selectedRowIndexes.length && (!this.parent.enableVirtualization ||
+                } else if (((!this.selectedRowIndexes.length && (!this.parent.enableVirtualization
+                        && !this.parent.enableInfiniteScrolling ||
                         (!this.persistSelectedData.length && !isFiltered) || (isFiltered && this.someDataSelected())) ||
                         checkedLen === 0 && this.getCurrentBatchRecordChanges().length === 0) && !this.parent.allowPaging) ||
                         (this.parent.allowPaging && !this.isLazyLoadPersistSelection() &&
@@ -3691,7 +3789,7 @@ export class Selection implements IAction {
                         removeClass([spanEle.parentElement], ['e-checkbox-disabled']);
                     }
                 }
-                if ((this.parent.enableVirtualization || this.parent.enableInfiniteScrolling)
+                if ((this.parent.enableVirtualization || this.parent.isRowDomVirtualization() || this.parent.enableInfiniteScrolling)
                     && !this.parent.allowPaging && !(this.parent.getDataModule().isRemote()
                     || (!isNullOrUndefined(this.parent.dataSource) && (<{result: object[]}>this.parent.dataSource).result))) {
                     this.updateSelectedRowIndex(index);
@@ -3701,8 +3799,9 @@ export class Selection implements IAction {
     }
 
     private checkVirtualCheckBox(): boolean {
-        return this.parent.enableVirtualization && !(this.parent.getDataModule().isRemote() || (!isNullOrUndefined(this.parent.dataSource)
-            && (<{result: object[]}>this.parent.dataSource).result)) && this.parent.isCheckBoxSelection && !this.isPartialSelection;
+        return (this.parent.enableVirtualization || this.parent.isRowDomVirtualization()) && !(this.parent.getDataModule().isRemote()
+            || (!isNullOrUndefined(this.parent.dataSource) && (<{result: object[]}>this.parent.dataSource).result))
+            && this.parent.isCheckBoxSelection && !this.isPartialSelection;
     }
 
     private isLazyLoadGroup(): boolean {
@@ -3728,9 +3827,7 @@ export class Selection implements IAction {
         if (!this.isPartialSelection && (this.parent.getDataModule().isRemote() || (!isNullOrUndefined(this.parent.dataSource)
             && (<{result: object[]}>this.parent.dataSource).result)) && (this.parent.enableVirtualization ||
             this.parent.enableInfiniteScrolling)) {
-            const dataLen: number = (this.parent.getDataModule().isRemote() || (!isNullOrUndefined(this.parent.dataSource)
-                && (<{result: object[]}>this.parent.dataSource).result)) ?
-                this.parent.totalDataRecordsCount : this.getData() && this.getData().length;
+            const dataLen: number = this.parent.totalDataRecordsCount;
             if (dataLen === rowObj.length) {
                 rowCount = rowObj.filter((e: Row<Column>) => e.isSelectable).length;
                 return rowCount && count === rowCount;
@@ -3738,7 +3835,8 @@ export class Selection implements IAction {
                 return false;
             }
 
-        } else if ((this.parent.enableVirtualization || this.parent.enableInfiniteScrolling) && this.isPartialSelection) {
+        } else if ((this.parent.enableVirtualization || this.parent.isRowDomVirtualization()
+            || this.parent.enableInfiniteScrolling) && this.isPartialSelection) {
             const selectedRowCount: number = (this.parent.isPersistSelection || this.parent.isRemote()) ?
                 this.persistSelectedRecordsCount : this.partialSelectedRecordsCount;
             rowCount = this.disableSelectableRecordsCount + this.partialSelectableRecordsCount;
@@ -3803,6 +3901,7 @@ export class Selection implements IAction {
         } else {
             this.isMultiShiftRequest = e.shiftKey;
         }
+        this.actualCtrlKeyPressed = this.parent.allowKeyboard && (e.ctrlKey || (this.isMacOS && this.cmdKeyPressed));
         this.isMultiCtrlRequestCell = this.isMultiCtrlRequest;
         this.popUpClickHandler(e);
         let chkSelect: boolean = false;
@@ -4001,7 +4100,7 @@ export class Selection implements IAction {
         if ((headerAction || (['ctrlPlusA', 'escape'].indexOf(e.keyArgs.action) === -1 &&
             e.keyArgs.action !== 'space' && rowIndex === prev.rowIndex && cellIndex === prev.cellIndex)) &&
             !this.selectionSettings.allowColumnSelection) { return; }
-        if (this.parent.enableVirtualization) {
+        if (this.parent.enableVirtualization || this.parent.isRowDomVirtualization()) {
             rowIndex = parseInt(e.element.parentElement.getAttribute('aria-rowindex'), 10) - 1;
             if (!this.parent.enableColumnVirtualization && !this.parent.groupSettings.columns.length &&
                 this.parent.totalDataRecordsCount >= 1) {
@@ -4015,7 +4114,7 @@ export class Selection implements IAction {
             }
         }
         if (this.parent.editSettings.showAddNewRow && this.parent.editSettings.newRowPosition === 'Top' &&
-            (!this.parent.enableVirtualization && !this.parent.enableInfiniteScrolling) && e.keyArgs.action === 'downArrow') {
+            (!this.parent.enableVirtualization && !this.parent.isRowDomVirtualization() && !this.parent.enableInfiniteScrolling) && e.keyArgs.action === 'downArrow') {
             rowIndex--;
         }
         this.preventFocus = true;
@@ -4104,8 +4203,12 @@ export class Selection implements IAction {
                 index = this.prevColIndex >= lastIndex ? firstIndex : lastIndex;
             } else {
                 if (!isNullOrUndefined(e.element.querySelector('.e-headercelldiv'))) {
-                    index = this.parent.getColumnIndexByUid((e.element as HTMLTableCellElement)
-                        .querySelector('.e-headercelldiv').getAttribute('data-mappinguid'));
+                    const headerDiv: HTMLElement = (e.element as HTMLTableCellElement)
+                        .querySelector('.e-headercelldiv');
+                    const uid: string | null = headerDiv.getAttribute('data-mappinguid');
+                    if (!isNullOrUndefined(uid)) {
+                        index = this.parent.getColumnIndexByUid(uid);
+                    }
                 }
             }
         }
@@ -4150,7 +4253,7 @@ export class Selection implements IAction {
             this.checkedTarget = null;
         }
         if (this.isRowType() && !this.selectionSettings.checkboxOnly && !((this.parent.enableVirtualization
-            || this.parent.enableInfiniteScrolling) && this.parent.pinnedTopRowModels.length)) {
+            || this.parent.isRowDomVirtualization() || this.parent.enableInfiniteScrolling) && this.parent.pinnedTopRowModels.length)) {
             if (this.parent.frozenRows || this.parent.pinnedTopRecords.length) {
                 this.selectRow(rowIndex, true);
                 this.applyUpDown(gObj.selectedRowIndex);
@@ -4308,12 +4411,13 @@ export class Selection implements IAction {
         }
         if (this.checkVirtualCheckBox() && !this.parent.isPersistSelection) {
             selectedData = this.virtualSelectedData;
-        } else if ((this.parent.enableVirtualization || this.parent.enableInfiniteScrolling) && !(this.parent.getDataModule().isRemote() ||
-            (!isNullOrUndefined(this.parent.dataSource) && (<{result: object[]}>this.parent.dataSource).result)) &&
+        } else if ((this.parent.enableVirtualization || this.parent.isRowDomVirtualization() || this.parent.enableInfiniteScrolling)
+            && !(this.parent.getDataModule().isRemote() || (!isNullOrUndefined(this.parent.dataSource)
+            && (<{result: object[]}>this.parent.dataSource).result)) &&
             this.parent.isCheckBoxSelection && this.isPartialSelection && !this.parent.isPersistSelection) {
             selectedData = this.partialSelectedData;
-        } else if ((this.parent.enableVirtualization || this.parent.enableInfiniteScrolling) && this.parent.isRemote() &&
-            this.isPartialSelection && !this.parent.isPersistSelection) {
+        } else if ((this.parent.enableVirtualization || this.parent.isRowDomVirtualization() || this.parent.enableInfiniteScrolling)
+            && this.parent.isRemote() && this.isPartialSelection && !this.parent.isPersistSelection) {
             selectedData = this.persistSelectedData;
         }
         return selectedData;
@@ -4327,7 +4431,7 @@ export class Selection implements IAction {
      */
     public selectColumn(index: number): void {
         const gObj: IGrid = this.parent;
-        if (isNullOrUndefined(gObj.getColumns()[parseInt(index.toString(), 10)])) {
+        if (isNullOrUndefined(index) || isNullOrUndefined(gObj.getColumns()[parseInt(index.toString(), 10)])) {
             return;
         }
         const column: Column = gObj.getColumnByIndex(index);
@@ -4375,7 +4479,7 @@ export class Selection implements IAction {
      */
     public selectColumnsByRange(startIndex: number, endIndex?: number): void {
         const gObj: IGrid = this.parent;
-        if (isNullOrUndefined(gObj.getColumns()[parseInt(startIndex.toString(), 10)])) {
+        if (isNullOrUndefined(startIndex) || isNullOrUndefined(gObj.getColumns()[parseInt(startIndex.toString(), 10)])) {
             return;
         }
         const indexes: number[] = [];
@@ -4446,7 +4550,7 @@ export class Selection implements IAction {
      */
     public selectColumnWithExisting(startIndex: number): void {
         const gObj: IGrid = this.parent;
-        if (isNullOrUndefined(gObj.getColumns()[parseInt(startIndex.toString(), 10)])) {
+        if (isNullOrUndefined(startIndex) || isNullOrUndefined(gObj.getColumns()[parseInt(startIndex.toString(), 10)])) {
             return;
         }
         const newCol: Element = gObj.getColumnHeaderByUid(gObj.getColumnByIndex(startIndex).uid);
@@ -4670,7 +4774,7 @@ export class Selection implements IAction {
     public dataReady(e: { requestType: string }): void {
         this.isHeaderCheckboxClicked = false;
         const isInfinitecroll: boolean = this.parent.enableInfiniteScrolling && e.requestType === 'infiniteScroll';
-        if (e.requestType !== 'virtualscroll' && (!this.parent.isPersistSelection || (this.parent.isPersistSelection &&
+        if (e.requestType !== 'virtualscroll' && e.requestType !== 'dom-virtualscroll' && (!this.parent.isPersistSelection || (this.parent.isPersistSelection &&
             this.selectionSettings.type === 'Single')) && !isInfinitecroll) {
             this.disableUI = !this.parent.enableImmutableMode && !(e.requestType === 'save' && e['action'] === 'add');
             this.clearSelection();
@@ -4712,4 +4816,51 @@ export class Selection implements IAction {
             return this.getAvailableSelectedData(data).length;
         }
     }
+
+    /**
+     * Gets selected cell details.
+     *
+     * @returns {ISelectedCellDetails} Returns selected cell details
+     * @hidden
+     */
+    /* eslint-disable security/detect-object-injection */
+    public getSeletedCellDetails(): ISelectedCellDetails {
+        const gObj: IGrid = this.parent;
+        const rowElements: Element[] = [];
+        const rowData: Object[] = [];
+        const rowIndexes: number[] = [];
+        const dataRows: Element[] = gObj.getAllDataRows(false);
+        if ((this.selectionSettings.mode === 'Cell' || this.selectionSettings.mode === 'Both') &&
+            this.selectedRowCellIndexes.length > 0) {
+            for (let i: number = 0; i < this.selectedRowCellIndexes.length; i++) {
+                const rowIndex: number = this.selectedRowCellIndexes[i].rowIndex;
+                if (rowIndex >= 0 && rowIndex < dataRows.length) {
+                    const rowElement: Element = dataRows[rowIndex];
+                    const uid: string | null = rowElement.getAttribute('data-uid');
+                    if (uid) {
+                        const rowObject: Row<Column> = gObj.getRowObjectFromUID(uid);
+                        rowElements.push(rowElement);
+                        rowData.push(rowObject.data);
+                        rowIndexes.push(rowIndex);
+                    }
+                }
+            }
+        }
+        return { rowElements, rowData, rowIndexes };
+    }
+    /* eslint-enable security/detect-object-injection */
+
+    /**
+     * Gets the collection of selected records by cell selection.
+     *
+     * @returns {Object[]} Returns record details of selected cells
+     */
+    public getSelectedCellRecords(): Object[] {
+        if ((this.selectionSettings.mode === 'Cell' || this.selectionSettings.mode === 'Both') &&
+            this.parent.editSettings.mode === 'Batch' || this.parent.editSettings.mode === 'Cell') {
+            return this.getSeletedCellDetails().rowData;
+        }
+        return [];
+    }
+
 }

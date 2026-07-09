@@ -1861,10 +1861,29 @@ export class MsWordPaste {
         const listItems: NodeListOf<HTMLLIElement> = clipboardDataElement.querySelectorAll('li');
         for (let i: number = 0; i < listItems.length; i++) {
             const listItem: HTMLLIElement = listItems[i as number];
+            const marginLeft: string = listItem.style.marginLeft;
             // Clear margin-left for list items unless parent has 'marginLeftIgnore' class
-            if (!isNOU(listItem.style.marginLeft) && !listItem.parentElement.classList.contains('marginLeftIgnore')) {
+            if (!isNOU(marginLeft) && marginLeft !== '' && !listItem.parentElement.classList.contains('marginLeftIgnore')) {
                 listItem.style.marginLeft = '';
+                // MS Word uses a hanging indent pattern where a positive margin-left is
+                // compensated by a negative text-indent so the list marker sits at the
+                // left edge. When the margin-left is removed, the leftover negative
+                // text-indent pulls the first line back and makes the list text overlap
+                // with the marker. Clear the compensating negative text-indent as well.
+                this.clearCompensatingTextIndent(listItem);
             }
+        }
+    }
+
+    /* Clears a negative text-indent that compensated a removed margin-left (hanging indent) */
+    private clearCompensatingTextIndent(listItem: HTMLElement): void {
+        const textIndent: string = listItem.style.textIndent;
+        if (isNOU(textIndent) || textIndent === '') {
+            return;
+        }
+        const indentValue: number = parseFloat(textIndent);
+        if (!isNaN(indentValue) && indentValue < 0) {
+            listItem.style.textIndent = '';
         }
     }
 

@@ -1,5 +1,5 @@
 import { TimelineFormat, ITaskData, ISplitterResizedEventArgs } from './../base/interface';
-import { createElement, isNullOrUndefined, getValue, addClass, removeClass, extend, append } from '@syncfusion/ej2-base';
+import { createElement, isNullOrUndefined, getValue, addClass, removeClass, extend, append, formatUnit } from '@syncfusion/ej2-base';
 import { Gantt } from '../base/gantt';
 import { TimelineSettingsModel, TimelineTierSettingsModel } from '../models/timeline-settings-model';
 import * as cls from '../base/css-constants';
@@ -28,6 +28,7 @@ export class Timeline {
     public timelineRoundOffEndDate: Date;
     public totalTimelineWidth: number;
     public isZoomIn: boolean = false;
+    public isZoomOut: boolean = false;
     public isZooming: boolean = false;
     public isZoomToFit: boolean = false;
     public topTierCollection: TimelineFormat[] = [];
@@ -44,6 +45,10 @@ export class Timeline {
     private fromDummyDate: boolean = false;
     public isZoomedToFit: boolean = false;
     public isZoomingAction: boolean = false;
+    public isInfiniteScrollTrimming: boolean = false;
+    public initialTimelineEndDate: Date;
+    public initialTimelineStartDate: Date;
+    public lastScrollLeftPosition: number = 0;
     private increaseIteration: boolean = false;
     private isFirstLoop: boolean = false;
     private inconsistenceDstApplied: boolean = false;
@@ -95,25 +100,8 @@ export class Timeline {
             this.parent.dataOperation.calculateProjectDates();
         }
         if (!this.parent.isFromOnPropertyChange) {
-            const viewStartAuto: boolean = this.parent.timelineSettings.viewStartDate === 'auto';
-            const viewEndAuto: boolean = this.parent.timelineSettings.viewEndDate === 'auto';
-            const projectEndUndefined: boolean = isNullOrUndefined(this.parent.projectEndDate);
-            if (!viewStartAuto && (!viewEndAuto || (viewEndAuto && projectEndUndefined)) && !this.isZoomToFit) {
-                this.parent.updateProjectDates(
-                    this.parent.cloneTimelineStartDate, this.parent.cloneTimelineEndDate, this.parent.isTimelineRoundOff);
-            }
-            else if (viewStartAuto && !this.isZoomToFit && projectEndUndefined) {
-                this.parent.updateProjectDates(
-                    this.parent.cloneProjectStartDate, this.parent.cloneTimelineEndDate, this.parent.isTimelineRoundOff);
-            }
-            else if (!viewStartAuto && viewEndAuto && !this.isZoomToFit && !projectEndUndefined) {
-                this.parent.updateProjectDates(
-                    this.parent.cloneTimelineStartDate, this.parent.cloneProjectEndDate, this.parent.isTimelineRoundOff);
-            }
-            else {
-                this.parent.updateProjectDates(
-                    this.parent.cloneProjectStartDate, this.parent.cloneProjectEndDate, this.parent.isTimelineRoundOff);
-            }
+            this.parent.updateTimelineDates(
+                this.parent.cloneTimelineStartDate, this.parent.cloneTimelineEndDate, this.parent.isTimelineRoundOff);
         }
         const timelineContainer: number = this.parent.element.getElementsByClassName('e-timeline-header-container')[0]['offsetHeight'];
         this.parent.element.getElementsByClassName('e-gridcontent')[0]['style'].height = 'calc(100% - ' + timelineContainer + 'px)';
@@ -148,7 +136,10 @@ export class Timeline {
         const currentScrollLeft: number = this.parent.element.getElementsByClassName('e-chart-scroll-container e-content')[0].scrollLeft;
         this.parent.element.getElementsByClassName('e-timeline-header-container')[0].scrollLeft = currentScrollLeft;
         this.parent.notify('refreshDayMarkers', {});
-
+        // Re-render vertical gridlines after timeline update to fix the issue where gridlines disappear during infinite timeline scrolling
+        if ((this.parent.gridLines === 'Vertical' || this.parent.gridLines === 'Both')) {
+            this.parent.renderChartGridLines();
+        }
     }
     /**
      * Function used to perform Zoomin and Zoomout actions in Gantt control.
@@ -159,7 +150,7 @@ export class Timeline {
      */
     public processZooming(isZoomIn: boolean): void {
         if (this.parent.isReact) {
-            this.parent['clearTemplate'](['TaskbarTemplate', 'ParentTaskbarTemplate', 'MilestoneTemplate', 'TaskLabelTemplate', 'RightLabelTemplate', 'LeftLabelTemplate']);
+            this.parent['clearTemplate'](['TaskbarTemplate', 'ParentTaskbarTemplate', 'MilestoneTemplate', 'BaselineTemplate', 'TaskLabelTemplate', 'RightLabelTemplate', 'LeftLabelTemplate']);
         }
         this.isZoomToFit = this.isZoomedToFit = false;
         this.updateUndoRedo(isZoomIn);
@@ -173,6 +164,7 @@ export class Timeline {
         this.parent.zoomingProjectStartDate = this.parent.zoomingProjectEndDate = null;
         const currentZoomingLevel: number = this.checkCurrentZoomingLevel();
         this.isZoomIn = isZoomIn;
+        this.isZoomOut = !isZoomIn;
         this.isZooming = true;
         let currentLevel: number = this.getZoomLevel(currentZoomingLevel, isZoomIn);
         this.updateToolbar(currentLevel, isZoomIn);
@@ -260,12 +252,12 @@ export class Timeline {
             if (property !== skipProperty) {
                 this.customTimelineSettings[property as string] = (typeof newTimeline[property as string] === 'object'
                     && !isNullOrUndefined(newTimeline[property as string])) ?
-                    { ...newTimeline[property as string] } : newTimeline[property as string];
+                    Object.assign({}, newTimeline[property as string]) : newTimeline[property as string];
             } else {
                 const value: string = property === 'topTier' ? 'bottomTier' : 'topTier';
                 const assignValue: string = 'bottomTier';
                 if ( newTimeline[`${assignValue}`].unit !== 'None') {
-                    this.customTimelineSettings[value as string] = { ...newTimeline[assignValue as string] };
+                    this.customTimelineSettings[value as string] = Object.assign({}, newTimeline[assignValue as string]);
                 }
             }
         });
@@ -273,25 +265,8 @@ export class Timeline {
             this.parent.timelineSettings.viewStartDate !== 'auto'
             || !isNullOrUndefined(this.parent.projectStartDate)) ? false : true;
         this.processTimelineUnit();
-        const viewStartAuto: boolean = this.parent.timelineSettings.viewStartDate === 'auto';
-        const viewEndAuto: boolean = this.parent.timelineSettings.viewEndDate === 'auto';
-        const projectEndUndefined: boolean = isNullOrUndefined(this.parent.projectEndDate);
-        if (!viewStartAuto && (!viewEndAuto || (viewEndAuto && projectEndUndefined)) && !this.isZoomToFit) {
-            this.parent.updateProjectDates(
-                this.parent.cloneTimelineStartDate, this.parent.cloneTimelineEndDate, this.parent.isTimelineRoundOff);
-        }
-        else if (viewStartAuto && !this.isZoomToFit && projectEndUndefined) {
-            this.parent.updateProjectDates(
-                this.parent.cloneProjectStartDate, this.parent.cloneTimelineEndDate, this.parent.isTimelineRoundOff);
-        }
-        else if (!viewStartAuto && viewEndAuto && !this.isZoomToFit && !projectEndUndefined) {
-            this.parent.updateProjectDates(
-                this.parent.cloneTimelineStartDate, this.parent.cloneProjectEndDate, this.parent.isTimelineRoundOff);
-        }
-        else {
-            this.parent.updateProjectDates(
-                this.parent.cloneProjectStartDate, this.parent.cloneProjectEndDate, this.parent.isTimelineRoundOff);
-        }
+        this.parent.updateTimelineDates(
+            this.parent.cloneTimelineStartDate, this.parent.cloneTimelineEndDate, this.parent.isTimelineRoundOff);
         const criticalModule: CriticalPath  = this.parent.criticalPathModule;
         if (this.parent.enableCriticalPath && criticalModule && criticalModule.criticalPathCollection) {
             criticalModule.criticalConnectorLine(criticalModule.criticalPathCollection, criticalModule.detailPredecessorCollection,
@@ -330,6 +305,7 @@ export class Timeline {
             this.parent.ganttChartModule.updateWidthAndHeight();
         }
     }
+
     /**
      * To perform the zoom to fit operation in Gantt.
      *
@@ -338,7 +314,7 @@ export class Timeline {
      */
     public processZoomToFit(): void {
         if (this.parent.isReact) {
-            this.parent['clearTemplate'](['TaskbarTemplate', 'ParentTaskbarTemplate', 'MilestoneTemplate', 'TaskLabelTemplate', 'RightLabelTemplate', 'LeftLabelTemplate']);
+            this.parent['clearTemplate'](['TaskbarTemplate', 'ParentTaskbarTemplate', 'MilestoneTemplate', 'BaselineTemplate', 'TaskLabelTemplate', 'RightLabelTemplate', 'LeftLabelTemplate']);
         }
         this.isZoomIn = false;
         this.isZoomToFit = true;
@@ -360,19 +336,14 @@ export class Timeline {
             this.parent.zoomingProjectStartDate = this.parent.cloneProjectStartDate;
             this.parent.zoomingProjectEndDate = this.parent.cloneProjectEndDate;
         }
-        if (this.parent.zoomingProjectStartDate > this.parent.cloneProjectStartDate) {
-            this.parent.cloneProjectStartDate = new Date(this.parent.allowUnscheduledTasks ?
-                this.parent.zoomingProjectStartDate : this.parent.cloneProjectStartDate);
-        }
-        if (isNullOrUndefined(this.parent.projectStartDate) && isNullOrUndefined(this.parent.projectEndDate)) {
-            this.parent.dataOperation.calculateProjectDates();
-        }
+        this.parent.cloneTimelineStartDate = new Date(this.parent.cloneProjectStartDate);
+        this.parent.cloneTimelineEndDate = new Date(this.parent.cloneProjectEndDate);
         let totalDays: number;
         let nonWorkingDays: number = 0;
         if (!this.parent.timelineSettings.showWeekend) {
-            nonWorkingDays = this.calculateNonWorkingDaysBetweenDates(this.parent.cloneProjectStartDate, this.parent.cloneProjectEndDate);
+            nonWorkingDays = this.calculateNonWorkingDaysBetweenDates(this.parent.cloneTimelineStartDate, this.parent.cloneTimelineEndDate);
         }
-        const timeDifference: number = (this.parent.cloneProjectEndDate.getTime() - this.parent.cloneProjectStartDate.getTime());
+        const timeDifference: number = (this.parent.cloneTimelineEndDate.getTime() - this.parent.cloneTimelineStartDate.getTime());
         totalDays = (timeDifference / (1000 * 3600 * 24));
         totalDays = totalDays - nonWorkingDays;
         const chartWidth: number = this.parent.ganttChartModule.chartElement.offsetWidth;
@@ -405,10 +376,10 @@ export class Timeline {
         }
         const newTimeline: ZoomTimelineSettings = extend({}, {}, zoomingLevel, true);
         if (isNullOrUndefined(this.parent.projectStartDate)) {
-            this.roundOffDateToZoom(this.parent.cloneProjectStartDate, true, perDayWidth, newTimeline.bottomTier.unit, zoomingLevel);
+            this.roundOffDateToZoom(this.parent.cloneTimelineStartDate, true, perDayWidth, newTimeline.bottomTier.unit, zoomingLevel);
         }
         if (isNullOrUndefined(this.parent.projectEndDate)) {
-            this.roundOffDateToZoom(this.parent.cloneProjectEndDate, false, perDayWidth, newTimeline.bottomTier.unit, zoomingLevel);
+            this.roundOffDateToZoom(this.parent.cloneTimelineEndDate, false, perDayWidth, newTimeline.bottomTier.unit, zoomingLevel);
         }
         const numberOfCells: number = this.calculateNumberOfTimelineCells(newTimeline);
         const scrollHeight: number = this.parent.ganttChartModule.scrollElement.offsetHeight - 17; //17 is horizontal scrollbar width
@@ -488,13 +459,13 @@ export class Timeline {
      * that fit within this adjusted duration according to the specified timeline settings.
      */
     private calculateNumberOfTimelineCells(newTimeline: ZoomTimelineSettings): number {
-        const sDate: Date = new Date(this.parent.cloneProjectStartDate.getTime());
-        const eDate: Date = new Date(this.parent.cloneProjectEndDate.getTime());
+        const sDate: Date = new Date(this.parent.cloneTimelineStartDate.getTime());
+        const eDate: Date = new Date(this.parent.cloneTimelineEndDate.getTime());
         this.parent.dateValidationModule['updateDateWithTimeZone'](sDate, eDate);
         let numberOfDays: number;
         let nonWorkingDays: number = 0;
         if (!this.parent.timelineSettings.showWeekend) {
-            nonWorkingDays = this.calculateNonWorkingDaysBetweenDates(this.parent.cloneProjectStartDate, this.parent.cloneProjectEndDate);
+            nonWorkingDays = this.calculateNonWorkingDaysBetweenDates(this.parent.cloneTimelineStartDate, this.parent.cloneTimelineEndDate);
         }
         numberOfDays = Math.abs((eDate.getTime() - sDate.getTime()) / (24 * 60 * 60 * 1000));
         numberOfDays -= nonWorkingDays;
@@ -830,8 +801,8 @@ export class Timeline {
         const tierMode: string = this.parent.timelineModule.bottomTier !== 'None' ? this.parent.timelineModule.topTier :
             this.parent.timelineModule.bottomTier;
         if (tierMode !== 'Hour' && tierMode !== 'Minutes') {
-            if (this.parent.isInDst(new Date(this.parent.timelineModule.timelineStartDate.toString())) &&
-            !this.parent.isInDst(pStartDate)) {
+            if (!this.parent.isInDst(pStartDate) &&
+            this.parent.isInDst(new Date(this.parent.timelineModule.timelineStartDate.toString()))) {
                 pStartDate.setTime(pStartDate.getTime() + (60 * 60 * 1000));
             } else if (!this.parent.isInDst(new Date(this.parent.timelineModule.timelineStartDate.toString())) &&
             this.parent.isInDst(pStartDate)) {
@@ -1601,7 +1572,7 @@ export class Timeline {
                 }
                 this.parent.timelineModule.timelineEndDate = endDate;
                 if (resized) {
-                    this.parent.updateProjectDates(this.timelineStartDate, this.timelineEndDate, this.parent.isTimelineRoundOff);
+                    this.parent.updateTimelineDates(this.timelineStartDate, this.timelineEndDate, this.parent.isTimelineRoundOff);
                 }
             }
         }
@@ -1618,7 +1589,7 @@ export class Timeline {
                 endDate.setHours(24, 0, 0, 0);
             }
         }
-        if (isNullOrUndefined(this.parent.projectEndDate) && this.parent.timelineSettings.viewEndDate === 'auto') {
+        if (this.parent.timelineSettings.viewEndDate === 'auto') {
             this.updateTimelineAfterZooming(endDate, false);
         }
         return endDate;
@@ -2186,11 +2157,8 @@ export class Timeline {
      * @private
      */
     private roundOffDays(): void {
-        let startDate: Date = this.parent.timelineSettings.viewStartDate !== 'auto' && !this.isZoomToFit ? this.parent.cloneTimelineStartDate :
-            this.parent.cloneProjectStartDate;
-        let endDate: Date = (((this.parent.timelineSettings.viewEndDate !== 'auto' || isNullOrUndefined(this.parent.projectEndDate))
-            || (this.parent.timelineSettings.viewStartDate !== 'auto' && this.parent.timelineSettings.viewEndDate === 'auto')) && !this.isZoomToFit) ?
-            this.parent.cloneTimelineEndDate : this.parent.cloneProjectEndDate;
+        let startDate: Date = this.parent.cloneTimelineStartDate;
+        let endDate: Date = this.parent.cloneTimelineEndDate;
         const tierMode: string = this.topTier === 'None' ? this.bottomTier : this.topTier;
         const calendarContext: CalendarContext = this.parent.defaultCalendarContext;
         if (this.parent.isTimelineRoundOff) {
@@ -2228,25 +2196,39 @@ export class Timeline {
             // CR-1028185: Fix for unscheduled tasks without projectStartDate.
             // When timeline start overlaps with task start (especially Monday case),
             // move timeline 1 day backward to ensure visibility of SS dependency, Milestone tasks.
+            // Comparing task's minimium startdate vs timelineStarte date is same.
             if (this.parent.allowUnscheduledTasks && !this.parent.projectStartDate &&
-                this.parent.dataOperation['isHavingUnscheduledTaskOnLoad']) {
+                this.parent.dataOperation['isHavingUnscheduledTaskOnLoad'] &&
+                (this.parent.cloneTimelineStartDate && this.parent.cloneProjectStartDate &&
+                this.parent.cloneTimelineStartDate.getTime() === this.parent.cloneProjectStartDate.getTime())) {
                 const minTaskDate: Date = this.parent.cloneTimelineStartDate;
                 // Ensure timeline does not overlap with earliest task start
                 if (minTaskDate && startDate && startDate.getTime() >= minTaskDate.getTime()) {
                     let adjustedStart: Date = new Date(minTaskDate);
-                    // Move timeline start one day backward
-                    adjustedStart.setDate(adjustedStart.getDate() - 1);
+                    // Adjust backward by one unit depending on tier
+                    if (tierMode === 'Hour') {
+                        adjustedStart.setHours(adjustedStart.getHours() - 1);
+                    } else if (tierMode === 'Minutes') {
+                        adjustedStart.setMinutes(adjustedStart.getMinutes() - 1);
+                    } else {
+                        adjustedStart.setDate(adjustedStart.getDate() - 1);
+                    }
                     // Adjust to previous working day if weekends are excluded
                     if (this.parent.dataOperation['getPreviousWorkingDay'] && !this.parent.includeWeekend) {
                         adjustedStart = this.parent.dataOperation['getPreviousWorkingDay'](adjustedStart, calendarContext);
                     }
                     startDate = adjustedStart;
+                    this.parent.cloneTimelineStartDate = startDate;
                 }
             }
         }
         this.timelineStartDate = startDate;
         this.timelineEndDate = endDate;
         this.timelineRoundOffEndDate = this.getTimelineRoundOffEndDate(this.timelineEndDate);
+        if (this.parent.isLoad && this.parent.enableInfiniteTimelineScroll) {
+            this.initialTimelineStartDate = this.timelineStartDate;
+            this.initialTimelineEndDate = this.timelineRoundOffEndDate;
+        }
     }
 
     /**
@@ -2392,8 +2374,8 @@ export class Timeline {
                 }
             }
         }
-        this.parent.cloneProjectStartDate = this.parent.cloneTimelineStartDate = startDate;
-        this.parent.cloneProjectEndDate = this.parent.cloneTimelineEndDate = endDate;
+        this.parent.cloneTimelineStartDate = startDate;
+        this.parent.cloneTimelineEndDate = endDate;
         if (this.parent.timelineSettings.viewStartDate !== 'auto' || this.parent.timelineSettings.viewEndDate !== 'auto') {
             this.parent.setProperties({
                 timelineSettings: {
@@ -2484,6 +2466,8 @@ export class Timeline {
                     minStartDate = new Date(Math.min(tempArray[0][0].ganttProperties.endDate.getTime(), minStartDate.getTime()));
                     this.performTimeSpanAction('prevTimeSpan', action, minStartDate, maxEndDate);
                 }
+                this.parent.cloneProjectStartDate = minStartDate;
+                this.parent.cloneProjectEndDate = maxEndDate;
                 break;
             }
         }
@@ -2500,15 +2484,16 @@ export class Timeline {
      * @private
      */
     public performTimeSpanAction(type: string, isFrom: string, startDate: Date, endDate: Date, mode?: string): void {
+        this.isZoomedToFit = false;
         mode = !isNullOrUndefined(mode) ? mode : this.parent.timelineModule.topTier === 'None' ?
             this.parent.timelineModule.bottomTier : this.parent.timelineModule.topTier;
-        const projectStartDate: Date = new Date(this.parent.cloneProjectStartDate.getTime());
-        const projectEndDate: Date = new Date(this.parent.cloneProjectEndDate.getTime());
+        const timelineStartDate: Date = new Date(this.parent.cloneTimelineStartDate.getTime());
+        const timelineEndDate: Date = new Date(this.parent.cloneTimelineEndDate.getTime());
         if (isFrom !== 'publicMethod' && type === 'both') {
             this.updateScheduleDatesByToolBar(
                 mode, 'prevTimeSpan', startDate, endDate);
             this.updateScheduleDatesByToolBar(
-                mode, 'nextTimeSpan', new Date(this.parent.cloneProjectStartDate.getTime()), endDate);
+                mode, 'nextTimeSpan', new Date(this.parent.cloneTimelineStartDate.getTime()), endDate);
         } else {
             this.updateScheduleDatesByToolBar(
                 mode, type, startDate, endDate);
@@ -2518,8 +2503,8 @@ export class Timeline {
             this.restrictRender = true;
             this.performedTimeSpanAction = true;
             const previousScrollLeft: number = this.parent.ganttChartModule.scrollElement.scrollLeft;
-            this.parent.updateProjectDates(args.projectStartDate, args.projectEndDate, args.isTimelineRoundOff, isFrom);
-            if (type === 'prevTimeSpan' && isFrom === 'publicMethod') {
+            this.parent.updateTimelineDates(args.timelineStartDate, args.timelineEndDate, args.isTimelineRoundOff, isFrom);
+            if (type === 'prevTimeSpan' && (isFrom === 'publicMethod' || isFrom === 'InfiniteScroll')) {
                 this.parent.ganttChartModule.updateScrollLeft(0);
                 this.parent.timelineModule.isZoomToFit = false;
             } else if (type === 'nextTimeSpan' && isFrom === 'publicMethod') {
@@ -2531,15 +2516,294 @@ export class Timeline {
                 this.parent.element.querySelector('.e-timeline-header-container').scrollLeft = currentScrollLeft;
                 this.parent.timelineModule.isZoomToFit = false;
             }
-            if (isFrom === 'TaskbarEditing' && this.parent.enableTimelineVirtualization && (this.wholeTimelineWidth > this.parent.element.offsetWidth * 3)) {
+            if ((isFrom === 'TaskbarEditing' || isFrom === 'InfiniteScroll') && this.parent.enableTimelineVirtualization && (this.wholeTimelineWidth > this.parent.element.offsetWidth * 3)) {
                 this.parent.ganttChartModule.scrollObject.setScrollLeft(previousScrollLeft);
                 this.parent.ganttChartModule.scrollObject.updateContent();
             }
             this.parent.timelineModule.timeSpanActionEvent('actionComplete', type, isFrom);
         } else {
-            this.parent.cloneProjectStartDate = projectStartDate;
-            this.parent.cloneProjectEndDate = projectEndDate;
+            this.parent.cloneTimelineStartDate = timelineStartDate;
+            this.parent.cloneTimelineEndDate = timelineEndDate;
         }
+    }
+
+    public handleInfiniteTimelineScroll(direction: 'left' | 'right'): void {
+        // Check if infinite timeline scrolling is enabled
+        if (!this.parent.enableInfiniteTimelineScroll) {
+            return;
+        }
+
+        const scrollElement: HTMLElement = this.parent.ganttChartModule.scrollElement;
+        if (!scrollElement) {
+            return;
+        }
+
+        // Get scroll dimensions
+        const scrollLeft: number = scrollElement.scrollLeft;
+        const scrollWidth: number = scrollElement.scrollWidth;
+        const clientWidth: number = scrollElement.clientWidth;
+
+        // Determine whether to load next/previous timespan
+        let shouldTrigger: boolean = false;
+        // Check if scroll has reached the end (with a small threshold of 10px for tolerance)
+        const scrollThreshold: number = 10;
+        if (direction === 'right') {
+            if (this.parent.enableRtl) {
+                // In RTL mode, scrollLeft is negative and increases in absolute value when scrolling left
+                // When scrolled to the end (rightmost in visual RTL), Math.abs(scrollLeft) approaches (scrollWidth - clientWidth)
+                shouldTrigger = Math.abs(scrollLeft) >= (scrollWidth - clientWidth - scrollThreshold);
+            } else {
+                // In LTR mode, scrollLeft is positive and increases when scrolling right
+                shouldTrigger = (scrollWidth - scrollLeft - clientWidth) <= scrollThreshold;
+            }
+        } else {
+            if (this.parent.enableRtl) {
+                // In RTL mode: negative scrollLeft values. When near start (scrolling to the right visually),
+                // scrollLeft approaches 0 from negative side
+                shouldTrigger = Math.abs(scrollLeft) < scrollThreshold;
+            } else {
+                // In LTR mode: positive scrollLeft. When near start, scrollLeft is small
+                shouldTrigger = scrollLeft < scrollThreshold;
+            }
+        }
+        if (shouldTrigger) {
+            this.performTimeSpanAction(
+                direction === 'right' ? 'nextTimeSpan' : 'prevTimeSpan',
+                'InfiniteScroll',
+                new Date(this.parent.cloneTimelineStartDate.getTime()),
+                new Date(this.parent.cloneTimelineEndDate.getTime())
+            );
+        }
+        // Store current scroll position for next iteration
+        this.lastScrollLeftPosition = scrollLeft;
+    }
+    /**
+     * Trims far-right (future) timeline DOM cells when the user scrolls backward (left),
+     * maintaining a constant DOM window size for improved performance.
+     * Only executes when enableInfiniteTimelineScroll is true and
+     * enableTimelineVirtualization is false.
+     *
+     * @returns {void} .
+     * @hidden
+     */
+    public trimInfiniteTimelineRightCells(): void {
+        if (!this.parent.enableInfiniteTimelineScroll) {
+            return;
+        }
+        if (this.isInfiniteScrollTrimming) {
+            return;
+        }
+        const hasTopTier: boolean = this.parent.timelineModule.topTier !== 'None' && this.topTierCollection.length > 0;
+        const scrollElement: HTMLElement = this.parent.ganttChartModule.scrollElement;
+        if (!scrollElement) {
+            return;
+        }
+
+        const scrollLeft: number = scrollElement.scrollLeft;
+        const scrollWidth: number = scrollElement.scrollWidth;
+        const clientWidth: number = scrollElement.clientWidth;
+
+        // rightPadding: hidden scrollable space to the right of the current viewport
+        const absScrollLeft: number = this.parent.enableRtl ? Math.abs(scrollLeft) : scrollLeft;
+        const rightPadding: number = scrollWidth - absScrollLeft - clientWidth;
+
+        // Only trim when right-side padding exceeds 2x viewport widths
+        const trimThreshold: number = clientWidth;
+        if (rightPadding <= trimThreshold) {
+            return;
+        }
+        // Target: remove enough cells so rightPadding approaches trimThreshold
+        const targetRemoveWidth: number = rightPadding - trimThreshold;
+        let removedEndDate: Date;
+        // When topTier unit is 'None', only bottom tier is rendered.
+        // Trim based on bottomTierCollection to keep DOM and date-range in sync.
+        if (!hasTopTier) {
+            let accumulatedWidth: number = 0;
+            let removeBottomTierCount: number = 0;
+            const bottomLen: number = this.bottomTierCollection.length;
+            for (let i: number = bottomLen - 1; i >= 0; i--) {
+                const cellWidth: number = this.bottomTierCollection[i as number].width;
+                if (accumulatedWidth + cellWidth <= targetRemoveWidth) {
+                    accumulatedWidth += cellWidth;
+                    removeBottomTierCount++;
+                } else {
+                    break;
+                }
+            }
+
+            const minKeepBottomTier: number = 3;
+            if (removeBottomTierCount === 0 || (bottomLen - removeBottomTierCount) < minKeepBottomTier) {
+                return;
+            }
+
+            this.isInfiniteScrollTrimming = true;
+
+            const removeBottomStartIndex: number = bottomLen - removeBottomTierCount;
+            const removedBottomCells: TimelineFormat[] = this.bottomTierCollection.slice(removeBottomStartIndex);
+            const removedBottomStartDate: Date = removedBottomCells[0].startDate;
+
+            // Splice bottom-tier collection in sync with DOM
+            this.bottomTierCollection.splice(removeBottomStartIndex, removeBottomTierCount);
+            removedEndDate = new Date(removedBottomStartDate.getTime());
+        } else {
+            // Determine removal boundary aligned to top-tier cell edges.
+            // Walk topTierCollection from the end; accumulate cell widths until
+            // adding the next cell would exceed targetRemoveWidth.
+            let accumulatedWidth: number = 0;
+            let removeTopTierCount: number = 0;
+            const topLen: number = this.topTierCollection.length;
+            for (let i: number = topLen - 1; i >= 0; i--) {
+                const cellWidth: number = this.topTierCollection[i as number].width;
+                if (accumulatedWidth + cellWidth <= targetRemoveWidth) {
+                    accumulatedWidth += cellWidth;
+                    removeTopTierCount++;
+                } else {
+                    break;
+                }
+            }
+
+            // Must keep at least 3 top-tier cells to ensure timeline is always visible
+            const minKeepTopTier: number = 3;
+            if (removeTopTierCount === 0 || (topLen - removeTopTierCount) < minKeepTopTier) {
+                return;
+            }
+            this.isInfiniteScrollTrimming = true;
+            // Collect the top-tier cells to remove (rightmost N cells).
+            // New cloneTimelineEndDate = startDate of first removed top-tier cell.
+            const removeTopStartIndex: number = topLen - removeTopTierCount;
+            const removedTopCells: TimelineFormat[] = this.topTierCollection.slice(removeTopStartIndex);
+            const removedTopEndDate: Date = removedTopCells[0].startDate;
+            this.topTierCollection.splice(removeTopStartIndex, removeTopTierCount);
+            removedEndDate = new Date(removedTopEndDate.getTime());
+        }
+        if (removedEndDate < this.parent.timelineModule.initialTimelineEndDate) {
+            this.parent.cloneTimelineEndDate = this.parent.timelineModule.initialTimelineEndDate;
+        } else {
+            this.parent.cloneTimelineEndDate = removedEndDate;
+        }
+        this.parent.updateTimelineDates(this.parent.cloneTimelineStartDate, this.parent.cloneTimelineEndDate, false);
+        this.isInfiniteScrollTrimming = false;
+    }
+
+    /**
+     * Trims far-left (past) timeline DOM cells when the user scrolls forward (right),
+     * maintaining a constant DOM window size for improved performance.
+     * Only executes when enableInfiniteTimelineScroll is true and
+     * enableTimelineVirtualization is false.
+     *
+     * @returns {void} .
+     * @hidden
+     */
+    public trimInfiniteTimelineLeftCells(): void {
+        if (!this.parent.enableInfiniteTimelineScroll) {
+            return;
+        }
+
+        if (this.isInfiniteScrollTrimming) {
+            return;
+        }
+        const hasTopTier: boolean = this.parent.timelineModule.topTier !== 'None' && this.topTierCollection.length > 0;
+        const scrollElement: HTMLElement = this.parent.ganttChartModule.scrollElement;
+        if (!scrollElement) {
+            return;
+        }
+
+        const scrollLeft: number = scrollElement.scrollLeft;
+        const clientWidth: number = scrollElement.clientWidth;
+
+        // leftPadding: hidden scrollable space to the left of the current viewport
+        const absScrollLeft: number = this.parent.enableRtl ? Math.abs(scrollLeft) : scrollLeft;
+        const leftPadding: number = absScrollLeft;
+
+        // Only trim when left-side padding exceeds 2x viewport widths
+        const trimThreshold: number = clientWidth;
+        if (leftPadding <= trimThreshold) {
+            return;
+        }
+
+        // Target: remove enough cells so leftPadding approaches trimThreshold
+        const targetRemoveWidth: number = leftPadding - trimThreshold;
+        let removedStartDate: Date;
+        let topAccumulatedWidth: number = 0;
+        // When topTier unit is 'None', only bottom tier is rendered.
+        // Trim based on bottomTierCollection to keep DOM and date-range in sync.
+        if (!hasTopTier) {
+            let removeBottomTierCount: number = 0;
+            const bottomLen: number = this.bottomTierCollection.length;
+            for (let i: number = 0; i < bottomLen; i++) {
+                const cellWidth: number = this.bottomTierCollection[i as number].width;
+                if (topAccumulatedWidth + cellWidth <= targetRemoveWidth) {
+                    topAccumulatedWidth += cellWidth;
+                    removeBottomTierCount++;
+                } else {
+                    break;
+                }
+            }
+
+            const minKeepBottomTier: number = 3;
+            if (removeBottomTierCount === 0 || (bottomLen - removeBottomTierCount) < minKeepBottomTier) {
+                return;
+            }
+
+            this.isInfiniteScrollTrimming = true;
+
+            const removedBottomCells: TimelineFormat[] = this.bottomTierCollection.slice(0, removeBottomTierCount);
+            const removedBottomEndDate: Date = removedBottomCells[removeBottomTierCount - 1].endDate;
+
+            // Splice bottom-tier collection in sync with DOM
+            this.bottomTierCollection.splice(0, removeBottomTierCount);
+
+            // Update timeline start date
+            removedStartDate = new Date(removedBottomEndDate.getTime());
+        } else {
+            // Determine removal boundary aligned to top-tier cell edges.
+            // Walk topTierCollection from the start; accumulate cell widths until
+            // adding the next cell would exceed targetRemoveWidth.
+            let removeTopTierCount: number = 0;
+            const topLen: number = this.topTierCollection.length;
+            for (let i: number = 0; i < topLen; i++) {
+                const cellWidth: number = this.topTierCollection[i as number].width;
+                if (topAccumulatedWidth + cellWidth <= targetRemoveWidth) {
+                    topAccumulatedWidth += cellWidth;
+                    removeTopTierCount++;
+                } else {
+                    break;
+                }
+            }
+
+            // Must keep at least 3 top-tier cells to ensure timeline is always visible
+            const minKeepTopTier: number = 3;
+            if (removeTopTierCount === 0 || (topLen - removeTopTierCount) < minKeepTopTier) {
+                return;
+            }
+
+            this.isInfiniteScrollTrimming = true;
+
+            // Collect the top-tier cells to remove (leftmost N cells).
+            // New cloneTimelineStartDate = endDate of last removed top-tier cell.
+            const removedTopCells: TimelineFormat[] = this.topTierCollection.slice(0, removeTopTierCount);
+            const removedTopStartDate: Date = removedTopCells[removeTopTierCount - 1].endDate;
+
+            // Splice collections in sync with DOM
+            this.topTierCollection.splice(0, removeTopTierCount);
+            // Update timeline start date
+            removedStartDate = new Date(removedTopStartDate.getTime());
+        }
+        if (removedStartDate < this.parent.timelineModule.initialTimelineStartDate) {
+            this.parent.cloneTimelineStartDate = removedStartDate;
+            if (this.parent.enableRtl) {
+                // In RTL, scrollLeft is typically negative. When trimming left cells,
+                // move the scroll position toward 0 so the visible time range stays in sync.
+                scrollElement.scrollLeft = Math.min(0, scrollLeft + topAccumulatedWidth);
+            } else {
+                scrollElement.scrollLeft = Math.max(0, scrollLeft - topAccumulatedWidth);
+            }
+        } else {
+            this.parent.cloneTimelineStartDate = this.parent.timelineModule.initialTimelineStartDate;
+        }
+
+        this.parent.updateTimelineDates(this.parent.cloneTimelineStartDate, this.parent.cloneTimelineEndDate, false);
+        this.isInfiniteScrollTrimming = false;
     }
 
     public adjustEndDateToFillChart(spliterResize: boolean ): void {
@@ -2618,12 +2882,12 @@ export class Timeline {
      */
     public timeSpanActionEvent(eventType: string, requestType?: string, isFrom?: string): ITimeSpanEventArgs {
         const args: ITimeSpanEventArgs = {} as ITimeSpanEventArgs;
-        args.projectStartDate = new Date(this.parent.cloneProjectStartDate.getTime());
-        args.projectEndDate = new Date(this.parent.cloneProjectEndDate.getTime());
+        args.timelineStartDate = new Date(this.parent.cloneTimelineStartDate.getTime());
+        args.timelineEndDate = new Date(this.parent.cloneTimelineEndDate.getTime());
         args.requestType = isFrom === 'publicMethod' ? requestType : isFrom === 'beforeAdd' ?
             'TimelineRefreshOnAdd' : isFrom === 'TaskbarEditing' ? 'TimelineRefreshOnEdit' : requestType;
         if (eventType === 'actionBegin') {
-            args.isTimelineRoundOff = this.parent.isTimelineRoundOff;
+            args.isTimelineRoundOff = false;
             args.cancel = false;
         }
         args.action = 'TimescaleUpdate';

@@ -259,8 +259,8 @@ export class ViewSource {
                 }
                 this.unWireEvent();
                 this.wireBaseKeyDown();
-                this.parent.updateValue();
                 (this.contentModule.getEditPanel() as HTMLElement).focus();
+                this.parent.updateValue();
                 this.parent.trigger(events.actionComplete, { requestType: 'Preview', targetItem: 'Preview', args: args });
                 this.parent.formatter.enableUndo(this.parent);
                 this.parent.addAudioVideoWrapper();

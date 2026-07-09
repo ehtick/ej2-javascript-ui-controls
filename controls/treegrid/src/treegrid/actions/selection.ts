@@ -108,6 +108,20 @@ export class Selection {
     }
 
     /**
+     * Gets the actual record from the data model's uniqueIDCollection.
+     *
+     * @param {ITreeData} record - The record (may be stale reference).
+     * @returns {ITreeData} The actual record from the data model.
+     */
+    private getRecordFromUidCollection(record: ITreeData): ITreeData {
+        if (!record) { return record; }
+        const uidMap: Record<string, ITreeData> =
+            (this.parent as unknown as { uniqueIDCollection?: Record<string, ITreeData> }).uniqueIDCollection;
+        const uid: string | number = record.uniqueID;
+        return (uidMap && uid != null) ? (uidMap[String(uid)] ? (uidMap[String(uid)] as ITreeData) : record) : record;
+    }
+
+    /**
      * Handles checkbox click events from the DOM and dispatches selection logic.
      *
      * @param {Object} args - Event args containing the click target.
@@ -130,8 +144,7 @@ export class Selection {
             this.triggerChkChangeEvent(checkBox, newCheckState, target.closest('tr'));
         } else if (checkWrap && checkWrap.querySelectorAll('.e-treeselectall').length > 0 && this.parent.autoCheckHierarchy) {
             const frame: Element = checkWrap.querySelector('.e-frame');
-            const currentStateIsUncheck: boolean = !frame.classList.contains('e-check') && !frame.classList.contains('e-stop');
-            const targetState: boolean = currentStateIsUncheck; // If currently uncheck, target state is to check all.
+            const targetState: boolean = frame.classList.contains('e-uncheck') || frame.classList.contains('e-stop');
             this.headerSelection(targetState);
             checkBox = checkWrap.querySelector('input[type="checkbox"]') as HTMLInputElement;
             this.triggerChkChangeEvent(checkBox, targetState, target.closest('tr'));
@@ -289,6 +302,7 @@ export class Selection {
             const flatRec: ITreeData = getParentData(this.parent, viewRec.uniqueID);
             const nextState: string = (flatRec.checkboxState === 'check') ? 'uncheck' : 'check';
             flatRec.checkboxState = nextState;
+            viewRec.checkboxState = nextState;
             this.traverSelection(flatRec, nextState, false);
         }
     }
@@ -339,9 +353,10 @@ export class Selection {
             if (child.hasChildRecords) {
                 this.traverSelection(child, checkboxState, true);
             }
-            if (child.checkboxState === 'check') {
+            const updatedChild: ITreeData = this.getRecordFromUidCollection(child);
+            if (updatedChild.checkboxState === 'check') {
                 checkedCount++;
-            } else if (child.checkboxState === 'indeterminate') {
+            } else if (updatedChild.checkboxState === 'indeterminate') {
                 indeterminateCount++;
             }
         }
@@ -453,9 +468,10 @@ export class Selection {
         for (let i: number = 0; i < children.length; i++) {
             const child: ITreeData = children[parseInt(i.toString(), 10)];
             if (!child || child.isSummaryRow) { continue; }
+            const actualChild: ITreeData = this.getRecordFromUidCollection(child);
             summary.total++;
-            if (child.checkboxState === 'check') { summary.checked++; }
-            else if (child.checkboxState === 'indeterminate') { summary.indeterminate++; }
+            if (actualChild.checkboxState === 'check') { summary.checked++; }
+            else if (actualChild.checkboxState === 'indeterminate') { summary.indeterminate++; }
         }
         return summary;
     }
@@ -574,10 +590,11 @@ export class Selection {
         for (let i: number = 0; i < records.length; i++) {
             const record: ITreeData = records[parseInt(i.toString(), 10)];
             if (!record) { continue; }
-            const previousState: string = record.checkboxState;
+            const actualRecord: ITreeData = this.getRecordFromUidCollection(record);
+            const previousState: string = actualRecord.checkboxState;
             if (previousState === targetState) { continue; }
-            record.checkboxState = targetState;
-            this.updateSelectedItems(record, targetState, true);
+            actualRecord.checkboxState = targetState;
+            this.updateSelectedItems(actualRecord, targetState, true);
         }
     }
 
@@ -605,9 +622,10 @@ export class Selection {
             if (item.hasChildRecords && isFilterOrSearch && item.level === 0 && this.parent.autoCheckHierarchy) {
                 this.updateParentSelection(item);
             }
-            if (item.uniqueID && item.checkboxState === 'check') {
-                newSelectedItems.push(item);
-                newSelectedUidMap.set(item.uniqueID, true);
+            const actualItem: ITreeData = this.getRecordFromUidCollection(item);
+            if (actualItem.uniqueID && actualItem.checkboxState === 'check') {
+                newSelectedItems.push(actualItem);
+                newSelectedUidMap.set(actualItem.uniqueID, true);
             }
         }
         if (!isFilterOrSearch) {
@@ -775,7 +793,8 @@ export class Selection {
         this.totalSelectableCount = this.countSelectableRecords(recordsForHeaderLogic);
         let checkedCountForHeaderLogic: number = 0;
         for (const record of recordsForHeaderLogic) {
-            if (record && !record.isSummaryRow && record.checkboxState === 'check') {
+            const actualRecord: ITreeData = this.getRecordFromUidCollection(record);
+            if (actualRecord && !actualRecord.isSummaryRow && actualRecord.checkboxState === 'check') {
                 checkedCountForHeaderLogic++;
             }
         }

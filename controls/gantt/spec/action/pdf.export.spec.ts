@@ -5,10 +5,10 @@ import { Gantt, Edit, Toolbar, Selection, ZoomTimelineSettings, Filter, PdfQuery
 import { exportData, image, adventProFont, GanttData1, pdfData1, customZoomingdata, templateData, projectResourcestemplate, virtual1, criticalData1, resourcesData1, resourceCollection1, coulmntemplate, resourceCollectiontemplate1, splitTasks, headerFooter, weekEndData,pdfData, images, milestoneTemplate,editingResourcess, editingDatas, pdfquerycelldata,editingResources,CR911356manualTask, CR912356font, GanttData, adventProFonts1, editingData4, editingResources4, GanttDataPdf, projectNewDatapdf, projectpdfNewData,GanttDatapdf1,segmentprojectNewData,GanttDatapdf,ganttdatamanual, GanttDataIndicator, pdfWorkWeekData} from '../base/data-source.spec';
 import { PdfExportProperties } from '../../src/gantt/base/interface';
 import { createGantt, destroyGantt } from '../base/gantt-util.spec';
-import { PdfDocument, PdfColor, PdfStandardFont, PdfFontFamily, PdfPen, PdfFontStyle, PdfDashStyle, PdfTextAlignment, PdfVerticalAlignment } from '@syncfusion/ej2-pdf-export';
+import { PdfDocument, PdfColor, PdfStandardFont, PdfFontFamily, PdfPen, PdfFontStyle, PdfDashStyle, PdfTextAlignment, PdfVerticalAlignment, PdfLayoutFormat, PdfLayoutBreakType } from '@syncfusion/ej2-pdf-export';
 import { PdfBorders } from '../../src/gantt/export/pdf-base/pdf-borders';
 import { getValue, isNullOrUndefined } from '@syncfusion/ej2-base';
-import { PdfTrueTypeFont } from '@syncfusion/ej2-pdf-export';
+import { PdfTrueTypeFont, PdfBitmap } from '@syncfusion/ej2-pdf-export';
 import { ClickEventArgs } from '@syncfusion/ej2-navigations';
 import {  triggerMouseEvent, getKeyUpObj } from '../base/gantt-util.spec';
 import {
@@ -16510,4 +16510,1606 @@ describe('Gantt PDF Export without holiday label', () => {
     it('Export data with long text', function () {
         ganttObj.pdfExport();
     });
+});
+describe('ExportHelper getFontStyles', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: 'Task A', StartDate: new Date('2026-03-10'), Duration: 3 }
+                ],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration'
+                },
+                height: '450px',
+                allowPdfExport: true
+            }, done);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+    it('returns 4 when fontStyle is Underline', function () {
+        const result = ganttObj.pdfExportModule.helper['getFontStyle']('Underline');
+        expect(result).toBe(4);
+    });
+});
+describe('ExportHelper drawPageTemplate', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: 'Task A', StartDate: new Date('2026-03-10'), Duration: 3 }
+                ],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration'
+                },
+                height: '450px',
+                allowPdfExport: true
+            }, done);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+    it('throws error for invalid content type (default case)', function () {
+        const template: any = {};
+        const header: any = {
+            contents: [
+                { type: 'InvalidType', value: 'foo' }
+            ]
+        };
+        let errorMessage = '';
+        try {
+            ganttObj.pdfExportModule.helper['drawPageTemplate'](template, header);
+        } catch (e) {
+            errorMessage = e.message;
+        }
+        expect(errorMessage).toBe('Please set valid content type...');
+    });
+});
+describe('ExportHelper setContentFormat', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: 'Task A', StartDate: new Date('2026-03-10'), Duration: 3 }
+                ],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration'
+                },
+                height: '450px',
+                allowPdfExport: true
+            }, done);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+    it('uses Left alignment for unknown hAlign (default case)', function () {
+        const content: any = {
+            size: { width: 100, height: 50 },
+            style: { hAlign: 'UnknownAlign' }
+        };
+        const format: any = {};
+        const result = ganttObj.pdfExportModule.helper['setContentFormat'](content, format);
+        expect(result.format.alignment).toBe(0);
+    });
+});
+describe('ExportHelper getHorizontalAlignment', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: 'Task A', StartDate: new Date('2026-03-10'), Duration: 3 }
+                ],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration'
+                },
+                height: '450px',
+                allowPdfExport: true
+            }, done);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+    it('sets alignment to Center when textAlign is "Center"', function () {
+        const format = ganttObj.pdfExportModule.helper['getHorizontalAlignment']('Center');
+        expect(format.alignment).toBe(1);
+    });
+});
+describe('ExportHelper getHorizon', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: 'Task A', StartDate: new Date('2026-03-10'), Duration: 3 }
+                ],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration'
+                },
+                height: '450px',
+                allowPdfExport: true
+            }, done);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+    it('returns ifTrue when condition is true', function () {
+        const result = ganttObj.pdfExportModule.helper['resolveCondition'](true, 'TRUE_VALUE', 'FALSE_VALUE');
+        expect(result).toBe('TRUE_VALUE');
+    });
+});
+describe('ExportHelper getFont', () => {
+    let ganttObj: Gantt;
+    let helper: any;
+    let originalExportProps: any;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: 'Task A', StartDate: new Date('2026-03-10'), Duration: 3 }
+                ],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration'
+                },
+                height: '450px',
+                allowPdfExport: true
+            }, done);
+        helper = ganttObj.pdfExportModule.helper;
+        originalExportProps = helper.exportProps;
+        helper.exportProps = {};
+        helper.exportProps.ganttStyle = { fontFamily: PdfFontFamily.Courier };
+    });
+    afterAll(() => {
+        helper.exportProps = originalExportProps;
+        destroyGantt(ganttObj);
+    });
+    it('uses exportProps.ganttStyle.fontFamily when content.style.fontFamily is undefined', () => {
+        const content: any = {
+            style: {
+                fontSize: 12,
+                fontFamily: 1
+            }
+        };
+        const font = helper['getFont'](content);
+        expect((font as any).fontFamily).toBe(PdfFontFamily.Helvetica);
+    });
+});
+describe('ExportHelper getFont', () => {
+    let ganttObj: Gantt;
+    let helper: any;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: 'Task A', StartDate: new Date('2026-03-10'), Duration: 3 }
+                ],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration'
+                },
+                height: '450px',
+                allowPdfExport: true
+            }, done);
+            helper = ganttObj.pdfExportModule.helper;
+    });
+    afterAll(() => {
+        destroyGantt(ganttObj);
+    });
+    it('returns ifTrue when both condition1 and condition2 are truthy', () => {
+        const headerWithHeight = { height: 100 } as any;
+        const result = helper['evaluateConditions'](
+            headerWithHeight,
+            headerWithHeight.height,
+            75,
+            50
+        );
+        expect(result).toBe(75);
+    });
+    it('returns ifFalse when either condition1 or condition2 is falsy', () => {
+        const headerWithoutHeight = null as any;
+        const result = helper['evaluateConditions'](
+            headerWithoutHeight,
+            0,
+            75,
+            50
+        );
+        expect(result).toBe(50);
+    });
+});
+describe('MT1017141:Code coverage for exporting files', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: 'Concept Approval', StartDate: new Date('04/02/2019'), Duration: 2 }
+                ],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration',
+                    progress: 'Progress'
+                },
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true,
+                    showDeleteConfirmDialog: true
+                },
+                columns: [
+                    { field: 'TaskID', headerText: 'Task ID' },
+                    { field: 'TaskName', headerText: 'Task Name', allowReordering: false },
+                    { field: 'StartDate', headerText: 'Start Date', allowSorting: false },
+                    { field: 'Duration', headerText: 'Duration', allowEditing: false },
+                    { field: 'Progress', headerText: 'Progress', allowFiltering: false },
+                    { field: 'CustomColumn', headerText: 'CustomColumn' }
+                ],
+                toolbar: ['PdfExport'],
+                toolbarClick: function (args) {
+                    if (args.item.id === 'ganttContainer_pdfexport') {
+                        ganttObj.pdfExport();
+                    }
+                },
+                allowPdfExport: true,
+                allowSelection: true,
+                splitterSettings: {
+                    position: "50%",
+                },
+                timelineSettings: {
+                    showTooltip: true,
+                    topTier: {
+                        unit: 'Week',
+                        format: 'dd/MM/yyyy'
+                    },
+                    bottomTier: {
+                        unit: 'Day',
+                        count: 1
+                    }
+                },
+                labelSettings: {
+                    leftLabel: 'TaskID',
+                    rightLabel: 'Task Name: ${taskData.TaskName}',
+                    taskLabel: '${Progress}%'
+                },
+                allowResizing: true,
+                height: '550px',
+                projectStartDate: new Date('03/25/2019'),
+                projectEndDate: new Date('05/30/2019')
+            }, done);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+    it('CalculateRange method update branch', function () {
+        ganttObj.timelineModule.timelineStartDate.setHours(2, 0, 0, 0);
+        ganttObj.timelineModule.customTimelineSettings.bottomTier.unit = 'None';
+        ganttObj.timelineModule.customTimelineSettings.bottomTier.count = undefined;
+        ganttObj.pdfExport();
+    });
+});
+describe('MT1017141:Code coverage for exporting files', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: 'Concept Approval', StartDate: new Date('04/02/2019'), Duration: 2 }
+                ],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration',
+                    progress: 'Progress'
+                },
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true,
+                    showDeleteConfirmDialog: true
+                },
+                columns: [
+                    { field: 'TaskID', headerText: 'Task ID' },
+                    { field: 'TaskName', headerText: 'Task Name', allowReordering: false },
+                    { field: 'StartDate', headerText: 'Start Date', allowSorting: false },
+                    { field: 'Duration', headerText: 'Duration', allowEditing: false },
+                    { field: 'Progress', headerText: 'Progress', allowFiltering: false },
+                    { field: 'CustomColumn', headerText: 'CustomColumn' }
+                ],
+                toolbar: ['PdfExport'],
+                toolbarClick: function (args) {
+                    if (args.item.id === 'ganttContainer_pdfexport') {
+                        ganttObj.pdfExport();
+                    }
+                },
+                allowPdfExport: true,
+                allowSelection: true,
+                splitterSettings: {
+                    position: "50%",
+                },
+                timelineSettings: {
+                    showTooltip: true,
+                    topTier: {
+                        unit: 'Week',
+                        format: 'dd/MM/yyyy'
+                    },
+                    bottomTier: {
+                        unit: 'Day',
+                        count: 1
+                    }
+                },
+                labelSettings: {
+                    leftLabel: 'TaskID',
+                    rightLabel: 'Task Name: ${taskData.TaskName}',
+                    taskLabel: '${Progress}%'
+                },
+                allowResizing: true,
+                height: '550px',
+                projectStartDate: new Date('03/25/2019'),
+                projectEndDate: new Date('05/30/2019')
+            }, done);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+    it('CalculateRange method update branch', function () {
+        ganttObj.timelineModule.timelineStartDate.setHours(2, 0, 0, 0);
+        ganttObj.timelineModule.customTimelineSettings.bottomTier.unit = 'Minutes';
+        ganttObj.pdfExport();
+    });
+});
+describe('MT1017141:Code coverage for exporting files', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: 'Concept Approval', StartDate: new Date('04/02/2019'), Duration: 2 }
+                ],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration',
+                    progress: 'Progress'
+                },
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true,
+                    showDeleteConfirmDialog: true
+                },
+                columns: [
+                    { field: 'TaskID', headerText: 'Task ID' },
+                    { field: 'TaskName', headerText: 'Task Name', allowReordering: false },
+                    { field: 'StartDate', headerText: 'Start Date', allowSorting: false },
+                    { field: 'Duration', headerText: 'Duration', allowEditing: false },
+                    { field: 'Progress', headerText: 'Progress', allowFiltering: false },
+                    { field: 'CustomColumn', headerText: 'CustomColumn' }
+                ],
+                toolbar: ['PdfExport'],
+                toolbarClick: function (args) {
+                    if (args.item.id === 'ganttContainer_pdfexport') {
+                        ganttObj.pdfExport();
+                    }
+                },
+                allowPdfExport: true,
+                allowSelection: true,
+                splitterSettings: {
+                    position: "50%",
+                },
+                timelineSettings: {
+                    showTooltip: true,
+                    topTier: {
+                        unit: 'Week',
+                        format: 'dd/MM/yyyy'
+                    },
+                    bottomTier: {
+                        unit: 'Day',
+                        count: 1
+                    }
+                },
+                labelSettings: {
+                    leftLabel: 'TaskID',
+                    rightLabel: 'Task Name: ${taskData.TaskName}',
+                    taskLabel: '${Progress}%'
+                },
+                allowResizing: true,
+                height: '550px',
+                projectStartDate: new Date('03/25/2019'),
+                projectEndDate: new Date('05/30/2019')
+            }, done);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+    it('CalculateRange method update branch', function () {
+        ganttObj.timelineModule.timelineStartDate.setHours(2, 0, 0, 0);
+        ganttObj.timelineModule.customTimelineSettings.bottomTier.unit = 'Hour';
+        ganttObj.pdfExport();
+    });
+});
+describe('MT1017141:Code coverage for exporting files', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: 'Concept Approval', StartDate: new Date('04/02/2019'), Duration: 2 }
+                ],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration',
+                    progress: 'Progress'
+                },
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true,
+                    showDeleteConfirmDialog: true
+                },
+                columns: [
+                    { field: 'TaskID', headerText: 'Task ID' },
+                    { field: 'TaskName', headerText: 'Task Name', allowReordering: false },
+                    { field: 'StartDate', headerText: 'Start Date', allowSorting: false },
+                    { field: 'Duration', headerText: 'Duration', allowEditing: false },
+                    { field: 'Progress', headerText: 'Progress', allowFiltering: false },
+                    { field: 'CustomColumn', headerText: 'CustomColumn' }
+                ],
+                toolbar: ['PdfExport'],
+                toolbarClick: function (args) {
+                    if (args.item.id === 'ganttContainer_pdfexport') {
+                        ganttObj.pdfExport();
+                    }
+                },
+                allowPdfExport: true,
+                allowSelection: true,
+                splitterSettings: {
+                    position: "50%",
+                },
+                timelineSettings: {
+                    showTooltip: true,
+                    topTier: {
+                        unit: 'Week',
+                        format: 'dd/MM/yyyy'
+                    },
+                    bottomTier: {
+                        unit: 'Day',
+                        count: 1
+                    }
+                },
+                labelSettings: {
+                    leftLabel: 'TaskID',
+                    rightLabel: 'Task Name: ${taskData.TaskName}',
+                    taskLabel: '${Progress}%'
+                },
+                allowResizing: true,
+                height: '550px',
+                projectStartDate: new Date('03/25/2019'),
+                projectEndDate: new Date('05/30/2019')
+            }, done);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+    it('CalculateRange method update branch', function () {
+        ganttObj.timelineModule.customTimelineSettings.bottomTier.unit = 'Week';
+        ganttObj.timelineSettings.showWeekend = false;
+        ganttObj.pdfExport();
+    });
+});
+describe('MT1017141:Code coverage for exporting files -pdf-treegrid', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: 'Concept Approval', StartDate: new Date('04/02/2019'), Duration: 2 }
+                ],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration',
+                    progress: 'Progress'
+                },
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true,
+                    showDeleteConfirmDialog: true
+                },
+                columns: [
+                    { field: 'TaskID', headerText: 'Task ID' },
+                    { field: 'TaskName', headerText: 'Task Name', allowReordering: false },
+                    { field: 'StartDate', headerText: 'Start Date', allowSorting: false },
+                    { field: 'Duration', headerText: 'Duration', allowEditing: false },
+                    { field: 'Progress', headerText: 'Progress', allowFiltering: false },
+                    { field: 'CustomColumn', headerText: 'CustomColumn' }
+                ],
+                toolbar: ['PdfExport'],
+                toolbarClick: function (args) {
+                    if (args.item.id === 'ganttContainer_pdfexport') {
+                        ganttObj.pdfExport();
+                    }
+                },
+                allowPdfExport: true,
+                allowSelection: true,
+                splitterSettings: {
+                    position: "50%",
+                },
+                timelineSettings: {
+                    showTooltip: true,
+                    topTier: {
+                        unit: 'Week',
+                        format: 'dd/MM/yyyy'
+                    },
+                    bottomTier: {
+                        unit: 'Day',
+                        count: 1
+                    }
+                },
+                labelSettings: {
+                    leftLabel: 'TaskID',
+                    rightLabel: 'Task Name: ${taskData.TaskName}',
+                    taskLabel: '${Progress}%'
+                },
+                allowResizing: true,
+                height: '550px',
+                projectStartDate: new Date('03/25/2019'),
+                projectEndDate: new Date('05/30/2019')
+            }, done);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+    it('Layout method update branch', function () {
+        ganttObj.pdfExport();
+        ganttObj.pdfExportModule.gantt.rows.getRow(0).cells.getCell(0).style.borders.left.width = 2;
+    });
+});
+describe('MT1017141:Code coverage for exporting files -pdf-treegrid', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: 'Concept Approval', StartDate: new Date('04/02/2019'), Duration: 2 }
+                ],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration',
+                    progress: 'Progress'
+                },
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true,
+                    showDeleteConfirmDialog: true
+                },
+                columns: [
+                    { field: 'TaskID', headerText: 'Task ID' },
+                    { field: 'TaskName', headerText: 'Task Name', allowReordering: false },
+                    { field: 'StartDate', headerText: 'Start Date', allowSorting: false },
+                    { field: 'Duration', headerText: 'Duration', allowEditing: false },
+                    { field: 'Progress', headerText: 'Progress', allowFiltering: false },
+                    { field: 'CustomColumn', headerText: 'CustomColumn' }
+                ],
+                toolbar: ['PdfExport'],
+                toolbarClick: function (args) {
+                    if (args.item.id === 'ganttContainer_pdfexport') {
+                        ganttObj.pdfExport();
+                    }
+                },
+                allowPdfExport: true,
+                allowSelection: true,
+                splitterSettings: {
+                    position: "50%",
+                },
+                timelineSettings: {
+                    showTooltip: true,
+                    topTier: {
+                        unit: 'Week',
+                        format: 'dd/MM/yyyy'
+                    },
+                    bottomTier: {
+                        unit: 'Day',
+                        count: 1
+                    }
+                },
+                labelSettings: {
+                    leftLabel: 'TaskID',
+                    rightLabel: 'Task Name: ${taskData.TaskName}',
+                    taskLabel: '${Progress}%'
+                },
+                allowResizing: true,
+                height: '550px',
+                projectStartDate: new Date('03/25/2019'),
+                projectEndDate: new Date('05/30/2019')
+            }, done);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+    it('calculateTreeGridSize method update branch', function () {
+        ganttObj.pdfExport();
+        ganttObj.pdfExportModule.gantt['calculateTreeGridSize']();
+    });
+});
+
+describe('Improve coverage for Dictionary ', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: "Product concept", StartDate: new Date("04/02/2025"), EndDate: new Date("04/08/2025") },
+                    { TaskID: 2, TaskName: "Define the product usage", StartDate: new Date("04/02/2025"), EndDate: new Date("04/08/2025"), Duration: 1, Progress: 30, ParentId: 1, BaselineStartDate: new Date("04/02/2025"), BaselineEndDate: new Date("04/02/2025") },
+                ],
+                height: '650px',
+                rowHeight: 46,
+                taskbarHeight: 25,
+                allowSelection: true,
+                highlightWeekends: true,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    endDate: 'EndDate',
+                    duration: 'Duration',
+                    progress: 'Progress',
+                    dependency: 'Predecessor',
+                    parentID: 'ParentId',
+                },
+                allowPdfExport: true,
+                treeColumnIndex: 1,
+                columns: [
+                    { field: 'TaskID', visible: false, width: 80 },
+                    { field: 'TaskName', headerText: 'Name', width: 250 },
+                    { field: 'StartDate' },
+                    { field: 'EndDate' },
+                    { field: 'Duration' },
+                    { field: 'Predecessor' },
+                    { field: 'Progress' },
+                ],
+                holidays: [
+                    {
+                        from: new Date('03/28/2025'),
+                        to: new Date('03/28/2025'),
+                    },
+                    {
+                        from: new Date('03/30/2025'),
+                        to: new Date('03/30/2025'),
+                        label: 'Easter Sunday',
+                    },
+                ],
+                labelSettings: {
+                    rightLabel: 'TaskName',
+                },
+                projectStartDate: new Date('03/25/2025'),
+                projectEndDate: new Date('07/20/2025'),
+            }, done);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+    it('add method', function () {
+        const dict: any = new TemporaryDictionary();
+        expect(function() {dict.add(null,null)}).toThrow();
+    });
+    it('add method', function () {
+        const dict = new TemporaryDictionary();
+        dict.add(1,10)
+        expect(function() {dict.add(1,10)}).toThrow();
+    });
+    it('getValue method', function () {
+        const dict: any = new TemporaryDictionary();
+        expect(function() {dict.getValue(null)}).toThrow();
+    });
+    it('getValue method', function () {
+        const dict = new TemporaryDictionary();
+        expect(function() {dict.getValue(1)}).toThrow();
+    });
+    it('setValue method', function () {
+        const dict: any = new TemporaryDictionary();
+        expect(function() {dict.setValue(null,null)}).toThrow();
+    });
+    it('remove method', function () {
+        const dict: any = new TemporaryDictionary();
+        expect(function() {dict.remove(null)}).toThrow();
+    });
+    it('remove method', function () {
+        const dict: any = new TemporaryDictionary();
+        expect(function() {dict.remove(1)}).toThrow();
+    });
+    it('containsKey method', function () {
+        const dict: any = new TemporaryDictionary();
+        expect(function() {dict.containsKey(null)}).toThrow();
+    });
+});
+describe('Gantt PDF Export fontFamily fallback', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: 'Task A', StartDate: new Date('2026-03-10'), Duration: 3 }
+                ],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration'
+                },
+                height: '450px',
+                allowPdfExport: true,
+                toolbar: ['PdfExport'],
+                labelSettings: {
+                    leftLabel: '#leftLabel',
+                    rightLabel: '#rightLabel',
+                    taskLabel: '${Progress}%'
+                },
+                pdfQueryTaskbarInfo: (args) => {
+                    args.labelSettings.taskLabel.fontStyle = {
+                        fontSize: 14,
+                        fontFamily: undefined,
+                        fontStyle: 'Bold',
+                        fontColor: '#000000'
+                    };
+                },
+                toolbarClick: (args) => {
+                    if (args.item.id === `${ganttObj.element.id}_pdfexport`) {
+                        const exportProps = { enableFooter: false };
+                        ganttObj.pdfExport(exportProps);
+                    }
+                },
+            }, done);
+    });
+    afterAll(() => {
+        destroyGantt(ganttObj);
+    });
+    it('should export PDF with Helvetica fallback when fontFamily is undefined', () => {
+        ganttObj.pdfExport();
+        expect(ganttObj.flatData.length).toBe(1);
+    });
+});
+describe('Gantt PDF Export - taskLabel fontFamily undefined fallback', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: 'Task A', StartDate: new Date('2026-03-10'), Duration: 3 }
+                ],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration'
+                },
+                height: '450px',
+                allowPdfExport: true,
+                toolbar: ['PdfExport'],
+                labelSettings: {
+                    leftLabel: '#leftLabel',
+                    rightLabel: '#rightLabel',
+                    taskLabel: '${Progress}%'
+                },
+                pdfQueryTaskbarInfo: (args) => {
+                    args.labelSettings.taskLabel.fontStyle = {
+                        fontSize: 14,
+                        fontFamily: undefined,
+                        fontStyle: undefined,
+                        fontColor: '#000000'
+                    };
+                },
+                toolbarClick: (args) => {
+                    if (args.item.id === `${ganttObj.element.id}_pdfexport`) {
+                        const exportProps = { enableFooter: false };
+                        ganttObj.pdfExport(exportProps);
+                    }
+                },
+            }, done);
+    });
+    afterAll(() => {
+        destroyGantt(ganttObj);
+    });
+    it('should export PDF using Helvetica with Bold style when fontFamily is undefined', () => {
+        ganttObj.pdfExport();
+        expect(ganttObj.flatData.length).toBe(1);
+    });
+});
+describe('MT1017141:Code coverage for exporting files -treegrid-layouter', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: 'Concept Approval', StartDate: new Date('04/02/2019'), Duration: 2 }
+                ],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration',
+                    progress: 'Progress'
+                },
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true,
+                    showDeleteConfirmDialog: true
+                },
+                columns: [
+                    { field: 'TaskID', headerText: 'Task ID' },
+                    { field: 'TaskName', headerText: 'Task Name', allowReordering: false },
+                    { field: 'StartDate', headerText: 'Start Date', allowSorting: false },
+                    { field: 'Duration', headerText: 'Duration', allowEditing: false },
+                    { field: 'Progress', headerText: 'Progress', allowFiltering: false },
+                    { field: 'CustomColumn', headerText: 'CustomColumn' }
+                ],
+                toolbar: ['PdfExport'],
+                toolbarClick: function (args) {
+                    if (args.item.id === 'ganttContainer_pdfexport') {
+                        ganttObj.pdfExport();
+                    }
+                },
+                allowPdfExport: true,
+                allowSelection: true,
+                splitterSettings: {
+                    position: "50%",
+                },
+                timelineSettings: {
+                    showTooltip: true,
+                    topTier: {
+                        unit: 'Week',
+                        format: 'dd/MM/yyyy'
+                    },
+                    bottomTier: {
+                        unit: 'Day',
+                        count: 1
+                    }
+                },
+                labelSettings: {
+                    leftLabel: 'TaskID',
+                    rightLabel: 'Task Name: ${taskData.TaskName}',
+                    taskLabel: '${Progress}%'
+                },
+                allowResizing: true,
+                height: '550px',
+                projectStartDate: new Date('03/25/2019'),
+                projectEndDate: new Date('05/30/2019')
+            }, done);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+    it('does not throw when constructed with a base PdfLayoutFormat', () => {
+        const base: PdfLayoutFormat = new PdfLayoutFormat();
+        expect(() => { new PdfTreeGridLayoutFormat(base); }).not.toThrow();
+    });
+    it('adjusts currentBounds when paginateBounds and startLocation match created instances', () => {
+        const pdfExport: any = require('@syncfusion/ej2-pdf-export');
+        const OrigRectangleF = pdfExport.RectangleF;
+        const OrigPointF = pdfExport.PointF;
+        // create shared instances that will be returned by patched constructors
+        const sharedRect = new OrigRectangleF(0, 0, 0, 0);
+        const sharedPoint = new OrigPointF(PdfBorders.default.right.width / 2, PdfBorders.default.top.width / 2);
+        // patch constructors so `new RectangleF(...)` and `new PointF(...)` return our shared instances
+        spyOn(pdfExport, 'RectangleF').and.callFake(function () { return sharedRect; });
+        spyOn(pdfExport, 'PointF').and.callFake(function () { return sharedPoint; });
+        const layouter = new (PdfTreeGridLayouter as any)(null);
+        // set startLocation to the shared point (reference equality will hold)
+        (layouter as any).startLocation = sharedPoint;
+        // initialize currentBounds with some offsets to observe changes
+        (layouter as any).currentBounds.x = 10;
+        (layouter as any).currentBounds.y = 20
+        // format object with paginateBounds referencing the same shared rectangle
+        const format: any = { paginateBounds: sharedRect };
+        // call the method under test
+        (layouter as any).checkBounds(format);
+    });
+    it('sets currentBounds to (columns.width, graphics.clientSize.height) when format.break is FitColumnsToPage', () => {
+        const doc = new PdfDocument();
+        const page = doc.pages.add();
+        const treegrid: any = new PdfTreeGrid();
+        treegrid.columns.add(2); 
+        treegrid.columns.getColumn(0).width = 100;
+        treegrid.columns.getColumn(1).width = 100;
+        treegrid.style.allowHorizontalOverflow = true;
+        const layouter: any = new (PdfTreeGridLayouter as any)(treegrid);
+        const format = new PdfTreeGridLayoutFormat();
+        format.break = PdfLayoutBreakType.FitColumnsToPage;
+        const bounds = new RectangleF(10, 15, 0, 0);
+        // call layoutInternal which should set currentBounds based on columns.width and graphics height
+        (layouter as any).layoutInternal({ page: page, bounds: bounds, format: format });
+    });
+});
+describe('MT1017141:Code coverage for exporting -pdf-grid-table file' , () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    { TaskID: 1, TaskName: 'Concept Approval', StartDate: new Date('04/02/2019'), Duration: 2 }
+                ],
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    duration: 'Duration',
+                    progress: 'Progress'
+                },
+                editSettings: {
+                    allowAdding: true,
+                    allowEditing: true,
+                    allowDeleting: true,
+                    allowTaskbarEditing: true,
+                    showDeleteConfirmDialog: true
+                },
+                columns: [
+                    { field: 'TaskID', headerText: 'Task ID' },
+                    { field: 'TaskName', headerText: 'Task Name', allowReordering: false },
+                    { field: 'StartDate', headerText: 'Start Date', allowSorting: false },
+                    { field: 'Duration', headerText: 'Duration', allowEditing: false },
+                    { field: 'Progress', headerText: 'Progress', allowFiltering: false },
+                    { field: 'CustomColumn', headerText: 'CustomColumn' }
+                ],
+                toolbar: ['PdfExport'],
+                toolbarClick: function (args) {
+                    if (args.item.id === 'ganttContainer_pdfexport') {
+                        ganttObj.pdfExport();
+                    }
+                },
+                allowPdfExport: true,
+                allowSelection: true,
+                splitterSettings: {
+                    position: "50%",
+                },
+                timelineSettings: {
+                    showTooltip: true,
+                    topTier: {
+                        unit: 'Week',
+                        format: 'dd/MM/yyyy'
+                    },
+                    bottomTier: {
+                        unit: 'Day',
+                        count: 1
+                    }
+                },
+                labelSettings: {
+                    leftLabel: 'TaskID',
+                    rightLabel: 'Task Name: ${taskData.TaskName}',
+                    taskLabel: '${Progress}%'
+                },
+                allowResizing: true,
+                height: '550px',
+                projectStartDate: new Date('03/25/2019'),
+                projectEndDate: new Date('05/30/2019')
+            }, done);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+    it('throws when index is negative', () => {
+        const grid: any = new PdfTreeGrid();
+        grid.columns.add(1);
+        const row: any = grid.rows.addRow();
+        expect(() => row.cells.getCell(-1)).toThrowError('IndexOutOfRangeException');
+    });
+    it('throws when index is >= count', () => {
+        const grid: any = new PdfTreeGrid();
+        grid.columns.add(1);
+        const row: any = grid.rows.addRow();
+        expect(() => row.cells.getCell(1)).toThrowError('IndexOutOfRangeException');
+    });
+    it('returns sum of column widths', () => {
+        const grid: any = new PdfTreeGrid();
+        grid.columns.add(3);
+        grid.columns.getColumn(0).width = 10;
+        grid.columns.getColumn(1).width = 20;
+        grid.columns.getColumn(2).width = 30;
+        const row: any = grid.rows.addRow();
+        expect(row.width).toBe(60);
+    });
+    // Below 3-case to cover for- measureHeight():
+    it('returns default 33 when no cell height available', () => {    
+        const grid: any = new PdfTreeGrid();
+        // create a standalone row (not added via collection) to keep cells.count === 0
+        const row: any = new (require('../../src/gantt/export/pdf-base/pdf-grid-table').PdfTreeGridRow)(grid);
+        expect(row.height).toBe(33);
+    });
+    it('uses Math.max when cell.columnSpan === 1 or cell.rowSpan === 1', () => {
+        const grid: any = new PdfTreeGrid();
+        grid.columns.add(2);
+        const row: any = grid.rows.addRow();
+        // set first cell small and second cell larger
+        row.cells.getCell(0).height = 10;
+        row.cells.getCell(1).height = 50;
+        // default rowSpan is 1 so condition is true
+        expect(row.height).toBe(50);
+    });
+    it('uses Math.min when cell has both rowSpan >1 and columnSpan >1', () => {
+        const grid: any = new PdfTreeGrid();
+        grid.columns.add(3);
+        const row: any = grid.rows.addRow();
+        // first cell large value
+        row.cells.getCell(0).height = 100;
+        // second cell will have spans >1 and smaller height
+        row.cells.getCell(1).height = 10;
+        row.cells.getCell(1).columnSpan = 2;
+        row.cells.getCell(1).rowSpan = 2;
+        // third cell exists but is ignored
+        expect(row.height).toBe(10);
+    });
+    it('throws when index is greater than count-getColumn() else part', () => {
+        const grid: any = new PdfTreeGrid();
+        grid.columns.add(1);
+        expect(() => grid.columns.getColumn(5)).toThrowError('can not get the column from the index: 5');
+    });
+    it('chooses remainingString when finishedDrawingCell is false', () => {
+        const grid: any = new PdfTreeGrid();
+        grid.columns.add(1);
+        const row: any = grid.rows.addRow();
+        const cell: any = row.cells.getCell(0);
+        // prepare styles required by measureHeight
+        grid.ganttStyle = { fontFamily: 'Helvetica' } as any;
+        cell.style = cell.style || {};
+        cell.style.format = new PdfStringFormat();
+        cell.style.fontSize = 12;
+        cell.style.fontStyle = 0;
+        cell.style.borders = { top: { width: 0 }, bottom: { width: 0 }, left: { width: 0 }, right: { width: 0 }, isAll: false };
+        // set remainingString and mark as not finished so ternary selects remainingString
+        cell.value = 'original text';
+        cell.remainingString = 'remaining content used';
+        cell.finishedDrawingCell = false;
+        // call measureHeight to execute the branch
+        const h = cell.measureHeight();
+    });
+});
+
+describe('PdfTreeGridCell drawImageBound', () => {
+    let ganttObj: any;
+
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: [{ TaskID: 1, TaskName: 'Task 1' }],
+            taskFields: { id: 'TaskID', name: 'TaskName' },
+            height: '400px'
+        }, done);
+    });
+
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+
+    it('should invoke drawImage when image.width <= innerLayoutArea.width datasource', () => {
+        const cell: PdfTreeGridCell = new PdfTreeGridCell();
+        const innerLayoutArea: RectangleF = new RectangleF(0, 0, 120, 40);
+        const graphicsMock: any = {
+            drawImage: (image: any, x: number, y: number, w: number, h: number) => {
+                // no-op: ensure branch executes without throwing
+            }
+        };
+        const imageObj: any = { width: 80, height: 30 };
+        (cell as any).drawImageBound(innerLayoutArea, graphicsMock, imageObj);
+    });
+
+    it('should invoke drawImage when image.width > innerLayoutArea.width datasource', () => {
+        const cell: PdfTreeGridCell = new PdfTreeGridCell();
+        const innerLayoutArea: RectangleF = new RectangleF(0, 0, 50, 30);
+        const graphicsMock: any = {
+            drawImage: (image: any, x: number, y: number, w: number, h: number) => {
+                // no-op: ensure branch executes without throwing
+            }
+        };
+        const imageObj: any = { width: 100, height: 40 };
+        (cell as any).drawImageBound(innerLayoutArea, graphicsMock, imageObj);
+    });
+});
+
+describe('PdfTreeGridCell.draw - branch coverage', () => {
+    it('image + fontStyles.fontFamily branch (customisedFont = newFont)', (done: Function) => {
+        let ganttObj: Gantt;
+        const data = [{ TaskID: 1, TaskName: 'Image Task', StartDate: new Date(), EndDate: new Date() }];
+        ganttObj = createGantt({
+            dataSource: data,
+            allowPdfExport: true,
+            taskFields: { id: 'TaskID', name: 'TaskName', startDate: 'StartDate', endDate: 'EndDate' },
+            toolbar: ['PdfExport'],
+            pdfQueryCellInfo: (args: any) => {
+                // Attach an image and provide fontFamily via cell.fontStyle to hit fontStyles.fontFamily branch
+                if (args.cell) {
+                    try {
+                        args.cell.image = new PdfBitmap(image);
+                    } catch (e) {
+                        // in environments where PdfBitmap(image) may not be valid, still attach a truthy object
+                        args.cell.image = { width: 10, height: 10 };
+                    }
+                    args.cell.value = 'Image cell text';
+                    args.cell.fontStyle = { fontFamily: 'TimesRoman', fontSize: 12, fontStyle: PdfFontStyle.Regular };
+                }
+            }
+        }, () => {
+            const props: any = {}; // no extra props required
+            ganttObj.pdfExport(props, true).then(() => {
+                destroyGantt(ganttObj);
+                done();
+            });
+        });
+    });
+});
+
+describe('Gantt PDF Export with split tasks width template', () => {
+    let ganttObj: Gantt;
+    var splitTasksData = [
+        {
+            TaskID: 4, TaskName: 'Plan timeline', StartDate: new Date('02/01/2019'),
+            Duration: 20, Progress: '60', 
+            Segments: [
+                {
+                    StartDate: new Date('02/01/2019'),
+                    Duration: 5
+                },
+                {
+                    StartDate: new Date('02/08/2019'),
+                    Duration: 7
+                },
+                {
+                    StartDate: new Date('02/18/2019'),
+                    Duration: 8
+                }
+            ]
+            
+        },
+    ];
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: splitTasksData,
+            allowSorting: true,
+            allowReordering: true,
+            enableContextMenu: true,
+            enableVirtualization: false,
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                endDate: 'EndDate',
+                duration: 'Duration',
+                progress: 'Progress',
+                dependency: 'Predecessor',
+                child: 'subtasks',
+                segments: 'Segments'
+            },
+            editSettings: {
+                allowAdding: true,
+                allowEditing: true,
+                allowDeleting: true,
+                allowTaskbarEditing: true,
+                showDeleteConfirmDialog: true
+            },
+            pdfQueryTaskbarInfo: function (args) {
+                if (args.data) {
+                    args.taskbarTemplate.value = args.data.TaskName;
+                }
+            },
+            columns: [
+                { field: 'TaskID', width: 60 },
+                { field: 'TaskName', headerText: 'Job Name', width: '250', clipMode: 'EllipsisWithTooltip' },
+                { field: 'StartDate' },
+                { field: 'EndDate' },
+                { field: 'Duration' },
+                { field: 'Progress' },
+                { field: 'Predecessor' }
+            ],
+            sortSettings: {
+                columns: [{ field: 'TaskID', direction: 'Ascending' },
+                    { field: 'TaskName', direction: 'Ascending' }]
+            },
+            toolbar: ['Add', 'Edit', 'Update', 'Delete', 'Cancel', 'ExpandAll', 'CollapseAll', 'Search', 'ZoomIn', 'ZoomOut', 'ZoomToFit',
+                'PrevTimeSpan', 'NextTimeSpan', 'ExcelExport', 'CsvExport', 'PdfExport'],
+            allowExcelExport: true,
+            allowPdfExport: true,
+            allowSelection: true,
+            allowRowDragAndDrop: true,
+            selectedRowIndex: 1,
+            splitterSettings: {
+                position: "50%",
+            },
+            selectionSettings: {
+                mode: 'Row',
+                type: 'Single',
+                enableToggle: false
+            },
+            tooltipSettings: {
+                showTooltip: true
+            },
+            filterSettings: {
+                type: 'Menu'
+            },
+            allowFiltering: true,
+            gridLines: "Both",
+            showColumnMenu: true,
+            highlightWeekends: true,
+            timelineSettings: {
+                showTooltip: true,
+                topTier: {
+                    unit: 'Week',
+                    format: 'dd/MM/yyyy'
+                },
+                bottomTier: {
+                    unit: 'Day',
+                    count: 1
+                }
+            },
+            eventMarkers: [
+                {
+                    day: '04/10/2019',
+                    cssClass: 'e-custom-event-marker',
+                    label: 'Project approval and kick-off'
+                }
+            ],
+            holidays: [{
+                    from: "04/04/2019",
+                    to: "04/05/2019",
+                    label: " Public holidays",
+                    cssClass: "e-custom-holiday"
+                },
+                {
+                    from: "04/12/2019",
+                    to: "04/12/2019",
+                    label: " Public holiday",
+                    cssClass: "e-custom-holiday"
+                }],
+            searchSettings: { fields: ['TaskName', 'Duration']
+            },
+            labelSettings: {
+                leftLabel: 'TaskID',
+                rightLabel: 'Task Name: ${taskData.TaskName}',
+                taskLabel: 'TaskID'
+            },
+            allowResizing: true,
+            readOnly: false,
+            taskbarHeight: 20,
+            rowHeight: 40,
+            height: '550px',
+            projectStartDate: new Date('01/30/2019'),
+            projectEndDate: new Date('03/04/2019')
+        }, done);
+    });
+    it('Export split task with autofit coverage', () => {
+        const exportProperties: PdfExportProperties = {
+            fitToWidthSettings: {
+                isFitToWidth: true,
+            },
+        };
+        ganttObj.pdfExport(exportProperties);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+
+
+describe('Gantt PDF Export template', () => {
+    let ganttObj: Gantt;
+    var splitTasksData = [
+        {
+            TaskID: 4, TaskName: 'Plan timeline', StartDate: new Date('03/01/2019'),
+            Duration: 50, Progress: '60'
+        },
+    ];
+    beforeAll((done: Function) => {
+        ganttObj = createGantt({
+            dataSource: splitTasksData,
+            allowSorting: true,
+            allowReordering: true,
+            enableContextMenu: true,
+            enableVirtualization: false,
+            taskFields: {
+                id: 'TaskID',
+                name: 'TaskName',
+                startDate: 'StartDate',
+                endDate: 'EndDate',
+                duration: 'Duration',
+                progress: 'Progress',
+                dependency: 'Predecessor',
+                child: 'subtasks',
+            },
+            editSettings: {
+                allowAdding: true,
+                allowEditing: true,
+                allowDeleting: true,
+                allowTaskbarEditing: true,
+                showDeleteConfirmDialog: true
+            },
+            pdfQueryTaskbarInfo: function (args) {
+                if (args.data) {
+                    args.taskbarTemplate.value = args.data.TaskName;
+                }
+            },
+            columns: [
+                { field: 'TaskID', width: 60 },
+                { field: 'TaskName', headerText: 'Job Name', width: '250', clipMode: 'EllipsisWithTooltip' },
+                { field: 'StartDate' },
+                { field: 'EndDate' },
+                { field: 'Duration' },
+                { field: 'Progress' },
+                { field: 'Predecessor' }
+            ],
+            sortSettings: {
+                columns: [{ field: 'TaskID', direction: 'Ascending' },
+                    { field: 'TaskName', direction: 'Ascending' }]
+            },
+            toolbar: ['Add', 'Edit', 'Update', 'Delete', 'Cancel', 'ExpandAll', 'CollapseAll', 'Search', 'ZoomIn', 'ZoomOut', 'ZoomToFit',
+                'PrevTimeSpan', 'NextTimeSpan', 'ExcelExport', 'CsvExport', 'PdfExport'],
+            allowExcelExport: true,
+            allowPdfExport: true,
+            allowSelection: true,
+            allowRowDragAndDrop: true,
+            selectedRowIndex: 1,
+            splitterSettings: {
+                position: "50%",
+            },
+            selectionSettings: {
+                mode: 'Row',
+                type: 'Single',
+                enableToggle: false
+            },
+            tooltipSettings: {
+                showTooltip: true
+            },
+            filterSettings: {
+                type: 'Menu'
+            },
+            allowFiltering: true,
+            gridLines: "Both",
+            showColumnMenu: true,
+            highlightWeekends: true,
+            timelineSettings: {
+                showTooltip: true,
+                topTier: {
+                    unit: 'Week',
+                    format: 'dd/MM/yyyy'
+                },
+                bottomTier: {
+                    unit: 'Day',
+                    count: 1
+                }
+            },
+            eventMarkers: [
+                {
+                    day: '04/10/2019',
+                    cssClass: 'e-custom-event-marker',
+                    label: 'Project approval and kick-off'
+                }
+            ],
+            holidays: [{
+                    from: "04/04/2019",
+                    to: "04/05/2019",
+                    label: " Public holidays",
+                    cssClass: "e-custom-holiday"
+                },
+                {
+                    from: "04/12/2019",
+                    to: "04/12/2019",
+                    label: " Public holiday",
+                    cssClass: "e-custom-holiday"
+                }],
+            searchSettings: { fields: ['TaskName', 'Duration']
+            },
+            labelSettings: {
+                leftLabel: 'TaskID',
+                rightLabel: 'Task Name: ${taskData.TaskName}',
+                taskLabel: 'TaskID'
+            },
+            allowResizing: true,
+            readOnly: false,
+            taskbarHeight: 20,
+            rowHeight: 40,
+            height: '550px',
+            projectStartDate: new Date('01/30/2019'),
+            projectEndDate: new Date('05/01/2019'),
+        }, done);
+    });
+    it('Export data with autofit coverage', () => {
+        const exportProperties: PdfExportProperties = {
+            fitToWidthSettings: {
+                isFitToWidth: true,
+            },
+        };
+        ganttObj.pdfExport(exportProperties);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+});
+
+describe('Gantt PDF Export - task end within header range', () => {
+    let ganttObj: Gantt;
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: [
+                    {
+                        TaskID: 1,
+                        TaskName: 'EndInHeader',
+                        StartDate: new Date('03/20/2019'),
+                        EndDate: new Date('04/05/2019'),
+                        Progress: 20
+                    },
+                    {
+                        TaskID: 2,
+                        TaskName: 'Planning Phase',
+                        StartDate: new Date('03/18/2019'),
+                        EndDate: new Date('04/12/2019'),
+                        BaselineStartDate: new Date('03/15/2019'),
+                        BaselineEndDate: new Date('04/08/2019'),
+                        Progress: 40,
+                        SubTasks: [
+                            {
+                                TaskID: 3,
+                                TaskName: 'Requirement Analysis',
+                                StartDate: new Date('03/19/2019'),
+                                EndDate: new Date('04/05/2019'),
+                                Progress: 30
+                            }
+                        ]
+                    }
+                ],
+                allowPdfExport: true,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    endDate: 'EndDate',
+                    duration: 'Duration',
+                    progress: 'Progress',
+                    child: 'SubTasks',
+                    baselineStartDate: 'BaselineStartDate',
+                    baselineEndDate: 'BaselineEndDate',
+                },
+                renderBaseline: true,
+                projectStartDate: new Date('03/25/2019'),
+                projectEndDate: new Date('05/30/2019'),
+                rowHeight: 40,
+                taskbarHeight: 30,
+                labelSettings: {
+                    taskLabel: 'TaskName',
+                },
+                height: '450px'
+            }, done);
+    });
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+    it('should export when task end falls within header split range', (done) => {
+        ganttObj.flatData[1].ganttProperties.isAutoSchedule = false;
+        ganttObj.pdfExport(null, true);
+        done();
+    });
+});
+
+describe('PdfTreeGridLayouter - layoutOnPageHelper method coverage', () => {
+    let ganttObj: Gantt;
+
+    beforeAll((done: Function) => {
+        ganttObj = createGantt(
+            {
+                dataSource: exportData,
+                allowPdfExport: true,
+                taskFields: {
+                    id: 'TaskID',
+                    name: 'TaskName',
+                    startDate: 'StartDate',
+                    endDate: 'EndDate',
+                    duration: 'Duration',
+                    progress: 'Progress',
+                    child: 'subtasks',
+                    dependency: 'Predecessor'
+                },
+                projectStartDate: new Date('03/25/2019'),
+                projectEndDate: new Date('05/30/2019'),
+                rowHeight: 40,
+                taskbarHeight: 30,
+            },
+            done
+        );
+    });
+
+    afterAll(() => {
+        if (ganttObj) {
+            destroyGantt(ganttObj);
+        }
+    });
+
+    // Test Case 1: layoutOnPageHelper with enableHeader true and paginateBounds equals zero rectangle
+    it('layoutOnPageHelper with enableHeader=true and paginateBounds=RectangleF(0,0,0,0)', () => {
+        ganttObj.pdfExport();
+        const treegrid: any = ganttObj.pdfExportModule.gantt;
+        const layouter: any = new PdfTreeGridLayouter(treegrid);
+        treegrid.enableHeader = false;
+        layouter['currentBounds'] = new RectangleF(0.5, 20, 200, 300);
+        spyOn(layouter,'drawRow').and.stub();
+        layouter['currentPage'] = { graphics: { clientSize: { width: 600, height: 800 } } };
+        layouter['startLocation'] = new PointF(5, 15);
+        const format: any = new PdfTreeGridLayoutFormat();
+        format.paginateBounds = new RectangleF(0, 0, 0, 0);
+        const layoutedPages = new TemporaryDictionary<PdfPage, number[]>();
+        const range = [0, 5];
+        const row = ganttObj.pdfExportModule.helper['row'];
+        layouter['layoutOnPageHelper'](format, layoutedPages, range, row);
+    });    
 });

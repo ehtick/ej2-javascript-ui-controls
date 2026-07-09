@@ -8,7 +8,7 @@ import { Column } from '../models/column';
 import { Row } from '../models/row';
 import * as events from '../base/constant';
 import { Grid } from '../base/grid';
-import { getScrollBarWidth, getEditedDataIndex, resetRowIndex, setRowElements, getRowIndexFromElement, getGroupKeysAndFields, getPredicates, generateExpandPredicates } from '../base/util';
+import { getScrollBarWidth, getEditedDataIndex, resetRowIndex, setRowElements, getRowIndexFromElement, getGroupKeysAndFields, getPredicates, generateExpandPredicates, parseViewportHeight } from '../base/util';
 import { Action, freezeTable, FocusKeys } from '../base/enum';
 import { ColumnWidthService } from '../services/width-controller';
 import * as literals from '../base/string-literals';
@@ -90,11 +90,16 @@ export class InfiniteScroll implements IAction {
         return 'infiniteScroll';
     }
 
+    private instantiateRenderer(): void {
+        this.calculateAutoPageSize();
+    }
+
     /**
      * @returns {void}
      * @hidden
      */
     public addEventListener(): void {
+        this.parent.on(events.initialLoad, this.instantiateRenderer, this);
         this.parent.on(events.dataReady, this.onDataReady, this);
         this.parent.on(events.dataSourceModified, this.dataSourceModified, this);
         this.parent.on(events.infinitePageQuery, this.infinitePageQuery, this);
@@ -136,6 +141,7 @@ export class InfiniteScroll implements IAction {
      */
     public removeEventListener(): void {
         if (this.parent.isDestroyed) { return; }
+        this.parent.off(events.initialLoad, this.instantiateRenderer);
         this.parent.off(events.dataReady, this.onDataReady);
         this.parent.off(events.dataSourceModified, this.dataSourceModified);
         this.parent.off(events.infinitePageQuery, this.infinitePageQuery);
@@ -674,7 +680,8 @@ export class InfiniteScroll implements IAction {
     }
 
     private actionComplete(args: NotifyArgs): void {
-        if (args.requestType === 'delete' || args.requestType === 'save' || args.requestType === 'cancel') {
+        if (this.parent.editSettings.mode === 'Normal' && (args.requestType === 'delete' ||
+            args.requestType === 'save' || args.requestType === 'cancel')) {
             this.requestType = this.empty as Action;
             this.isCancel = args.requestType === 'cancel' || args.requestType === 'save';
             this.isAdd = this.isEdit = false || this.parent.editSettings.showAddNewRow;
@@ -729,6 +736,18 @@ export class InfiniteScroll implements IAction {
         if (!isNullOrUndefined(e.count) && e.requestType !== 'infiniteScroll') {
             this.maxPage = Math.ceil(e.count / this.parent.pageSettings.pageSize);
         }
+    }
+
+    private calculateAutoPageSize(): void {
+        const rowHeight: number = this.parent.getRowHeight();
+        let availableHeight: string | number = this.parent.height.toString().indexOf('%') < 0 ? this.parent.height :
+            this.parent.element.getBoundingClientRect().height;
+        if (typeof this.parent.height === 'string' && this.parent.height.toLowerCase().indexOf('vh') !== -1) {
+            availableHeight = parseViewportHeight(this.parent.height);
+        }
+        const height: number = ~~(parseFloat(availableHeight.toString()) / rowHeight) * 2;
+        const size: number = this.parent.pageSettings.pageSize;
+        this.parent.setProperties({ pageSettings: { pageSize: size < height ? height : size } }, true);
     }
 
     private ensureIntialCollapse(isExpand: boolean): void {

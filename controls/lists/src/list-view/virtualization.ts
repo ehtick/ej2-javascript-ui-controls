@@ -885,6 +885,9 @@ export class Virtualization {
         const onChange: Function = this.isNgTemplate() ? this.onNgChange : this.onChange;
         if (this.listViewInstance.template || this.listViewInstance.groupTemplate) {
             const curViewDS: DataSource = (this.listViewInstance.curViewDS as DataSource[])[index as number];
+            if (isNullOrUndefined(curViewDS)) {
+                return;
+            }
             element.dataset.uid = (curViewDS[this.listViewInstance.fields.id]) as any ?
                 (curViewDS[this.listViewInstance.fields.id]) as any : ListBase.generateId() as any;
             onChange(curViewDS, element, this);

@@ -8,7 +8,7 @@ import { createCheckBox } from '@syncfusion/ej2-buttons';
 import { ReturnType } from '../base/type';
 import { IFilterArgs, FilterSearchBeginEventArgs, CheckBoxBeforeRenderer, IGrid } from '../base/interface';
 import * as events from '../base/constant';
-import { PredicateModel } from '../base/grid-model';
+import { FilterSettingsModel, PredicateModel } from '../base/grid-model';
 import { ValueFormatter } from '../services/value-formatter';
 import { getForeignData, resetDialogAppend } from '../base/util';
 import { Column, ColumnModel } from '../models/column';
@@ -86,6 +86,8 @@ export class CheckBoxFilterBase {
     private infiniteManualSelectMaintainPred: PredicateModel[] = [];
     private infiniteUnloadParentExistPred: PredicateModel[];
     private filterPreventColumns: PredicateModel[];
+    private searchClear: boolean = false;
+    public lastAppliedFilter: object[] = [];
 
     /**
      * Constructor for checkbox filtering module
@@ -130,6 +132,63 @@ export class CheckBoxFilterBase {
         this.closeDialog();
     }
 
+    private isImmediateMode(): boolean {
+        return this.parent && (this.parent.filterSettings as FilterSettingsModel) && (this.parent.filterSettings as FilterSettingsModel).mode === 'Immediate';
+    }
+
+    /**
+     * Returns dialog buttons based on filter mode:
+     * Immediate → only Clear button
+     * Others → Filter/OK + Clear buttons
+     *
+     * @returns {Object[] | null} Returns dialog button configurations
+     */
+    private getDialogButtons(): Object[] | null {
+        if (this.isImmediateMode()) {
+            if ((<{type: string}>this.parent.filterSettings).type === 'CheckBox') {
+                return [{
+                    click: this.btnClick.bind(this),
+                    buttonModel: {
+                        cssClass: this.parent.cssClass ? 'e-flat' + ' ' + this.parent.cssClass : 'e-flat',
+                        content: this.getLocalizedLabel('ClearButton')
+                    }
+                }];
+            } else {
+                (<{ footerTemplate?: null }>(this.dialogObj as DialogModel)).footerTemplate = null;
+                return null;
+            }
+        }
+        else {
+            return [{
+                click: this.btnClick.bind(this),
+                buttonModel: {
+                    content: this.getLocalizedLabel(this.isExcel ? 'OKButton' : 'FilterButton'),
+                    cssClass: this.parent.cssClass ? 'e-primary' + ' ' + this.parent.cssClass : 'e-primary',
+                    isPrimary: true
+                }
+            },
+            {
+                click: this.btnClick.bind(this),
+                buttonModel: {
+                    cssClass: this.parent.cssClass ? 'e-flat' + ' ' + this.parent.cssClass : 'e-flat',
+                    content: this.getLocalizedLabel(this.isExcel ? 'CancelButton' : 'ClearButton')
+                }
+            }];
+        }
+    }
+
+    /**
+     * @hidden
+     * Returns CSS class for dialog based on filter mode
+     * @returns {string} CSS class string
+     */
+    protected getDialogCssClass(): string {
+        const baseClass: string = this.parent.cssClass ? this.parent.cssClass : '';
+        if (this.isImmediateMode()) {
+            return baseClass ? 'e-dialog-immediate-mode ' + baseClass : 'e-dialog-immediate-mode';
+        }
+        return baseClass;
+    }
 
     private wireEvents(): void {
         EventHandler.add(this.dlg, 'click', this.clickHandler, this);
@@ -186,6 +245,9 @@ export class CheckBoxFilterBase {
             if (this.isCheckboxFilterTemplate) {
                 this.parent.notify('refreshCheckbox', { event: e });
             } else {
+                if (this.parent.filterSettings && this.isImmediateMode()) {
+                    this.searchClear = true;
+                }
                 this.refreshCheckboxes();
             }
             this.updateSearchIcon();
@@ -194,6 +256,10 @@ export class CheckBoxFilterBase {
     }
 
     private searchBoxKeyUp(e?: KeyboardEvent): void {
+        if (this.isImmediateMode() && this.sInput && this.sInput.value === '') {
+            this.searchClear = true;
+            (this.parent as IGrid).clearFiltering([this.options.field]);
+        }
         if (isNullOrUndefined(this.sInput)) { return; }
         if (isNullOrUndefined(e) || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown' && e.key !== 'Tab' && !(e.key === 'Tab' && e.shiftKey))) {
             if (!isNullOrUndefined(this.parent.loadingIndicator) && this.parent.loadingIndicator.indicatorType === 'Shimmer') {
@@ -336,23 +402,12 @@ export class CheckBoxFilterBase {
                 || this.parent.element.classList.contains('e-device') ? 260 : 255,
             target: this.parent.element, animationSettings:
                 { effect: 'None' },
-            buttons: [{
-                click: this.btnClick.bind(this),
-                buttonModel: {
-                    content: this.getLocalizedLabel(this.isExcel ? 'OKButton' : 'FilterButton'),
-                    cssClass: this.parent.cssClass ? 'e-primary' + ' ' + this.parent.cssClass : 'e-primary',
-                    isPrimary: true
-                }
-            },
-            {
-                click: this.btnClick.bind(this),
-                buttonModel: { cssClass: this.parent.cssClass ? 'e-flat' + ' ' + this.parent.cssClass : 'e-flat',
-                    content: this.getLocalizedLabel(this.isExcel ? 'CancelButton' : 'ClearButton') }
-            }],
             created: this.dialogCreated.bind(this),
             open: this.dialogOpen.bind(this),
-            cssClass: this.parent.cssClass ? this.parent.cssClass : ''
+            cssClass: this.getDialogCssClass()
         });
+        const dialogButtons: Object[] = this.getDialogButtons();
+        this.dialogObj.buttons = dialogButtons;
         const isStringTemplate: string = 'isStringTemplate';
         this.dialogObj[`${isStringTemplate}`] = true;
         this.renderResponsiveFilter(options);
@@ -526,6 +581,31 @@ export class CheckBoxFilterBase {
         }
     }
 
+    private updateClearMenuState(isEnable: boolean): void {
+        if (this.isImmediateMode() && (<{ type: string }>this.parent.filterSettings).type === 'Excel' && !this.options.isResponsiveFilter) {
+            const menu: HTMLElement | undefined = (this as { menu?: HTMLElement }).menu;
+            let clearItem: HTMLElement | null = null;
+            if (menu) {
+                const icon: HTMLElement | null = menu.querySelector<HTMLElement>('.e-excl-filter-icon');
+                if (icon) {
+                    clearItem = icon.closest('.e-menu-item') as HTMLElement | null;
+                }
+            }
+            if (!clearItem) {
+                return;
+            }
+            if (isEnable) {
+                clearItem.classList.remove('e-disabled');
+                clearItem.tabIndex = 0;
+                clearItem.removeAttribute('aria-disabled');
+            } else {
+                clearItem.classList.add('e-disabled');
+                clearItem.tabIndex = -1;
+                clearItem.setAttribute('aria-disabled', 'true');
+            }
+        }
+    }
+
     /**
      * @returns {void}
      * @hidden
@@ -537,6 +617,22 @@ export class CheckBoxFilterBase {
         }
         let checked: Element[] = [].slice.call(this.cBox.querySelectorAll('.e-check:not(.e-selectall):not(.e-add-current)'));
         const check: Element[] = checked;
+        if (this.isImmediateMode()) {
+            const selected: number = checked.length;
+            const totalCount: number = this.itemsCnt;
+            const searchValue: string = this.sInput ? this.sInput.value : '';
+            if (selected === totalCount && searchValue === '') {
+                if (this.options.handler) {
+                    (this.parent as IGrid).filterModule!.maintainFocusOnFilterDialog = true;
+                    this.options.handler({
+                        action: 'clear-filter',
+                        field: this.options.field
+                    });
+                }
+                this.updateClearMenuState(false);
+                return;
+            }
+        }
         let optr: string = 'equal';
         const ddlValue: EJ2Intance = (this.dialogObj.element.querySelector('.e-dropdownlist') as EJ2Intance);
         if (ddlValue) {
@@ -574,8 +670,9 @@ export class CheckBoxFilterBase {
         let val: string;
         let length: number;
         let coll: PredicateModel[] = [];
-        if ((checked.length !== this.itemsCnt || (searchInput && searchInput.value && searchInput.value !== ''))
-        || this.infiniteRenderMod) {
+        const shouldApplyFilter: boolean = (checked.length !== this.itemsCnt || (searchInput && searchInput.value && searchInput.value !== ''))
+            || this.infiniteRenderMod || this.isImmediateMode();
+        if (shouldApplyFilter) {
             if (!this.infiniteRenderMod) {
                 coll = this.complexQueryPredicate(checked, defaults, isNotEqual);
                 if (isNullOrUndefined(coll)) {
@@ -631,6 +728,13 @@ export class CheckBoxFilterBase {
             if (isClearFilter) {
                 this.clearFilter();
             }
+        }
+        if (this.isImmediateMode()) {
+            const selected: number = checked.length;
+            const totalCount: number = this.itemsCnt;
+            const isEnable: boolean = (selected > 0 && selected < totalCount);
+            this.updateClearMenuState(isEnable);
+            this.searchClear = false;
         }
     }
 
@@ -876,8 +980,12 @@ export class CheckBoxFilterBase {
                 predicte = emptyValPredicte;
                 query.where(emptyValPredicte);
             } else if (val.length) {
-                predicte = !isNullOrUndefined(pred) ? predicte.and(pred.e as Predicate) : predicte;
-                query.where(predicte);
+                if (this.isImmediateMode() && ((<{type: string}>this.parent.filterSettings).type === 'Excel' || (<{type: string}>this.parent.filterSettings).type === 'CheckBox')) {
+                    query.where(predicte);
+                } else {
+                    predicte = !isNullOrUndefined(pred) ? predicte.and(pred.e as Predicate) : predicte;
+                    query.where(predicte);
+                }
             } else if (!isNullOrUndefined(pred)) {
                 predicte = pred.e as Predicate;
                 query.where(pred.e as Predicate);
@@ -1339,6 +1447,42 @@ export class CheckBoxFilterBase {
             }
         });
     }
+
+    public applyImmediateSearchToGrid(searchValue: string): void {
+        const grid: IGrid & { filterByColumn: Function } = this.parent as IGrid & { filterByColumn: Function };
+        const field: string = this.options.field;
+        if (!searchValue) {
+            return;
+        }
+        const columns: PredicateModel[] =
+            (grid.filterSettings && grid.filterSettings.columns)
+                ? grid.filterSettings.columns as PredicateModel[]
+                : [];
+        for (let i: number = columns.length - 1; i >= 0; i--) {
+            const current: PredicateModel = columns.slice(i, i + 1)[0];
+            if (current && current.field === field) {
+                columns.splice(i, 1);
+            }
+        }
+        grid.filterByColumn(
+            field,
+            'contains',
+            searchValue,
+            'or',
+            false,
+            this.options.ignoreAccent
+        );
+        this.lastAppliedFilter = [{
+            field: field,
+            operator: 'contains',
+            value: searchValue,
+            predicate: 'or',
+            matchCase: false,
+            ignoreAccent: this.options.ignoreAccent,
+            type: this.options.type
+        }];
+    }
+
     private dataSuccess(e: Object[]): void {
         if (!this.infiniteInitialLoad && this.infiniteDataCount && ((this.infiniteSkipCnt >= this.infiniteDataCount
             && !this.infiniteSearchValChange) || (e.length === 0))) {
@@ -1359,7 +1503,19 @@ export class CheckBoxFilterBase {
                 { records: Object[] }).records || [];
         }
         const data: object[] = args1.executeQuery ? this.filteredData : args1.dataSource ;
+        const searchValue: string = this.sInput ? this.sInput.value : '';
+        if (this.isImmediateMode() && data && data.length !== 0 && searchValue && searchValue !== '') {
+            this.applyImmediateSearchToGrid(searchValue);
+        }
         this.processDataSource(null, true, data, args1);
+        if (this.isImmediateMode()) {
+            const selected: number = this.cBox.querySelectorAll('.e-check:not(.e-selectall):not(.e-add-current)').length;
+            const totalCount: number = this.itemsCnt;
+            const hasExistingFilter: boolean = this.existingPredicate && this.existingPredicate[this.options.field] ? true : false;
+            const isEnable: boolean = (this.searchClear || hasExistingFilter) && (selected !== totalCount);
+            this.updateClearMenuState(isEnable);
+            this.searchClear = false;
+        }
         if ((this.infiniteRenderMod && this.infiniteInitialLoad) || !this.infiniteRenderMod) {
             if (this.sInput) {
                 this.sInput.focus();
@@ -1427,9 +1583,20 @@ export class CheckBoxFilterBase {
         // let result: Object = new DataManager(dataSource as JSON[]).executeLocal(query);
         // let res: { result: Object[] } = result as { result: Object[] };
         this.updateResult();
-        const args1: Object = { dataSource: this.fullData, isCheckboxFilterTemplate: false, column: this.options.column,
-            element: this.cBox, type: this.options.type, format: this.options.type, btnObj: this.options.isResponsiveFilter ? null :
-                (<{ btnObj?: Button }>(this.dialogObj as DialogModel)).btnObj[0], searchBox: this.searchBox };
+        const args1: Object = {
+            dataSource: this.fullData,
+            isCheckboxFilterTemplate: false,
+            column: this.options.column,
+            element: this.cBox,
+            type: this.options.type,
+            format: this.options.type,
+            btnObj: this.options.isResponsiveFilter
+                ? null
+                : this.dialogObj.buttons.length
+                    ? (<{ btnObj?: Button }>(this.dialogObj as DialogModel)).btnObj[0]
+                    : null,
+            searchBox: this.searchBox
+        };
         this.parent.notify(events.beforeCheckboxfilterRenderer, args1);
         this.isCheckboxFilterTemplate = (<{ isCheckboxFilterTemplate?: boolean }>args1).isCheckboxFilterTemplate;
         if (!this.isCheckboxFilterTemplate) {
@@ -1448,9 +1615,14 @@ export class CheckBoxFilterBase {
         const predicate: Predicate = this.infiniteRenderMod && this.existingPredicate[this.options.field] ?
             this.getPredicateFromCols(this.existingPredicate[this.options.field]) :
             this.getPredicateFromCols(this.options.filteredColumns);
-        const query: Query = new Query();
+        let query: Query = new Query();
         if (predicate) {
             query.where(predicate);
+        } else if (this.searchClear && this.isImmediateMode()) {
+            const grid: IGrid = this.parent as IGrid;
+            if (grid.getDataModule && typeof grid.getDataModule === 'function') {
+                query = grid.getDataModule().generateQuery(true);
+            }
         }
         this.parent.notify(events.beforeCheckboxRendererQuery, { query: query });
         const result: Object[] = new DataManager(this.fullData as JSON[]).executeLocal(query);
@@ -1513,8 +1685,24 @@ export class CheckBoxFilterBase {
             }
             this.updateIndeterminatenBtn();
             (elem.querySelector('.e-chk-hidden') as HTMLElement).focus();
+            if (this.isImmediateMode()) {
+                this.applyImmediateCheckboxFilter();
+            }
         }
         this.setFocus(parentsUntil(elem, 'e-ftrchk'));
+    }
+
+    /**
+     * @hidden
+     * Applies filter immediately for checkbox changes in Immediate mode
+     * This method properly handles the complete filter state, including:
+     * - All checked values (not just visible ones)
+     * - Select All state
+     * - Search results integration
+     * @returns {void}
+     */
+    private applyImmediateCheckboxFilter(): void {
+        this.fltrBtnHandler();
     }
 
     private updateInfiniteManualSelectPred(defaults: { predicate?: string, field?: string, type?: string, uid?: string, operator?: string,
@@ -1666,7 +1854,7 @@ export class CheckBoxFilterBase {
             cnt -= 1;
         }
         let btn: Button;
-        if (!this.options.isResponsiveFilter) {
+        if (!this.options.isResponsiveFilter && this.dialogObj.buttons.length) {
             btn = (<{ btnObj?: Button }>(this.dialogObj as DialogModel)).btnObj[0];
             btn.disabled = false;
         }
@@ -1702,8 +1890,10 @@ export class CheckBoxFilterBase {
                 this.infiniteManualSelectMaintainPred = [];
             }
             className = ['e-uncheck'];
-            disabled = true;
-            if (btn) { btn.disabled = true; }
+            if (!this.isImmediateMode()) {
+                disabled = true;
+                if (btn) { btn.disabled = true; }
+            }
         }
         if (btn) {
             this.filterState = !btn.disabled;
@@ -1718,7 +1908,7 @@ export class CheckBoxFilterBase {
         const moduleName : Function = (<{ getModuleName?: Function }>this.options.dataManager.adaptor).getModuleName;
         const cBoxes: Element = this.parent.createElement('div');
         let btn: Button; let disabled: boolean = false;
-        if (!this.options.isResponsiveFilter) {
+        if (!this.options.isResponsiveFilter && this.dialogObj.buttons.length) {
             btn = (<{ btnObj?: Button }>(this.dialogObj as DialogModel)).btnObj[0];
         }
         let nullCounter: number = -1;
@@ -1779,9 +1969,13 @@ export class CheckBoxFilterBase {
             if (this.options.foreignKeyValue) {
                 predicate = predicate.or('field', 'equal', this.options.foreignKeyValue);
             }
+            if (this.searchClear && this.isImmediateMode()) {
+                this.options.filteredColumns = (this.parent.filterSettings as FilterSettingsModel).columns;
+                this.isFiltered = this.options.filteredColumns.length;
+            }
             const isColFiltered: number = new DataManager(this.options.filteredColumns as JSON[]).executeLocal(
                 new Query().where(predicate)).length;
-            if (this.sInput && this.sInput.value) {
+            if (this.sInput && this.sInput.value && !this.isImmediateMode()) {
                 const predicateCheckBox: Element = this.createCheckbox(this.getLocalizedLabel('AddCurrentSelection'), false, {
                     [this.options.field]: this.getLocalizedLabel('AddCurrentSelection') });
                 if (this.parent.cssClass) {

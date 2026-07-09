@@ -258,10 +258,15 @@ export class RibbonGallery {
             galleryWrapper.style.width = itemsWidth + 'px'; }
     }
 
-    private setWrapperStyle(popup: Popup, popupContainerItems: NodeListOf<Element>): void {
+    private setWrapperStyle(popup: Popup, popupContainerItems: NodeListOf<Element>, isOverflow?: boolean): void {
         if (popup.width !== 'auto') {
             popupContainerItems.forEach((ele: HTMLElement) => {
-                ele.style.flexFlow = 'column wrap';
+                if (isOverflow) {
+                    ele.style.flexFlow = 'column wrap';
+                }
+                else {
+                    ele.style.flexFlow = 'wrap';
+                }
             });
         }
     }
@@ -501,6 +506,7 @@ export class RibbonGallery {
             if (popupButton) {
                 popupButton.classList.add('e-hidden'); }
             const itemProp: itemProps = getItem(this.parent.tabs, item.id);
+            const isGroupOF: boolean = itemProp && itemProp.group ? itemProp.group.enableGroupOverflow : false;
             let iconCss: string = itemProp && itemProp.group.groupIconCss ? itemProp.group.groupIconCss : '';
             const content: string = itemProp && itemProp.group.header ? itemProp.group.header : '';
             if (!iconCss) {
@@ -535,7 +541,7 @@ export class RibbonGallery {
                 },
                 open: () => {
                     const popupContainerItems: NodeListOf<Element> = popupContainerEle.querySelectorAll('.e-ribbon-gallery-container');
-                    this.setWrapperStyle(popup, popupContainerItems);
+                    this.setWrapperStyle(popup, popupContainerItems, isGroupOF);
                     this.setFoucsToFirstItem(popupContainerEle, true, item.id);
                     if (popup.width !== 'auto') {
                         this.alignGalleryPopupLeft(popupContainerEle, buttonEle);

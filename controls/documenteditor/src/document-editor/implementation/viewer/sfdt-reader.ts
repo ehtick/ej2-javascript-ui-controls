@@ -972,6 +972,11 @@ export class SfdtReader {
                             isParaHasStyleName = true;
                         }
                         styleObj = this.documentHelper.styles.findByName(styleName, 'Paragraph');
+                        // if the para belongs to "Normal (Web)" style but Normal (Web) style object were undefined
+                        // then using the "Normal" style object.
+                        if (this.isPaste && isNullOrUndefined(styleObj) && styleName === 'Normal (Web)') {
+                            styleObj = this.documentHelper.styles.findByName('Normal', 'Paragraph');
+                        }
                         if (!isNullOrUndefined(styleObj)) {
                             // The below lines are disabled because they cause a break for this task: 870732 
                             // if (this.isPaste && styles && isParaHasStyleName) {

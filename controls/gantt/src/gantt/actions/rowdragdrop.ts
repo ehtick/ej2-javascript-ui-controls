@@ -124,14 +124,15 @@ export class RowDD {
         const ganttDragElement: HTMLElement = cloneElement.cloneNode(true) as HTMLElement;
         ganttDragElement.classList.add('e-ganttdrag');
         ganttDragElement.style.display = '';
-        if (this.parent.element.querySelectorAll('.e-cloneproperties').length <= 1) {
-            this.parent.element.appendChild(ganttDragElement);
-        } else {
+        if (this.parent.element.querySelectorAll('.e-cloneproperties').length > 1) {
             if (document.getElementsByClassName('e-cloneproperties')[0].querySelectorAll('.e-errorelem').length) {
                 this.addErrorElem();
             } else {
                 this.removeErrorElem();
             }
+        }
+        else {
+            this.parent.element.appendChild(ganttDragElement);
         }
         if (this.parent.gridLines === 'Both') {
             addClass(this.parent.element.querySelectorAll('.e-ganttdrag .e-rowcell'), ['e-bothganttlines']);
@@ -307,7 +308,7 @@ export class RowDD {
                                     this.treeGridData.splice(recordIndex1 + 1, 0, this.draggedRecord);
                                     this.parent.ids.splice(recordIndex1 + 1, 0, this.draggedRecord.ganttProperties.rowUniqueID.toString());
                                     if (this.parent.viewType === 'ResourceView') {
-                                        const taskId: string = this.draggedRecord.level === 0 ? 'R' + this.draggedRecord.ganttProperties.taskId : 'T' + this.draggedRecord.ganttProperties.taskId;
+                                        const taskId: string = 'T' + this.draggedRecord.ganttProperties.taskId;
                                         this.parent.getTaskIds().splice(recordIndex1 + 1, 0, taskId);
                                     }
 
@@ -320,7 +321,7 @@ export class RowDD {
                                     /* eslint-disable-next-line */
                                     this.parent.ids.splice(recordIndex1 + count + 1, 0, this.draggedRecord.ganttProperties.rowUniqueID.toString());
                                     if (this.parent.viewType === 'ResourceView') {
-                                        const spliceId: string = this.draggedRecord.level === 0 ? 'R' + this.draggedRecord.ganttProperties.taskId : 'T' + this.draggedRecord.ganttProperties.taskId;
+                                        const spliceId: string = 'R' + this.draggedRecord.ganttProperties.taskId;
                                         this.parent.getTaskIds().splice(recordIndex1 + count + 1, 0, spliceId);
                                     }
                                 }
@@ -730,7 +731,7 @@ export class RowDD {
             this.treeGridData.splice(childRecordsLength, 0, this.draggedRecord);
             this.parent.ids.splice(childRecordsLength, 0, this.draggedRecord.ganttProperties.rowUniqueID.toString());
             if (this.parent.viewType === 'ResourceView') {
-                const recordId: string = this.draggedRecord.level === 0 ? 'R' + this.draggedRecord.ganttProperties.taskId : 'T' + this.draggedRecord.ganttProperties.taskId;
+                const recordId: string = 'T' + this.draggedRecord.ganttProperties.taskId;
                 this.parent.getTaskIds().splice(childRecordsLength, 0, recordId);
             }
             if (this.draggedRecord.hasChildRecords) {
@@ -900,7 +901,7 @@ export class RowDD {
             this.parent.insertRecord(currentRecord, count);
             this.parent.ids.splice(count, 0, currentRecord.ganttProperties.rowUniqueID.toString());
             if (this.parent.viewType === 'ResourceView') {
-                const taskId: string  = (currentRecord.level === 0 ? 'R' : 'T') + currentRecord.ganttProperties.taskId;
+                const taskId: string  = ('T') + currentRecord.ganttProperties.taskId;
                 this.parent.getTaskIds().splice(count, 0, taskId);
             }
             if (gObj.taskFields.parentID && (gObj.dataSource as IGanttData[]).length > 0) {

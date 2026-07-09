@@ -53,6 +53,7 @@ export class HScroll extends Component<HTMLElement> implements INotifyPropertyCh
     private browserCheck: boolean;
     private ieCheck: boolean;
     private customStep: boolean;
+    private resizeContext: EventListener;
 
     /**
      * Specifies the left or right scrolling distance of the horizontal scrollbar moving.
@@ -69,6 +70,7 @@ export class HScroll extends Component<HTMLElement> implements INotifyPropertyCh
      */
     protected preRender(): void {
         this.browser = Browser.info.name;
+	    this.resizeContext = this.resizeHandler.bind(this);
         this.browserCheck = this.browser === 'mozilla';
         this.isDevice = Browser.isDevice;
         this.customStep = true;
@@ -93,6 +95,9 @@ export class HScroll extends Component<HTMLElement> implements INotifyPropertyCh
     protected render(): void {
         this.touchModule = new Touch(this.element, { scroll: this.touchHandler.bind(this), swipe: this.swipeHandler.bind(this) });
         EventHandler.add(this.scrollEle, 'scroll', this.scrollHandler, this);
+        if (this.element && this.element.closest('.e-toolbar')) {
+             window.addEventListener('resize', this.resizeContext);
+        }
         if ( !this.isDevice)  {
             this.createNavIcon(this.element);
         } else {
@@ -176,6 +181,10 @@ export class HScroll extends Component<HTMLElement> implements INotifyPropertyCh
             }
         }
         EventHandler.remove(this.scrollEle, 'scroll', this.scrollHandler);
+        if (this.element && this.element.closest('.e-toolbar')) {
+            window.removeEventListener('resize', this.resizeContext);
+        }
+        this.resizeContext = null;
         this.touchModule.destroy();
         this.touchModule = null;
         super.destroy();
@@ -416,6 +425,9 @@ export class HScroll extends Component<HTMLElement> implements INotifyPropertyCh
             removeDisable.setAttribute('tabindex', '0');
         }
         this.repeatScroll();
+    }
+    private resizeHandler(e: Event): void {
+        this.scrollHandler(e);
     }
     private scrollHandler(e: Event): void {
         const target: HTEle = <HTEle>e.target;

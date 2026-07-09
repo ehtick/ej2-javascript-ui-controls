@@ -23,6 +23,7 @@ import  {profile , inMB, getMemoryProfile} from '../base/common.spec';
 import { DetailRow } from '../../../src/grid/actions/detail-row';
 import { InfiniteScroll } from '../../../src/grid/actions/infinite-scroll';
 import { Edit } from '../../../src/grid/actions/edit';
+import { RowDragDropHeaderRenderer } from '../../../src/grid/renderer/row-drag-header-indent-render';
 
 Grid.Inject(Sort, Page, Filter, Group, Selection, Reorder, VirtualScroll, Aggregate, Toolbar, DetailRow, InfiniteScroll, Edit);
 
@@ -1696,6 +1697,71 @@ describe('EJ2-49314- Error hiding/showing columns => ', () => {
     });
 });
 
+describe('RowDragDropHeaderRenderer => ', () => {
+    let renderer: any;
+    let parent: any;
+    let locator: any;
+
+    beforeEach(() => {
+        locator = {
+            getService: (name: string) => {
+                if (name === 'localization') { return { getConstant: () => 'SelectRow' }; }
+                if (name === 'valueFormatter') { return { toView: (v: any) => v }; }
+                return {};
+            }
+        };
+        parent = {
+            createElement: (tag: string, opts?: any) => {
+                const el = document.createElement(tag);
+                if (opts && opts.className) { el.className = opts.className; }
+                if (opts && opts.attrs) {
+                    for (const k in opts.attrs) { el.setAttribute(k, String(opts.attrs[k])); }
+                }
+                return el;
+            },
+            getVisibleFrozenRightCount: () => 0,
+            getVisibleFrozenLeftCount: () => 0,
+            getFrozenMode: () => 'Left',
+            groupSettings: { columns: [] },
+            enableRtl: false
+        };
+        renderer = new RowDragDropHeaderRenderer(parent as any, locator as any);
+    });
+
+    it('should render an emptycell when no cell provided', () => {
+        const node: Element = renderer.render(null, {});
+        expect(node.querySelector('.e-emptycell')).toBeTruthy();
+        expect(node.classList.contains('e-leftfreeze')).toBeFalsy();
+    });
+
+    it('should set rowspan when cell.rowSpan is truthy', () => {
+        const node: Element = renderer.render({ rowSpan: 3 } as any, {});
+        expect(node.getAttribute('rowspan')).toBe('3');
+    });
+
+    it('should hide node when rowSpan is 0', () => {
+        const node: Element = renderer.render({ rowSpan: 0 } as any, {});
+        expect((node as HTMLElement).style.display).toBe('none');
+    });
+
+    it('should add e-leftfreeze class when frozen left count is present', () => {
+        parent.getVisibleFrozenLeftCount = () => 1;
+        parent.groupSettings.columns = [1, 2];
+        parent.getFrozenMode = () => 'Left';
+        const node: Element = renderer.render(null, {});
+        expect(node.classList.contains('e-leftfreeze')).toBeTruthy();
+    });
+
+    it('should add e-leftfreeze class when frozen right count is present (Right mode)', () => {
+        parent.getVisibleFrozenLeftCount = () => 0;
+        parent.getVisibleFrozenRightCount = () => 1;
+        parent.getFrozenMode = () => 'Right';
+        parent.groupSettings.columns = [1, 2, 3];
+        const node: Element = renderer.render(null, {});
+        expect(node.classList.contains('e-leftfreeze')).toBeTruthy();
+    });
+});
+
 describe('EJ2-49647- Column grouping with complex binding is broken when allowReordering is set => ', () => {
     let gridObj: Grid;
     let complexData: Object[] = [
@@ -3359,6 +3425,378 @@ describe('EJ2-1000496: Script Error When Calling expandAll or collapseAll on Gro
     it('should not throw script error when calling collapseAll/expandAll on empty grouped grid', () => {
         expect(() => gridObj.groupModule.collapseAll()).not.toThrow();
         expect(() => gridObj.groupModule.expandAll()).not.toThrow();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('EJ2-Arrow Key Navigation from Group Drop Area Focus', () => {
+    let gridObj: Grid;
+    let preventDefault: Function = new Function();
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: filterData.slice(0, 10),
+                allowGrouping: true,
+                groupSettings: { columns: ['ShipCity'] },
+                allowPaging: true,
+                columns: [
+                    { field: 'OrderID', headerText: 'Order ID', textAlign: 'Right', width: 120 },
+                    { field: 'CustomerID', headerText: 'Customer ID', width: 150 },
+                    { field: 'ShipCity', headerText: 'Ship City', width: 150 },
+                    { field: 'ShipName', headerText: 'Ship Name', width: 150 },
+                ],
+            },
+            done
+        );
+    });
+
+    it('should not move focus to grid cells when pressing down arrow from group drop area', () => {
+        const groupDropArea: HTMLElement = gridObj.element.querySelector('.e-groupdroparea');
+        expect(groupDropArea).toBeTruthy();
+        
+        // Focus on group drop area
+        const groupItem = groupDropArea.querySelector('.e-groupdroparea-text') as HTMLElement;
+        if (groupItem) {
+            groupItem.focus();
+            
+            // Get current focused element
+            const currentFocused = document.activeElement;
+            
+            // Trigger down arrow key press from group drop area
+            (gridObj as any).focusModule.onKeyPress({
+                target: groupItem,
+                action: 'downArrow',
+                preventDefault: preventDefault,
+                keyCode: 40
+            });
+            
+            // Focus should remain on group drop area (skipOn should return true, e.preventDefault called)
+            const afterKeyPressed = document.activeElement;
+            expect(afterKeyPressed).toBe(currentFocused);
+        }
+    });
+
+    it('should not move focus to grid cells when pressing up arrow from group drop area', () => {
+        const groupDropArea: HTMLElement = gridObj.element.querySelector('.e-groupdroparea');
+        expect(groupDropArea).toBeTruthy();
+        
+        // Focus on group drop area
+        const groupItem = groupDropArea.querySelector('.e-groupdroparea-text') as HTMLElement;
+        if (groupItem) {
+            groupItem.focus();
+            
+            // Get current focused element
+            const currentFocused = document.activeElement;
+            
+            // Trigger up arrow key press from group drop area
+            (gridObj as any).focusModule.onKeyPress({
+                target: groupItem,
+                action: 'upArrow',
+                preventDefault: preventDefault,
+                keyCode: 38
+            });
+            
+            // Focus should remain on group drop area
+            const afterKeyPressed = document.activeElement;
+            expect(afterKeyPressed).toBe(currentFocused);
+        }
+    });
+
+    it('should not move focus to grid cells when pressing left arrow from group drop area', () => {
+        const groupDropArea: HTMLElement = gridObj.element.querySelector('.e-groupdroparea');
+        expect(groupDropArea).toBeTruthy();
+        
+        // Focus on group drop area
+        const groupItem = groupDropArea.querySelector('.e-groupdroparea-text') as HTMLElement;
+        if (groupItem) {
+            groupItem.focus();
+            
+            // Get current focused element
+            const currentFocused = document.activeElement;
+            
+            // Trigger left arrow key press from group drop area
+            (gridObj as any).focusModule.onKeyPress({
+                target: groupItem,
+                action: 'leftArrow',
+                preventDefault: preventDefault,
+                keyCode: 37
+            });
+            
+            // Focus should remain on group drop area
+            const afterKeyPressed = document.activeElement;
+            expect(afterKeyPressed).toBe(currentFocused);
+        }
+    });
+
+    it('should not move focus to grid cells when pressing right arrow from group drop area', () => {
+        const groupDropArea: HTMLElement = gridObj.element.querySelector('.e-groupdroparea');
+        expect(groupDropArea).toBeTruthy();
+        
+        // Focus on group drop area
+        const groupItem = groupDropArea.querySelector('.e-groupdroparea-text') as HTMLElement;
+        if (groupItem) {
+            groupItem.focus();
+            
+            // Get current focused element
+            const currentFocused = document.activeElement;
+            
+            // Trigger right arrow key press from group drop area
+            (gridObj as any).focusModule.onKeyPress({
+                target: groupItem,
+                action: 'rightArrow',
+                preventDefault: preventDefault,
+                keyCode: 39
+            });
+            
+            // Focus should remain on group drop area
+            const afterKeyPressed = document.activeElement;
+            expect(afterKeyPressed).toBe(currentFocused);
+        }
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = preventDefault = null;
+    });
+});
+
+describe('Improve Coverage Group → groupedRowReorder method)', () => {
+    let gridObj: Grid;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: filterData.slice(0, 25),
+            allowGrouping: true,
+            enableVirtualization: true,
+            height: 400,
+            allowRowDragAndDrop: true,
+            groupSettings: { columns: ['CustomerID'] },
+            columns: [
+                { field: 'OrderID', headerText: 'Order ID', width: 120 },
+                { field: 'CustomerID', headerText: 'Customer ID', width: 140 },
+                { field: 'Freight', headerText: 'Freight', width: 110, format: 'C2' }
+            ]
+        }, done);
+    });
+
+    it('should hit display:none, fromIndex>dropIndex insertBefore, remove(dragRow) and resetCachedRowIndex', () => {
+        const dragRowObj = gridObj.getRowObjectFromUID(gridObj.getRowByIndex(5).getAttribute('data-uid'));
+        const dropRowObj = gridObj.getRowObjectFromUID(gridObj.getRowByIndex(2).getAttribute('data-uid'));
+        const dropElem: any = gridObj.getRowElementByUID(dropRowObj.uid);
+        if (dropElem) dropElem.style.display = 'none';
+        (gridObj.groupModule as any).groupedRowReorder(dragRowObj, dropRowObj);
+        if (dropElem) dropElem.style.display = '';
+    });
+
+    afterAll(() => { destroy(gridObj); gridObj = null; });
+});
+
+describe('Improve Coverage Group → updatedRowObjChange method', () => {
+    let gridObj: Grid;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: filterData.slice(0, 40),
+            allowGrouping: true,
+            enableInfiniteScrolling: true,
+            infiniteScrollSettings: { enableCache: true },
+            enableVirtualization: true,
+            height: 400,
+            groupSettings: { columns: ['ShipCountry', 'CustomerID'] },
+            columns: [
+                { field: 'OrderID', headerText: 'Order ID', width: 120 },
+                { field: 'ShipCountry', headerText: 'Ship Country', width: 140 },
+                { field: 'CustomerID', headerText: 'Customer ID', width: 140 },
+                { field: 'Freight', headerText: 'Freight', width: 110 }
+            ]
+        }, done);
+    });
+
+    it('should hit isDraggedRow mismatch continue, infinite cache reset and virtualization cache paths', () => {
+        const dragRowObj = gridObj.getRowObjectFromUID(gridObj.getRowByIndex(3).getAttribute('data-uid'));
+        const dropRowObj = gridObj.getRowObjectFromUID(gridObj.getRowByIndex(12).getAttribute('data-uid'));
+        const nextParent: any = gridObj.getRowObjectFromUID(gridObj.getRowByIndex(13).getAttribute('data-uid'));
+        if (nextParent) nextParent.data = { key: 'mismatchKey', field: 'CustomerID', items: { records: [{ CustomerID: 'wrong' }] } };
+        (gridObj.groupModule as any).groupedRowReorder(dragRowObj, dropRowObj);
+    });
+
+    afterAll(() => { destroy(gridObj); gridObj = null; });
+});
+
+describe('Improve Coverage Group → iterateGroupAggregates method', () => {
+    let gridObj: Grid;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: filterData.slice(0, 30),
+            enableInfiniteScrolling: true,
+            allowGrouping: true,
+            groupSettings: { columns: ['OrderDate'] },
+            columns: [
+                { field: 'OrderID', headerText: 'Order ID', width: 120 },
+                { field: 'OrderDate', headerText: 'Order Date', width: 140, type: 'date' },
+                { field: 'CustomerID', headerText: 'Customer ID', width: 140 },
+                { field: 'Freight', headerText: 'Freight', width: 110 }
+            ]
+        }, done);
+    });
+
+    it('should hit Date.toString branches, lastGroupKey Date match and groups_1 predicate path', () => {
+        gridObj.groupColumn('OrderDate');
+        const dragRowObj = gridObj.getRowObjectFromUID(gridObj.getRowByIndex(1).getAttribute('data-uid'));
+        const dropRowObj = gridObj.getRowObjectFromUID(gridObj.getRowByIndex(6).getAttribute('data-uid'));
+        (dropRowObj.data as any).key = new Date(2025, 0, 15);
+        if (gridObj.currentViewData && gridObj.currentViewData.length) {
+            gridObj.currentViewData[gridObj.currentViewData.length - 1] = { key: new Date(2025, 0, 15) };
+        }
+        (gridObj.groupModule as any).groupedRowReorder(dragRowObj, dropRowObj);
+    });
+
+    afterAll(() => { destroy(gridObj); gridObj = null; });
+});
+
+describe('Improve Coverage Group → updateExpand method', () => {
+    let gridObj: Grid;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: filterData.slice(0, 25),
+            allowGrouping: true,
+            groupSettings: { columns: ['ShipCountry', 'CustomerID'] },
+            columns: [
+                { field: 'OrderID', headerText: 'Order ID', width: 120 },
+                { field: 'ShipCountry', headerText: 'Ship Country', width: 140 },
+                { field: 'CustomerID', headerText: 'Customer ID', width: 140 },
+                { field: 'Freight', headerText: 'Freight', width: 110 }
+            ]
+        }, done);
+    });
+
+    it('should hit all closestParent, uid=null and child visible branches', () => {
+        (gridObj.groupModule as any).updateExpand({ isExpand: true });
+        const caption = gridObj.getContentTable().querySelector('.e-groupcaptionrow') as HTMLElement;
+        if (caption) {
+            const uid = caption.getAttribute('data-uid');
+            (gridObj.groupModule as any).updateExpand({ uid: uid, isExpand: false });
+        }
+    });
+
+    afterAll(() => { destroy(gridObj); gridObj = null; });
+});
+
+describe('Improve Coverage Group → lastCaptionRowBorder method', () => {
+    let gridObj: Grid;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: filterData.slice(0, 8),
+            allowGrouping: true,
+            enableVirtualization: true,
+            height: 180,
+            groupSettings: { columns: ['CustomerID'] },
+            columns: [
+                { field: 'OrderID', headerText: 'Order ID', width: 120 },
+                { field: 'CustomerID', headerText: 'Customer ID', width: 140 },
+                { field: 'Freight', headerText: 'Freight', width: 110 }
+            ]
+        }, done);
+    });
+
+    it('should hit removeClass/addClass loops and virtualization/infinite branches', () => {
+        gridObj.groupModule.collapseAll();
+        (gridObj.groupModule as any).lastCaptionRowBorder();
+        gridObj.groupModule.expandAll();
+        (gridObj.groupModule as any).lastCaptionRowBorder();
+    });
+
+    afterAll(() => { destroy(gridObj); gridObj = null; });
+});
+
+describe('Improve Coverage Group → keyPressHandler method', () => {
+    let gridObj: Grid;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: filterData.slice(0, 10),
+            allowGrouping: true,
+            groupSettings: { columns: ['CustomerID'] },
+            columns: [
+                { field: 'OrderID', headerText: 'Order ID', width: 120 },
+                { field: 'CustomerID', headerText: 'Customer ID', width: 140 },
+                { field: 'Freight', headerText: 'Freight', width: 110 }
+            ]
+        }, done);
+    });
+
+    it('should execute Mac metaKey remapping (downArrow → ctrlDownArrow and upArrow → ctrlUpArrow)', () => {
+        const originalPlatform = navigator.platform;   // ← Store real value first
+
+        try {
+            Object.defineProperty(navigator, 'platform', {
+                value: 'Macintosh',
+                writable: true,
+                configurable: true
+            });
+
+            const macDownEvent = {
+                action: 'downArrow',
+                metaKey: true,
+                preventDefault: () => { },
+                target: document.createElement('div')
+            };
+
+            const macUpEvent = {
+                action: 'upArrow',
+                metaKey: true,
+                preventDefault: () => { },
+                target: document.createElement('div')
+            };
+
+            (gridObj.groupModule as any).keyPressHandler(macDownEvent);
+            (gridObj.groupModule as any).keyPressHandler(macUpEvent);
+        } finally {
+            Object.defineProperty(navigator, 'platform', {
+                value: originalPlatform,
+                writable: true,
+                configurable: true
+            });
+        }
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+
+describe('Improve Coverage Group → lastCaptionRowBorder method', () => {
+    let gridObj: Grid;
+
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: filterData.slice(0, 6),
+            allowGrouping: true,
+            groupSettings: { columns: ['CustomerID'] },
+            height: 650,
+            columns: [
+                { field: 'OrderID', headerText: 'Order ID', width: 120 },
+                { field: 'CustomerID', headerText: 'Customer ID', width: 140 },
+                { field: 'Freight', headerText: 'Freight', width: 110 }
+            ]
+        }, done);
+    });
+
+    it('should execute borderCells removeClass loop and addClass(tr:last-child td) when last row is data row', () => {
+        gridObj.groupModule.expandAll();
+        (gridObj.groupModule as any).lastCaptionRowBorder();
+        gridObj.groupModule.collapseAll();
+        (gridObj.groupModule as any).lastCaptionRowBorder();
+        gridObj.groupModule.expandAll();
+        (gridObj.groupModule as any).lastCaptionRowBorder();
     });
 
     afterAll(() => {

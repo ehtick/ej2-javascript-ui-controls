@@ -12,7 +12,7 @@ import { Cell } from '../models/cell';
 import { Column } from '../models/column';
 import { CellType } from '../base/enum';
 import * as literals from '../base/string-literals';
-import { ContentRender } from '../renderer';
+import { ContentRender, DomVirtualContentRenderer } from '../renderer';
 
 /**
  * The `DetailRow` module is used to handle detail template and hierarchy Grid operations.
@@ -120,6 +120,10 @@ export class DetailRow {
             }
             if (this.isDetailRow(nextRow)) {
                 nextRow.style.display = '';
+                if (this.parent.isRowDomVirtualization() && gObj.detailTemplate) {
+                    const detailRowHeight: number = this.parseDetailRowHeight(gObj.detailTemplateHeight);
+                    nextRow.style.height = `${detailRowHeight}px`;
+                }
                 gObj.notify(events.detailStateChange, {data: data,
                     childGrid: gObj.childGrid, detailElement: target, isExpanded: isExpanded });
                 needToRefresh = true;
@@ -238,10 +242,15 @@ export class DetailRow {
                     gObj.trigger(events.detailDataBound, { detailElement: detailCell, data: data, childGrid: childGrid });
                 }
                 gObj.notify(events.detailDataBound, { rows: rowObjs });
+                if (this.parent.isRowDomVirtualization() && gObj.detailTemplate) {
+                    const detailRowHeight: number = this.parseDetailRowHeight(gObj.detailTemplateHeight);
+                    (detailRow as HTMLElement).style.height = `${detailRowHeight}px`;
+                }
             }
             classList(target, ['e-detailrowexpand'], ['e-detailrowcollapse']);
             classList(target.firstElementChild, ['e-dtdiagonaldown', 'e-icon-gdownarrow'], ['e-dtdiagonalright', 'e-icon-grightarrow']);
             rowObj.isExpand = true;
+            this.handleDetailEvent(events.detailExpanded, data, target, nextRow, event);
             if (target.classList.contains('e-lastrowcell') && this.parent.getContent().clientHeight > table.scrollHeight) {
                 removeClass(target.parentElement.querySelectorAll('td'), 'e-lastrowcell');
                 const detailrowIdx: number = table.querySelector(literals.tbody).getElementsByClassName('e-detailrow').length - 1;
@@ -250,6 +259,12 @@ export class DetailRow {
             }
             this.aria.setExpand(target as HTMLElement, true);
             target.firstElementChild.setAttribute('title', this.l10n.getConstant('Expanded'));
+            if (this.parent.isRowDomVirtualization()) {
+                const detailRowHeight: number = gObj.detailTemplate
+                    ? this.parseDetailRowHeight((this.parent as Grid).detailTemplateHeight)
+                    : this.parseDetailRowHeight(gObj.childGrid ? gObj.childGrid.height : undefined);
+                (this.parent.contentModule as DomVirtualContentRenderer).updateDetailRowHeight(rowObj.index, true, detailRowHeight);
+            }
         } else {
             if (this.isDetailRow(nextRow)) {
                 const collapseArgs: DetailExpandCollapseArgs = { rowData: rowObj.data,
@@ -280,9 +295,13 @@ export class DetailRow {
                 this.lastrowcell = false;
             }
             rowObj.isExpand = false;
+            this.handleDetailEvent(events.detailCollapsed, rowObj.data, target, nextRow, event);
             needToRefresh = true;
             this.aria.setExpand(target as HTMLElement, false);
             target.firstElementChild.setAttribute('title', this.l10n.getConstant('Collapsed'));
+            if (this.parent.isRowDomVirtualization()) {
+                (this.parent.contentModule as DomVirtualContentRenderer).updateDetailRowHeight(rowObj.index, false);
+            }
         }
         if (!isNullOrUndefined(gObj.detailTemplate) || (gObj.childGrid && needToRefresh)) {
             gObj.updateVisibleExpandCollapseRows();
@@ -296,6 +315,15 @@ export class DetailRow {
                 this.parent.scrollModule.removePadding();
             }
         }
+    }
+
+    private parseDetailRowHeight(height: number | string | undefined): number {
+        if (typeof height === 'number') { return height; }
+        if (typeof height === 'string') {
+            const parsed: number = parseFloat(height);
+            if (!isNaN(parsed) && parsed > 0) { return parsed; }
+        }
+        return 500;
     }
 
     /**
@@ -330,6 +358,28 @@ export class DetailRow {
 
     private isDetailRow(row: Element): boolean {
         return row && row.classList.contains('e-detailrow');
+    }
+
+    private handleDetailEvent(eventName: string, rowData: Object, parentRow: Element,
+                              nextRow: HTMLElement, eventObj?: KeyboardEventArgs | MouseEvent): void {
+        const gObj: IGrid = this.parent;
+        const args: DetailExpandCollapseArgs = {
+            rowData: rowData,
+            parentRow: parentRow.closest('tr'),
+            detailRow: this.isDetailRow(nextRow) ? nextRow : null
+        };
+        if (!isNullOrUndefined(eventObj)) {
+            args.event = eventObj;
+        }
+        if (!isNullOrUndefined(gObj.childGrid)) {
+            args.childGrid = gObj.childGrid;
+            if (this.isDetailRow(nextRow)) {
+                const gridElement: EJ2Intance = nextRow.querySelector('.e-grid');
+                args.childGridInstance = gridElement ?
+                    (((gridElement as EJ2Intance).ej2_instances as Object[])[0] as IGrid) : null;
+            }
+        }
+        gObj.trigger(eventName, args);
     }
 
     private destroy(): void {

@@ -8,7 +8,7 @@ import { TaskFieldsModel } from '../models/models';
 import { ColumnModel as GanttColumnModel, Column as GanttColumn } from '../models/column';
 import { ITaskData, IGanttData, IPredecessor } from './interface';
 import { DataStateChangeEventArgs } from '@syncfusion/ej2-treegrid';
-import { QueryCellInfoEventArgs, HeaderCellInfoEventArgs, RowDataBoundEventArgs } from '@syncfusion/ej2-grids';
+import { QueryCellInfoEventArgs, HeaderCellInfoEventArgs, RowDataBoundEventArgs, DataSourceChangedEventArgs } from '@syncfusion/ej2-grids';
 import { ColumnMenuOpenEventArgs, ColumnMenuClickEventArgs } from '@syncfusion/ej2-grids';
 import { isCountRequired, isEmptyObject } from './utils';
 import { AutoComplete } from '@syncfusion/ej2-dropdowns';
@@ -155,7 +155,7 @@ export class GanttTreeGrid {
         this.parent.treeGrid.emptyRecordTemplate = this.parent.emptyRecordTemplate;
         this.parent.treeGrid['mergedColumns'] = this.parent['mergedColumns'];
         if (this.parent.enableVirtualization) {
-            this.parent.treeGrid.grid['enableSeamlessScrolling'] = false;
+            this.parent.treeGrid.grid.enableSeamlessScrolling = false;
         }
     }
     private getContentDiv(): HTMLElement {
@@ -216,6 +216,7 @@ export class GanttTreeGrid {
         this.parent.treeGrid.columnMenuClick = this.columnMenuClick.bind(this);
         this.parent.treeGrid.beforeDataBound = this.beforeDataBound.bind(this);
         this.parent.treeGrid.dataStateChange = this.dataStateChange.bind(this);
+        this.parent.treeGrid.dataSourceChanged = this.dataSourceChanged.bind(this);
         if (this.parent.queryCellInfo != null)
         {
             this.parent.treeGrid.queryCellInfo = this.queryCellInfo.bind(this);
@@ -256,7 +257,7 @@ export class GanttTreeGrid {
     }
     private dataBound(args: object): void {
         if (this.parent.isReact) {
-            this.parent['clearTemplate'](['TaskbarTemplate', 'ParentTaskbarTemplate', 'MilestoneTemplate', 'TaskLabelTemplate', 'RightLabelTemplate', 'LeftLabelTemplate']);
+            this.parent['clearTemplate'](['TaskbarTemplate', 'ParentTaskbarTemplate', 'MilestoneTemplate', 'BaselineTemplate', 'TaskLabelTemplate', 'RightLabelTemplate', 'LeftLabelTemplate']);
         }
         this.ensureScrollBar();
         this.parent.treeDataBound(args);
@@ -296,6 +297,9 @@ export class GanttTreeGrid {
             };
         }
         this.parent.trigger('dataStateChange', args);
+    }
+    private dataSourceChanged(args: DataSourceChangedEventArgs): void {
+        this.parent.trigger('dataSourceChanged', args);
     }
     private collapsing(args: object): void | Deferred {
         // Collapsing event
@@ -659,6 +663,26 @@ export class GanttTreeGrid {
                 record['toColumn'] = extend([], [], [this.parent.treeGrid.columns[args['toIndex']]['field']], true)[0];
                 record['fromColumn'] = extend([], [], [this.parent.treeGrid.columns[args['fromIndex']]['field']], true)[0];
                 (this.parent.undoRedoModule['getUndoCollection'][this.parent.undoRedoModule['getUndoCollection'].length - 1] as Object) = record;
+            }
+            let treeField: string = null;
+            if (this.parent.treeGrid && (this.parent.treeGrid as any).columnModel
+                && (this.parent.treeGrid as any).columnModel[this.parent.treeGrid.treeColumnIndex]) {
+                treeField = (this.parent.treeGrid as any).columnModel[this.parent.treeGrid.treeColumnIndex].field;
+            } else if (this.parent.previousGanttColumns && this.parent.previousGanttColumns[this.parent.treeColumnIndex]) {
+                treeField = this.parent.previousGanttColumns[this.parent.treeColumnIndex].field;
+            }
+            if (!isNullOrUndefined(treeField)) {
+                let newIndex: number = -1;
+                for (let i: number = 0; i < this.parent.columns.length; i++) {
+                    /* eslint-disable-next-line */
+                    if (this.parent.columns[i] && this.parent.columns[i]['field'] === treeField) {
+                        newIndex = i;
+                        break;
+                    }
+                }
+                if (newIndex !== -1) {
+                    this.parent.treeColumnIndex = newIndex;
+                }
             }
         }
         if (getValue('requestType', args) === 'columnstate') {
@@ -1534,15 +1558,15 @@ export class GanttTreeGrid {
     }
 
     private workValueAccessor(field: string, data: IGanttData, column: GanttColumnModel): string {   // eslint-disable-line
-        const ganttProp: ITaskData = data.ganttProperties;
-        if (!isNullOrUndefined(ganttProp)) {
+        if (!isNullOrUndefined(data) && !isNullOrUndefined(data.ganttProperties)) {
+            const ganttProp: ITaskData = data.ganttProperties;
             return this.parent.dataOperation.getWorkString(ganttProp.work, ganttProp.workUnit);
         }
         return '';
     }
     private taskTypeValueAccessor(field: string, data: IGanttData, column: GanttColumnModel): string {   // eslint-disable-line
-        const ganttProp: ITaskData = data.ganttProperties;
-        if (!isNullOrUndefined(ganttProp)) {
+        if (!isNullOrUndefined(data) && !isNullOrUndefined(data.ganttProperties)) {
+            const ganttProp: ITaskData = data.ganttProperties;
             return ganttProp.taskType;
         }
         return '';

@@ -1,4 +1,14 @@
-@use 'ej2-base/styles/common/mixin' as *;
+@use 'variables' as *;
+
+$applies-hover-bg: $theme-name == 'bootstrap5.3' or
+  $theme-name == 'bootstrap5.3-dark' or
+  $theme-name == 'tailwind3' or
+  $theme-name == 'tailwind3-dark' or
+  $skin-name =='fluent2' or
+  $skin-name =='fluent2-dark' or
+  $skin-name == 'Material3' or
+  $skin-name == 'Material3-dark';
+
 @mixin resizer-styles($display, $position, $top, $width, $index) {
   display: $display;
   position: $position;
@@ -44,6 +54,32 @@
 @mixin min-styles {
   min-height: $gantt-bigger-dialog-input-icon;
   min-width: 35.82px !important; /* stylelint-disable-line declaration-no-important */
+}
+
+@mixin gantt-hover-bg($color) {
+  background-color: $color;
+}
+
+@mixin gantt-hover-frozen-bg($color) {
+  background: $color;
+}
+
+@mixin gantt-hover-bg-check {
+  @if $applies-hover-bg {
+    @include gantt-hover-bg($gantt-chartrow-hover-bg-color);
+  }
+}
+
+@mixin gantt-hover-frozen-bg-check {
+  @if $applies-hover-bg {
+    @include gantt-hover-frozen-bg($gantt-chartrow-hover-bg-color);
+  }
+}
+
+@mixin gantt-hover-important {
+  @if $applies-hover-bg {
+    background-color: $gantt-chartrow-hover-bg-color !important; /* stylelint-disable-line declaration-no-important */
+  }
 }
 
 .e-bigger {

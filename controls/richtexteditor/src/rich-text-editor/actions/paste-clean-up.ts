@@ -19,7 +19,7 @@ import { Uploader, MetaData, UploadingEventArgs, SelectedEventArgs, FileInfo, Be
 import * as classes from '../base/classes';
 import { IHtmlFormatterCallBack } from '../../common';
 import { sanitizeHelper } from '../base/util';
-import { cleanHTMLString, getStructuredHtml, scrollToCursor } from '../../common/util';
+import { cleanHTMLString, getStructuredHtml, scrollToCursor, isBlockNode } from '../../common/util';
 import { PasteCleanupSettingsModel } from '../../models/models';
 import { PasteCleanupAction } from '../../editor-manager/plugin/paste-clean-up-action';
 import { PopupRootBound } from '../../rich-text-editor/base/interface';
@@ -662,10 +662,44 @@ export class PasteCleanup {
         finalValue = cleanHTMLString(finalValue, this.parent.element);
         finalValue = getStructuredHtml(finalValue,
                                        this.parent.enterKey, this.parent.enableHtmlEncode, true);
+        finalValue = this.handleBlockEleInsideInlineEle(finalValue);
         // Handle paste based on settings
         this.handlePasteBasedOnSettings(e, finalValue, args, isValueNotEmpty);
     }
 
+    /* When copying and pasting content which has block element inside inline elements */
+    private handleBlockEleInsideInlineEle(innerValue: string): string {
+        // Create a safe wrapper element for HTML manipulation
+        const tempDiv: HTMLDivElement = document.createElement('div');
+        tempDiv.innerHTML = innerValue;
+        const nodes: Node[] = Array.from(tempDiv.childNodes);
+        let isBlockInsideInlineEle: boolean = false;
+        for (const child of nodes) {
+            if (child.nodeType === Node.ELEMENT_NODE && !isBlockNode(child as Element)) {
+                const childElement: Node[] = Array.from(child.childNodes);
+                for (const childrens of childElement) {
+                    if (isBlockNode(childrens as Element)) {
+                        isBlockInsideInlineEle = true;
+                    } else {
+                        isBlockInsideInlineEle = false;
+                    }
+                }
+            }
+        }
+        if (isBlockInsideInlineEle) {
+            for (const child of nodes) {
+                if (child.nodeType === Node.ELEMENT_NODE) {
+                    const childElement: HTMLElement = child as HTMLElement;
+                    while (childElement.firstChild) {
+                        childElement.parentNode.insertBefore(childElement.firstChild, childElement);
+                    }
+                    childElement.remove();
+                    return tempDiv.innerHTML;
+                }
+            }
+        }
+        return tempDiv.innerHTML;
+    }
 
     /* Processes unsupported images in pasted content */
     private processUnsupportedImages(tempDivElem: HTMLElement): void {

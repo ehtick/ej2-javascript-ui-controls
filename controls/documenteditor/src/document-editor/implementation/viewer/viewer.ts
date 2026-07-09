@@ -21,7 +21,8 @@ import {
 } from './page';
 import {
     HelperMethods, Point, TextPositionInfo, ImagePointInfo,
-    PageInfo, CanvasInfo, ShapeInfo, ElementInfo, BorderRenderInfo, ParagraphInfo
+    PageInfo, CanvasInfo, ShapeInfo, ElementInfo, BorderRenderInfo, ParagraphInfo,
+    ListCounterInfo
 } from '../editor/editor-helper';
 import { TextHelper, TextHeightInfo } from './text-helper';
 import { isNullOrUndefined } from '@syncfusion/ej2-base';
@@ -346,7 +347,7 @@ export class DocumentHelper {
     /**
      * @private
      */
-    public renderedLists: Dictionary<WAbstractList, Dictionary<number, number>>;
+    public renderedLists: Dictionary<WAbstractList, Dictionary<number, ListCounterInfo>>;
     /**
      * @private
      */
@@ -715,6 +716,10 @@ export class DocumentHelper {
     */
     public resizerBoundaryWidth: number = 0;
     /**
+     * @private
+     */
+    public isFollowedListLayoutRequired: boolean = false;
+    /**
      * Gets visible bounds.
      *
      * @private
@@ -1016,7 +1021,7 @@ export class DocumentHelper {
         this.characterFormat = new WCharacterFormat(this, this.owner);
         this.themeFontLanguage = new WCharacterFormat(this, this.owner);
         this.paragraphFormat = new WParagraphFormat(this);
-        this.renderedLists = new Dictionary<WAbstractList, Dictionary<number, number>>();
+        this.renderedLists = new Dictionary<WAbstractList, Dictionary<number, ListCounterInfo>>();
         this.renderedLevelOverrides = [];
         this.headersFooters = [];
         this.styles = new WStyles();
@@ -1170,6 +1175,7 @@ export class DocumentHelper {
         this.isRestartNumbering = false;
         this.isUpdatedWhileLoadAsync = false;
         this.isDocumentLoadAsynchronously = false;
+        this.isFollowedListLayoutRequired = false;
     }
     /**
      * @private

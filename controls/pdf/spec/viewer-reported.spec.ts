@@ -1,14 +1,14 @@
-import { PdfAnnotationBorder, PdfPolyLineAnnotation, PdfPolygonAnnotation, PdfPopupAnnotation, PdfRubberStampAnnotation, PdfTextMarkupAnnotation, PdfSquareAnnotation, PdfUriAnnotation, PdfFreeTextAnnotation, PdfRadioButtonListItem, PdfListFieldItem } from "../src/pdf/core/annotations/annotation";
+import { PdfAnnotationBorder, PdfPolyLineAnnotation, PdfPolygonAnnotation, PdfPopupAnnotation, PdfRectangleAnnotation, PdfRubberStampAnnotation, PdfTextMarkupAnnotation, PdfSquareAnnotation, PdfUriAnnotation, PdfFreeTextAnnotation, PdfRadioButtonListItem, PdfListFieldItem } from "../src/pdf/core/annotations/annotation";
 import { _ContentParser, _PdfRecord } from "../src/pdf/core/content-parser";
 import { _JsonDocument } from '../src/pdf/core/import-export/json-document';
-import { DataFormat, PdfAnnotationFlag, PdfRotationAngle, PdfRubberStampAnnotationIcon, PdfTextMarkupAnnotationType, PdfAnnotationIntent, PdfLineEndingStyle, PdfTextAlignment, PdfCrossReferenceType, PdfBorderStyle } from "../src/pdf/core/enumerator";
+import { DataFormat, PdfAnnotationFlag, PdfRotationAngle, PdfRubberStampAnnotationIcon, PdfTextMarkupAnnotationType, PdfAnnotationIntent, PdfLineEndingStyle, PdfTextAlignment, PdfCrossReferenceType, PdfBorderStyle, PdfFormFieldVisibility } from "../src/pdf/core/enumerator";
 import { PdfFontFamily, PdfFontStyle, PdfStandardFont, PdfTrueTypeFont } from "../src/pdf/core/fonts/pdf-standard-font";
 import { PdfStringFormat, PdfVerticalAlignment } from "../src/pdf/core/fonts/pdf-string-format";
 import { PdfRadioButtonListField, PdfCheckBoxField, PdfComboBoxField, PdfSignatureField } from "../src/pdf/core/form/field";
 import { PdfBrush, PdfPen } from "../src/pdf/core/graphics/pdf-graphics";
 import { PdfPath } from "../src/pdf/core/graphics/pdf-path";
 import { PdfTemplate } from "../src/pdf/core/graphics/pdf-template";
-import { PdfAnnotationExportSettings, PdfFormFieldExportSettings, PdfDocument } from "../src/pdf/core/pdf-document";
+import { PdfAnnotationExportSettings, PdfFormFieldExportSettings, PdfDocument, PdfPageSettings } from "../src/pdf/core/pdf-document";
 import { PdfTextBoxField } from "../src/pdf/core/form/field";
 import { _XfdfDocument } from "../src/pdf/core/import-export/xfdf-document";
 import { PdfForm } from "../src/pdf/core/form/form";
@@ -1878,32 +1878,39 @@ describe('Viewer Reported Issues', () => {
         expect(result[19]._operands).toEqual(['592.000', '-220.000', '50.000', '100.000']);
         expect(result[20]._operator).toEqual('B');
         expect(result[20]._operands.length).toBe(0);
-        expect(result[21]._operator).toEqual('BT');
-        expect(result[21]._operands.length).toBe(0);
-        expect(result[22]._operator).toEqual('rg');
-        expect(result[22]._operands).toEqual(['0.000', '0.502', '0.000']);
-        expect(result[23]._operator).toEqual('Tf');
-        expect(result[23]._operands[1]).toEqual('7.000');
-        expect(result[24]._operator).toEqual('Tr');
-        expect(result[24]._operands).toEqual(['0']);
-        expect(result[25]._operator).toEqual('Tc');
-        expect(result[25]._operands).toEqual(['0.000']);
-        expect(result[26]._operator).toEqual('Tw');
-        expect(result[26]._operands).toEqual(['0.000']);
-        expect(result[27]._operator).toEqual('Tz');
-        expect(result[27]._operands).toEqual(['100.000']);
-        expect(result[28]._operator).toEqual('Tm');
-        expect(result[28]._operands).toEqual(['1.00', '.00', '.00', '1.00', '592.75', '-127.27']);
-        expect(result[29]._operator).toEqual("'");
-        expect(result[29]._operands).toEqual(['(Free Text with)']);
-        expect(result[30]._operator).toEqual('Tm');
-        expect(result[30]._operands).toEqual(['1.00', '.00', '.00', '1.00', '592.75', '-135.36']);
-        expect(result[31]._operator).toEqual("'");
-        expect(result[31]._operands).toEqual(['(Callouts)']);
-        expect(result[32]._operator).toEqual('ET');
-        expect(result[32]._operands.length).toBe(0);
-        expect(result[33]._operator).toEqual('Q');
-        expect(result[33]._operands.length).toBe(0);
+        expect(result[21]._operator).toEqual('q');
+        expect(result[22]._operator).toEqual('re');
+        expect(result[22]._operands).toEqual(['592.750', '-120.750', '48.500', '-16.184']);
+        expect(result[23]._operator).toEqual('W');
+        expect(result[24]._operator).toEqual('n');
+        expect(result[25]._operator).toEqual('BT');
+        expect(result[25]._operands.length).toBe(0);
+        expect(result[26]._operator).toEqual('rg');
+        expect(result[26]._operands).toEqual(['0.000', '0.502', '0.000']);
+        expect(result[27]._operator).toEqual('Tf');
+        expect(result[27]._operands[1]).toEqual('7.000');
+        expect(result[28]._operator).toEqual('Tr');
+        expect(result[28]._operands).toEqual(['0']);
+        expect(result[29]._operator).toEqual('Tc');
+        expect(result[29]._operands).toEqual(['0.000']);
+        expect(result[30]._operator).toEqual('Tw');
+        expect(result[30]._operands).toEqual(['0.000']);
+        expect(result[31]._operator).toEqual('Tz');
+        expect(result[31]._operands).toEqual(['100.000']);
+        expect(result[32]._operator).toEqual('Tm');
+        expect(result[32]._operands).toEqual(['1.00', '.00', '.00', '1.00', '592.75', '-127.27']);
+        expect(result[33]._operator).toEqual("'");
+        expect(result[33]._operands).toEqual(['(Free Text with)']);
+        expect(result[34]._operator).toEqual('Tm');
+        expect(result[34]._operands).toEqual(['1.00', '.00', '.00', '1.00', '592.75', '-135.36']);
+        expect(result[35]._operator).toEqual("'");
+        expect(result[35]._operands).toEqual(['(Callouts)']);
+        expect(result[36]._operator).toEqual('ET');
+        expect(result[36]._operands.length).toBe(0);
+        expect(result[37]._operator).toEqual('Q');
+        expect(result[37]._operands.length).toBe(0);
+        expect(result[38]._operator).toEqual('Q');
+        expect(result[38]._operands.length).toBe(0);
         document.flatten = true;
         let updatedData1 = document.save();
         let resources = page._pageDictionary.get('Resources');
@@ -1954,31 +1961,39 @@ describe('Viewer Reported Issues', () => {
             expect(result[19]._operands).toEqual(['592.000', '-220.000', '50.000', '100.000']);
             expect(result[20]._operator).toEqual('B');
             expect(result[20]._operands.length).toBe(0);
-            expect(result[21]._operator).toEqual('BT');
-            expect(result[21]._operands.length).toBe(0);
-            expect(result[22]._operator).toEqual('rg');
-            expect(result[22]._operands).toEqual(['0.000', '0.502', '0.000']);
-            expect(result[23]._operator).toEqual('Tf');
-            expect(result[24]._operator).toEqual('Tr');
-            expect(result[24]._operands).toEqual(['0']);
-            expect(result[25]._operator).toEqual('Tc');
-            expect(result[25]._operands).toEqual(['0.000']);
-            expect(result[26]._operator).toEqual('Tw');
-            expect(result[26]._operands).toEqual(['0.000']);
-            expect(result[27]._operator).toEqual('Tz');
-            expect(result[27]._operands).toEqual(['100.000']);
-            expect(result[28]._operator).toEqual('Tm');
-            expect(result[28]._operands).toEqual(['1.00', '.00', '.00', '1.00', '592.75', '-127.27']);
-            expect(result[29]._operator).toEqual("'");
-            expect(result[29]._operands).toEqual(['(Free Text with)']);
-            expect(result[30]._operator).toEqual('Tm');
-            expect(result[30]._operands).toEqual(['1.00', '.00', '.00', '1.00', '592.75', '-135.36']);
-            expect(result[31]._operator).toEqual("'");
-            expect(result[31]._operands).toEqual(['(Callouts)']);
-            expect(result[32]._operator).toEqual('ET');
-            expect(result[32]._operands.length).toBe(0);
-            expect(result[33]._operator).toEqual('Q');
-            expect(result[33]._operands.length).toBe(0);
+            expect(result[21]._operator).toEqual('q');
+            expect(result[22]._operator).toEqual('re');
+            expect(result[22]._operands).toEqual(['592.750', '-120.750', '48.500', '-16.184']);
+            expect(result[23]._operator).toEqual('W');
+            expect(result[24]._operator).toEqual('n');
+            expect(result[25]._operator).toEqual('BT');
+            expect(result[25]._operands.length).toBe(0);
+            expect(result[26]._operator).toEqual('rg');
+            expect(result[26]._operands).toEqual(['0.000', '0.502', '0.000']);
+            expect(result[27]._operator).toEqual('Tf');
+            expect(result[27]._operands[1]).toEqual('7.000');
+            expect(result[28]._operator).toEqual('Tr');
+            expect(result[28]._operands).toEqual(['0']);
+            expect(result[29]._operator).toEqual('Tc');
+            expect(result[29]._operands).toEqual(['0.000']);
+            expect(result[30]._operator).toEqual('Tw');
+            expect(result[30]._operands).toEqual(['0.000']);
+            expect(result[31]._operator).toEqual('Tz');
+            expect(result[31]._operands).toEqual(['100.000']);
+            expect(result[32]._operator).toEqual('Tm');
+            expect(result[32]._operands).toEqual(['1.00', '.00', '.00', '1.00', '592.75', '-127.27']);
+            expect(result[33]._operator).toEqual("'");
+            expect(result[33]._operands).toEqual(['(Free Text with)']);
+            expect(result[34]._operator).toEqual('Tm');
+            expect(result[34]._operands).toEqual(['1.00', '.00', '.00', '1.00', '592.75', '-135.36']);
+            expect(result[35]._operator).toEqual("'");
+            expect(result[35]._operands).toEqual(['(Callouts)']);
+            expect(result[36]._operator).toEqual('ET');
+            expect(result[36]._operands.length).toBe(0);
+            expect(result[37]._operator).toEqual('Q');
+            expect(result[37]._operands.length).toBe(0);
+            expect(result[38]._operator).toEqual('Q');
+            expect(result[38]._operands.length).toBe(0);
         });
         document.destroy();
     });
@@ -2027,25 +2042,30 @@ describe('Viewer Reported Issues', () => {
             expect(result[7]._operands).toEqual(['355.750', '576.025', '101.250', '49.500']);
             expect(result[8]._operator).toEqual('S');
             expect(result[8]._operands).toEqual([]);
-            expect(result[9]._operator).toEqual('BT');
-            expect(result[9]._operands).toEqual([]);
-            expect(result[10]._operator).toEqual('rg');
-            expect(result[10]._operands).toEqual(['0.000', '0.000', '0.000']);
-            expect(result[11]._operator).toEqual('Tf');
-            expect(result[12]._operator).toEqual('Tr');
-            expect(result[12]._operands).toEqual(['0']);
-            expect(result[13]._operator).toEqual('Tc');
-            expect(result[13]._operands).toEqual(['0.000']);
-            expect(result[14]._operator).toEqual('Tw');
-            expect(result[14]._operands).toEqual(['0.000']);
-            expect(result[15]._operator).toEqual('Tz');
-            expect(result[15]._operands).toEqual(['100.000']);
-            expect(result[16]._operator).toEqual('Tm');
-            expect(result[16]._operands).toEqual(['1.00', '.00', '.00', '1.00', '373.75', '596.35']);
-            expect(result[17]._operator).toEqual("'");
-            expect(result[17]._operands).toEqual(['(anbuganes)']);
-            expect(result[18]._operator).toEqual('ET');
-            expect(result[18]._operands).toEqual([]);
+            expect(result[9]._operator).toEqual('q');
+            expect(result[10]._operator).toEqual('re');
+            expect(result[10]._operands).toEqual(['373.750', '607.525', '65.250', '-13.500']);
+            expect(result[11]._operator).toEqual('W');
+            expect(result[12]._operator).toEqual('n');
+            expect(result[13]._operator).toEqual('BT');
+            expect(result[13]._operands).toEqual([]);
+            expect(result[14]._operator).toEqual('rg');
+            expect(result[14]._operands).toEqual(['0.000', '0.000', '0.000']);
+            expect(result[15]._operator).toEqual('Tf');
+            expect(result[16]._operator).toEqual('Tr');
+            expect(result[16]._operands).toEqual(['0']);
+            expect(result[17]._operator).toEqual('Tc');
+            expect(result[17]._operands).toEqual(['0.000']);
+            expect(result[18]._operator).toEqual('Tw');
+            expect(result[18]._operands).toEqual(['0.000']);
+            expect(result[19]._operator).toEqual('Tz');
+            expect(result[19]._operands).toEqual(['100.000']);
+            expect(result[20]._operator).toEqual('Tm');
+            expect(result[20]._operands).toEqual(['1.00', '.00', '.00', '1.00', '373.75', '596.35']);
+            expect(result[21]._operator).toEqual("'");
+            expect(result[21]._operands).toEqual(['(anbuganes)']);
+            expect(result[22]._operator).toEqual('ET');
+            expect(result[22]._operands).toEqual([]);
         });
         document.destroy();
     });
@@ -2926,16 +2946,6 @@ describe('Viewer Reported Issues', () => {
         expect(out.indexOf('/Nested')).not.toEqual(-1);
         document.destroy();
     });
-    it('1017175 - crossReference._writeObjectToBuffer returns early for empty array values', () => {
-        const document: PdfDocument = new PdfDocument();
-        const xref: any = document._crossReference;
-        const buffer: number[] = [];
-        const key = new _PdfReference(10, 0);
-        const objectStreamCollection = new Map<any, any>();
-        xref._writeObjectToBuffer(key, [], buffer, objectStreamCollection);
-        expect(buffer.length).toEqual(0);
-        document.destroy();
-    });
     it('1017175 - crossReference._writeObjectToBuffer writes a _PdfName in table mode (writes obj header/footer)', () => {
         const document: PdfDocument = new PdfDocument();
         const xref: any = document._crossReference;
@@ -3615,6 +3625,257 @@ describe('Viewer Reported Issues', () => {
         expect(annot._dictionary.has('LLE')).toBeFalsy();
         document.destroy();
 	});
+    it('1032691 - ComboBox font coverage', () => {
+        let document: PdfDocument = new PdfDocument();
+        let page = document.addPage();
+        let comboBox1: PdfComboBoxField = new PdfComboBoxField(page, 'state', {x: 305.562,y: 703.99,width: 261.236,height: 24});
+        let comboBoxItem1_1: PdfListFieldItem = new PdfListFieldItem('Item1','Alabama');
+        comboBox1.addItem(comboBoxItem1_1);
+        let comboBoxItem1_2: PdfListFieldItem = new PdfListFieldItem('Item2','Alaska');
+        comboBox1.addItem(comboBoxItem1_2);
+        comboBox1.selectedIndex = 1;
+        document.form.add(comboBox1);
+        let itemDictionary = comboBox1.itemAt(0)._dictionary;
+        delete itemDictionary._map.DA;
+        expect(comboBox1.font).toBeDefined();
+        expect(comboBox1.font.size).toEqual(8);
+        expect(comboBox1.color).toEqual({r: 0, g: 0, b: 0});
+        document.destroy();
+    });
+    it('1035927 - FreeText coverage', () => {
+        let document: PdfDocument = new PdfDocument();
+        let page = document.addPage();
+        let annot: PdfFreeTextAnnotation = new PdfFreeTextAnnotation({ x: 100, y: 100, width: 113.25, height: 50});
+        annot.author = 'Guest';
+        annot.subject = 'Text Box';
+        annot.lineEndingStyle = PdfLineEndingStyle.openArrow;
+        annot.annotationIntent = PdfAnnotationIntent.freeTextTypeWriter;
+        annot.rotationAngle = 0;
+        annot.borderColor = { r: 0, g: 150, b: 136 };
+        annot.border.width = 2;
+        annot.bounds = { x: 100, y: 100, width: 113.25, height: 18.75 };
+        annot.font = new PdfStandardFont(PdfFontFamily.helvetica, 16, 0);
+        annot.textAlignment = PdfTextAlignment.left;
+        annot.textMarkUpColor = { r: 0, g: 0, b: 0 };
+        annot.text = 'Type Here';
+        annot.setAppearance(true);
+        page.annotations.add(annot);
+        let updatedData = document.save();
+        document.destroy();
+        document = new PdfDocument(updatedData);
+        page = document.getPage(0);
+        annot = page.annotations.at(0) as PdfFreeTextAnnotation;
+        let appearance = annot._dictionary.get('AP').get('N')
+        let parser: _ContentParser = new _ContentParser(appearance.getBytes());
+        let result: _PdfRecord[] = parser._readContent();
+        expect(result[20]._operands).toEqual(['1.00', '.00', '.00', '1.00', '144.00', '683.10']);
+        expect(result[20]._operator).toEqual('Tm');
+        expect(result[21]._operands).toEqual(['(Type Here)']);
+        expect(result).not.toBeUndefined();
+        document.destroy();
+    });
+	it('1032691 - TextBox Rotate coverage', () => {
+        let document: PdfDocument = new PdfDocument();
+        let settings: PdfPageSettings = new PdfPageSettings({rotation: PdfRotationAngle.angle270});
+        let page = document.addPage(settings);
+        let textboxName = 'Kareem';
+        let fieldBounds = JSON.parse(
+            '{"X":623.25,"Y":150,"Width":18.75,"Height":112.5}'
+        );
+        let bound = {
+            x: fieldBounds.X,
+            y: fieldBounds.Y,
+            width: fieldBounds.Width,
+            height: fieldBounds.Height,
+        };
+        let textbox = new PdfTextBoxField(page, textboxName, bound);
+        textbox.backColor = {
+            r: 240,
+            g: 240,
+            b: 240,
+        };
+        textbox.maxLength = 0;
+        textbox.insertSpaces = false;
+        textbox.readOnly = false;
+        textbox.required = false;
+        textbox.textAlignment = PdfTextAlignment.left;
+        textbox.visibility = PdfFormFieldVisibility.visible;
+        let textboxValue = '06/10/2026';
+        textbox.text = textboxValue;
+        textbox.toolTip = '';
+        textbox.color = { r: 0, g: 0, b: 0 };
+        textbox.borderColor = { r: 0, g: 0, b: 0 };
+        textbox.border.width = 1;
+        textbox.multiLine = false;
+        let pdfFontStyle = PdfFontStyle.regular;
+        textbox._dictionary.set('FontStyle', pdfFontStyle);
+        let hasUnicode = /[^\u0000-\u007F]/.test(textbox.text);
+        textbox.font = new PdfStandardFont(
+            PdfFontFamily.helvetica,
+            12,
+            pdfFontStyle
+        );
+        textbox.rotate = 270;
+        document.form.add(textbox);
+        document.form.setDefaultAppearance(false);
+        let updatedData = document.save();
+        document.destroy();
+        document = new PdfDocument(updatedData);
+        let field = document.form.fieldAt(0) as PdfTextBoxField;
+        let appearance = field.itemAt(0)._dictionary.get('AP').get('N');
+        expect(appearance.dictionary.get('Matrix')).toEqual([-0, -1, 1, -0, 0, 18.75]);
+        let parser: _ContentParser = new _ContentParser(appearance.getBytes());
+        let result: _PdfRecord[] = parser._readContent();
+        expect(result[0]._operands).toEqual(['/Tx']);
+        expect(result[0]._operator).toEqual('BMC');
+        expect(result[1]._operands).toEqual([
+            '1.00',
+            '.00',
+            '.00',
+            '1.00',
+            '.00',
+            '18.75'
+        ]);
+        expect(result[1]._operator).toEqual('cm');
+        expect(result[2]._operands).toEqual(['/DeviceRGB']);
+        expect(result[2]._operator).toEqual('CS');
+        expect(result[3]._operands).toEqual(['/DeviceRGB']);
+        expect(result[3]._operator).toEqual('cs');
+        expect(result[4]._operands).toEqual([
+            '0.941',
+            '0.941',
+            '0.941'
+        ]);
+        expect(result[4]._operator).toEqual('rg');
+        expect(result[5]._operands).toEqual([
+            '0.000',
+            '0.000',
+            '112.500',
+            '-18.750'
+        ]);
+        expect(result[5]._operator).toEqual('re');
+        expect(result[6]._operands).toEqual([]);
+        expect(result[6]._operator).toEqual('f');
+        expect(result[7]._operands).toEqual([
+            '[]',
+            '0'
+        ]);
+        expect(result[7]._operator).toEqual('d');
+        expect(result[8]._operands).toEqual(['1.000']);
+        expect(result[8]._operator).toEqual('w');
+        expect(result[9]._operands).toEqual(['0']);
+        expect(result[9]._operator).toEqual('j');
+        expect(result[10]._operands).toEqual(['0']);
+        expect(result[10]._operator).toEqual('J');
+        expect(result[11]._operands).toEqual([
+            '0.000',
+            '0.000',
+            '0.000'
+        ]);
+        expect(result[11]._operator).toEqual('RG');
+        expect(result[12]._operands).toEqual([
+            '0.500',
+            '-0.500',
+            '111.500',
+            '-17.750'
+        ]);
+        expect(result[12]._operator).toEqual('re');
+        expect(result[13]._operands).toEqual([]);
+        expect(result[13]._operator).toEqual('S');
+        expect(result[14]._operands).toEqual([]);
+        expect(result[14]._operator).toEqual('q');
+        expect(result[15]._operands).toEqual([]);
+        expect(result[15]._operator).toEqual('BT');
+        expect(result[16]._operands).toEqual([
+            '0.000',
+            '0.000',
+            '0.000'
+        ]);
+        expect(result[16]._operator).toEqual('rg');
+        expect(result[17]._operator).toEqual('Tf');
+        expect(result[18]._operands).toEqual(['0']);
+        expect(result[18]._operator).toEqual('Tr');
+        expect(result[19]._operands).toEqual(['0.000']);
+        expect(result[19]._operator).toEqual('Tc');
+        expect(result[20]._operands).toEqual(['0.000']);
+        expect(result[20]._operator).toEqual('Tw');
+        expect(result[21]._operands).toEqual(['100.000']);
+        expect(result[21]._operator).toEqual('Tz');
+        expect(result[22]._operands).toEqual([
+            '1.00',
+            '.00',
+            '.00',
+            '1.00',
+            '2.00',
+            '-13.61'
+        ]);
+        expect(result[22]._operator).toEqual('Tm');
+        expect(result[23]._operands).toEqual([
+            '(06/10/2026)'
+        ]);
+        expect(result[23]._operator).toEqual("'");
+        expect(result[24]._operands).toEqual([
+            '0.000',
+            '-11.433'
+        ]);
+        expect(result[24]._operator).toEqual('Td');
+        expect(result[25]._operands).toEqual([]);
+        expect(result[25]._operator).toEqual('ET');
+        expect(result[26]._operands).toEqual([]);
+        expect(result[26]._operator).toEqual('Q');
+        expect(result[27]._operands).toEqual([]);
+        expect(result[27]._operator).toEqual('EMC');
+        document.destroy();
+    });
+    it('1035567 - script error annotation export and import (JSON, XFDF, FDF)', () => {
+        const annotText = `[!@#$%^&*()_-+={[}]|\:;"'<,>.?/]`;
+        let document: PdfDocument = new PdfDocument();
+        let page: PdfPage = document.addPage(0) as PdfPage;
+        let annot1: PdfRectangleAnnotation = new PdfRectangleAnnotation({
+          x: 20,
+          y: 20,
+          width: 200,
+          height: 100,
+        });
+        annot1.author = 'Guest';
+        annot1.color = { r: 0, g: 0, b: 0 };
+        annot1.text = annotText;
+        annot1.setAppearance(true);
+        page.annotations.add(annot1);
+        // JSON export and import
+        let settings = new PdfAnnotationExportSettings();
+        settings.dataFormat = DataFormat.json;
+        let exportedData = document.exportAnnotations(settings);
+        let jsonExport = _bytesToString(exportedData);
+        const parsed = JSON.parse(jsonExport);
+        const contents = parsed.pdfAnnotation["0"].shapeAnnotation[0].contents;
+        expect(contents).toBe(`[!@#$%^&*()_-+={[}]|:;\"'<,>.?/]`);
+        let importDoc = new PdfDocument();
+        importDoc.addPage();
+        importDoc.importAnnotations(exportedData, DataFormat.json);
+        annot1 = importDoc.getPage(0).annotations.at(0) as PdfRectangleAnnotation;
+        expect(annot1.text).toEqual(annotText);
+        importDoc.destroy();
+        // XFDF export and import
+        settings.dataFormat = DataFormat.xfdf;
+        exportedData = document.exportAnnotations(settings);
+        importDoc = new PdfDocument();
+        importDoc.addPage();
+        importDoc.importAnnotations(exportedData, DataFormat.xfdf);
+        annot1 = importDoc.getPage(0).annotations.at(0) as PdfRectangleAnnotation;
+        expect(annot1.text).toEqual(annotText);
+        importDoc.destroy();
+        // FDF export and import
+        settings.dataFormat = DataFormat.fdf;
+        exportedData = document.exportAnnotations(settings);
+        importDoc = new PdfDocument();
+        importDoc.addPage();
+        importDoc.importAnnotations(exportedData, DataFormat.fdf);
+        annot1 = importDoc.getPage(0).annotations.at(0) as PdfRectangleAnnotation;
+        expect(annot1.text).toEqual(annotText);
+        importDoc.destroy();
+        document.destroy();
+    });
 });
 describe('1023771 - PdfForm internal methods coverage', () => {
     let document: PdfDocument;

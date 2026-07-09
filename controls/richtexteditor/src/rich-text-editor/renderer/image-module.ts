@@ -2604,7 +2604,7 @@ export class Image {
                 reader.addEventListener('load', (e: MouseEvent) => {
                     const url: IImageCommandsArgs = {
                         cssClass: (proxy.parent.insertImageSettings.display === 'inline' ? classes.CLS_IMG_INLINE : classes.CLS_IMG_BREAK),
-                        url: this.parent.insertImageSettings.saveFormat === 'Base64' ?
+                        url: this.parent.insertImageSettings.saveFormat === 'Base64' || !isNOU(args.callBack) ?
                             reader.result as string : URL.createObjectURL(convertToBlob(reader.result as string)),
                         width: {
                             width: proxy.parent.insertImageSettings.width, minWidth: proxy.parent.insertImageSettings.minWidth,

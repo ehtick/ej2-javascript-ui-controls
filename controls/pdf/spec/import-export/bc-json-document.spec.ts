@@ -26,8 +26,8 @@ describe('JsonDocument Coverage improvement on _addBorderStyle and getValidStrin
         // Assert — escaped characters
         expect(result).toContain('\\\\');     // backslash escaped
         expect(result).toContain('\\"');      // quote escaped
-        expect(result).toContain('\\]');      // ]
-        expect(result).toContain('\\}');      // }
+        expect(result).toContain(']');        // ] is not escaped in JSON strings
+        expect(result).toContain('}');        // } is not escaped in JSON strings
         expect(result).toContain('\\n');      // newline
         expect(result).toContain('\\r');      // carriage return
 

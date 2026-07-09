@@ -74,6 +74,13 @@ export class Data {
         return columns;
     }
 
+    private parseViewportHeight( height: string | number ): number {
+        const heightValue: string = height.toString().trim();
+        const viewportMatch: RegExpMatchArray = heightValue.match(/^([\d.]+)(vh)?$/i);
+        const viewportBasedHeight: number = (window.innerHeight * parseFloat(viewportMatch[1])) / 100;
+        return viewportBasedHeight;
+    }
+
     /**
      * The function used to generate updated Query from schedule model
      *
@@ -86,8 +93,23 @@ export class Data {
         if (this.isRemote() && this.parent.enableVirtualization) {
             const cardHeight: number = this.parent.cardHeight === 'auto' ? 100 :
                 parseInt(formatUnit(this.parent.cardHeight).split('px')[0], 10);
-            const take: number = this.parent.height === 'auto' ? (Math.ceil(window.innerHeight / cardHeight) * 2) :
-                (Math.ceil(parseInt(formatUnit(this.parent.height).split('px')[0], 10) / cardHeight) * 2);
+            const kanbanHeight: string = this.parent.height.toString();
+            let take: number;
+            if (kanbanHeight === 'auto') {
+                take = Math.ceil((window.innerHeight - 50) / cardHeight) * 2;
+            }
+            else if (kanbanHeight.endsWith('px')) {
+                take = (Math.ceil((parseInt(formatUnit(this.parent.height).split('px')[0], 10) - 50) / cardHeight) * 2);
+            }
+            else if (kanbanHeight.endsWith('%')) {
+                take = (Math.ceil((parseInt(formatUnit(this.parent.element.clientHeight).split('px')[0], 10) - 50) / cardHeight) * 2);
+            }
+            else if (kanbanHeight.toLowerCase().endsWith('vh')) {
+                const viewportHeight: number = this.parseViewportHeight(this.parent.height);
+                take = Math.ceil((viewportHeight - 50) / cardHeight) * 2;
+            } else {
+                take = Math.ceil((this.parent.element.getBoundingClientRect().height - 50) / cardHeight) * 2;
+            }
             const columns: string[] = this.columnKeyFields();
             for (let i: number = 0; i < columns.length; i++) {
                 query.where(this.parent.keyField, 'equal', columns[i as number]);

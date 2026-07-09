@@ -342,45 +342,35 @@ export class DiagramEventHandler {
         return (navigator.platform.match('Mac') && key === 'Backspace' && value === 'delete');
     }
 
+    //1034868: Selection is lost when navigating the diagram using scrollbar
     private isMouseOnScrollBar(evt: PointerEvent): boolean {
-        const x: number = evt.offsetX;
-        const y: number = evt.offsetY;
         const diagramCanvas: HTMLElement = this.diagram.diagramCanvas;
-        const height: number = diagramCanvas.offsetHeight;
-        const width: number = diagramCanvas.offsetWidth;
-        let topLeft: PointModel;
-        let topRight: PointModel;
-        let bottomLeft: PointModel;
-        let bottomRight: PointModel;
-        let bounds: Rect;
-        if (height < diagramCanvas.scrollHeight) {
-            //default scrollbar width in browser is '17pixels'.
-            topLeft = { x: (width - 17), y: 0 };
-            topRight = { x: width, y: 0 };
-            bottomLeft = { x: (width - 17), y: height };
-            bottomRight = { x: width, y: height };
-            bounds = Rect.toBounds([topLeft, topRight, bottomLeft, bottomRight]);
-            // EJ2-64563-Added below code to calculate the bounds x and y value if vertical offset != 0
-            if (this.diagram.scroller.verticalOffset !== 0) {
-                bounds.x = bounds.x - this.diagram.scroller.horizontalOffset;
-                bounds.y = bounds.y - this.diagram.scroller.verticalOffset;
-            }
-            if (bounds.containsPoint({ x: x, y: y })) {
+
+        // Use clientX/clientY for viewport-relative coordinates (unaffected by zoom/transforms)
+        const rect: ClientRect = diagramCanvas.getBoundingClientRect();
+        const x: number = evt.clientX - rect.left;
+        const y: number = evt.clientY - rect.top;
+
+        // Use clientWidth/clientHeight for viewport dimensions (excludes scrollbars)
+        const clientHeight: number = diagramCanvas.clientHeight;
+        const clientWidth: number = diagramCanvas.clientWidth;
+
+        // Calculate actual scrollbar dimensions dynamically
+        const scrollbarWidth: number = diagramCanvas.offsetWidth - clientWidth;
+        const scrollbarHeight: number = diagramCanvas.offsetHeight - clientHeight;
+
+        // Check vertical scrollbar (right side) - always at viewport edge regardless of zoom/scroll
+        if (diagramCanvas.scrollHeight > clientHeight && scrollbarWidth > 0) {
+            // Vertical scrollbar occupies the area from clientWidth to offsetWidth
+            if (x >= clientWidth && x <= diagramCanvas.offsetWidth) {
                 return true;
             }
         }
-        if (width < diagramCanvas.scrollWidth) {
-            topLeft = { x: 0, y: (height - 17) };
-            topRight = { x: width, y: (height - 17) };
-            bottomLeft = { x: 0, y: height };
-            bottomRight = { x: width, y: height };
-            bounds = Rect.toBounds([topLeft, topRight, bottomLeft, bottomRight]);
-            // EJ2-64563-Added below code to calculate the bounds x and y value if horizontal offset != 0
-            if (this.diagram.scroller.horizontalOffset !== 0) {
-                bounds.x = bounds.x - this.diagram.scroller.horizontalOffset;
-                bounds.y = bounds.y - this.diagram.scroller.verticalOffset;
-            }
-            if (bounds.containsPoint({ x: x, y: y })) {
+
+        // Check horizontal scrollbar (bottom) - always at viewport edge regardless of zoom/scroll
+        if (diagramCanvas.scrollWidth > clientWidth && scrollbarHeight > 0) {
+            // Horizontal scrollbar occupies the area from clientHeight to offsetHeight
+            if (y >= clientHeight && y <= diagramCanvas.offsetHeight) {
                 return true;
             }
         }
@@ -1414,8 +1404,14 @@ export class DiagramEventHandler {
             this.eventArgs = {};
         }
         this.diagram.diagramActions = this.diagram.diagramActions & ~DiagramAction.PreventLaneContainerUpdate;
-        if(updateAnnotation){
+        if (updateAnnotation) {//1033268: Duplicate historyChange Events Undo/Redo with Line Routing
+            if (this.diagram.lineRoutingModule && (this.diagram.constraints & DiagramConstraints.LineRouting)) {
+                this.diagram.protectPropertyChange(true);
+            }
             this.updateAnnotation(this.diagram.selectedItems);
+            if (this.diagram.lineRoutingModule && (this.diagram.constraints & DiagramConstraints.LineRouting)) {
+                this.diagram.protectPropertyChange(false);
+            }
         }
         // 920132: Node Interactions Cause Previously Deleted Nodes to Reappear
         this.previousElement = null;

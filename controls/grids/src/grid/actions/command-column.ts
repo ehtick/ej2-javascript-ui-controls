@@ -76,7 +76,9 @@ export class CommandColumn {
             }
             switch (type) {
             case 'Edit':
-                gObj.editModule.endEdit();
+                if (gObj.editSettings.mode !== 'Batch') {
+                    gObj.editModule.endEdit();
+                }
                 gObj.editModule.startEdit(<HTMLTableRowElement>closest(target, 'tr'));
                 break;
             case 'Cancel':

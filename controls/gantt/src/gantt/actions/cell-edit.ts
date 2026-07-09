@@ -674,7 +674,7 @@ export class CellEdit {
         const endDate: Date = this.parent.dateValidationModule.getDateFromFormat(ganttProb.baselineEndDate);
         const startDate: Date = this.parent.dateValidationModule.getDateFromFormat(ganttProb.baselineStartDate);
         const currentDuration: number = ganttProb.baselineDuration;
-        if (isNOU(startDate) && !isNOU(endDate)) {
+        if (!isNOU(endDate) && isNOU(startDate)) {
             this.parent.setRecordValue(
                 'baselineStartDate',
                 this.parent.dateValidationModule.getStartDate(endDate, currentDuration, ganttProb.durationUnit,

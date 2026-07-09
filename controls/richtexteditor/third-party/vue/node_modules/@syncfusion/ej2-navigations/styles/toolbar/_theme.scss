@@ -139,6 +139,18 @@
             color: $tbar-default-icon-overlay;
           }
         }
+
+        &.e-template{
+          @if ($skin-name == 'fluent2'){
+            .e-tbar-btn-text {
+              color: $tbar-default-font-overlay;
+            }
+          
+            .e-icons {
+              color: $tbar-default-icon-overlay;
+            }
+          }
+        }
       }
     }
 

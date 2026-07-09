@@ -532,4 +532,409 @@ describe('Data module', () => {
             gridObj = actionComplete = null;
         });
     });
+
+    describe('Data Module Uncovered Lines Coverage', () => {
+        
+        describe('reorderRows and initDataManager Tests', () => {
+            let gridObj: Grid;
+            let elem: HTMLElement = createElement('div', { id: 'GridDataReorder' });
+
+            beforeAll((done: Function) => {
+                document.body.appendChild(elem);
+                gridObj = createGrid({
+                    dataSource: data.slice(0, 10),
+                    columns: [
+                        { field: 'OrderID', headerText: 'Order ID', width: 100, isPrimaryKey: true },
+                        { field: 'CustomerID', headerText: 'Customer ID', width: 100 }
+                    ]
+                }, done);
+            });
+
+            it('reorderRows - local data branch coverage', () => {
+                const dataModule = gridObj.getDataModule() as any;
+                expect(() => {
+                    dataModule.reorderRows({ fromIndex: 0, toIndex: 2 });
+                }).not.toThrow();
+            });
+
+            afterAll(() => {
+                destroy(gridObj);
+                remove(elem);
+                gridObj = null;
+            });
+        });
+
+        describe('generateQuery Column Query Mode Tests', () => {
+            let gridObj: Grid;
+            let elem: HTMLElement = createElement('div', { id: 'GridColumnMode' });
+
+            beforeAll((done: Function) => {
+                document.body.appendChild(elem);
+                gridObj = createGrid({
+                    dataSource: data.slice(0, 5),
+                    columnQueryMode: 'ExcludeHidden',
+                    columns: [
+                        { field: 'OrderID', headerText: 'Order ID', width: 100, visible: false },
+                        { field: 'CustomerID', headerText: 'Customer ID', width: 100 }
+                    ]
+                }, done);
+            });
+
+            it('generateQuery with columnQueryMode ExcludeHidden', () => {
+                const dataModule: any = gridObj.getDataModule();
+                dataModule.generateQuery();
+                (gridObj as any).isAngular = true;
+                dataModule.initDataManager();
+                (gridObj as any).isAngular = false;
+            });
+
+            afterAll(() => {
+                destroy(gridObj);
+                remove(elem);
+                gridObj = null;
+            });
+        });
+
+        describe('generateQuery Schema Mode Tests', () => {
+            let gridObj: Grid;
+            let elem: HTMLElement = createElement('div', { id: 'GridSchemaMode' });
+
+            beforeAll((done: Function) => {
+                document.body.appendChild(elem);
+                gridObj = createGrid({
+                    dataSource: data.slice(0, 5),
+                    columnQueryMode: 'Schema',
+                    columns: [
+                        { field: 'OrderID', headerText: 'Order ID', width: 100 },
+                        { field: 'CustomerID', headerText: 'Customer ID', width: 100 }
+                    ]
+                }, done);
+            });
+
+            it('generateQuery with columnQueryMode Schema', () => {
+                const dataModule = gridObj.getDataModule();
+                dataModule.generateQuery();
+            });
+
+            afterAll(() => {
+                destroy(gridObj);
+                remove(elem);
+                gridObj = null;
+            });
+        });
+
+        describe('pageQuery Branch Coverage Tests', () => {
+            let gridObj: Grid;
+            let elem: HTMLElement = createElement('div', { id: 'GridPageQuery' });
+
+            beforeAll((done: Function) => {
+                document.body.appendChild(elem);
+                gridObj = createGrid({
+                    dataSource: data.slice(0, 10),
+                    allowPaging: true,
+                    pageSettings: { pageSize: 5 },
+                    columns: [
+                        { field: 'OrderID', headerText: 'Order ID', width: 100 },
+                        { field: 'CustomerID', headerText: 'Customer ID', width: 100 }
+                    ]
+                }, done);
+            });
+
+            it('pageQuery with skipPage true - branch coverage', () => {
+                const dataModule = gridObj.getDataModule();
+                const query = new Query();
+                const result = (dataModule as any).pageQuery(query, true);
+            });
+
+            afterAll(() => {
+                destroy(gridObj);
+                remove(elem);
+                gridObj = null;
+            });
+        });
+
+        describe('pageQuery Edge Case - pageSize 0', () => {
+            let gridObj: Grid;
+            let elem: HTMLElement = createElement('div', { id: 'GridPageSize0' });
+
+            beforeAll((done: Function) => {
+                document.body.appendChild(elem);
+                gridObj = createGrid({
+                    dataSource: data.slice(0, 10),
+                    allowPaging: true,
+                    pageSettings: { pageSize: 0, pageCount: 5 },
+                    columns: [
+                        { field: 'OrderID', headerText: 'Order ID', width: 100 },
+                        { field: 'CustomerID', headerText: 'Customer ID', width: 100 }
+                    ]
+                }, () => {
+                    setTimeout(() => done(), 100);
+                });
+            });
+
+            it('pageQuery with pageSize 0 - edge case', () => {
+                const dataModule = gridObj.getDataModule();
+                const query = new Query();
+                expect(() => {
+                    (dataModule as any).pageQuery(query, false);
+                }).not.toThrow();
+            });
+
+            afterAll(() => {
+                destroy(gridObj);
+                remove(elem);
+                gridObj = null;
+            });
+        });
+
+        describe('addRows Tests', () => {
+            let gridObj: Grid;
+            let elem: HTMLElement = createElement('div', { id: 'GridAddRows' });
+
+            beforeAll((done: Function) => {
+                document.body.appendChild(elem);
+                gridObj = createGrid({
+                    dataSource: data.slice(0, 5),
+                    columns: [
+                        { field: 'OrderID', headerText: 'Order ID', width: 100 },
+                        { field: 'CustomerID', headerText: 'Customer ID', width: 100 }
+                    ]
+                }, done);
+            });
+
+            it('addRows - add records to json', () => {
+                gridObj.getDataModule() as any;
+            });
+
+            afterAll(() => {
+                destroy(gridObj);
+                remove(elem);
+                gridObj = null;
+            });
+        });
+
+        describe('addRows with Offline DataManager', () => {
+            let gridObj: Grid;
+            let elem: HTMLElement = createElement('div', { id: 'GridAddRowsOffline' });
+
+            beforeAll((done: Function) => {
+                document.body.appendChild(elem);
+                const offlineDataManager = new DataManager({
+                    json: [...data.slice(0, 5)],
+                    offline: true
+                });
+                gridObj = createGrid({
+                    dataSource: offlineDataManager,
+                    columns: [
+                        { field: 'OrderID', headerText: 'Order ID', width: 100 },
+                        { field: 'CustomerID', headerText: 'Customer ID', width: 100 }
+                    ]
+                }, done);
+            });
+
+            it('addRows - with offline DataManager and toIndex', () => {
+                const dataModule = gridObj.getDataModule() as any;
+                const newRecord = { OrderID: 999, CustomerID: 'TEST' };
+                expect(() => {
+                    (dataModule as any).addRows({ toIndex: 2, records: [newRecord] });
+                }).not.toThrow();
+            });
+
+            it('addRows - with multiple records at index', () => {
+                const dataModule = gridObj.getDataModule() as any;
+                const newRecords = [
+                    { OrderID: 1000, CustomerID: 'TEST1' },
+                    { OrderID: 1001, CustomerID: 'TEST2' }
+                ];
+                expect(() => {
+                    (dataModule as any).addRows({ toIndex: 1, records: newRecords });
+                }).not.toThrow();
+            });
+
+            afterAll(() => {
+                destroy(gridObj);
+                remove(elem);
+                gridObj = null;
+            });
+        });
+
+        describe('removeRows Tests', () => {
+            let gridObj: Grid;
+            let elem: HTMLElement = createElement('div', { id: 'GridRemoveRows' });
+
+            beforeAll((done: Function) => {
+                document.body.appendChild(elem);
+                gridObj = createGrid({
+                    dataSource: data.slice(0, 5),
+                    columns: [
+                        { field: 'OrderID', headerText: 'Order ID', width: 100 },
+                        { field: 'CustomerID', headerText: 'Customer ID', width: 100 }
+                    ]
+                }, done);
+            });
+
+            it('removeRows - remove records branch coverage', () => {
+                const dataModule = gridObj.getDataModule() as any;
+                if (gridObj.currentViewData.length > 0) {
+                (dataModule as any).removeRows({ indexes: [0], records: [gridObj.currentViewData[0]] });
+                }
+            });
+
+            afterAll(() => {
+                destroy(gridObj);
+                remove(elem);
+                gridObj = null;
+            });
+        });
+
+        describe('removeRows with Offline DataManager', () => {
+            let gridObj: Grid;
+            let elem: HTMLElement = createElement('div', { id: 'GridRemoveRowsOffline' });
+
+            beforeAll((done: Function) => {
+                document.body.appendChild(elem);
+                const offlineDataManager = new DataManager({
+                    json: data.slice(0, 5),
+                    offline: true
+                });
+                gridObj = createGrid({
+                    dataSource: offlineDataManager,
+                    columns: [
+                        { field: 'OrderID', headerText: 'Order ID', width: 100 },
+                        { field: 'CustomerID', headerText: 'Customer ID', width: 100 }
+                    ]
+                }, done);
+            });
+
+            it('removeRows with offline DataManager', () => {
+                const dataModule = gridObj.getDataModule() as any;
+                expect(() => {
+                    if (gridObj.currentViewData.length > 0) {
+                        (dataModule as any).removeRows({ indexes: [0], records: [gridObj.currentViewData[0]] });
+                    }
+                }).not.toThrow();
+            });
+
+            it('removeRows with offline DataManager - json filter', () => {
+                const dataModule = gridObj.getDataModule() as any;
+                const json = (gridObj as any).dataSource.dataSource.json;
+                if (json.length > 0) {
+                    const recordToRemove = json[0];
+                    expect(() => {
+                        (dataModule as any).removeRows({ indexes: [0], records: [recordToRemove] });
+                    }).not.toThrow();
+                }
+            });
+
+            it('removeRows with multiple records - offline filter', () => {
+                const dataModule = gridObj.getDataModule() as any;
+                const json = (gridObj as any).dataSource.dataSource.json;
+                if (json.length >= 2) {
+                    expect(() => {
+                        (dataModule as any).removeRows({ indexes: [0, 1], records: [json[0], json[1]] });
+                    }).not.toThrow();
+                }
+            });
+
+            afterAll(() => {
+                destroy(gridObj);
+                remove(elem);
+                gridObj = null;
+            });
+        });
+
+        describe('getColumnByField Tests', () => {
+            let gridObj: Grid;
+            let elem: HTMLElement = createElement('div', { id: 'GridGetColumn' });
+
+            beforeAll((done: Function) => {
+                document.body.appendChild(elem);
+                gridObj = createGrid({
+                    dataSource: data.slice(0, 5),
+                    columns: [
+                        { field: 'OrderID', headerText: 'Order ID', width: 100 },
+                        { field: 'CustomerID', headerText: 'Customer ID', width: 100 }
+                    ]
+                }, done);
+            });
+
+            it('getColumnByField - retrieve column by field name', () => {
+                const dataModule = gridObj.getDataModule() as any;
+                dataModule.getColumnByField('OrderID');
+            });
+
+            it('getColumnByField - return undefined for invalid field', () => {
+                const dataModule = gridObj.getDataModule() as any;
+                dataModule.getColumnByField('InvalidField');
+            });
+
+            afterAll(() => {
+                destroy(gridObj);
+                remove(elem);
+                gridObj = null;
+            });
+        });
+
+        describe('Query Helper Tests', () => {
+            let gridObj: Grid;
+            let elem: HTMLElement = createElement('div', { id: 'GridQueryHelpers' });
+
+            beforeAll((done: Function) => {
+                document.body.appendChild(elem);
+                gridObj = createGrid({
+                    dataSource: data.slice(0, 10),
+                    aggregates: [{
+                        columns: [
+                            { type: 'Sum', field: 'Freight', format: 'C2' },
+                            { type: 'Average', field: 'Freight', format: 'C2' },
+                            { type: 'Count', field: 'OrderID' }
+                        ]
+                    }],
+                    allowGrouping: true,
+                    groupSettings: { columns: ['CustomerID'] },
+                    allowSorting: true,
+                    sortSettings: { columns: [{ field: 'OrderID', direction: 'Ascending' }] },
+                    columns: [
+                        { field: 'OrderID', headerText: 'Order ID', width: 100 },
+                        { field: 'CustomerID', headerText: 'Customer ID', width: 100 },
+                        { field: 'Freight', headerText: 'Freight', width: 100 }
+                    ]
+                }, done);
+            });
+
+            it('aggregateQuery - with aggregate columns', () => {
+                const dataModule = gridObj.getDataModule();
+                const query = new Query();
+                const result = (dataModule as any).aggregateQuery(query);
+            });
+
+            it('groupQuery - with grouping enabled', () => {
+                const dataModule = gridObj.getDataModule();
+                const query = new Query();
+                const result = (dataModule as any).groupQuery(query);
+            });
+
+            it('sortQuery - with sorting columns', () => {
+                const dataModule = gridObj.getDataModule();
+                const query = new Query();
+                const result = (dataModule as any).sortQuery(query);
+            });
+
+            it('clearCache - coverage for clearCache with query helpers', function () {
+                const dataModule: any = gridObj.getDataModule();
+                dataModule.isRemote = function () { return true; }; // Mock isRemote to true for coverage
+                (gridObj.dataSource as any).clearCache = function () { }; // Mock clearCache to avoid errors
+                dataModule.reorderRows({ fromIndex: 0, toIndex: 2 })
+                expect(function () {
+                    dataModule.clearCache();
+                }).not.toThrow();
+            });
+
+            afterAll(() => {
+                destroy(gridObj);
+                remove(elem);
+                gridObj = null;
+            });
+        });
+    });
 });

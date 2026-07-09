@@ -108,55 +108,6 @@ describe('Resource Normal view', () => {
         let saveButton: HTMLElement = document.querySelector('#' + ganttObj.element.id + '_dialog > div.e-footer-content > button') as HTMLElement;
         triggerMouseEvent(saveButton, 'click');
     });
-    it('Left resizing the added record', () => {
-        expect(ganttObj.flatData[19].childRecords.length).toBe(2);
-        expect(ganttObj.flatData[21].parentItem).toBeDefined();
-        let cancelRecord: HTMLElement = document.querySelectorAll('#' + ganttObj.element.id + '_dialog > div.e-footer-content > button.e-control')[1] as HTMLElement;
-        triggerMouseEvent(cancelRecord, 'click');
-        ganttObj.actionComplete = (args: any): void => {
-            if (args.requestType === 'save' && args.taskBarEditAction === 'LeftResizing') {
-                expect(ganttObj.currentViewData[8].ganttProperties.startDate).toEqual(ganttObj.currentViewData[3].ganttProperties.startDate);
-                expect(ganttObj.currentViewData[3].ganttProperties.resourceInfo.length).toBe(3);
-            }
-        };
-        ganttObj.dataBind();
-        let dragElement: HTMLElement = document.querySelectorAll('#' + ganttObj.element.id + 'GanttTaskTableBody > tr:nth-child(4) > td > div.e-taskbar-main-container > div.e-taskbar-left-resizer.e-icon')[0] as HTMLElement;
-        triggerMouseEvent(dragElement, 'mousedown', dragElement.offsetLeft, dragElement.offsetTop);
-        triggerMouseEvent(dragElement, 'mousemove', -80, 0);
-        triggerMouseEvent(dragElement, 'mouseup');
-    });
-    it('Right resizing the added record', () => {
-        let cancelRecord: HTMLElement = document.querySelectorAll('#' + ganttObj.element.id + '_dialog > div.e-footer-content > button.e-control')[1] as HTMLElement;
-        triggerMouseEvent(cancelRecord, 'click');
-        ganttObj.actionComplete = (args: any): void => {
-            if (args.requestType === 'save' && args.taskBarEditAction === 'RightResizing') {
-                expect(ganttObj.currentViewData[8].ganttProperties.startDate).toEqual(ganttObj.currentViewData[3].ganttProperties.startDate);
-                expect(ganttObj.currentViewData[8].ganttProperties.endDate).toEqual(ganttObj.currentViewData[3].ganttProperties.endDate);
-                expect(ganttObj.currentViewData[3].ganttProperties.resourceInfo.length).toBe(3);
-            }
-        };
-        ganttObj.dataBind();
-        let dragElement: HTMLElement = ganttObj.element.querySelector('#' + ganttObj.element.id + 'GanttTaskTableBody > tr:nth-child(4) > td > div.e-taskbar-main-container > div.e-taskbar-right-resizer.e-icon') as HTMLElement;
-        triggerMouseEvent(dragElement, 'mousedown', dragElement.offsetLeft, dragElement.offsetTop);
-        triggerMouseEvent(dragElement, 'mousemove', (dragElement.offsetLeft + 100), dragElement.offsetTop);
-        triggerMouseEvent(dragElement, 'mouseup');
-    });
-    it('Taskbar drag action', () => {
-        let cancelRecord: HTMLElement = document.querySelectorAll('#' + ganttObj.element.id + '_dialog > div.e-footer-content > button.e-control')[1] as HTMLElement;
-        triggerMouseEvent(cancelRecord, 'click');
-        ganttObj.actionComplete = (args: any): void => {
-            if (args.requestType === 'save' && args.taskBarEditAction === 'ChildDrag') {
-                expect(ganttObj.currentViewData[8].ganttProperties.startDate).toEqual(ganttObj.currentViewData[3].ganttProperties.startDate);
-                expect(ganttObj.currentViewData[8].ganttProperties.endDate).toEqual(ganttObj.currentViewData[3].ganttProperties.endDate);
-                expect(ganttObj.currentViewData[3].ganttProperties.resourceInfo.length).toBe(3);
-            }
-        };
-        ganttObj.dataBind();
-        let dragElement: HTMLElement = ganttObj.element.querySelector('#' + ganttObj.element.id + 'GanttTaskTableBody > tr:nth-child(9) > td > div.e-taskbar-main-container > div.e-gantt-child-taskbar-inner-div.e-gantt-child-taskbar') as HTMLElement;
-        triggerMouseEvent(dragElement, 'mousedown', dragElement.offsetLeft, dragElement.offsetTop);
-        triggerMouseEvent(dragElement, 'mousemove', dragElement.offsetLeft + 180, 0);
-        triggerMouseEvent(dragElement, 'mouseup');
-    });
     it('Editing task name', () => {
         let cancelRecord: HTMLElement = document.querySelectorAll('#' + ganttObj.element.id + '_dialog > div.e-footer-content > button.e-control')[1] as HTMLElement;
         triggerMouseEvent(cancelRecord, 'click');

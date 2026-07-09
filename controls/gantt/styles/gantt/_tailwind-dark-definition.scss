@@ -1,6 +1,5 @@
 @use 'sass:color';
-@use 'ej2-base/styles/definition/tailwind-dark' as *;
-@forward 'ej2-base/styles/definition/tailwind-dark';
+@use '@syncfusion/ej2-base/styles/common/base-variables' as *;
 
 // color
 $gantt-header-bg-color: $content-bg-color-alt1 !default;

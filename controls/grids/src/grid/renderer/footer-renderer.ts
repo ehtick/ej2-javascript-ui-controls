@@ -24,8 +24,10 @@ export class FooterRenderer extends ContentRender implements IRenderer {
     //private parent: Grid;
     private locator: ServiceLocator;
     protected modelGenerator: SummaryModelGenerator;
-    private aggregates: Object = {};
-    private evtHandlers: { event: string, handler: Function }[];
+    /** @hidden */
+    public aggregates: Object = {};
+    /** @hidden */
+    public evtHandlers: { event: string, handler: Function }[];
     constructor(gridModule?: IGrid, serviceLocator?: ServiceLocator) {
         super(gridModule, serviceLocator);
         this.parent = gridModule;
@@ -95,7 +97,8 @@ export class FooterRenderer extends ContentRender implements IRenderer {
         }
         const isReactChild: boolean = this.parent.parentDetails && this.parent.parentDetails.parentInstObj &&
             this.parent.parentDetails.parentInstObj.isReact;
-        if ((this.parent.isReact || isReactChild) && summaries.length && this.parent.isInitialLoad) {
+        if ((this.parent.isReact || isReactChild) && summaries.length && this.parent.isInitialLoad &&
+            !this.parent.enableColumnVirtualization) {
             this.parent.renderTemplates(function(): void {
                 table.tFoot.innerHTML = '';
                 table.tFoot.appendChild(fragment);
@@ -109,7 +112,7 @@ export class FooterRenderer extends ContentRender implements IRenderer {
     public refresh(e?: { aggregates?: Object }): void {
         const isReactChild: boolean = this.parent.parentDetails && this.parent.parentDetails.parentInstObj &&
             this.parent.parentDetails.parentInstObj.isReact;
-        if (!(this.parent.isReact || isReactChild) || !this.parent.isInitialLoad) {
+        if (!(this.parent.isReact || isReactChild) || !this.parent.isInitialLoad || this.parent.enableColumnVirtualization) {
             (<HTMLTableElement>this.getTable()).tFoot.innerHTML = '';
         }
         this.renderSummaryContent(e, <HTMLTableElement>this.getTable(), undefined, undefined);
@@ -127,8 +130,20 @@ export class FooterRenderer extends ContentRender implements IRenderer {
         this.setColGroup(<Element>mheaderCol);
     }
 
-    private onWidthChange(args: { index: number, width: number, module: string }): void {
-        this.getColFromIndex(args.index).style.width = formatUnit(args.width);
+    /**
+     * Handles column width changes and updates footer table width when resizing.
+     *
+     * @param {Object} args - Width change arguments
+     * @param {number} args.index - Column index
+     * @param {number} args.width - New width of the column
+     * @param {string} args.module - Action source module (e.g., resize)
+     * @returns {void}
+     * @hidden
+     */
+    public onWidthChange(args: { index: number, width: number, module: string }): void {
+        if (!isNullOrUndefined(this.getColFromIndex(args.index))) {
+            this.getColFromIndex(args.index).style.width = formatUnit(args.width);
+        }
         if (this.parent.allowResizing && args.module === 'resize') { this.updateFooterTableWidth(this.getTable() as HTMLElement); }
     }
 
@@ -143,7 +158,13 @@ export class FooterRenderer extends ContentRender implements IRenderer {
         return this.getColGroup().children[parseInt(index.toString(), 10)] as HTMLElement;
     }
 
-    private columnVisibilityChanged(): void {
+    /**
+     * Handles column visibility changes and refreshes the footer summary.
+     *
+     * @returns {void}
+     * @hidden
+     */
+    public columnVisibilityChanged(): void {
         this.refresh();
     }
 
@@ -159,7 +180,15 @@ export class FooterRenderer extends ContentRender implements IRenderer {
     public removeEventListener(): void {
         addRemoveEventListener(this.parent, this.evtHandlers, false);
     }
-    private updateFooterTableWidth(tFoot: HTMLElement): void {
+
+    /**
+     * Updates the footer table width to match the header table width.
+     *
+     * @param {HTMLElement} tFoot - Footer table element whose width should be synchronized
+     * @returns {void}
+     * @hidden
+     */
+    public updateFooterTableWidth(tFoot: HTMLElement): void {
         const tHead: HTMLTableElement = this.parent.getHeaderTable() as HTMLTableElement;
         if (tHead && tFoot) {
             tFoot.style.width = tHead.style.width;
