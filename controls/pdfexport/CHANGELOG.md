@@ -2,7 +2,15 @@
 
 ## [Unreleased]
 
-## 34.1.30 (2026-07-09)
+## 34.1.31 (2026-07-14)
+
+### Pdf Export
+
+#### Bug Fixes
+
+- Fixed an undefined exception while exporting grid with page orientation changes.
+
+## 34.1.29 (2026-07-06)
 
 ### Pdf Export
 

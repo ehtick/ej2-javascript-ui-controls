@@ -105,7 +105,9 @@ export class PdfMainObjectCollection {
         let reference : PdfReference;
         this.isNew = false;
         let oi : ObjectInfo = this.objectCollections[this.index];
-        reference = oi.reference;
+        if (oi) {
+            reference = oi.reference;
+        }
         let obj : {reference : PdfReference, wasNew : boolean} = {reference : reference, wasNew : isNew};
         return obj;
     }

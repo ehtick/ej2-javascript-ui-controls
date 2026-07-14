@@ -911,6 +911,9 @@ export class TaskbarEdit extends DateProcessor {
      * @private
      */
     public mouseMoveAction(event: PointerEvent): void {
+        if (this.parent.treeGrid.element.getElementsByClassName('e-editedbatchcell').length > 0 && !isNullOrUndefined(this.taskBarEditAction)) {
+            this.parent.cancelEdit();
+        }
         if (this.parent.isAdaptive) {
             if (!this.canDrag) {
                 return;

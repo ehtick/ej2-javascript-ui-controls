@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## 34.1.31 (2026-07-14)
+
+### PDF
+
+#### Bug Fixes
+
+- Resolved a script error during annotation export and import with special characters.
+
 ## 34.1.30 (2026-07-09)
 
 ### PDF
@@ -11,7 +19,6 @@
 - Resolved an issue where the combo box field font and color were returned as undefined.
 - Resolved an issue where free text annotations become invisible when appearance is enabled.
 - Resolved an issue where textbox field text was not preserved during rotation.
-- Resolved a script error during annotation export and import with special characters.
 
 ## 33.2.15 (2026-06-23)
 
